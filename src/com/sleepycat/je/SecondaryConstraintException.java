@@ -17,40 +17,37 @@ import com.sleepycat.je.txn.Locker;
 
 /**
  * Base class for exceptions thrown when a write operation fails because of a
- * secondary constraint.  See subclasses for more information.
+ * secondary constraint. See subclasses for more information.
  *
- * <p>The {@link Transaction} handle is invalidated as a result of this
- * exception.</p>
+ * <p>
+ * The {@link Transaction} handle is invalidated as a result of this exception.
+ * </p>
  *
- * @see <a href="SecondaryDatabase.html#transactions">Special considerations
- * for using Secondary Databases with and without Transactions</a>
+ * @see <a href="SecondaryDatabase.html#transactions">Special considerations for
+ *      using Secondary Databases with and without Transactions</a>
  *
  * @since 4.0
  */
-public abstract class SecondaryConstraintException
-    extends SecondaryReferenceException {
+public abstract class SecondaryConstraintException extends SecondaryReferenceException {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    /** 
-     * For internal use only.
-     * @hidden 
-     */
-    public SecondaryConstraintException(Locker locker,
-                                        String message,
-                                        String secDbName,
-                                        DatabaseEntry secKey,
-                                        DatabaseEntry priKey,
-                                        long expirationTime) {
-        super(locker, message, secDbName, secKey, priKey, expirationTime);
-    }
+	/**
+	 * For internal use only.
+	 * 
+	 * @hidden
+	 */
+	public SecondaryConstraintException(Locker locker, String message, String secDbName, DatabaseEntry secKey,
+			DatabaseEntry priKey, long expirationTime) {
+		super(locker, message, secDbName, secKey, priKey, expirationTime);
+	}
 
-    /** 
-     * For internal use only.
-     * @hidden 
-     */
-    SecondaryConstraintException(String message,
-                                 SecondaryReferenceException cause) {
-        super(message, cause);
-    }
+	/**
+	 * For internal use only.
+	 * 
+	 * @hidden
+	 */
+	SecondaryConstraintException(String message, SecondaryReferenceException cause) {
+		super(message, cause);
+	}
 }

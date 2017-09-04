@@ -19,8 +19,9 @@ import java.io.Serializable;
  * Statistics for a single database.
  */
 public abstract class DatabaseStats implements Serializable {
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    // no public constructor
-    protected DatabaseStats() {}
+	// no public constructor
+	protected DatabaseStats() {
+	}
 }

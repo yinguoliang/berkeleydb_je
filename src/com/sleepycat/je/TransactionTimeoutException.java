@@ -23,51 +23,60 @@ import com.sleepycat.je.txn.Locker;
  * cursor, or fails to commit or abort a transaction, since any locks held by
  * the cursor or transaction will be held indefinitely.
  *
- * <p>This exception is not thrown if a deadlock is detected, even if the
- * timeout elapses before the deadlock is broken. If a deadlock is detected,
- * {@link DeadlockException} is always thrown instead.</p>
+ * <p>
+ * This exception is not thrown if a deadlock is detected, even if the timeout
+ * elapses before the deadlock is broken. If a deadlock is detected,
+ * {@link DeadlockException} is always thrown instead.
+ * </p>
  *
- * <p>The transaction timeout interval may be set using
- * {@link Transaction#setTxnTimeout}.</p>
+ * <p>
+ * The transaction timeout interval may be set using
+ * {@link Transaction#setTxnTimeout}.
+ * </p>
  *
- * <p>The {@link Transaction} handle is invalidated as a result of this
- * exception.</p>
+ * <p>
+ * The {@link Transaction} handle is invalidated as a result of this exception.
+ * </p>
  *
- * <p>Normally, applications should catch the base class {@link
- * LockConflictException} rather than catching one of its subclasses.  All lock
- * conflicts are typically handled in the same way, which is normally to abort
- * and retry the transaction.  See {@link LockConflictException} for more
- * information.</p>
+ * <p>
+ * Normally, applications should catch the base class
+ * {@link LockConflictException} rather than catching one of its subclasses. All
+ * lock conflicts are typically handled in the same way, which is normally to
+ * abort and retry the transaction. See {@link LockConflictException} for more
+ * information.
+ * </p>
  *
  * @since 4.0
  */
 public class TransactionTimeoutException extends LockConflictException {
 
-    private static final long serialVersionUID = 1;
+	private static final long serialVersionUID = 1;
 
-    /** 
-     * For internal use only.
-     * @hidden 
-     */
-    public TransactionTimeoutException(Locker locker, String message) {
-        super(locker, message);
-    }
+	/**
+	 * For internal use only.
+	 * 
+	 * @hidden
+	 */
+	public TransactionTimeoutException(Locker locker, String message) {
+		super(locker, message);
+	}
 
-    /** 
-     * For internal use only.
-     * @hidden 
-     */
-    private TransactionTimeoutException(String message,
-                                        TransactionTimeoutException cause) {
-        super(message, cause);
-    }
+	/**
+	 * For internal use only.
+	 * 
+	 * @hidden
+	 */
+	private TransactionTimeoutException(String message, TransactionTimeoutException cause) {
+		super(message, cause);
+	}
 
-    /** 
-     * For internal use only.
-     * @hidden 
-     */
-    @Override
-    public OperationFailureException wrapSelf(String msg) {
-        return new TransactionTimeoutException(msg, this);
-    }
+	/**
+	 * For internal use only.
+	 * 
+	 * @hidden
+	 */
+	@Override
+	public OperationFailureException wrapSelf(String msg) {
+		return new TransactionTimeoutException(msg, this);
+	}
 }

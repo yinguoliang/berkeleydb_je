@@ -19,18 +19,17 @@ import java.beans.BeanDescriptor;
 import java.beans.PropertyDescriptor;
 
 /**
- * @hidden
- * Getter/Setters for JavaBean based tools.
+ * @hidden Getter/Setters for JavaBean based tools.
  */
 public class PreloadConfigBeanInfo extends ConfigBeanInfoBase {
 
-    @Override
-    public BeanDescriptor getBeanDescriptor() {
-        return getBdescriptor(PreloadConfig.class);
-    }
+	@Override
+	public BeanDescriptor getBeanDescriptor() {
+		return getBdescriptor(PreloadConfig.class);
+	}
 
-    @Override
-    public PropertyDescriptor[] getPropertyDescriptors() {
-        return getPdescriptor(PreloadConfig.class);
-    }
+	@Override
+	public PropertyDescriptor[] getPropertyDescriptors() {
+		return getPdescriptor(PreloadConfig.class);
+	}
 }

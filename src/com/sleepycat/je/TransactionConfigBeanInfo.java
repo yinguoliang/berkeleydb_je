@@ -19,18 +19,17 @@ import java.beans.BeanDescriptor;
 import java.beans.PropertyDescriptor;
 
 /**
- * @hidden
- * Getter/Setters for JavaBean based tools.
+ * @hidden Getter/Setters for JavaBean based tools.
  */
 public class TransactionConfigBeanInfo extends ConfigBeanInfoBase {
 
-    @Override
-    public BeanDescriptor getBeanDescriptor() {
-        return getBdescriptor(TransactionConfig.class);
-    }
+	@Override
+	public BeanDescriptor getBeanDescriptor() {
+		return getBdescriptor(TransactionConfig.class);
+	}
 
-    @Override
-    public PropertyDescriptor[] getPropertyDescriptors() {
-        return getPdescriptor(TransactionConfig.class);
-    }
+	@Override
+	public PropertyDescriptor[] getPropertyDescriptors() {
+		return getPdescriptor(TransactionConfig.class);
+	}
 }

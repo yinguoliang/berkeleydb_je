@@ -31,41 +31,41 @@ package com.sleepycat.je;
  */
 public class OperationResult {
 
-    private final long expirationTime;
-    private final boolean update;
+	private final long expirationTime;
+	private final boolean update;
 
-    OperationResult(final long expirationTime, final boolean update) {
-        this.expirationTime = expirationTime;
-        this.update = update;
-    }
+	OperationResult(final long expirationTime, final boolean update) {
+		this.expirationTime = expirationTime;
+		this.update = update;
+	}
 
-    /**
-     * Returns whether the operation was an update, for distinguishing inserts
-     * and updates performed by a {@link Put#OVERWRITE} operation.
-     *
-     * @return whether an existing record was updated by this operation.
-     */
-    public boolean isUpdate() {
-        return update;
-    }
+	/**
+	 * Returns whether the operation was an update, for distinguishing inserts
+	 * and updates performed by a {@link Put#OVERWRITE} operation.
+	 *
+	 * @return whether an existing record was updated by this operation.
+	 */
+	public boolean isUpdate() {
+		return update;
+	}
 
-    /**
-     * Returns the expiration time of the record, in milliseconds, or zero
-     * if the record has no TTL and does not expire.
-     * <p>
-     * For 'get' operations, this is the expiration time of the current record.
-     * For 'put operations, this is the expiration time of the newly written
-     * record. For 'delete' operation, this is the expiration time of the
-     * record that was deleted.
-     * <p>
-     * The return value will always be evenly divisible by the number of
-     * milliseconds in one hour. If {@code TimeUnit.Days} was specified
-     * when the record was written, the return value will also be evenly
-     * divisible by the number of milliseconds in one day.
-     *
-     * @return the expiration time in milliseconds, or zero.
-     */
-    public long getExpirationTime() {
-        return expirationTime;
-    }
+	/**
+	 * Returns the expiration time of the record, in milliseconds, or zero if
+	 * the record has no TTL and does not expire.
+	 * <p>
+	 * For 'get' operations, this is the expiration time of the current record.
+	 * For 'put operations, this is the expiration time of the newly written
+	 * record. For 'delete' operation, this is the expiration time of the record
+	 * that was deleted.
+	 * <p>
+	 * The return value will always be evenly divisible by the number of
+	 * milliseconds in one hour. If {@code TimeUnit.Days} was specified when the
+	 * record was written, the return value will also be evenly divisible by the
+	 * number of milliseconds in one day.
+	 *
+	 * @return the expiration time in milliseconds, or zero.
+	 */
+	public long getExpirationTime() {
+		return expirationTime;
+	}
 }

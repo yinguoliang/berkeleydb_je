@@ -24,74 +24,75 @@ import com.sleepycat.je.utilint.DatabaseUtil;
  */
 public class ReadOptions implements Cloneable {
 
-    private CacheMode cacheMode = null;
-    private LockMode lockMode = LockMode.DEFAULT;
+	private CacheMode cacheMode = null;
+	private LockMode lockMode = LockMode.DEFAULT;
 
-    /**
-     * Constructs a ReadOptions object with default values for all properties.
-     */
-    public ReadOptions() {
-    }
+	/**
+	 * Constructs a ReadOptions object with default values for all properties.
+	 */
+	public ReadOptions() {
+	}
 
-    @Override
-    public ReadOptions clone() {
-        try {
-            return (ReadOptions) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw unexpectedException(e);
-        }
-    }
+	@Override
+	public ReadOptions clone() {
+		try {
+			return (ReadOptions) super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw unexpectedException(e);
+		}
+	}
 
-    /**
-     * Sets the {@code CacheMode} to be used for the operation.
-     * <p>
-     * By default this property is null, meaning that the default specified
-     * using {@link Cursor#setCacheMode},
-     * {@link DatabaseConfig#setCacheMode} or
-     * {@link EnvironmentConfig#setCacheMode} will be used.
-     *
-     * @param cacheMode is the {@code CacheMode} used for the operation, or
-     * null to use the Cursor, Database or Environment default.
-     *
-     * @return 'this'.
-     */
-    public ReadOptions setCacheMode(final CacheMode cacheMode) {
-        this.cacheMode = cacheMode;
-        return this;
-    }
+	/**
+	 * Sets the {@code CacheMode} to be used for the operation.
+	 * <p>
+	 * By default this property is null, meaning that the default specified
+	 * using {@link Cursor#setCacheMode}, {@link DatabaseConfig#setCacheMode} or
+	 * {@link EnvironmentConfig#setCacheMode} will be used.
+	 *
+	 * @param cacheMode
+	 *            is the {@code CacheMode} used for the operation, or null to
+	 *            use the Cursor, Database or Environment default.
+	 *
+	 * @return 'this'.
+	 */
+	public ReadOptions setCacheMode(final CacheMode cacheMode) {
+		this.cacheMode = cacheMode;
+		return this;
+	}
 
-    /**
-     * Returns the {@code CacheMode} to be used for the operation, or null
-     * if the Cursor, Database or Environment default will be used.
-     *
-     * @see #setCacheMode(CacheMode)
-     */
-    public CacheMode getCacheMode() {
-        return cacheMode;
-    }
+	/**
+	 * Returns the {@code CacheMode} to be used for the operation, or null if
+	 * the Cursor, Database or Environment default will be used.
+	 *
+	 * @see #setCacheMode(CacheMode)
+	 */
+	public CacheMode getCacheMode() {
+		return cacheMode;
+	}
 
-    /**
-     * Sets the {@code LockMode} to be used for the operation.
-     * <p>
-     * By default this property is {@link LockMode#DEFAULT}.
-     *
-     * @param lockMode the locking attributes. Specifying null or
-     * {@link LockMode#READ_COMMITTED} is not allowed.
-     *
-     * @return 'this'.
-     */
-    public ReadOptions setLockMode(final LockMode lockMode) {
-        DatabaseUtil.checkForNullParam(lockMode, "lockMode");
-        this.lockMode = lockMode;
-        return this;
-    }
+	/**
+	 * Sets the {@code LockMode} to be used for the operation.
+	 * <p>
+	 * By default this property is {@link LockMode#DEFAULT}.
+	 *
+	 * @param lockMode
+	 *            the locking attributes. Specifying null or
+	 *            {@link LockMode#READ_COMMITTED} is not allowed.
+	 *
+	 * @return 'this'.
+	 */
+	public ReadOptions setLockMode(final LockMode lockMode) {
+		DatabaseUtil.checkForNullParam(lockMode, "lockMode");
+		this.lockMode = lockMode;
+		return this;
+	}
 
-    /**
-     * Returns the {@code LockMode} to be used for the operation.
-     *
-     * @see #setLockMode(LockMode)
-     */
-    public LockMode getLockMode() {
-        return lockMode;
-    }
+	/**
+	 * Returns the {@code LockMode} to be used for the operation.
+	 *
+	 * @see #setLockMode(LockMode)
+	 */
+	public LockMode getLockMode() {
+		return lockMode;
+	}
 }
