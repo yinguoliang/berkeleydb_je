@@ -34,17 +34,16 @@ import com.sleepycat.je.rep.monitor.Protocol.LeaveGroup;
 import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
- * The class for firing MonitorChangeEvents.
- *
- * Each time when there happens a MonitorChangeEvents, it refreshes the group
- * information so that it can send messages to current monitors.
+ * The class for firing MonitorChangeEvents. Each time when there happens a
+ * MonitorChangeEvents, it refreshes the group information so that it can send
+ * messages to current monitors.
  */
 public class MonitorEventManager {
 
     /* The time when this node joins the group, 0 if it hasn't joined yet. */
     private long joinTime = 0L;
 
-    ArbiterImpl arbImpl;
+    ArbiterImpl  arbImpl;
 
     public MonitorEventManager(ArbiterImpl arbImpl) {
         this.arbImpl = arbImpl;
@@ -63,8 +62,7 @@ public class MonitorEventManager {
     /**
      * Fire a JoinGroupEvent.
      */
-    public void notifyJoinGroup()
-        throws DatabaseException {
+    public void notifyJoinGroup() throws DatabaseException {
 
         if (joinTime > 0) {
             /* Already notified. */
@@ -77,18 +75,15 @@ public class MonitorEventManager {
         }
 
         joinTime = System.currentTimeMillis();
-        JoinGroup joinEvent =
-            getProtocol(repGroup).new JoinGroup(arbImpl.getNodeName(),
-                                                arbImpl.getMasterName(),
-                                                joinTime);
+        JoinGroup joinEvent = getProtocol(repGroup).new JoinGroup(arbImpl.getNodeName(), arbImpl.getMasterName(),
+                joinTime);
         refreshMonitors(repGroup, joinEvent);
     }
 
     /**
      * Fire a LeaveGroupEvent and wait for responses.
      */
-    public void notifyLeaveGroup(LeaveReason reason)
-        throws DatabaseException, InterruptedException {
+    public void notifyLeaveGroup(LeaveReason reason) throws DatabaseException, InterruptedException {
 
         if (joinTime == 0) {
             /* No join event, therefore no matching leave event. */
@@ -99,22 +94,17 @@ public class MonitorEventManager {
         if (repGroup == null) {
             return;
         }
-        LeaveGroup leaveEvent =
-            getProtocol(repGroup).new LeaveGroup(arbImpl.getNodeName(),
-                                                 arbImpl.getMasterName(),
-                                                 reason,
-                                                 joinTime,
-                                                 System.currentTimeMillis());
-        final FutureTrackingCompService<MessageExchange> compService =
-            refreshMonitors(repGroup, leaveEvent);
+        LeaveGroup leaveEvent = getProtocol(repGroup).new LeaveGroup(arbImpl.getNodeName(), arbImpl.getMasterName(),
+                reason, joinTime, System.currentTimeMillis());
+        final FutureTrackingCompService<MessageExchange> compService = refreshMonitors(repGroup, leaveEvent);
 
         /* Wait for the futures to be evaluated. */
         for (final Future<MessageExchange> f : compService.getFutures()) {
             try {
 
                 /*
-                 * Ignore the result. Wait 10 seconds for the evaluation of
-                 * the future before giving up.
+                 * Ignore the result. Wait 10 seconds for the evaluation of the
+                 * future before giving up.
                  */
                 f.get(10, TimeUnit.SECONDS);
             } catch (ExecutionException e) {
@@ -126,25 +116,19 @@ public class MonitorEventManager {
     }
 
     /* Create a monitor protocol. */
-    private com.sleepycat.je.rep.monitor.Protocol
-        getProtocol(RepGroupImpl repGroup) {
+    private com.sleepycat.je.rep.monitor.Protocol getProtocol(RepGroupImpl repGroup) {
 
-        return new com.sleepycat.je.rep.monitor.Protocol
-            (repGroup.getName(), NameIdPair.NOCHECK, null,
-             arbImpl.getRepImpl().getChannelFactory());
+        return new com.sleepycat.je.rep.monitor.Protocol(repGroup.getName(), NameIdPair.NOCHECK, null,
+                arbImpl.getRepImpl().getChannelFactory());
     }
 
     /* Refresh all the monitors with specified message. */
-    private FutureTrackingCompService<MessageExchange>
-        refreshMonitors(RepGroupImpl repGroup,
-                        RequestMessage requestMessage) {
+    private FutureTrackingCompService<MessageExchange> refreshMonitors(RepGroupImpl repGroup,
+                                                                       RequestMessage requestMessage) {
         Set<InetSocketAddress> monitors = repGroup.getAllMonitorSockets();
-        LoggerUtils.fine(arbImpl.getLogger(), arbImpl.getRepImpl(),
-                         "Refreshed " + monitors.size() + " monitors.");
+        LoggerUtils.fine(arbImpl.getLogger(), arbImpl.getRepImpl(), "Refreshed " + monitors.size() + " monitors.");
         /* Broadcast and forget. */
-        return Utils.broadcastMessage(monitors,
-                                      MonitorService.SERVICE_NAME,
-                                      requestMessage,
-                                      arbImpl.getElections().getThreadPool());
+        return Utils.broadcastMessage(monitors, MonitorService.SERVICE_NAME, requestMessage,
+                arbImpl.getElections().getThreadPool());
     }
 }

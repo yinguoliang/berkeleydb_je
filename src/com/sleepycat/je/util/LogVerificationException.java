@@ -18,9 +18,10 @@ import java.io.IOException;
 /**
  * Thrown during log verification if a checksum cannot be verified or a log
  * entry is determined to be invalid by examining its contents.
- *
- * <p>This class extends {@code IOException} so that it can be thrown by the
- * {@code InputStream} methods of {@link LogVerificationInputStream}.</p>
+ * <p>
+ * This class extends {@code IOException} so that it can be thrown by the
+ * {@code InputStream} methods of {@link LogVerificationInputStream}.
+ * </p>
  */
 public class LogVerificationException extends IOException {
     private static final long serialVersionUID = 1L;
@@ -29,8 +30,7 @@ public class LogVerificationException extends IOException {
         super(message);
     }
 
-    public LogVerificationException(final String message,
-                                    final Throwable cause) {
+    public LogVerificationException(final String message, final Throwable cause) {
         super(message);
         initCause(cause);
     }

@@ -30,7 +30,8 @@ public class NoClearAtomicLongStat extends AtomicLongStat {
 
     /** Never clear this stat. */
     @Override
-    public void clear() { }
+    public void clear() {
+    }
 
     @Override
     public AtomicLongStat copy() {

@@ -23,19 +23,15 @@ import com.sleepycat.je.WriteOptions;
  */
 public class ExpirationInfo {
 
-    public static final ExpirationInfo DEFAULT =
-        new ExpirationInfo(0, false, false);
+    public static final ExpirationInfo DEFAULT           = new ExpirationInfo(0, false, false);
 
-    public final int expiration;
-    public final boolean expirationInHours;
-    public final boolean updateExpiration;
-    private boolean expirationUpdated = false;
-    private long oldExpirationTime = 0;
+    public final int                   expiration;
+    public final boolean               expirationInHours;
+    public final boolean               updateExpiration;
+    private boolean                    expirationUpdated = false;
+    private long                       oldExpirationTime = 0;
 
-    public ExpirationInfo(
-        final int expiration,
-        final boolean expirationInHours,
-        final boolean updateExpiration) {
+    public ExpirationInfo(final int expiration, final boolean expirationInHours, final boolean updateExpiration) {
 
         this.expiration = expiration;
         this.expirationInHours = expirationInHours;
@@ -47,10 +43,9 @@ public class ExpirationInfo {
      * the current system time.
      *
      * @param options WriteOptions, may not be null.
-     *
      * @return ExpirationInfo, or null if WriteOptions.getTTL is zero and
-     * WriteOptions.getUpdateTTL is false, meaning we will not add or update
-     * the TTL.
+     *         WriteOptions.getUpdateTTL is false, meaning we will not add or
+     *         update the TTL.
      */
     public static ExpirationInfo getInfo(final WriteOptions options) {
 
@@ -58,10 +53,8 @@ public class ExpirationInfo {
             return null;
         }
 
-        return new ExpirationInfo(
-            TTL.ttlToExpiration(options.getTTL(), options.getTTLUnit()),
-            options.getTTLUnit() == TimeUnit.HOURS,
-            options.getUpdateTTL());
+        return new ExpirationInfo(TTL.ttlToExpiration(options.getTTL(), options.getTTLUnit()),
+                options.getTTLUnit() == TimeUnit.HOURS, options.getUpdateTTL());
     }
 
     public void setExpirationUpdated(boolean val) {

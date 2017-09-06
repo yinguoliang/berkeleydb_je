@@ -23,13 +23,13 @@ import java.beans.PropertyDescriptor;
  */
 public class CursorConfigBeanInfo extends ConfigBeanInfoBase {
 
-	@Override
-	public BeanDescriptor getBeanDescriptor() {
-		return getBdescriptor(CursorConfig.class);
-	}
+    @Override
+    public BeanDescriptor getBeanDescriptor() {
+        return getBdescriptor(CursorConfig.class);
+    }
 
-	@Override
-	public PropertyDescriptor[] getPropertyDescriptors() {
-		return getPdescriptor(CursorConfig.class);
-	}
+    @Override
+    public PropertyDescriptor[] getPropertyDescriptors() {
+        return getPdescriptor(CursorConfig.class);
+    }
 }

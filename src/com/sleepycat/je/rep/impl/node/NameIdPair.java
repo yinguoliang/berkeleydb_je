@@ -23,31 +23,28 @@ import com.sleepycat.je.log.LogUtils;
 import com.sleepycat.je.rep.utilint.BinaryProtocol;
 
 /**
- * The public name and internal id pair used to uniquely identify a node
- * within a replication group.
+ * The public name and internal id pair used to uniquely identify a node within
+ * a replication group.
  */
 public class NameIdPair implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long      serialVersionUID = 1L;
 
-    private final String name;
-    private int id;
+    private final String           name;
+    private int                    id;
 
     /* Constant to denote an unknown NODE_ID */
-    public final static int NULL_NODE_ID = -1;
+    public final static int        NULL_NODE_ID     = -1;
 
     /* The node ID used to bypass group membership checks. */
-    public static final int NOCHECK_NODE_ID = Integer.MIN_VALUE;
+    public static final int        NOCHECK_NODE_ID  = Integer.MIN_VALUE;
 
-    public static final NameIdPair NULL =
-        new ReadOnlyNameIdPair("NullNode", NameIdPair.NULL_NODE_ID);
+    public static final NameIdPair NULL             = new ReadOnlyNameIdPair("NullNode", NameIdPair.NULL_NODE_ID);
 
-    public static final NameIdPair NOCHECK =
-        new ReadOnlyNameIdPair("NoCheckNode", NOCHECK_NODE_ID);
+    public static final NameIdPair NOCHECK          = new ReadOnlyNameIdPair("NoCheckNode", NOCHECK_NODE_ID);
 
     public NameIdPair(String name, int id) {
         if (name == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("name argument was null");
+            throw EnvironmentFailureException.unexpectedState("name argument was null");
         }
         this.name = name;
         this.id = id;
@@ -61,10 +58,8 @@ public class NameIdPair implements Serializable {
     }
 
     /** Serializes from a ByteBuffer for a given protocol. */
-    public static NameIdPair deserialize(ByteBuffer buffer,
-                                         BinaryProtocol protocol) {
-        return new NameIdPair(protocol.getString(buffer),
-                              LogUtils.readInt(buffer));
+    public static NameIdPair deserialize(ByteBuffer buffer, BinaryProtocol protocol) {
+        return new NameIdPair(protocol.getString(buffer), LogUtils.readInt(buffer));
     }
 
     /** Serializes from a TupleInput after retrieving from storage. */
@@ -117,9 +112,8 @@ public class NameIdPair implements Serializable {
     }
 
     public void setId(int id, boolean checkId) {
-        if (checkId && (id != this.id) && ! hasNullId()) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Id was already not null: " + this.id);
+        if (checkId && (id != this.id) && !hasNullId()) {
+            throw EnvironmentFailureException.unexpectedState("Id was already not null: " + this.id);
         }
         this.id = id;
     }
@@ -130,8 +124,7 @@ public class NameIdPair implements Serializable {
 
     public void update(NameIdPair other) {
         if (!name.equals(other.getName())) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Pair name mismatch: " + name + " <> " + other.getName());
+            throw EnvironmentFailureException.unexpectedState("Pair name mismatch: " + name + " <> " + other.getName());
         }
         setId(other.getId());
     }
@@ -161,9 +154,8 @@ public class NameIdPair implements Serializable {
             return false;
         }
         if (!name.equals(other.name)) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Ids: " + id + " were equal." + " But names: " + name + ", " +
-                 other.name + " weren't!");
+            throw EnvironmentFailureException.unexpectedState(
+                    "Ids: " + id + " were equal." + " But names: " + name + ", " + other.name + " weren't!");
         }
         return true;
     }
@@ -177,8 +169,7 @@ public class NameIdPair implements Serializable {
 
         @Override
         public void setId(int id) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Read only NameIdPair");
+            throw EnvironmentFailureException.unexpectedState("Read only NameIdPair");
         }
     }
 }

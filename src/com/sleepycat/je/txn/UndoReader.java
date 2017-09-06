@@ -28,22 +28,18 @@ import com.sleepycat.je.utilint.DbLsn;
 
 /**
  * Convenience class to package together the different steps and fields needed
- * for reading a log entry for undoing. Is used for both txn aborts and 
- * recovery undos.
+ * for reading a log entry for undoing. Is used for both txn aborts and recovery
+ * undos.
  */
 public class UndoReader {
 
     public final LNLogEntry<?> logEntry;
-    public final LN ln;
-    private final long lsn;
-    public final int logEntrySize;
-    public final DatabaseImpl db;
-    
-    private UndoReader(LNLogEntry<?> logEntry,
-                       LN ln,
-                       long lsn,
-                       int logEntrySize,
-                       DatabaseImpl db) {
+    public final LN            ln;
+    private final long         lsn;
+    public final int           logEntrySize;
+    public final DatabaseImpl  db;
+
+    private UndoReader(LNLogEntry<?> logEntry, LN ln, long lsn, int logEntrySize, DatabaseImpl db) {
         this.logEntry = logEntry;
         this.ln = ln;
         this.lsn = lsn;
@@ -55,24 +51,20 @@ public class UndoReader {
      * Set up an UndoReader when doing an undo or txn partial rollback for a
      * live txn.
      * <p>
-     * Never returns null.  The DB ID of the LN must be present in
-     * undoDatabases, or a fatal exception is thrown.
+     * Never returns null. The DB ID of the LN must be present in undoDatabases,
+     * or a fatal exception is thrown.
      */
-    public static UndoReader create(
-        EnvironmentImpl envImpl,
-        long undoLsn,
-        Map<DatabaseId, DatabaseImpl> undoDatabases) {
+    public static UndoReader create(EnvironmentImpl envImpl, long undoLsn,
+                                    Map<DatabaseId, DatabaseImpl> undoDatabases) {
 
-        final WholeEntry wholeEntry = envImpl.getLogManager().
-            getWholeLogEntryHandleFileNotFound(undoLsn);
+        final WholeEntry wholeEntry = envImpl.getLogManager().getWholeLogEntryHandleFileNotFound(undoLsn);
         final int logEntrySize = wholeEntry.getHeader().getEntrySize();
         final LNLogEntry<?> logEntry = (LNLogEntry<?>) wholeEntry.getEntry();
         final DatabaseId dbId = logEntry.getDbId();
         final DatabaseImpl db = undoDatabases.get(dbId);
         if (db == null) {
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl,
-                 "DB not found during non-recovery undo/rollback, id=" + dbId);
+            throw EnvironmentFailureException.unexpectedState(envImpl,
+                    "DB not found during non-recovery undo/rollback, id=" + dbId);
         }
         logEntry.postFetchInit(db);
         final LN ln = logEntry.getLN();
@@ -86,13 +78,12 @@ public class UndoReader {
      * Set up an UndoReader when doing a recovery partial rollback. In that
      * case, we have a file reader positioned at the pertinent log entry.
      * <p>
-     * This method calls DbTree.getDb.  The caller is responsible for calling
+     * This method calls DbTree.getDb. The caller is responsible for calling
      * DbTree.releaseDb on the db field.
      * <p>
      * Null is returned if the DB ID of the LN has been deleted.
      */
-    public static UndoReader createForRecovery(LNFileReader reader,
-                                               DbTree dbMapTree) {
+    public static UndoReader createForRecovery(LNFileReader reader, DbTree dbMapTree) {
         final LNLogEntry<?> logEntry = reader.getLNLogEntry();
         final DatabaseId dbId = logEntry.getDbId();
         final DatabaseImpl db = dbMapTree.getDb(dbId);

@@ -47,9 +47,9 @@ import com.sleepycat.je.rep.impl.RepParams;
  * <li>Use {@code DbResetRepGroup} to reset an existing environment.
  * {@code DbResetRepGroup} can be used as a command line utility, and must be
  * executed locally on the host specified in the -nodeHostPort argument. The
- * host must also contain the environment directory.
- * Alternatively, {@code DbResetRepGroup} may be used programmatically through
- * the provided APIs.</li>
+ * host must also contain the environment directory. Alternatively,
+ * {@code DbResetRepGroup} may be used programmatically through the provided
+ * APIs.</li>
  * <li>Once reset, the environment can be opened with a
  * {@code ReplicatedEnvironment}, using the same node configuration as the one
  * that was passed in to the utility. No helper host configuration is needed.
@@ -57,12 +57,12 @@ import com.sleepycat.je.rep.impl.RepParams;
  * Master, so long as it is created as an electable node.
  * <li>Additional nodes may now be created and can join the group as newly
  * created replicas, as described in {@code ReplicatedEnvironment}. Since these
- * new nodes are empty, they should be configured to use the new master as
- * their helper node, and will go through the
- * {@link <a href="{@docRoot}/../ReplicationGuide/lifecycle.html#lifecycle-nodestartup"> replication node lifecycle</a>}
- * to populate their environment directories. In this case, there will be data
- * in the converted master that can only be transferred to the replica through
- * a file copy executed with the help of a
+ * new nodes are empty, they should be configured to use the new master as their
+ * helper node, and will go through the {@link <a href=
+ * "{@docRoot}/../ReplicationGuide/lifecycle.html#lifecycle-nodestartup">
+ * replication node lifecycle</a>} to populate their environment directories. In
+ * this case, there will be data in the converted master that can only be
+ * transferred to the replica through a file copy executed with the help of a
  * {@link com.sleepycat.je.rep.NetworkRestore}</li>
  * </ol>
  * <p>
@@ -115,23 +115,22 @@ import com.sleepycat.je.rep.impl.RepParams;
  */
 public class DbResetRepGroup {
 
-    private File envHome;
-    private String groupName;
-    private String nodeName;
-    private String nodeHostPort;
+    private File                envHome;
+    private String              groupName;
+    private String              nodeName;
+    private String              nodeHostPort;
 
-    private static final String usageString =
-        "usage: java -cp je.jar " +
-        "com.sleepycat.je.rep.util.DbResetRepGroup\n" +
-        " -h <dir>                              # environment home directory\n" +
-        " -groupName <group name>               # replication group name\n" +
-        " -nodeName <node name>                 # replicated node name\n" +
-        " -nodeHostPort <host name:port number> # host name or IP address\n" +
-        "                                          and port number to use\n" +
-        "                                          for this node\n";
+    private static final String usageString = "usage: java -cp je.jar " + "com.sleepycat.je.rep.util.DbResetRepGroup\n"
+            + " -h <dir>                              # environment home directory\n"
+            + " -groupName <group name>               # replication group name\n"
+            + " -nodeName <node name>                 # replicated node name\n"
+            + " -nodeHostPort <host name:port number> # host name or IP address\n"
+            + "                                          and port number to use\n"
+            + "                                          for this node\n";
 
     /**
      * Usage:
+     * 
      * <pre>
      * java -cp je.jar com.sleepycat.je.rep.util.DbResetRepGroup
      *   -h &lt;dir&gt;                          # environment home directory
@@ -216,17 +215,14 @@ public class DbResetRepGroup {
     /**
      * Create a DbResetRepGroup object for this node.
      *
-     * @param envHome The node's replicated environment directory. The
-     * directory must be accessible on this host.
+     * @param envHome The node's replicated environment directory. The directory
+     *            must be accessible on this host.
      * @param groupName The name of the new replication group
      * @param nodeName The node's name
-     * @param nodeHostPort The host and port for this node. The utility
-     * must be executed on this host.
+     * @param nodeHostPort The host and port for this node. The utility must be
+     *            executed on this host.
      */
-    public DbResetRepGroup(File envHome,
-                           String groupName,
-                           String nodeName,
-                           String nodeHostPort) {
+    public DbResetRepGroup(File envHome, String groupName, String nodeName, String nodeHostPort) {
         this.envHome = envHome;
         this.groupName = groupName;
         this.nodeName = nodeName;
@@ -239,28 +235,24 @@ public class DbResetRepGroup {
      *
      * @see DbResetRepGroup
      */
-     public void reset() {
+    public void reset() {
 
-        Durability durability =
-            new Durability(Durability.SyncPolicy.SYNC,
-                           Durability.SyncPolicy.SYNC,
-                           Durability.ReplicaAckPolicy.NONE);
+        Durability durability = new Durability(Durability.SyncPolicy.SYNC, Durability.SyncPolicy.SYNC,
+                Durability.ReplicaAckPolicy.NONE);
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         envConfig.setDurability(durability);
 
-        ReplicationConfig repConfig =
-            new ReplicationConfig(groupName, nodeName, nodeHostPort);
+        ReplicationConfig repConfig = new ReplicationConfig(groupName, nodeName, nodeHostPort);
         repConfig.setHelperHosts(repConfig.getNodeHostPort());
 
         /* Force the re-initialization upon open. */
         repConfig.setConfigParam(RepParams.RESET_REP_GROUP.getName(), "true");
 
         /* Open the environment, thus replacing the group. */
-        ReplicatedEnvironment repEnv =
-            new ReplicatedEnvironment(envHome, repConfig, envConfig);
+        ReplicatedEnvironment repEnv = new ReplicatedEnvironment(envHome, repConfig, envConfig);
 
         repEnv.close();
     }

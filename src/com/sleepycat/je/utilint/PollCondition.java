@@ -21,8 +21,7 @@ public abstract class PollCondition {
     private final long checkPeriodMs;
     private final long timeoutMs;
 
-    public PollCondition(long checkPeriodMs,
-                         long timeoutMs) {
+    public PollCondition(long checkPeriodMs, long timeoutMs) {
         super();
         assert checkPeriodMs <= timeoutMs;
         this.checkPeriodMs = checkPeriodMs;

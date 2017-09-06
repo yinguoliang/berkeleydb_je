@@ -18,8 +18,8 @@ import java.net.InetSocketAddress;
 import com.sleepycat.je.rep.elections.MasterValue;
 
 /**
- * The event generated upon detecting a new Master. A new instance of this
- * event is generated each time a new master is elected for the group.
+ * The event generated upon detecting a new Master. A new instance of this event
+ * is generated each time a new master is elected for the group.
  */
 public class NewMasterEvent extends MemberChangeEvent {
     /* The node ID identifying the master node. */
@@ -34,10 +34,9 @@ public class NewMasterEvent extends MemberChangeEvent {
      * Returns the socket address associated with the new master
      */
     public InetSocketAddress getSocketAddress() {
-        return new InetSocketAddress(masterValue.getHostName(),
-                                     masterValue.getPort());
+        return new InetSocketAddress(masterValue.getHostName(), masterValue.getPort());
     }
-    
+
     @Override
     public String toString() {
         return getNodeName() + " is new master";

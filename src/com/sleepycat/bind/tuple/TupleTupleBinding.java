@@ -19,21 +19,21 @@ import com.sleepycat.je.DatabaseEntry;
 /**
  * An abstract <code>EntityBinding</code> that treats an entity's key entry and
  * data entry as tuples.
- *
- * <p>This class takes care of converting the entries to/from {@link
- * TupleInput} and {@link TupleOutput} objects.  Its three abstract methods
- * must be implemented by a concrete subclass to convert between tuples and
- * entity objects.</p>
+ * <p>
+ * This class takes care of converting the entries to/from {@link TupleInput}
+ * and {@link TupleOutput} objects. Its three abstract methods must be
+ * implemented by a concrete subclass to convert between tuples and entity
+ * objects.
+ * </p>
  * <ul>
- * <li> {@link #entryToObject(TupleInput,TupleInput)} </li>
- * <li> {@link #objectToKey(Object,TupleOutput)} </li>
- * <li> {@link #objectToData(Object,TupleOutput)} </li>
+ * <li>{@link #entryToObject(TupleInput,TupleInput)}</li>
+ * <li>{@link #objectToKey(Object,TupleOutput)}</li>
+ * <li>{@link #objectToData(Object,TupleOutput)}</li>
  * </ul>
  *
  * @author Mark Hayes
  */
-public abstract class TupleTupleBinding<E> extends TupleBase<E>
-    implements EntityBinding<E> {
+public abstract class TupleTupleBinding<E> extends TupleBase<E> implements EntityBinding<E> {
 
     /**
      * Creates a tuple-tuple entity binding.
@@ -44,8 +44,7 @@ public abstract class TupleTupleBinding<E> extends TupleBase<E>
     // javadoc is inherited
     public E entryToObject(DatabaseEntry key, DatabaseEntry data) {
 
-        return entryToObject(TupleBinding.entryToInput(key),
-                             TupleBinding.entryToInput(data));
+        return entryToObject(TupleBinding.entryToInput(key), TupleBinding.entryToInput(data));
     }
 
     // javadoc is inherited
@@ -67,13 +66,10 @@ public abstract class TupleTupleBinding<E> extends TupleBase<E>
     // abstract methods
 
     /**
-     * Constructs an entity object from {@link TupleInput} key and data
-     * entries.
+     * Constructs an entity object from {@link TupleInput} key and data entries.
      *
      * @param keyInput is the {@link TupleInput} key entry object.
-     *
      * @param dataInput is the {@link TupleInput} data entry object.
-     *
      * @return the entity object constructed from the key and data.
      */
     public abstract E entryToObject(TupleInput keyInput, TupleInput dataInput);
@@ -82,9 +78,8 @@ public abstract class TupleTupleBinding<E> extends TupleBase<E>
      * Extracts a key tuple from an entity object.
      *
      * @param object is the entity object.
-     *
      * @param output is the {@link TupleOutput} to which the key should be
-     * written.
+     *            written.
      */
     public abstract void objectToKey(E object, TupleOutput output);
 
@@ -92,9 +87,8 @@ public abstract class TupleTupleBinding<E> extends TupleBase<E>
      * Extracts a key tuple from an entity object.
      *
      * @param object is the entity object.
-     *
      * @param output is the {@link TupleOutput} to which the data should be
-     * written.
+     *            written.
      */
     public abstract void objectToData(E object, TupleOutput output);
 }

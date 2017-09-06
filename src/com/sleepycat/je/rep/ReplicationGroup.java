@@ -20,8 +20,8 @@ import com.sleepycat.je.rep.impl.RepGroupImpl;
 
 /**
  * An administrative view of the collection of nodes that form the replication
- * group. Can be obtained from a {@link ReplicatedEnvironment} or a {@link
- * com.sleepycat.je.rep.util.ReplicationGroupAdmin}.
+ * group. Can be obtained from a {@link ReplicatedEnvironment} or a
+ * {@link com.sleepycat.je.rep.util.ReplicationGroupAdmin}.
  */
 public class ReplicationGroup {
 
@@ -29,9 +29,8 @@ public class ReplicationGroup {
     final RepGroupImpl repGroupImpl;
 
     /**
-     * @hidden
-     * For internal use only
-     * Used to wrap the actual group object implementation.
+     * @hidden For internal use only Used to wrap the actual group object
+     *         implementation.
      */
     public ReplicationGroup(RepGroupImpl repGroupImpl) {
         this.repGroupImpl = repGroupImpl;
@@ -49,9 +48,9 @@ public class ReplicationGroup {
     /**
      * Returns the set of all nodes in the group. The return value includes
      * ELECTABLE, MONITOR, and SECONDARY nodes.
-     *
-     * <p>Note that SECONDARY nodes will only be included in the result when
-     * this method is called for a replicated environment that is the master.
+     * <p>
+     * Note that SECONDARY nodes will only be included in the result when this
+     * method is called for a replicated environment that is the master.
      *
      * @return the set of all nodes
      * @see NodeType
@@ -69,8 +68,8 @@ public class ReplicationGroup {
     /**
      * Returns the subset of nodes in the group with replicated environments
      * that participate in elections and can become masters, ignoring node
-     * priority. The return value includes ELECTABLE nodes, and excludes
-     * MONITOR and SECONDARY nodes.
+     * priority. The return value includes ELECTABLE nodes, and excludes MONITOR
+     * and SECONDARY nodes.
      *
      * @return the set of electable nodes
      * @see NodeType
@@ -88,10 +87,10 @@ public class ReplicationGroup {
     /**
      * Returns the subset of nodes in the group with replicated environments
      * that do not participate in elections and cannot become masters. The
-     * return value includes SECONDARY nodes, and excludes ELECTABLE and
-     * MONITOR nodes.
-     *
-     * <p>Note that SECONDARY nodes will only be returned when this method is
+     * return value includes SECONDARY nodes, and excludes ELECTABLE and MONITOR
+     * nodes.
+     * <p>
+     * Note that SECONDARY nodes will only be returned when this method is
      * called for a replicated environment that is the master.
      *
      * @return the set of secondary nodes
@@ -127,12 +126,12 @@ public class ReplicationGroup {
     }
 
     /**
-     * Returns the subset of nodes in the group that store replication data.
-     * The return value includes all ELECTABLE and SECONDARY nodes, but
-     * excludes MONITOR nodes.
-     *
-     * <p>Note that SECONDARY nodes will only be included in the result when
-     * this method is called for a replicated environment that is the master.
+     * Returns the subset of nodes in the group that store replication data. The
+     * return value includes all ELECTABLE and SECONDARY nodes, but excludes
+     * MONITOR nodes.
+     * <p>
+     * Note that SECONDARY nodes will only be included in the result when this
+     * method is called for a replicated environment that is the master.
      *
      * @return the set of data nodes
      * @see NodeType
@@ -150,8 +149,8 @@ public class ReplicationGroup {
 
     /**
      * Returns the subset of nodes in the group that participates in elections
-     * but does not have a copy of the data and cannot become a master.
-     * The return value includes ARBITER nodes.
+     * but does not have a copy of the data and cannot become a master. The
+     * return value includes ARBITER nodes.
      *
      * @return the set of arbiter nodes
      * @see NodeType
@@ -164,14 +163,13 @@ public class ReplicationGroup {
 
     /**
      * Get administrative information about a node by its node name.
-     *
-     * <p>Note that SECONDARY nodes will only be returned when this method is
+     * <p>
+     * Note that SECONDARY nodes will only be returned when this method is
      * called for a replicated environment that is the master.
      *
      * @param nodeName the node name to be used in the lookup
-     *
      * @return an administrative view of the node associated with nodeName, or
-     * null if there isn't such a node currently in the group
+     *         null if there isn't such a node currently in the group
      */
     /*
      * TODO: EXTERNAL is hidden for now. The doc need updated to include
@@ -182,10 +180,8 @@ public class ReplicationGroup {
     }
 
     /**
-     * @hidden
-     * Internal use only.
-     *
-     * Returns the underlying group implementation object.
+     * @hidden Internal use only. Returns the underlying group implementation
+     *         object.
      */
     public RepGroupImpl getRepGroupImpl() {
         return repGroupImpl;

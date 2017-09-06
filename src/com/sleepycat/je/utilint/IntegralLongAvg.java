@@ -16,22 +16,22 @@ package com.sleepycat.je.utilint;
 public class IntegralLongAvg extends Number {
 
     private static final long serialVersionUID = 1L;
-    private long numerator;
-    private long denominator;
-    private long factor = 1;
+    private long              numerator;
+    private long              denominator;
+    private long              factor           = 1;
 
-    public IntegralLongAvg (long numerator, long denominator, long factor) {
+    public IntegralLongAvg(long numerator, long denominator, long factor) {
         this.numerator = numerator;
         this.denominator = denominator;
         this.factor = factor;
     }
 
-    public IntegralLongAvg (long numerator, long denominator) {
+    public IntegralLongAvg(long numerator, long denominator) {
         this.numerator = numerator;
         this.denominator = denominator;
     }
 
-    public IntegralLongAvg (IntegralLongAvg val) {
+    public IntegralLongAvg(IntegralLongAvg val) {
         this.numerator = val.numerator;
         this.denominator = val.denominator;
         this.factor = val.factor;
@@ -48,9 +48,7 @@ public class IntegralLongAvg extends Number {
     }
 
     public long compute() {
-        return (denominator != 0) ?
-                (numerator * factor) / denominator :
-                0;
+        return (denominator != 0) ? (numerator * factor) / denominator : 0;
     }
 
     public long getNumerator() {
@@ -71,7 +69,7 @@ public class IntegralLongAvg extends Number {
 
     @Override
     public int intValue() {
-        return (int)compute();
+        return (int) compute();
     }
 
     @Override

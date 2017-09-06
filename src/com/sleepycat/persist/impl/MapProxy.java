@@ -32,7 +32,8 @@ abstract class MapProxy<K, V> implements PersistentProxy<Map<K, V>> {
     private K[] keys;
     private V[] values;
 
-    protected MapProxy() {}
+    protected MapProxy() {
+    }
 
     public final void initializeProxy(Map<K, V> map) {
         int size = map.size();
@@ -57,33 +58,36 @@ abstract class MapProxy<K, V> implements PersistentProxy<Map<K, V>> {
 
     protected abstract Map<K, V> newInstance(int size);
 
-    @Persistent(proxyFor=HashMap.class)
+    @Persistent(proxyFor = HashMap.class)
     static class HashMapProxy<K, V> extends MapProxy<K, V> {
 
-        protected HashMapProxy() {}
+        protected HashMapProxy() {
+        }
 
         protected Map<K, V> newInstance(int size) {
             return new HashMap<K, V>(size);
         }
     }
 
-    @Persistent(proxyFor=TreeMap.class)
+    @Persistent(proxyFor = TreeMap.class)
     static class TreeMapProxy<K, V> extends MapProxy<K, V> {
 
-        protected TreeMapProxy() {}
+        protected TreeMapProxy() {
+        }
 
         protected Map<K, V> newInstance(int size) {
             return new TreeMap<K, V>();
         }
     }
-     
-    @Persistent(proxyFor=LinkedHashMap.class) 
-    static class LinkedHashMapProxy<K, V> extends MapProxy<K, V> { 
- 
-        protected LinkedHashMapProxy() {} 
- 
-        protected Map<K, V> newInstance(int size) { 
-            return new LinkedHashMap<K, V>(); 
-        } 
-    } 
+
+    @Persistent(proxyFor = LinkedHashMap.class)
+    static class LinkedHashMapProxy<K, V> extends MapProxy<K, V> {
+
+        protected LinkedHashMapProxy() {
+        }
+
+        protected Map<K, V> newInstance(int size) {
+            return new LinkedHashMap<K, V>();
+        }
+    }
 }

@@ -41,13 +41,11 @@ abstract class WireRecord {
     /**
      * Returns the log entry type for this record.
      */
-    LogEntryType getLogEntryType()
-        throws DatabaseException {
+    LogEntryType getLogEntryType() throws DatabaseException {
 
         final LogEntryType type = LogEntryType.findType(header.getType());
         if (type == null) {
-            throw EnvironmentFailureException.unexpectedState(
-                "Unknown header type:" + header.getType());
+            throw EnvironmentFailureException.unexpectedState("Unknown header type:" + header.getType());
         }
         return type;
     }
@@ -56,9 +54,7 @@ abstract class WireRecord {
      * Instantiates the log entry for this wire record using the specified
      * environment and data.
      */
-    LogEntry instantiateEntry(final EnvironmentImpl envImpl,
-                              final ByteBuffer buffer)
-        throws DatabaseException {
+    LogEntry instantiateEntry(final EnvironmentImpl envImpl, final ByteBuffer buffer) throws DatabaseException {
 
         final LogEntry entry = getLogEntryType().getNewLogEntry();
         buffer.mark();

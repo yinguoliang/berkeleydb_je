@@ -40,37 +40,32 @@ import com.sleepycat.je.utilint.Pair;
 import com.sleepycat.je.utilint.TestHookExecute;
 
 /**
- * Manages the by-level map of checkpoint references that are to be flushed by
- * a checkpoint or Database.sync, the MapLNs to be flushed, the highest level
- * by database to be flushed, and the state of the checkpoint.
- *
- * An single instance of this class is used for checkpoints and has the same
- * lifetime as the checkpointer and environment.  An instance per Database.sync
- * is created as needed.  Only one checkpoint can occur at a time, but multiple
- * syncs may occur concurrently with each other and with the checkpoint.
- *
- * The methods in this class are synchronized to protect internal state from
- * concurrent access by the checkpointer and eviction, and to coordinate state
- * changes between the two.  Eviction must participate in the checkpoint so
- * that INs cascade up properly; see coordinateEvictionWithCheckpoint.
- *
- * When INs are latched along with synchronization on a DirtyINMap, the order
- * must be: 1) IN latches and 2) synchronize on DirtyINMap.  For example,
- * the evictor latches the parent and child IN before calling the synchronized
- * method coordinateEvictionWithCheckpoint, and selectDirtyINsForCheckpoint
- * latches the IN before calling the synchronized method selectForCheckpoint.
+ * Manages the by-level map of checkpoint references that are to be flushed by a
+ * checkpoint or Database.sync, the MapLNs to be flushed, the highest level by
+ * database to be flushed, and the state of the checkpoint. An single instance
+ * of this class is used for checkpoints and has the same lifetime as the
+ * checkpointer and environment. An instance per Database.sync is created as
+ * needed. Only one checkpoint can occur at a time, but multiple syncs may occur
+ * concurrently with each other and with the checkpoint. The methods in this
+ * class are synchronized to protect internal state from concurrent access by
+ * the checkpointer and eviction, and to coordinate state changes between the
+ * two. Eviction must participate in the checkpoint so that INs cascade up
+ * properly; see coordinateEvictionWithCheckpoint. When INs are latched along
+ * with synchronization on a DirtyINMap, the order must be: 1) IN latches and 2)
+ * synchronize on DirtyINMap. For example, the evictor latches the parent and
+ * child IN before calling the synchronized method
+ * coordinateEvictionWithCheckpoint, and selectDirtyINsForCheckpoint latches the
+ * IN before calling the synchronized method selectForCheckpoint.
  */
 class DirtyINMap {
 
-    static final boolean DIRTY_SET_DEBUG_TRACE = false;
+    static final boolean                                                                                   DIRTY_SET_DEBUG_TRACE = false;
 
-    private final EnvironmentImpl envImpl;
-    private final SortedMap<Integer,
-                            Pair<Map<Long, CheckpointReference>,
-                                 Map<Long, CheckpointReference>>> levelMap;
-    private int numEntries;
-    private final Set<DatabaseId> mapLNsToFlush;
-    private final Map<DatabaseImpl, Integer> highestFlushLevels;
+    private final EnvironmentImpl                                                                          envImpl;
+    private final SortedMap<Integer, Pair<Map<Long, CheckpointReference>, Map<Long, CheckpointReference>>> levelMap;
+    private int                                                                                            numEntries;
+    private final Set<DatabaseId>                                                                          mapLNsToFlush;
+    private final Map<DatabaseImpl, Integer>                                                               highestFlushLevels;
 
     enum CkptState {
         /** No checkpoint in progress, or is used for Database.sync. */
@@ -82,8 +77,8 @@ class DirtyINMap {
     };
 
     private CkptState ckptState;
-    private boolean ckptFlushAll;
-    private boolean ckptFlushExtraLevel;
+    private boolean   ckptFlushAll;
+    private boolean   ckptFlushExtraLevel;
 
     DirtyINMap(EnvironmentImpl envImpl) {
         this.envImpl = envImpl;
@@ -100,40 +95,33 @@ class DirtyINMap {
      *
      * @return the provisional status to use for logging the target.
      */
-    synchronized Provisional coordinateEvictionWithCheckpoint(
-        final DatabaseImpl db,
-        final int targetLevel,
-        final IN parent) {
+    synchronized Provisional coordinateEvictionWithCheckpoint(final DatabaseImpl db, final int targetLevel,
+                                                              final IN parent) {
 
         /*
          * If the checkpoint is in-progress and has not finished dirty map
-         * construction, we must add the parent to the dirty map.  That way the
+         * construction, we must add the parent to the dirty map. That way the
          * dirtiness and logging will cascade up in the same way as if the
          * target were not evicted, and instead were encountered during dirty
-         * map construction.  We don't want the evictor's actions to introduce
-         * an IN in the log that has not cascaded up properly.
-         *
-         * Note that we add the parent even if it is not dirty here.  It will
-         * become dirty after the target child is logged, but that hasn't
-         * happened yet.
-         *
-         * We do not add the parent if it is null, which is the case when the
-         * root is being evicted.
+         * map construction. We don't want the evictor's actions to introduce an
+         * IN in the log that has not cascaded up properly. Note that we add the
+         * parent even if it is not dirty here. It will become dirty after the
+         * target child is logged, but that hasn't happened yet. We do not add
+         * the parent if it is null, which is the case when the root is being
+         * evicted.
          */
-        if (ckptState == CkptState.DIRTY_MAP_INCOMPLETE &&
-            parent != null) {
+        if (ckptState == CkptState.DIRTY_MAP_INCOMPLETE && parent != null) {
 
             /* Add latched parent IN to dirty map. */
-            selectForCheckpoint(parent, -1 /*index*/);
+            selectForCheckpoint(parent, -1 /* index */);
 
             /* Save dirty/temp DBs for later. */
             saveMapLNsToFlush(parent);
         }
 
         /*
-         * The evictor has to log provisionally in three cases:
-         *
-         * 1 - The eviction target is part of a deferred write database.
+         * The evictor has to log provisionally in three cases: 1 - The eviction
+         * target is part of a deferred write database.
          */
         if (db.isDeferredWriteMode()) {
             return Provisional.YES;
@@ -141,21 +129,19 @@ class DirtyINMap {
 
         /*
          * 2 - The checkpoint is in-progress and has not finished dirty map
-         *     construction, and the target is not the root. The parent IN has
-         *     been added to the dirty map, so we know the child IN is at a
-         *     level below the max flush level.
+         * construction, and the target is not the root. The parent IN has been
+         * added to the dirty map, so we know the child IN is at a level below
+         * the max flush level.
          */
-        if (ckptState == CkptState.DIRTY_MAP_INCOMPLETE &&
-            parent != null) {
+        if (ckptState == CkptState.DIRTY_MAP_INCOMPLETE && parent != null) {
             return Provisional.YES;
         }
 
         /*
          * 3 - The checkpoint is in-progress and has finished dirty map
-         *     construction, and is at a level above the eviction target.
+         * construction, and is at a level above the eviction target.
          */
-        if (ckptState == CkptState.DIRTY_MAP_COMPLETE &&
-            targetLevel < getHighestFlushLevel(db)) {
+        if (ckptState == CkptState.DIRTY_MAP_COMPLETE && targetLevel < getHighestFlushLevel(db)) {
             return Provisional.YES;
         }
 
@@ -164,11 +150,9 @@ class DirtyINMap {
     }
 
     /**
-     * Coordinates a split with an in-progress checkpoint.
-     *
-     * TODO:
-     * Is it necessary to perform MapLN flushing for nodes logged by a split
-     * (and not just the new sibling)?
+     * Coordinates a split with an in-progress checkpoint. TODO: Is it necessary
+     * to perform MapLN flushing for nodes logged by a split (and not just the
+     * new sibling)?
      *
      * @param newSibling the sibling IN created by the split.
      */
@@ -181,12 +165,11 @@ class DirtyINMap {
          * construction, we must add the BIN children of the new sibling to the
          * dirty map. The new sibling will be added to the INList but it may or
          * may not be seen by the in-progress INList iteration, and we must
-         * ensure that its dirty BIN children are logged by the checkpoint.
-         *
-         * Note that we cannot synchronize on 'this' before calling
+         * ensure that its dirty BIN children are logged by the checkpoint. Note
+         * that we cannot synchronize on 'this' before calling
          * selectDirtyBINChildrenForCheckpoint, since it latches BIN children.
          * IN latching must come before synchronization on 'this'. Eventually
-         * after latching the IN, selectForCheckpoint is called , which  is
+         * after latching the IN, selectForCheckpoint is called , which is
          * synchronized and checks for ckptState == DIRTY_MAP_INCOMPLETE.
          */
         selectDirtyBINChildrenForCheckpoint(newSibling);
@@ -194,10 +177,9 @@ class DirtyINMap {
 
     /**
      * Must be called before starting a checkpoint, and must not be called for
-     * Database.sync.  Updates memory budget and sets checkpoint state.
+     * Database.sync. Updates memory budget and sets checkpoint state.
      */
-    synchronized void beginCheckpoint(boolean flushAll,
-                                      boolean flushExtraLevel) {
+    synchronized void beginCheckpoint(boolean flushAll, boolean flushExtraLevel) {
         assert levelMap.isEmpty();
         assert mapLNsToFlush.isEmpty();
         assert highestFlushLevels.isEmpty();
@@ -209,7 +191,7 @@ class DirtyINMap {
     }
 
     /**
-     * Must be called after a checkpoint or Database.sync is complete.  Updates
+     * Must be called after a checkpoint or Database.sync is complete. Updates
      * memory budget and clears checkpoint state.
      */
     synchronized void reset() {
@@ -222,14 +204,12 @@ class DirtyINMap {
     }
 
     /**
-     * Scan the INList for all dirty INs, excluding temp DB INs.  Save them in
-     * a tree-level ordered map for level ordered flushing.
-     *
-     * Take this opportunity to recalculate the memory budget tree usage.
-     *
-     * This method itself is not synchronized to allow concurrent eviction.
-     * Synchronization is performed on a per-IN basis to protect the data
-     * structures here, and eviction can occur in between INs.
+     * Scan the INList for all dirty INs, excluding temp DB INs. Save them in a
+     * tree-level ordered map for level ordered flushing. Take this opportunity
+     * to recalculate the memory budget tree usage. This method itself is not
+     * synchronized to allow concurrent eviction. Synchronization is performed
+     * on a per-IN basis to protect the data structures here, and eviction can
+     * occur in between INs.
      */
     void selectDirtyINsForCheckpoint() {
         assert ckptState == CkptState.DIRTY_MAP_INCOMPLETE;
@@ -254,7 +234,7 @@ class DirtyINMap {
 
                     /* Add dirty UIN to dirty map. */
                     if (in.getDirty() && !in.isBIN()) {
-                        selectForCheckpoint(in, -1 /*index*/);
+                        selectForCheckpoint(in, -1 /* index */);
                     }
 
                     /* Add dirty level 2 children to dirty map. */
@@ -267,8 +247,7 @@ class DirtyINMap {
                 }
 
                 /* Call test hook after releasing latch. */
-                TestHookExecute.doHookIfSet(
-                    Checkpointer.examineINForCheckpointHook, in);
+                TestHookExecute.doHookIfSet(Checkpointer.examineINForCheckpointHook, in);
             }
             completed = true;
         } finally {
@@ -281,9 +260,9 @@ class DirtyINMap {
          * selectForCheckpoint), we call DbTree.getHighestLevel and replace the
          * null level. We must call DbTree.getHighestLevel, which latches the
          * root, only when not synchronized, to avoid breaking the
-         * synchronization rules described in the class comment.  This must be
-         * done in several steps to follow the sychronization rules, yet
-         * protect the highestFlushLevels using synchronization.
+         * synchronization rules described in the class comment. This must be
+         * done in several steps to follow the sychronization rules, yet protect
+         * the highestFlushLevels using synchronization.
          */
         final Map<DatabaseImpl, Integer> maxFlushDbs = new HashMap<>();
 
@@ -308,8 +287,7 @@ class DirtyINMap {
         /* Fill in levels in highestFlushLevels. */
         synchronized (this) {
 
-            for (Map.Entry<DatabaseImpl, Integer> entry :
-                 maxFlushDbs.entrySet()) {
+            for (Map.Entry<DatabaseImpl, Integer> entry : maxFlushDbs.entrySet()) {
 
                 highestFlushLevels.put(entry.getKey(), entry.getValue());
             }
@@ -328,8 +306,8 @@ class DirtyINMap {
 
     /**
      * Add the IN to the dirty map if dirty map construction is in progress and
-     * the IN is not in a temp DB. If added, the highest flush level map is
-     * also updated.
+     * the IN is not in a temp DB. If added, the highest flush level map is also
+     * updated.
      */
     synchronized void selectForCheckpoint(final IN in, final int index) {
 
@@ -347,29 +325,24 @@ class DirtyINMap {
             return;
         }
 
-        addIN(in, index,
-            true /*updateFlushLevels*/,
-            false /*updateMemoryBudget*/);
+        addIN(in, index, true /* updateFlushLevels */, false /* updateMemoryBudget */);
     }
 
     /**
-     * Adds the the dirty child BINs of the 'in' if dirty map construction is
-     * in progress and the IN is not in a temp DB.
-     *
-     * Main cache resident BINs are added when their parent is encountered in
-     * the INList iteration, rather than when the BIN is encountered in the
-     * iteration. This is because a BIN can transition between main and
-     * off-heap caches during the construction of the dirty map. When a BIN is
-     * loaded from off-heap and added to the main cache, it is added to the
-     * INList at that time, and such a BIN may not be encountered in the
-     * iteration. (ConcurrentHashMap iteration only guarantees that nodes will
-     * be encountered if they are present when the iterator is created). So if
-     * we relied on encountering BINs in the iteration, some might be missed.
-     *
-     * Note that this method is not synchronized because it latches the BIN
-     * children. IN latching must come before synchronizing on 'this'. The
-     * selectForCheckpoint method, which is called after latching the BIN, is
-     * synchronized.
+     * Adds the the dirty child BINs of the 'in' if dirty map construction is in
+     * progress and the IN is not in a temp DB. Main cache resident BINs are
+     * added when their parent is encountered in the INList iteration, rather
+     * than when the BIN is encountered in the iteration. This is because a BIN
+     * can transition between main and off-heap caches during the construction
+     * of the dirty map. When a BIN is loaded from off-heap and added to the
+     * main cache, it is added to the INList at that time, and such a BIN may
+     * not be encountered in the iteration. (ConcurrentHashMap iteration only
+     * guarantees that nodes will be encountered if they are present when the
+     * iterator is created). So if we relied on encountering BINs in the
+     * iteration, some might be missed. Note that this method is not
+     * synchronized because it latches the BIN children. IN latching must come
+     * before synchronizing on 'this'. The selectForCheckpoint method, which is
+     * called after latching the BIN, is synchronized.
      */
     private void selectDirtyBINChildrenForCheckpoint(final IN in) {
 
@@ -407,29 +380,23 @@ class DirtyINMap {
         }
     }
 
-    private void updateFlushLevels(Integer level,
-                                   final DatabaseImpl db,
-                                   final boolean isBIN,
-                                   final boolean isRoot) {
+    private void updateFlushLevels(Integer level, final DatabaseImpl db, final boolean isBIN, final boolean isRoot) {
 
         /*
-         * IN was added to the dirty map.  Update the highest level seen
-         * for the database.  Use one level higher when ckptFlushExtraLevel
-         * is set.  When ckptFlushAll is set, use the maximum level for the
-         * database.  Durable deferred-write databases must be synced, so
-         * also use the maximum level.
-         *
-         * Always flush at least one level above the bottom-most BIN level so
-         * that the BIN level is logged provisionally and the expense of
-         * processing BINs during recovery is avoided.
+         * IN was added to the dirty map. Update the highest level seen for the
+         * database. Use one level higher when ckptFlushExtraLevel is set. When
+         * ckptFlushAll is set, use the maximum level for the database. Durable
+         * deferred-write databases must be synced, so also use the maximum
+         * level. Always flush at least one level above the bottom-most BIN
+         * level so that the BIN level is logged provisionally and the expense
+         * of processing BINs during recovery is avoided.
          */
         if (ckptFlushAll || db.isDurableDeferredWrite()) {
             if (!highestFlushLevels.containsKey(db)) {
 
                 /*
                  * Null is used as an indicator that getHighestLevel should be
-                 * called in selectDirtyINsForCheckpoint, when not
-                 * synchronized.
+                 * called in selectDirtyINsForCheckpoint, when not synchronized.
                  */
                 highestFlushLevels.put(db, null);
             }
@@ -448,11 +415,10 @@ class DirtyINMap {
     }
 
     /**
-     * Scan the INList for all dirty INs for a given database.  Arrange them in
-     * level sorted map for level ordered flushing.
-     *
-     * This method is not synchronized to allow concurrent eviction.
-     * Coordination between eviction and Database.sync is not required.
+     * Scan the INList for all dirty INs for a given database. Arrange them in
+     * level sorted map for level ordered flushing. This method is not
+     * synchronized to allow concurrent eviction. Coordination between eviction
+     * and Database.sync is not required.
      */
     void selectDirtyINsForDbSync(DatabaseImpl dbImpl) {
 
@@ -465,10 +431,7 @@ class DirtyINMap {
                 in.latch(CacheMode.UNCHANGED);
                 try {
                     if (in.getInListResident() && in.getDirty()) {
-                        addIN(
-                            in, -1 /*index*/,
-                            false /*updateFlushLevels*/,
-                            false /*updateMemoryBudget*/);
+                        addIN(in, -1 /* index */, false /* updateFlushLevels */, false /* updateMemoryBudget */);
                     }
                 } finally {
                     in.releaseLatch();
@@ -477,13 +440,12 @@ class DirtyINMap {
         }
 
         /*
-         * Create a single entry map that forces all levels of this DB to
-         * be flushed.
+         * Create a single entry map that forces all levels of this DB to be
+         * flushed.
          */
-        highestFlushLevels.put(
-            dbImpl, envImpl.getDbTree().getHighestLevel(dbImpl));
+        highestFlushLevels.put(dbImpl, envImpl.getDbTree().getHighestLevel(dbImpl));
 
-        /* Add the dirty map to the memory budget.  */
+        /* Add the dirty map to the memory budget. */
         addCostToMemoryBudget();
     }
 
@@ -494,11 +456,11 @@ class DirtyINMap {
         /*
          * This method is only called while flushing dirty nodes for a
          * checkpoint or Database.sync, not for an eviction, so an entry for
-         * this database should normally exist.  However, if the DB root (and
+         * this database should normally exist. However, if the DB root (and
          * DatabaseImpl) have been evicted since the highestFlushLevels was
-         * constructed, the new DatabaseImpl instance will not be present in
-         * the map.  In this case, we do not need to checkpoint the IN and
-         * eviction should be non-provisional.
+         * constructed, the new DatabaseImpl instance will not be present in the
+         * map. In this case, we do not need to checkpoint the IN and eviction
+         * should be non-provisional.
          */
         Integer val = highestFlushLevels.get(db);
         return (val != null) ? val : IN.MIN_LEVEL;
@@ -510,15 +472,13 @@ class DirtyINMap {
 
     private synchronized void addCostToMemoryBudget() {
         final MemoryBudget mb = envImpl.getMemoryBudget();
-        final long cost =
-            ((long) numEntries) * MemoryBudget.CHECKPOINT_REFERENCE_SIZE;
+        final long cost = ((long) numEntries) * MemoryBudget.CHECKPOINT_REFERENCE_SIZE;
         mb.updateAdminMemoryUsage(cost);
     }
 
     private synchronized void removeCostFromMemoryBudget() {
         final MemoryBudget mb = envImpl.getMemoryBudget();
-        final long cost =
-            ((long) numEntries) * MemoryBudget.CHECKPOINT_REFERENCE_SIZE;
+        final long cost = ((long) numEntries) * MemoryBudget.CHECKPOINT_REFERENCE_SIZE;
         mb.updateAdminMemoryUsage(0 - cost);
     }
 
@@ -526,18 +486,14 @@ class DirtyINMap {
      * Add a node unconditionally to the dirty map.
      *
      * @param in is the IN to add, or the parent of an off-heap IN to add when
-     * index >= 0.
-     *
+     *            index >= 0.
      * @param index is the index of the off-heap child to add, or -1 to add the
-     * 'in' itself.
-     *
+     *            'in' itself.
      * @param updateMemoryBudget if true then update the memory budget as the
-     * map is changed; if false then addCostToMemoryBudget must be called
-     * later.
+     *            map is changed; if false then addCostToMemoryBudget must be
+     *            called later.
      */
-    synchronized void addIN(final IN in,
-                            final int index,
-                            final boolean updateFlushLevels,
+    synchronized void addIN(final IN in, final int index, final boolean updateFlushLevels,
                             final boolean updateMemoryBudget) {
         final Integer level;
         final long lsn;
@@ -565,8 +521,7 @@ class DirtyINMap {
         final Map<Long, CheckpointReference> lsnMap;
         final Map<Long, CheckpointReference> nodeMap;
 
-        Pair<Map<Long, CheckpointReference>,
-             Map<Long, CheckpointReference>> pairOfMaps = levelMap.get(level);
+        Pair<Map<Long, CheckpointReference>, Map<Long, CheckpointReference>> pairOfMaps = levelMap.get(level);
 
         if (pairOfMaps != null) {
             lsnMap = pairOfMaps.first();
@@ -584,8 +539,7 @@ class DirtyINMap {
 
         final DatabaseImpl db = in.getDatabase();
 
-        final CheckpointReference ref = new CheckpointReference(
-            db.getId(), nodeId, level, isRoot, idKey, lsn);
+        final CheckpointReference ref = new CheckpointReference(db.getId(), nodeId, level, isRoot, idKey, lsn);
 
         final boolean added;
 
@@ -627,13 +581,9 @@ class DirtyINMap {
         levelMap.remove(level);
     }
 
-    synchronized CheckpointReference removeNode(final int level,
-                                                final long lsn,
-                                                final long nodeId) {
+    synchronized CheckpointReference removeNode(final int level, final long lsn, final long nodeId) {
 
-        final Pair<Map<Long, CheckpointReference>,
-                   Map<Long, CheckpointReference>> pairOfMaps =
-            levelMap.get(level);
+        final Pair<Map<Long, CheckpointReference>, Map<Long, CheckpointReference>> pairOfMaps = levelMap.get(level);
 
         if (pairOfMaps == null) {
             return null;
@@ -661,9 +611,7 @@ class DirtyINMap {
 
     synchronized CheckpointReference removeNextNode(Integer level) {
 
-        final Pair<Map<Long, CheckpointReference>,
-                   Map<Long, CheckpointReference>> pairOfMaps =
-            levelMap.get(level);
+        final Pair<Map<Long, CheckpointReference>, Map<Long, CheckpointReference>> pairOfMaps = levelMap.get(level);
 
         if (pairOfMaps == null) {
             return null;
@@ -679,8 +627,7 @@ class DirtyINMap {
             return null;
         }
 
-        final Iterator<Map.Entry<Long, CheckpointReference>> iter =
-            map.entrySet().iterator();
+        final Iterator<Map.Entry<Long, CheckpointReference>> iter = map.entrySet().iterator();
 
         assert iter.hasNext();
         final CheckpointReference ref = iter.next().getValue();
@@ -694,8 +641,7 @@ class DirtyINMap {
      */
     private synchronized void saveMapLNsToFlush(IN in) {
 
-        if (in.isBIN() &&
-            in.getDatabase().getId().equals(DbTree.ID_DB_ID)) {
+        if (in.isBIN() && in.getDatabase().getId().equals(DbTree.ID_DB_ID)) {
 
             for (int i = 0; i < in.getNEntries(); i += 1) {
                 final MapLN ln = (MapLN) in.getTarget(i);
@@ -709,29 +655,29 @@ class DirtyINMap {
 
     /**
      * Flushes all saved dirty/temp MapLNs and clears the saved set.
-     *
-     * <p>If dirty, a MapLN must be flushed at each checkpoint to record
-     * updated utilization info in the checkpoint interval.  If it is a
-     * temporary DB, the MapLN must be flushed because all temp DBs must be
-     * encountered by recovery so they can be removed if they were not closed
-     * (and removed) by the user.</p>
-     *
+     * <p>
+     * If dirty, a MapLN must be flushed at each checkpoint to record updated
+     * utilization info in the checkpoint interval. If it is a temporary DB, the
+     * MapLN must be flushed because all temp DBs must be encountered by
+     * recovery so they can be removed if they were not closed (and removed) by
+     * the user.
+     * </p>
      * This method is not synchronized because it takes the Btree root latch,
      * and we must never latch something in the Btree after synchronizing on
-     * DirtyINMap; see class comments.  Special synchronization is performed
-     * for accessing internal state; see below.
+     * DirtyINMap; see class comments. Special synchronization is performed for
+     * accessing internal state; see below.
      *
-     * @param checkpointStart start LSN of the checkpoint in progress.  To
-     * reduce unnecessary logging, the MapLN is only flushed if it has not been
-     * written since that LSN.
+     * @param checkpointStart start LSN of the checkpoint in progress. To reduce
+     *            unnecessary logging, the MapLN is only flushed if it has not
+     *            been written since that LSN.
      */
     void flushMapLNs(long checkpointStart) {
 
         /*
          * This method is called only while flushing dirty nodes for a
          * checkpoint or Database.sync, not for an eviction, and mapLNsToFlush
-         * is not changed during the flushing phase.  So we don't strictly need
-         * to synchronize while accessing mapLNsToFlush.  However, for
+         * is not changed during the flushing phase. So we don't strictly need
+         * to synchronize while accessing mapLNsToFlush. However, for
          * consistency and extra safety we always synchronize while accessing
          * internal state.
          */
@@ -754,13 +700,9 @@ class DirtyINMap {
             for (DatabaseId dbId : mapLNsCopy) {
                 final DatabaseImpl db = dbTree.getDb(dbId);
                 try {
-                    if (db != null &&
-                        !db.isDeleted() &&
-                        db.isCheckpointNeeded()) {
+                    if (db != null && !db.isDeleted() && db.isCheckpointNeeded()) {
 
-                        dbTree.modifyDbRoot(
-                            db, checkpointStart /*ifBeforeLsn*/,
-                            true /*mustExist*/);
+                        dbTree.modifyDbRoot(db, checkpointStart /* ifBeforeLsn */, true /* mustExist */);
                     }
                 } finally {
                     dbTree.releaseDb(db);
@@ -772,24 +714,22 @@ class DirtyINMap {
     /**
      * Flushes the DB mapping tree root at the end of the checkpoint, if either
      * mapping DB is dirty and the root was not flushed previously during the
-     * checkpoint.
+     * checkpoint. This method is not synchronized because it does not access
+     * internal state. Also, it takes the DbTree root latch and although this
+     * latch should never be held by eviction, for consistency we should not
+     * latch something related to the Btree after synchronizing on DirtyINMap;
+     * see class comments.
      *
-     * This method is not synchronized because it does not access internal
-     * state.  Also, it takes the DbTree root latch and although this latch
-     * should never be held by eviction, for consistency we should not latch
-     * something related to the Btree after synchronizing on DirtyINMap; see
-     * class comments.
-     *
-     * @param checkpointStart start LSN of the checkpoint in progress.  To
-     * reduce unnecessary logging, the Root is only flushed if it has not been
-     * written since that LSN.
+     * @param checkpointStart start LSN of the checkpoint in progress. To reduce
+     *            unnecessary logging, the Root is only flushed if it has not
+     *            been written since that LSN.
      */
     void flushRoot(long checkpointStart) {
 
         final DbTree dbTree = envImpl.getDbTree();
 
-        if (dbTree.getDb(DbTree.ID_DB_ID).isCheckpointNeeded() ||
-            dbTree.getDb(DbTree.NAME_DB_ID).isCheckpointNeeded()) {
+        if (dbTree.getDb(DbTree.ID_DB_ID).isCheckpointNeeded()
+                || dbTree.getDb(DbTree.NAME_DB_ID).isCheckpointNeeded()) {
 
             envImpl.logMapTreeRoot(checkpointStart);
         }
@@ -807,15 +747,11 @@ class DirtyINMap {
 
         for (final Integer level : levelMap.keySet()) {
 
-            final Pair<Map<Long, CheckpointReference>,
-                       Map<Long, CheckpointReference>> pairOfMaps =
-                levelMap.get(level);
+            final Pair<Map<Long, CheckpointReference>, Map<Long, CheckpointReference>> pairOfMaps = levelMap.get(level);
 
-            final Map<Long, CheckpointReference> lsnMap =
-                pairOfMaps.first();
+            final Map<Long, CheckpointReference> lsnMap = pairOfMaps.first();
 
-            final Map<Long, CheckpointReference> nodeMap =
-                pairOfMaps.second();
+            final Map<Long, CheckpointReference> nodeMap = pairOfMaps.second();
 
             sb.append("\nlevel = 0x").append(Integer.toHexString(level));
             sb.append(" lsnMap = ").append(lsnMap.size());
@@ -829,7 +765,6 @@ class DirtyINMap {
             sb.append(highestFlushLevels.get(db) & IN.LEVEL_MASK);
         }
 
-        LoggerUtils.logMsg(
-            envImpl.getLogger(), envImpl, Level.INFO, sb.toString());
+        LoggerUtils.logMsg(envImpl.getLogger(), envImpl, Level.INFO, sb.toString());
     }
 }

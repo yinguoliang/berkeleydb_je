@@ -21,7 +21,7 @@ import com.sleepycat.je.log.entry.LogEntry;
  */
 public class WholeEntry {
     private final LogEntryHeader header;
-    private final LogEntry entry;
+    private final LogEntry       entry;
 
     WholeEntry(LogEntryHeader header, LogEntry entry) {
         this.header = header;

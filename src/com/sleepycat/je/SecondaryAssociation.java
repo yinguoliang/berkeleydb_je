@@ -16,10 +16,9 @@ package com.sleepycat.je;
 import java.util.Collection;
 
 /**
- * @hidden For internal use only.
- *
- *         Provides a way to create an association between primary and secondary
- *         databases that is not limited to a one-to-many association.
+ * @hidden For internal use only. Provides a way to create an association
+ *         between primary and secondary databases that is not limited to a
+ *         one-to-many association.
  *         <p>
  *         By implementing this interface, a secondary database may be
  *         associated with one or more primary databases. For example, imagine
@@ -192,107 +191,87 @@ import java.util.Collection;
  */
 public interface SecondaryAssociation {
 
-	/*
-	 * Implementation note on concurrent access and latching.
-	 *
-	 * When adding/removing primary/secondary DBs to an existing association,
-	 * concurrency issues arise. This section explains how they are handled,
-	 * assuming the rules described in the javadoc below are followed when a
-	 * custom association is configured.
-	 *
-	 * There are two cases:
-	 *
-	 * 1) A custom association is NOT configured. An internal association is
-	 * created that manages the one-many association between a primary and its
-	 * secondaries.
-	 *
-	 * 2) A custom association IS configured. It is used internally.
-	 *
-	 * For case 1, no custom association, DB addition and removal take place in
-	 * the Environment.openSecondaryDatabase and SecondaryDatabase.close
-	 * methods, respectively. These methods, and the changes to the internal
-	 * association, are protected by acquiring the secondary latch
-	 * (EnvironmentImpl.getSecondaryAssociationLock) exclusively. All write
-	 * operations that use the association -- puts and deletes -- acquire this
-	 * latch shared. Therefore, write operations and changes to the association
-	 * do not take place concurrently. Read operations via a secondary DB/cursor
-	 * do not acquire this latch, so they can take place concurrently with
-	 * changes to the association; however, read operations only call getPrimary
-	 * and they expect it may return null at any time (the operation ignores the
-	 * record in that case). It is impossible to close a primary while it is
-	 * being read via a secondary, because secondaries must be closed before
-	 * their associated primary. (And the application is responsible for
-	 * finishing reads before closing any DB.)
-	 *
-	 * For case 2, a custom association, the secondary latch does not provide
-	 * protection because modifications to the association take place in the
-	 * application domain, not in the Environment.openSecondaryDatabase and
-	 * SecondaryDatabase.close methods. Instead, protection is provided by the
-	 * rules described in the javadoc here. Namely:
-	 *
-	 * Primary/secondary DBs are added to the association AFTER opening them (of
-	 * course). The DBs will not be be accessed until they are added to the
-	 * association.
-	 *
-	 * Primary/secondary DBs are removed from the association BEFORE closing
-	 * them. The application is responsible for ensuring they are no longer
-	 * accessed before they are closed.
-	 *
-	 * When a primary DB is added, its secondaries will be kept in sync as soon
-	 * as writing begins, since it must be added to the association before
-	 * writes are allowed.
-	 *
-	 * When a secondary DB is added, the incremental population procedure
-	 * ensures that it is fully populated before being accessed.
-	 */
+    /*
+     * Implementation note on concurrent access and latching. When
+     * adding/removing primary/secondary DBs to an existing association,
+     * concurrency issues arise. This section explains how they are handled,
+     * assuming the rules described in the javadoc below are followed when a
+     * custom association is configured. There are two cases: 1) A custom
+     * association is NOT configured. An internal association is created that
+     * manages the one-many association between a primary and its secondaries.
+     * 2) A custom association IS configured. It is used internally. For case 1,
+     * no custom association, DB addition and removal take place in the
+     * Environment.openSecondaryDatabase and SecondaryDatabase.close methods,
+     * respectively. These methods, and the changes to the internal association,
+     * are protected by acquiring the secondary latch
+     * (EnvironmentImpl.getSecondaryAssociationLock) exclusively. All write
+     * operations that use the association -- puts and deletes -- acquire this
+     * latch shared. Therefore, write operations and changes to the association
+     * do not take place concurrently. Read operations via a secondary DB/cursor
+     * do not acquire this latch, so they can take place concurrently with
+     * changes to the association; however, read operations only call getPrimary
+     * and they expect it may return null at any time (the operation ignores the
+     * record in that case). It is impossible to close a primary while it is
+     * being read via a secondary, because secondaries must be closed before
+     * their associated primary. (And the application is responsible for
+     * finishing reads before closing any DB.) For case 2, a custom association,
+     * the secondary latch does not provide protection because modifications to
+     * the association take place in the application domain, not in the
+     * Environment.openSecondaryDatabase and SecondaryDatabase.close methods.
+     * Instead, protection is provided by the rules described in the javadoc
+     * here. Namely: Primary/secondary DBs are added to the association AFTER
+     * opening them (of course). The DBs will not be be accessed until they are
+     * added to the association. Primary/secondary DBs are removed from the
+     * association BEFORE closing them. The application is responsible for
+     * ensuring they are no longer accessed before they are closed. When a
+     * primary DB is added, its secondaries will be kept in sync as soon as
+     * writing begins, since it must be added to the association before writes
+     * are allowed. When a secondary DB is added, the incremental population
+     * procedure ensures that it is fully populated before being accessed.
+     */
 
-	/**
-	 * Returns true if there are no secondary databases in the association.
-	 *
-	 * This method is used by JE to optimize for the case where a primary has no
-	 * secondary databases. This allows a {@code SecondaryAssociation} to be
-	 * configured on a primary database even when it has no associated
-	 * secondaries, with no added overhead, and to allow for the possibility
-	 * that secondaries will be added later.
-	 * <p>
-	 * For example, when a primary database has no secondaries, no internal
-	 * latching is performed by JE during writes. JE determines that no
-	 * secondaries are present by calling {@code isEmpty}, prior to doing the
-	 * write operation.
-	 *
-	 * @throws RuntimeException
-	 *             if an unexpected problem occurs. The exception will be thrown
-	 *             to the application, which should then take appropriate
-	 *             action.
-	 */
-	boolean isEmpty();
+    /**
+     * Returns true if there are no secondary databases in the association. This
+     * method is used by JE to optimize for the case where a primary has no
+     * secondary databases. This allows a {@code SecondaryAssociation} to be
+     * configured on a primary database even when it has no associated
+     * secondaries, with no added overhead, and to allow for the possibility
+     * that secondaries will be added later.
+     * <p>
+     * For example, when a primary database has no secondaries, no internal
+     * latching is performed by JE during writes. JE determines that no
+     * secondaries are present by calling {@code isEmpty}, prior to doing the
+     * write operation.
+     *
+     * @throws RuntimeException if an unexpected problem occurs. The exception
+     *             will be thrown to the application, which should then take
+     *             appropriate action.
+     */
+    boolean isEmpty();
 
-	/**
-	 * Returns the primary database for the given primary key. This method is
-	 * called during read operations on secondary databases that are configured
-	 * with this {@code SecondaryAssociation}.
-	 *
-	 * This method should return null when the primary database has been removed
-	 * from the association, or when it should not be included in the results
-	 * for secondary queries. In this case, the current operation will treat the
-	 * secondary record as if it does not exist, i.e., it will be skipped over.
-	 *
-	 * @throws RuntimeException
-	 *             if an unexpected problem occurs. The exception will be thrown
-	 *             to the application, which should then take appropriate
-	 *             action.
-	 */
-	Database getPrimary(DatabaseEntry primaryKey);
+    /**
+     * Returns the primary database for the given primary key. This method is
+     * called during read operations on secondary databases that are configured
+     * with this {@code SecondaryAssociation}. This method should return null
+     * when the primary database has been removed from the association, or when
+     * it should not be included in the results for secondary queries. In this
+     * case, the current operation will treat the secondary record as if it does
+     * not exist, i.e., it will be skipped over.
+     *
+     * @throws RuntimeException if an unexpected problem occurs. The exception
+     *             will be thrown to the application, which should then take
+     *             appropriate action.
+     */
+    Database getPrimary(DatabaseEntry primaryKey);
 
-	/**
-	 * Returns the secondary databases associated with the given primary key.
-	 * This method is called during write operations on primary databases that
-	 * are configured with this {@code SecondaryAssociation}.
-	 *
-	 * @throws RuntimeException
-	 *             if an unexpected problem occurs. The exception will be thrown
-	 *             to the application, which should then take appropriate
-	 *             action.
-	 */
-	Collection<SecondaryDatabase> getSecondaries(DatabaseEntry primaryKey);
+    /**
+     * Returns the secondary databases associated with the given primary key.
+     * This method is called during write operations on primary databases that
+     * are configured with this {@code SecondaryAssociation}.
+     *
+     * @throws RuntimeException if an unexpected problem occurs. The exception
+     *             will be thrown to the application, which should then take
+     *             appropriate action.
+     */
+    Collection<SecondaryDatabase> getSecondaries(DatabaseEntry primaryKey);
 }

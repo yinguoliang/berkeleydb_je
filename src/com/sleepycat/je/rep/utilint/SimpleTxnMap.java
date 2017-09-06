@@ -24,72 +24,52 @@ import com.sleepycat.je.txn.Txn;
  * well suited to the tracking of open transactions. Transactions are entered
  * into this map when they are first created, referenced while they are alive
  * via their transaction id and subsequently, removed upon commit or abort. So
- * the map access pattern for each transaction looks like the sequence:
- *
- * put [get]* remove
- *
- * For JE applications, like KVS, transactions can pass through this map at the
- * rate of 30K to 60K transactions/sec, so the map needs to process these
- * operations efficiently.
- *
- * This map tries to be efficient for the put, get, remove operations by:
- *
- * 1) Avoiding any memory allocation for the typical: put, get, remove
- * sequence. In contrast, a heap entry uses 24 bytes for each entry plus 16
- * bytes for the long object argument when using compressed oops. It could be
- * that the heap storage could be replaced by stack storage for the long object
- * argument since it's a downward lexical funarg, but I don't know if the jvm
- * does such analysis.
- *
- * 2) Having a very short instruction code path for the typical case.
- *
- * The data structure used here is very simple, and consists of two maps.
- *
- * 1) An array based map indexed by the low bits of the transaction id.
- *
- * 2) A regular java Map
- *
- * The array based map is the preferred location for map entries. If the slot
- * associated with the transaction id is occupied, we fall back to the the java
- * Map.
- *
- * So the best case behavior is as if the map were implemented entirely as an
- * array and the worst case is that we will do an extra integer mask, array
- * index and compare operation before we resort to using the java Map. Given
- * the behavior of transactions, we expect that the vast majority of the
- * operations will be implemented by the array map.
- *
- * This class provides a minimal subset of the operations provided by Map. All
- * methods are synchronized. This works well for replica replay in conjunction
- * with a jvm's thread biased locking strategy, but we may need explicit locks
- * for other usage.
+ * the map access pattern for each transaction looks like the sequence: put
+ * [get]* remove For JE applications, like KVS, transactions can pass through
+ * this map at the rate of 30K to 60K transactions/sec, so the map needs to
+ * process these operations efficiently. This map tries to be efficient for the
+ * put, get, remove operations by: 1) Avoiding any memory allocation for the
+ * typical: put, get, remove sequence. In contrast, a heap entry uses 24 bytes
+ * for each entry plus 16 bytes for the long object argument when using
+ * compressed oops. It could be that the heap storage could be replaced by stack
+ * storage for the long object argument since it's a downward lexical funarg,
+ * but I don't know if the jvm does such analysis. 2) Having a very short
+ * instruction code path for the typical case. The data structure used here is
+ * very simple, and consists of two maps. 1) An array based map indexed by the
+ * low bits of the transaction id. 2) A regular java Map The array based map is
+ * the preferred location for map entries. If the slot associated with the
+ * transaction id is occupied, we fall back to the the java Map. So the best
+ * case behavior is as if the map were implemented entirely as an array and the
+ * worst case is that we will do an extra integer mask, array index and compare
+ * operation before we resort to using the java Map. Given the behavior of
+ * transactions, we expect that the vast majority of the operations will be
+ * implemented by the array map. This class provides a minimal subset of the
+ * operations provided by Map. All methods are synchronized. This works well for
+ * replica replay in conjunction with a jvm's thread biased locking strategy,
+ * but we may need explicit locks for other usage.
  *
  * @param <T> the type of Txn object stored as values in the map
  */
-public class SimpleTxnMap<T extends Txn>  {
+public class SimpleTxnMap<T extends Txn> {
 
     /* The low order bit mask used to mask the transaction Id */
-    private final int cacheMask;
+    private final int              cacheMask;
 
     /*
-     * The preferred array map.
-     *
-     * Invariant: The txn with a given id can be in exactly one of the maps,
-     * never in both.
-     *
+     * The preferred array map. Invariant: The txn with a given id can be in
+     * exactly one of the maps, never in both.
      */
-    private final Txn arrayMap[];
+    private final Txn              arrayMap[];
 
     /* The number of entries in just the array map. */
-    private int arrayMapSize = 0;
+    private int                    arrayMapSize = 0;
 
     /* The backup map. */
-    private final HashMap<Long,T> backupMap = new HashMap<>();
+    private final HashMap<Long, T> backupMap    = new HashMap<>();
 
     public SimpleTxnMap(int arrayMapSize) {
         if (Integer.bitCount(arrayMapSize) != 1) {
-            throw new IllegalArgumentException("argument:" + arrayMapSize +
-                                               " must be a power of two");
+            throw new IllegalArgumentException("argument:" + arrayMapSize + " must be a power of two");
         }
         arrayMap = new Txn[arrayMapSize];
         cacheMask = arrayMapSize - 1;
@@ -103,7 +83,7 @@ public class SimpleTxnMap<T extends Txn>  {
     public synchronized void put(T txn) {
         assert get(txn.getId()) == null;
         final long txnId = txn.getId();
-        int i = (int)txn.getId() & cacheMask;
+        int i = (int) txn.getId() & cacheMask;
         final Txn cachedTxn = arrayMap[i];
         if (cachedTxn == null) {
             /* Free slot use it. */
@@ -118,9 +98,9 @@ public class SimpleTxnMap<T extends Txn>  {
 
     synchronized public T get(long txnId) {
         @SuppressWarnings("unchecked")
-        T cachedTxn = (T)arrayMap[(int)txnId & cacheMask];
+        T cachedTxn = (T) arrayMap[(int) txnId & cacheMask];
         if ((cachedTxn != null) && (cachedTxn.getId() == txnId)) {
-            assert ! backupMap.containsKey(txnId);
+            assert !backupMap.containsKey(txnId);
             return cachedTxn;
         }
         return backupMap.get(txnId);
@@ -132,19 +112,19 @@ public class SimpleTxnMap<T extends Txn>  {
      * @return the Txn that was removed, or empty if it did not exist.
      */
     synchronized public T remove(long txnId) {
-        final int i = (int)txnId & cacheMask;
+        final int i = (int) txnId & cacheMask;
         @SuppressWarnings("unchecked")
-        T cachedTxn = (T)arrayMap[i];
+        T cachedTxn = (T) arrayMap[i];
         if ((cachedTxn != null) && (cachedTxn.getId() == txnId)) {
             arrayMap[i] = null;
             arrayMapSize--;
-            assert ! backupMap.containsKey(txnId);
+            assert !backupMap.containsKey(txnId);
             return cachedTxn;
         }
 
         /*
-         * Array slot empty, or occupied by a different transaction,
-         * check backup.
+         * Array slot empty, or occupied by a different transaction, check
+         * backup.
          */
         return backupMap.remove(txnId);
     }
@@ -169,14 +149,14 @@ public class SimpleTxnMap<T extends Txn>  {
     }
 
     /**
-     * Returns a new map containing the current snapshot of transactions in
-     * this map.
+     * Returns a new map containing the current snapshot of transactions in this
+     * map.
      */
     synchronized public Map<Long, T> getMap() {
         final Map<Long, T> map = new HashMap<Long, T>(backupMap);
         for (Object element : arrayMap) {
             @SuppressWarnings("unchecked")
-            final T txn = (T)element;
+            final T txn = (T) element;
             if (txn != null) {
                 T old = map.put(txn.getId(), txn);
                 assert old == null;

@@ -51,44 +51,44 @@ import com.sleepycat.je.utilint.DbLsn;
 import com.sleepycat.utilint.StringUtils;
 
 /**
- * Used to retrieve as much data as possible from a corrupted environment. 
- * This utility is meant to be used programmatically, and is the equivalent
- * to the -R or -r options for {@link DbDump}.
+ * Used to retrieve as much data as possible from a corrupted environment. This
+ * utility is meant to be used programmatically, and is the equivalent to the -R
+ * or -r options for {@link DbDump}.
  * <p>
  * To scavenge a database:
- *<pre>
+ * 
+ * <pre>
  *  DbScavenger scavenger =
  *      new DbScavenger(env, outputDirectory, <boolean>, <boolean>, <boolean>);
  *  scavenger.dump();
- *</pre> 
- *
- *<p>
+ * </pre>
+ * <p>
  * The recovered databases will put placed in the outputDirectory with ".dump"
- * file suffixes.  The format of the .dump files will be suitable for use with
+ * file suffixes. The format of the .dump files will be suitable for use with
  * DbLoad.
  */
 
 public class DbScavenger extends DbDump {
-    private static final int FLUSH_INTERVAL = 100;
-    private int readBufferSize;
-    private EnvironmentImpl envImpl;
+    private static final int        FLUSH_INTERVAL      = 100;
+    private int                     readBufferSize;
+    private EnvironmentImpl         envImpl;
 
     /*
-     * Set of committed txn ids that have been seen so far.  Positive IDs are
-     * for non-replicated txns, and negative IDs are for replicated txns.
+     * Set of committed txn ids that have been seen so far. Positive IDs are for
+     * non-replicated txns, and negative IDs are for replicated txns.
      */
-    private BitMap positiveCommittedTxnIdsSeen;
-    private BitMap negativeCommittedTxnIdsSeen;
+    private BitMap                  positiveCommittedTxnIdsSeen;
+    private BitMap                  negativeCommittedTxnIdsSeen;
 
     /*
      * Set of LN Node Ids that have been seen so far.
      */
-    private Set<CompareSlot> lnNodesSeen;
+    private Set<CompareSlot>        lnNodesSeen;
 
     /*
      * Map of database id to database names.
      */
-    private Map<Long, String> dbIdToName;
+    private Map<Long, String>       dbIdToName;
 
     /*
      * Map of database id to DatabaseImpl.
@@ -98,30 +98,29 @@ public class DbScavenger extends DbDump {
     /*
      * Map of database id to the .dump file output stream for that database.
      */
-    private Map<Long, PrintStream> dbIdToOutputStream;
+    private Map<Long, PrintStream>  dbIdToOutputStream;
 
-    private boolean dumpCorruptedBounds = false;
+    private boolean                 dumpCorruptedBounds = false;
 
-    private int flushCounter = 0;
-    private long lastTime;
+    private int                     flushCounter        = 0;
+    private long                    lastTime;
 
     /**
      * Create a DbScavenger object for a specific environment.
      * <p>
+     * 
      * @param env The Environment containing the database to dump.
      * @param outputDirectory The directory to create the .dump files in.
-     * @param formatUsingPrintable true if the dump should use printable 
-     * characters.
+     * @param formatUsingPrintable true if the dump should use printable
+     *            characters.
      * @param doAggressiveScavengerRun true if true, then all data records are
-     *  dumped, regardless of whether they are the latest version or not.
+     *            dumped, regardless of whether they are the latest version or
+     *            not.
      * @param verbose true if status output should be written to System.out
-     * during scavenging.
+     *            during scavenging.
      */
-    public DbScavenger(Environment env,
-                       String outputDirectory,
-                       boolean formatUsingPrintable,
-                       boolean doAggressiveScavengerRun,
-                       boolean verbose) {
+    public DbScavenger(Environment env, String outputDirectory, boolean formatUsingPrintable,
+                       boolean doAggressiveScavengerRun, boolean verbose) {
         super(env, null, null, formatUsingPrintable);
 
         this.doAggressiveScavengerRun = doAggressiveScavengerRun;
@@ -143,10 +142,7 @@ public class DbScavenger extends DbDump {
      * Start the scavenger run.
      */
     @Override
-    public void dump()
-        throws EnvironmentNotFoundException,
-               EnvironmentLockedException,
-               IOException {
+    public void dump() throws EnvironmentNotFoundException, EnvironmentLockedException, IOException {
 
         openEnv(false);
 
@@ -164,9 +160,7 @@ public class DbScavenger extends DbDump {
         /* Tell the fileManager where the end of the log is. */
         long lastUsedLsn = reader.getLastValidLsn();
         long nextAvailableLsn = reader.getEndOfLog();
-        envImpl.getFileManager().setLastPosition(nextAvailableLsn,
-                                                 lastUsedLsn,
-                                                 reader.getPrevOffset());
+        envImpl.getFileManager().setLastPosition(nextAvailableLsn, lastUsedLsn, reader.getPrevOffset());
 
         try {
             /* Pass 1: Scavenge the dbtree. */
@@ -193,23 +187,19 @@ public class DbScavenger extends DbDump {
      * Scan the log looking for records that are relevant for scavenging the db
      * tree.
      */
-    private void scavengeDbTree(long lastUsedLsn, long nextAvailableLsn)
-        throws DatabaseException {
+    private void scavengeDbTree(long lastUsedLsn, long nextAvailableLsn) throws DatabaseException {
 
         positiveCommittedTxnIdsSeen = new BitMap();
         negativeCommittedTxnIdsSeen = new BitMap();
         lnNodesSeen = new TreeSet<CompareSlot>();
 
-        final ScavengerFileReader scavengerReader =
-            new ScavengerFileReader(envImpl, readBufferSize, lastUsedLsn,
-                                    DbLsn.NULL_LSN, nextAvailableLsn) {
-                protected void processEntryCallback(LogEntry entry,
-                                                    LogEntryType entryType)
-                    throws DatabaseException {
+        final ScavengerFileReader scavengerReader = new ScavengerFileReader(envImpl, readBufferSize, lastUsedLsn,
+                DbLsn.NULL_LSN, nextAvailableLsn) {
+            protected void processEntryCallback(LogEntry entry, LogEntryType entryType) throws DatabaseException {
 
-                    processDbTreeEntry(entry, entryType);
-                }
-            };
+                processDbTreeEntry(entry, entryType);
+            }
+        };
 
         scavengerReader.setTargetType(LogEntryType.LOG_MAPLN);
         scavengerReader.setTargetType(LogEntryType.LOG_NAMELN_TRANSACTIONAL);
@@ -219,8 +209,7 @@ public class DbScavenger extends DbDump {
         lastTime = System.currentTimeMillis();
         long fileNum = -1;
         while (scavengerReader.readNextEntry()) {
-            fileNum = reportProgress(fileNum,
-                                     scavengerReader.getLastLsn());
+            fileNum = reportProgress(fileNum, scavengerReader.getLastLsn());
         }
     }
 
@@ -230,10 +219,8 @@ public class DbScavenger extends DbDump {
         if (verbose) {
             if (currentFile != fileNum) {
                 long now = System.currentTimeMillis();
-                System.out.println("processing file " +
-                                   FileManager.getFileName(currentFile,
-                                                           ".jdb  ") +
-                                   (now-lastTime) + " ms");
+                System.out.println(
+                        "processing file " + FileManager.getFileName(currentFile, ".jdb  ") + (now - lastTime) + " ms");
                 lastTime = now;
             }
         }
@@ -244,17 +231,14 @@ public class DbScavenger extends DbDump {
     /*
      * Look at an entry and determine if it should be processed for scavenging.
      */
-    private boolean checkProcessEntry(LogEntry entry,
-                                      LogEntryType entryType,
-                                      boolean pass2) {
+    private boolean checkProcessEntry(LogEntry entry, LogEntryType entryType, boolean pass2) {
         boolean isTransactional = entryType.isTransactional();
 
         /*
-         * If entry is txnal...
-         *  if a commit record, add to committed txn id set
-         *  if an abort record, ignore it and don't process.
-         *  if an LN, check if it's in the committed txn id set.
-         *     If it is, continue processing, otherwise ignore it.
+         * If entry is txnal... if a commit record, add to committed txn id set
+         * if an abort record, ignore it and don't process. if an LN, check if
+         * it's in the committed txn id set. If it is, continue processing,
+         * otherwise ignore it.
          */
         if (isTransactional) {
             final long txnId = entry.getTransactionId();
@@ -286,7 +270,7 @@ public class DbScavenger extends DbDump {
             if (db != null) {
                 lnEntry.postFetchInit(db);
             } else {
-                lnEntry.postFetchInit(false /*isDupDb*/);
+                lnEntry.postFetchInit(false /* isDupDb */);
             }
 
             /*
@@ -298,8 +282,7 @@ public class DbScavenger extends DbDump {
             }
 
             if (db == null) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("Database info not available for DB ID: " + dbId);
+                throw EnvironmentFailureException.unexpectedState("Database info not available for DB ID: " + dbId);
             }
             return lnNodesSeen.add(new CompareSlot(db, lnEntry));
         }
@@ -310,25 +293,19 @@ public class DbScavenger extends DbDump {
     /*
      * Called once for each log entry during the pass 1 (dbtree).
      */
-    private void processDbTreeEntry(LogEntry entry, LogEntryType entryType)
-        throws DatabaseException {
+    private void processDbTreeEntry(LogEntry entry, LogEntryType entryType) throws DatabaseException {
 
-        boolean processThisEntry =
-            checkProcessEntry(entry, entryType, false);
+        boolean processThisEntry = checkProcessEntry(entry, entryType, false);
 
-        if (processThisEntry &&
-            (entry instanceof LNLogEntry)) {
+        if (processThisEntry && (entry instanceof LNLogEntry)) {
             LNLogEntry<?> lnEntry = (LNLogEntry<?>) entry;
             LN ln = lnEntry.getLN();
             if (ln instanceof NameLN) {
                 String name = StringUtils.fromUTF8(lnEntry.getKey());
                 Long dbId = Long.valueOf(((NameLN) ln).getId().getId());
-                if (dbIdToName.containsKey(dbId) &&
-                    !dbIdToName.get(dbId).equals(name)) {
-                    throw EnvironmentFailureException.unexpectedState
-                        ("Already name mapped for dbId: " + dbId +
-                         " changed from " + dbIdToName.get(dbId) +
-                         " to " + name);
+                if (dbIdToName.containsKey(dbId) && !dbIdToName.get(dbId).equals(name)) {
+                    throw EnvironmentFailureException.unexpectedState("Already name mapped for dbId: " + dbId
+                            + " changed from " + dbIdToName.get(dbId) + " to " + name);
                 } else {
                     dbIdToName.put(dbId, name);
                 }
@@ -348,23 +325,19 @@ public class DbScavenger extends DbDump {
     /*
      * Pass 2: scavenge the regular (non-dbtree) environment.
      */
-    private void scavenge(long lastUsedLsn, long nextAvailableLsn)
-        throws DatabaseException {
+    private void scavenge(long lastUsedLsn, long nextAvailableLsn) throws DatabaseException {
 
-        final ScavengerFileReader scavengerReader =
-            new ScavengerFileReader(envImpl, readBufferSize, lastUsedLsn,
-                                    DbLsn.NULL_LSN, nextAvailableLsn) {
-                protected void processEntryCallback(LogEntry entry,
-                                                    LogEntryType entryType)
-                    throws DatabaseException {
+        final ScavengerFileReader scavengerReader = new ScavengerFileReader(envImpl, readBufferSize, lastUsedLsn,
+                DbLsn.NULL_LSN, nextAvailableLsn) {
+            protected void processEntryCallback(LogEntry entry, LogEntryType entryType) throws DatabaseException {
 
-                    processRegularEntry(entry, entryType);
-                }
-            };
+                processRegularEntry(entry, entryType);
+            }
+        };
 
         /*
-         * Note: committed transaction id map has been created already, no
-         * need to read TXN_COMMITS on this pass.
+         * Note: committed transaction id map has been created already, no need
+         * to read TXN_COMMITS on this pass.
          */
         for (LogEntryType entryType : LogEntryType.getAllTypes()) {
             if (entryType.isUserLNType()) {
@@ -375,19 +348,16 @@ public class DbScavenger extends DbDump {
 
         long progressFileNum = -1;
         while (scavengerReader.readNextEntry()) {
-            progressFileNum = reportProgress(progressFileNum,
-                                             scavengerReader.getLastLsn());
+            progressFileNum = reportProgress(progressFileNum, scavengerReader.getLastLsn());
         }
     }
 
     /*
      * Process an entry during pass 2.
      */
-    private void processRegularEntry(LogEntry entry, LogEntryType entryType)
-        throws DatabaseException {
+    private void processRegularEntry(LogEntry entry, LogEntryType entryType) throws DatabaseException {
 
-        boolean processThisEntry =
-            checkProcessEntry(entry, entryType, true);
+        boolean processThisEntry = checkProcessEntry(entry, entryType, true);
 
         if (processThisEntry) {
             LNLogEntry<?> lnEntry = (LNLogEntry<?>) entry;
@@ -412,11 +382,10 @@ public class DbScavenger extends DbDump {
     }
 
     /*
-     * Return the output stream for the .dump file for database with id dbId.
-     * If an output stream has not already been created, then create one.
+     * Return the output stream for the .dump file for database with id dbId. If
+     * an output stream has not already been created, then create one.
      */
-    private PrintStream getOutputStream(Long dbId)
-        throws DatabaseException {
+    private PrintStream getOutputStream(Long dbId) throws DatabaseException {
 
         PrintStream ret = dbIdToOutputStream.get(dbId);
         if (ret != null) {

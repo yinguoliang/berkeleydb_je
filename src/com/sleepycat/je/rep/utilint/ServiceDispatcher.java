@@ -61,81 +61,77 @@ import com.sleepycat.je.utilint.StoppableThread;
 import com.sleepycat.je.utilint.StoppableThreadFactory;
 
 /**
- * ServiceDispatcher listens on a specific socket for service requests
- * and dispatches control to the service that is being requested. A service
- * request message has the format:
- *
- * Service:<one byte ServiceName.length><ServiceName>
- *
- * The format of the message is binary, with all text being encoded in ascii.
- *
- * Upon receipt of service request message, the new SocketChannel is queued for
- * processing by the service in the Queue associated with the service. The
- * SocketChannel is the responsibility of the service after this point. It can
- * configure the channel to best suit the requirements of the specific service.
- *
- * The dispatcher returns a single byte to indicate success or failure. The
- * byte value encodes a ServiceDispatcher.Response enumerator.
- *
+ * ServiceDispatcher listens on a specific socket for service requests and
+ * dispatches control to the service that is being requested. A service request
+ * message has the format: Service:<one byte ServiceName.length>
+ * <ServiceName> The format of the message is binary, with all text being
+ * encoded in ascii. Upon receipt of service request message, the new
+ * SocketChannel is queued for processing by the service in the Queue associated
+ * with the service. The SocketChannel is the responsibility of the service
+ * after this point. It can configure the channel to best suit the requirements
+ * of the specific service. The dispatcher returns a single byte to indicate
+ * success or failure. The byte value encodes a ServiceDispatcher.Response
+ * enumerator.
  */
 public class ServiceDispatcher extends StoppableThread {
 
     /* The socket on which the dispatcher is listening */
-    private InetSocketAddress socketAddress;
+    private InetSocketAddress          socketAddress;
 
     /*
-     * The selector that watches for accept events on the server socket and
-     * on subsequent read events.
+     * The selector that watches for accept events on the server socket and on
+     * subsequent read events.
      */
-    private final Selector selector;
-    private SelectionKey scKey;
+    private final Selector             selector;
+    private SelectionKey               scKey;
 
     /* The server socket channel */
-    private ServerSocketChannel serverChannel;
+    private ServerSocketChannel        serverChannel;
 
     /* Determines whether new connections should be accepted. */
-    private boolean processAcceptRequests = true;
+    private boolean                    processAcceptRequests = true;
 
     /* Maintains the error count, used primarily for testing. */
-    private int errorCount = 0;
+    private int                        errorCount            = 0;
 
     /*
-     * Maps the service name to the queue of sockets processed by the
-     * service.
+     * Maps the service name to the queue of sockets processed by the service.
      */
-    private final Map<String, Service> serviceMap =
-        new ConcurrentHashMap<String, Service>();
+    private final Map<String, Service> serviceMap            = new ConcurrentHashMap<String, Service>();
 
     /* The thread pool used to manage the threads used by services */
-    private final ExecutorService pool;
+    private final ExecutorService      pool;
 
-    private final Logger logger;
-    private final Formatter formatter;
+    private final Logger               logger;
+    private final Formatter            formatter;
 
     /*
-     * A reference to a replicated environment, only used for error
-     * propagation when this dispatcher has been created for a replicated
-     * node.
+     * A reference to a replicated environment, only used for error propagation
+     * when this dispatcher has been created for a replicated node.
      */
-    private final RepImpl repImpl;
+    private final RepImpl              repImpl;
 
-    private final DataChannelFactory channelFactory;
+    private final DataChannelFactory   channelFactory;
 
-    private AuthenticationMethod[] authOptions;
+    private AuthenticationMethod[]     authOptions;
 
     /**
-     * The response to a service request.
-     *
-     * Do not rearrange the order of the enumerators, since their ordinal
-     * values are currently used in messages.
+     * The response to a service request. Do not rearrange the order of the
+     * enumerators, since their ordinal values are currently used in messages.
      */
     public static enum Response {
 
-        OK, BUSY, FORMAT_ERROR, UNKNOWN_SERVICE, PROCEED, INVALID, AUTHENTICATE;
+        OK,
+        BUSY,
+        FORMAT_ERROR,
+        UNKNOWN_SERVICE,
+        PROCEED,
+        INVALID,
+        AUTHENTICATE;
 
         ByteBuffer byteBuffer() {
             ByteBuffer buffer = ByteBuffer.allocate(1);
-            buffer.put((byte)ordinal());
+            buffer.put((byte) ordinal());
             buffer.flip();
             return buffer;
         }
@@ -154,19 +150,15 @@ public class ServiceDispatcher extends StoppableThread {
      * replicated environment, and the node will be informed of any unexpected
      * failures seen by the dispatcher.
      *
-     * @param socketAddress the socket on which it listens for service
-     * requests. This address may be extended to cover all local addresses, if
-     * {@link #BIND_INADDR_ANY} has been set to true.
-     *
+     * @param socketAddress the socket on which it listens for service requests.
+     *            This address may be extended to cover all local addresses, if
+     *            {@link #BIND_INADDR_ANY} has been set to true.
      * @throws IOException if the socket could not be bound.
      */
-    public ServiceDispatcher(InetSocketAddress socketAddress,
-                             RepImpl repImpl,
-                             DataChannelFactory channelFactory)
-        throws IOException {
+    public ServiceDispatcher(InetSocketAddress socketAddress, RepImpl repImpl, DataChannelFactory channelFactory)
+            throws IOException {
 
-        super(repImpl, "ServiceDispatcher-" + socketAddress.getHostName() +
-                       ":" + socketAddress.getPort());
+        super(repImpl, "ServiceDispatcher-" + socketAddress.getHostName() + ":" + socketAddress.getPort());
 
         this.repImpl = repImpl;
         this.socketAddress = socketAddress;
@@ -183,8 +175,7 @@ public class ServiceDispatcher extends StoppableThread {
             poolName += "_" + nameIdPair;
         }
 
-        pool = Executors.newCachedThreadPool
-            (new StoppableThreadFactory(poolName, logger));
+        pool = Executors.newCachedThreadPool(new StoppableThreadFactory(poolName, logger));
 
         formatter = new ReplicationFormatter(nameIdPair);
 
@@ -206,27 +197,23 @@ public class ServiceDispatcher extends StoppableThread {
 
                 /* Only turn it on if requested. Otherwise let it default. */
 
-                 serverChannel.setOption(StandardSocketOptions.SO_REUSEADDR,
-                                         true);
+                serverChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 
                 acceptSocket.setReuseAddress(true);
             }
 
             if (repImpl.getConfigManager().getBoolean(BIND_INADDR_ANY)) {
-                bindAddress = new InetSocketAddress((InetAddress)null,
-                                                    socketAddress.getPort());
+                bindAddress = new InetSocketAddress((InetAddress) null, socketAddress.getPort());
             }
         }
 
-        final int limitMs =  (repImpl != null) ?
-            repImpl.getConfigManager().getInt(SO_BIND_WAIT_MS) : 0;
+        final int limitMs = (repImpl != null) ? repImpl.getConfigManager().getInt(SO_BIND_WAIT_MS) : 0;
 
         /* Bind the socket */
         BindException bindException = null;
         final int retryWaitMs = 1000;
         int totalWaitMs;
-        for (totalWaitMs = 0; totalWaitMs <= limitMs;
-             totalWaitMs += retryWaitMs) {
+        for (totalWaitMs = 0; totalWaitMs <= limitMs; totalWaitMs += retryWaitMs) {
             try {
                 bindException = null;
                 acceptSocket.bind(bindAddress);
@@ -243,11 +230,8 @@ public class ServiceDispatcher extends StoppableThread {
 
         if (bindException != null) {
             LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                               "ServiceDispatcher HostPort=" +
-                               socketAddress.getHostName() + ":" +
-                               socketAddress.getPort() +
-                               " bind failed despite waiting for " +
-                               limitMs + "ms");
+                    "ServiceDispatcher HostPort=" + socketAddress.getHostName() + ":" + socketAddress.getPort()
+                            + " bind failed despite waiting for " + limitMs + "ms");
 
             if (limitMs > 0) {
                 /*
@@ -255,22 +239,17 @@ public class ServiceDispatcher extends StoppableThread {
                  * binding the required port.
                  */
                 /* Print all java processes and their args */
-                LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                                    RepUtils.exec("jps", "-v"));
+                LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO, RepUtils.exec("jps", "-v"));
                 /* Print all processes binding tcp ports. */
-                LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                                   RepUtils.exec("netstat", "-lntp"));
+                LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO, RepUtils.exec("netstat", "-lntp"));
             }
 
             /* Failed after retrying. */
             throw bindException;
         } else if (totalWaitMs != 0) {
             LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                               "ServiceDispatcher HostPort=" +
-                               socketAddress.getHostName() + ":" +
-                               socketAddress.getPort() +
-                               " become available after: " +
-                               totalWaitMs + "ms");
+                    "ServiceDispatcher HostPort=" + socketAddress.getHostName() + ":" + socketAddress.getPort()
+                            + " become available after: " + totalWaitMs + "ms");
         }
     }
 
@@ -281,16 +260,14 @@ public class ServiceDispatcher extends StoppableThread {
      *
      * @see #ServiceDispatcher(InetSocketAddress, RepImpl, DataChannelFactory)
      */
-    public ServiceDispatcher(InetSocketAddress socketAddress,
-                             DataChannelFactory channelFactory)
-        throws IOException {
+    public ServiceDispatcher(InetSocketAddress socketAddress, DataChannelFactory channelFactory) throws IOException {
 
         this(socketAddress, null /* repImpl */, channelFactory);
     }
 
     /**
-     * Stop accepting new connections, while the individual services quiesce
-     * and shut themselves down.
+     * Stop accepting new connections, while the individual services quiesce and
+     * shut themselves down.
      */
     public void preShutdown() {
         processAcceptRequests = false;
@@ -298,8 +275,8 @@ public class ServiceDispatcher extends StoppableThread {
 
     /**
      * Shuts down the dispatcher, so that it's no longer listening for service
-     * requests. The port is freed up upon return and the thread used to
-     * listen on the port is shutdown.
+     * requests. The port is freed up upon return and the thread used to listen
+     * on the port is shutdown.
      */
     public void shutdown() {
         if (shutdownDone(logger)) {
@@ -307,10 +284,8 @@ public class ServiceDispatcher extends StoppableThread {
         }
 
         LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                           "ServiceDispatcher shutdown starting. HostPort=" +
-                           socketAddress.getHostName() + ":" +
-                           + socketAddress.getPort() +
-                           " Registered services: " + serviceMap.keySet());
+                "ServiceDispatcher shutdown starting. HostPort=" + socketAddress.getHostName() + ":"
+                        + +socketAddress.getPort() + " Registered services: " + serviceMap.keySet());
 
         shutdownThread(logger);
 
@@ -324,15 +299,11 @@ public class ServiceDispatcher extends StoppableThread {
             serverChannel.socket().close();
             selector.close();
         } catch (IOException e) {
-            LoggerUtils.logMsg
-                (logger, repImpl, formatter, Level.WARNING,
-                 "Ignoring I/O error during close: " +
-                LoggerUtils.exceptionTypeAndMsg(e));
+            LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING,
+                    "Ignoring I/O error during close: " + LoggerUtils.exceptionTypeAndMsg(e));
         }
-        LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                           "ServiceDispatcher shutdown completed." +
-                           " HostPort=" + socketAddress.getHostName() +
-                           ":" + socketAddress.getPort());
+        LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO, "ServiceDispatcher shutdown completed."
+                + " HostPort=" + socketAddress.getHostName() + ":" + socketAddress.getPort());
     }
 
     @Override
@@ -366,40 +337,31 @@ public class ServiceDispatcher extends StoppableThread {
      *
      * @param channel the channel that is the basis for the service
      * @param serviceName the service running on the channel
-     *
      * @throws IOException if the output stream could not be established
      * @throws ServiceConnectFailedException if the connection could not be
-     * made.
+     *             made.
      */
-    static public void doServiceHandshake(DataChannel channel,
-                                          String serviceName)
-        throws IOException, ServiceConnectFailedException {
+    static public void doServiceHandshake(DataChannel channel, String serviceName)
+            throws IOException, ServiceConnectFailedException {
 
         doServiceHandshake(channel, serviceName, null);
     }
 
     /**
      * A variation on the method above. It's used by the client to setup a
-     * channel for the service. It performs the initial handshake requesting
-     * the service and interpreting the response to determine if it was
-     * successful.
+     * channel for the service. It performs the initial handshake requesting the
+     * service and interpreting the response to determine if it was successful.
      *
      * @param channel the channel that is the basis for the service
      * @param serviceName the service running on the channel
-     * @param authInfo a list of authentication methods supported by the
-     * caller.
+     * @param authInfo a list of authentication methods supported by the caller.
      * @throws ServiceConnectFailedException if the connection could not be
-     * made.
+     *             made.
      */
-    static public void doServiceHandshake(DataChannel channel,
-                                          String serviceName,
-                                          AuthenticationMethod[] authInfo)
-        throws IOException, ServiceConnectFailedException {
+    static public void doServiceHandshake(DataChannel channel, String serviceName, AuthenticationMethod[] authInfo)
+            throws IOException, ServiceConnectFailedException {
 
-        final ClientHandshake handshake =
-            new ClientHandshake(serviceName,
-                                authInfo,
-                                new ByteChannelIOAdapter(channel));
+        final ClientHandshake handshake = new ClientHandshake(serviceName, authInfo, new ByteChannelIOAdapter(channel));
 
         final Response response = handshake.process();
         if (response != Response.OK) {
@@ -416,28 +378,24 @@ public class ServiceDispatcher extends StoppableThread {
      * @param blocking true if the channel must be configured to block
      * @param soTimeout the timeout for the underlying socket
      * @return the configured channel or null if there are no more channels,
-     * because the service has been shut down.
+     *         because the service has been shut down.
      * @throws InterruptedException
      */
-    public DataChannel takeChannel(String serviceName,
-                                   boolean blocking,
-                                   int soTimeout)
-        throws InterruptedException {
+    public DataChannel takeChannel(String serviceName, boolean blocking, int soTimeout) throws InterruptedException {
 
         while (true) {
             Service service = serviceMap.get(serviceName);
             if (service == null) {
-                throw EnvironmentFailureException.unexpectedState
-                ("Service: " + serviceName + " was not registered");
+                throw EnvironmentFailureException.unexpectedState("Service: " + serviceName + " was not registered");
             }
-            if (! (service instanceof QueuingService)) {
-                throw EnvironmentFailureException.unexpectedState
-                ("Service: " + serviceName + " is not a queuing service");
+            if (!(service instanceof QueuingService)) {
+                throw EnvironmentFailureException
+                        .unexpectedState("Service: " + serviceName + " is not a queuing service");
             }
             Socket socket = null;
             DataChannel channel = null;
             try {
-                channel = ((QueuingService)service).take();
+                channel = ((QueuingService) service).take();
                 assert channel != null;
 
                 if (channel == RepUtils.CHANNEL_EOF_MARKER) {
@@ -452,7 +410,7 @@ public class ServiceDispatcher extends StoppableThread {
                 if (blocking) {
 
                     /*
-                     * Ensure that writes have been flushed.  All message
+                     * Ensure that writes have been flushed. All message
                      * exchanges should be complete here, and we don't expect
                      * there to be any pending writes, but do this here in
                      * blocking mode to ensure that the writes complete without
@@ -463,17 +421,13 @@ public class ServiceDispatcher extends StoppableThread {
 
                 return channel;
             } catch (IOException e) {
-                LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING,
-                                   "Unable to configure channel " +
-                                   "for '" + serviceName + "' service: " +
-                                   LoggerUtils.exceptionTypeAndMsg(e));
+                LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING, "Unable to configure channel " + "for '"
+                        + serviceName + "' service: " + LoggerUtils.exceptionTypeAndMsg(e));
                 try {
                     channel.close();
                 } catch (IOException e1) {
                     LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINEST,
-                                       "Cleanup failed for service: " +
-                                       serviceName + "\n" +
-                                       LoggerUtils.exceptionTypeAndMsg(e1));
+                            "Cleanup failed for service: " + serviceName + "\n" + LoggerUtils.exceptionTypeAndMsg(e1));
                 }
                 /* Wait for the next request. */
                 continue;
@@ -485,10 +439,8 @@ public class ServiceDispatcher extends StoppableThread {
      * Returns the specific socket address associated with the dispatcher.
      * Unlike getSocketBoundAddress() it can never return the wild card address
      * INADDR_ANY. This is the address used by clients requesting
-     * ServiceDispatcher services.
-     *
-     * If {@link #BIND_INADDR_ANY} has been set to true, this is one of the
-     * addresses that the socket is associated with.
+     * ServiceDispatcher services. If {@link #BIND_INADDR_ANY} has been set to
+     * true, this is one of the addresses that the socket is associated with.
      *
      * @see #getSocketBoundAddress()
      */
@@ -497,11 +449,9 @@ public class ServiceDispatcher extends StoppableThread {
     }
 
     /**
-     * For testing only.
-     *
-     * Returns the server socket address that was actually used to bind the
-     * socket. It's the wildcard address INADDR_ANY if the HA config
-     * {@link #BIND_INADDR_ANY} has been set to true.
+     * For testing only. Returns the server socket address that was actually
+     * used to bind the socket. It's the wildcard address INADDR_ANY if the HA
+     * config {@link #BIND_INADDR_ANY} has been set to true.
      */
     public InetAddress getSocketBoundAddress() {
         return serverChannel.socket().getInetAddress();
@@ -514,56 +464,45 @@ public class ServiceDispatcher extends StoppableThread {
      *
      * @param serviceName the name of the service being requested
      * @param serviceQueue the queue that will be used to hold channels
-     * established for the service.
+     *            established for the service.
      */
-    public void register(String serviceName,
-                         BlockingQueue<DataChannel> serviceQueue) {
+    public void register(String serviceName, BlockingQueue<DataChannel> serviceQueue) {
         if (serviceName == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("The serviceName argument must not be null");
+            throw EnvironmentFailureException.unexpectedState("The serviceName argument must not be null");
         }
         if (serviceMap.containsKey(serviceName)) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Service: " + serviceName + " is already registered");
+            throw EnvironmentFailureException.unexpectedState("Service: " + serviceName + " is already registered");
         }
         if (serviceQueue == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("The serviceQueue argument must not be null");
+            throw EnvironmentFailureException.unexpectedState("The serviceQueue argument must not be null");
         }
-        serviceMap.put(serviceName,
-                       new QueuingService(serviceName, serviceQueue));
+        serviceMap.put(serviceName, new QueuingService(serviceName, serviceQueue));
     }
 
     public void register(Service service) {
         if (service == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("The service argument must not be null");
+            throw EnvironmentFailureException.unexpectedState("The service argument must not be null");
         }
 
         if (serviceMap.containsKey(service.name)) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Service: " + service.name + " is already registered");
+            throw EnvironmentFailureException.unexpectedState("Service: " + service.name + " is already registered");
         }
-        LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE,
-                           "Service: " + service.name + " registered.");
+        LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE, "Service: " + service.name + " registered.");
         serviceMap.put(service.name, service);
     }
 
     public boolean isRegistered(String serviceName) {
         if (serviceName == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("The serviceName argument must not be null");
+            throw EnvironmentFailureException.unexpectedState("The serviceName argument must not be null");
         }
         return serviceMap.containsKey(serviceName);
     }
 
-    public void setSimulateIOException(String serviceName,
-                                       boolean simulateException) {
+    public void setSimulateIOException(String serviceName, boolean simulateException) {
 
         Service service = serviceMap.get(serviceName);
         if (service == null) {
-            throw new IllegalStateException
-                ("Service: " + serviceName + " is not registered");
+            throw new IllegalStateException("Service: " + serviceName + " is not registered");
         }
 
         service.setSimulateIOException(simulateException);
@@ -578,18 +517,15 @@ public class ServiceDispatcher extends StoppableThread {
      */
     public void cancel(String serviceName) {
         if (serviceName == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("The serviceName argument must not be null.");
+            throw EnvironmentFailureException.unexpectedState("The serviceName argument must not be null.");
         }
         Service service = serviceMap.remove(serviceName);
 
         if (service == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Service: " + serviceName + " was not registered.");
+            throw EnvironmentFailureException.unexpectedState("Service: " + serviceName + " was not registered.");
         }
         service.cancel();
-        LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE,
-                           "Service: " + serviceName + " shut down.");
+        LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE, "Service: " + serviceName + " shut down.");
     }
 
     public DataChannelFactory getChannelFactory() {
@@ -605,9 +541,8 @@ public class ServiceDispatcher extends StoppableThread {
 
     /**
      * Processes an accept event on the server socket. As a result of the
-     * processing a new socketChannel is created, and the selector is
-     * registered with the new channel so that it can process subsequent read
-     * events.
+     * processing a new socketChannel is created, and the selector is registered
+     * with the new channel so that it can process subsequent read events.
      */
     private void processAccept() {
 
@@ -620,31 +555,26 @@ public class ServiceDispatcher extends StoppableThread {
                 return;
             }
             socketChannel.configureBlocking(false);
-            final DataChannel dataChannel =
-                getChannelFactory().acceptChannel(socketChannel);
+            final DataChannel dataChannel = getChannelFactory().acceptChannel(socketChannel);
 
             /*
              * For now, we don't actually support any handshake authentication
-             * methods, but expect that we may in the future.  We allow setting
-             * of authOptions through a testing interface.  However, if no
+             * methods, but expect that we may in the future. We allow setting
+             * of authOptions through a testing interface. However, if no
              * authenticationMethods are provided but the channel is capable of
              * determining trust, pass an empty Authentication array to
              * ServerHandshake in order to trigger the trust check.
              */
-            final AuthenticationMethod[] authInfo =
-                (dataChannel.isTrustCapable() && authOptions == null) ?
-                new AuthenticationMethod[0] :
-                authOptions;
+            final AuthenticationMethod[] authInfo = (dataChannel.isTrustCapable() && authOptions == null)
+                    ? new AuthenticationMethod[0] : authOptions;
 
-            final ServerHandshake initState =
-                new ServerHandshake(dataChannel, this, authInfo);
+            final ServerHandshake initState = new ServerHandshake(dataChannel, this, authInfo);
 
             /* Register the selector with the base SocketChannel */
             socketChannel.register(selector, SelectionKey.OP_READ, initState);
         } catch (IOException e) {
             LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING,
-                               "Server accept exception: " +
-                                LoggerUtils.exceptionTypeAndMsg(e));
+                    "Server accept exception: " + LoggerUtils.exceptionTypeAndMsg(e));
             closeChannel(socketChannel);
         }
     }
@@ -654,17 +584,13 @@ public class ServiceDispatcher extends StoppableThread {
      * channel is verified to ensure that it is a service request. The read is
      * accomplished in two parts, a read for the fixed size prefix and the name
      * length byte, followed by a read of the variable length name itself.
-     *
-     * Errors result in the channel being closed(with the key being canceled
-     * as a result) and a null value being returned.
-     *
-     * If the service request is sane, we may require the connecting
-     * entity to authenticate itself.
+     * Errors result in the channel being closed(with the key being canceled as
+     * a result) and a null value being returned. If the service request is
+     * sane, we may require the connecting entity to authenticate itself.
      *
      * @param initState the InitState object associated with the new channel
-     *
      * @return the ServiceName or null if there was insufficient input, or an
-     * error was encountered.
+     *         error was encountered.
      */
     private String processRead(ServerHandshake initState) {
         try {
@@ -687,8 +613,7 @@ public class ServiceDispatcher extends StoppableThread {
             return null;
         } catch (IOException e) {
             LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING,
-                               "Exception during read: " +
-                                LoggerUtils.exceptionTypeAndMsg(e));
+                    "Exception during read: " + LoggerUtils.exceptionTypeAndMsg(e));
             closeChannel(initState.getChannel());
             return null;
         }
@@ -705,8 +630,7 @@ public class ServiceDispatcher extends StoppableThread {
                 channel.close();
             } catch (IOException e1) {
                 LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING,
-                                   "Exception during cleanup: " +
-                                   LoggerUtils.exceptionTypeAndMsg(e1));
+                        "Exception during cleanup: " + LoggerUtils.exceptionTypeAndMsg(e1));
             }
         }
     }
@@ -714,44 +638,35 @@ public class ServiceDispatcher extends StoppableThread {
     /**
      * The central run method. It dispatches to the "accept" and "read" event
      * processing methods. Upon a completed read, it verifies the validity of
-     * the service name and queues the channel for subsequent consumption
-     * by the service.
-     *
+     * the service name and queues the channel for subsequent consumption by the
+     * service.
      */
     @Override
     public void run() {
         LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                           "Started ServiceDispatcher. HostPort=" +
-                           socketAddress.getHostName() + ":" +
-                           socketAddress.getPort());
+                "Started ServiceDispatcher. HostPort=" + socketAddress.getHostName() + ":" + socketAddress.getPort());
         LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                           "DataChannel factory: " +
-                           getChannelFactory().getClass().getName());
+                "DataChannel factory: " + getChannelFactory().getClass().getName());
         try {
             while (true) {
                 try {
                     /**
-                     * To make the dispatcher resilient to IP address change,
-                     * we periodically check for such change and rebind the
-                     * socket if that occurs.
-                     *
-                     * Speculation and rational:
-                     * New communications fail sliently which is possibly
-                     * caused by that each TCP session use both IP and port
-                     * number as the identifier. Thus it will drop packages
-                     * after IP address change. Yet no exception is raised in
-                     * that situation. Therefore, we cannot rely on exception
-                     * for detecting such a change, but instead use an active
-                     * approach.
+                     * To make the dispatcher resilient to IP address change, we
+                     * periodically check for such change and rebind the socket
+                     * if that occurs. Speculation and rational: New
+                     * communications fail sliently which is possibly caused by
+                     * that each TCP session use both IP and port number as the
+                     * identifier. Thus it will drop packages after IP address
+                     * change. Yet no exception is raised in that situation.
+                     * Therefore, we cannot rely on exception for detecting such
+                     * a change, but instead use an active approach.
                      */
                     boolean changed = false;
                     try {
                         changed = ipChanged();
                     } catch (Exception e) {
-                        LoggerUtils.logMsg
-                            (logger, repImpl, formatter, Level.INFO,
-                             "Exception while check IP: " +
-                             LoggerUtils.exceptionTypeAndMsg(e));
+                        LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
+                                "Exception while check IP: " + LoggerUtils.exceptionTypeAndMsg(e));
                     }
                     if (changed) {
                         rebindSocket();
@@ -764,10 +679,8 @@ public class ServiceDispatcher extends StoppableThread {
                         continue;
                     }
                 } catch (Exception e) {
-                    LoggerUtils.logMsg
-                        (logger, repImpl, formatter, Level.SEVERE,
-                         "Server socket exception: " +
-                        LoggerUtils.getStackTrace(e));
+                    LoggerUtils.logMsg(logger, repImpl, formatter, Level.SEVERE,
+                            "Server socket exception: " + LoggerUtils.getStackTrace(e));
                     throw EnvironmentFailureException.unexpectedException(e);
                 }
                 Set<SelectionKey> skeys = selector.selectedKeys();
@@ -779,8 +692,7 @@ public class ServiceDispatcher extends StoppableThread {
                             break;
 
                         case SelectionKey.OP_READ:
-                            final ServerHandshake initState =
-                                (ServerHandshake) key.attachment();
+                            final ServerHandshake initState = (ServerHandshake) key.attachment();
 
                             final String serviceName = processRead(initState);
                             if (serviceName == null) {
@@ -791,8 +703,8 @@ public class ServiceDispatcher extends StoppableThread {
                             break;
 
                         default:
-                            throw EnvironmentFailureException.unexpectedState
-                                ("Unexpected ops bit set: " + key.readyOps());
+                            throw EnvironmentFailureException
+                                    .unexpectedState("Unexpected ops bit set: " + key.readyOps());
                     }
                 }
                 /* All keys have been processed clear them. */
@@ -806,11 +718,9 @@ public class ServiceDispatcher extends StoppableThread {
             Iterator<SelectionKey> skIter = selector.keys().iterator();
             while (skIter.hasNext()) {
                 SelectionKey key = skIter.next();
-                final ServerHandshake initState =
-                    (ServerHandshake) key.attachment();
+                final ServerHandshake initState = (ServerHandshake) key.attachment();
                 if (initState != null) {
-                    LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                                       "Server closing in-process handshake");
+                    LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO, "Server closing in-process handshake");
                     closeChannel(initState.getChannel());
                     key.cancel();
                 }
@@ -829,10 +739,8 @@ public class ServiceDispatcher extends StoppableThread {
         String previousIP = socketAddress.getAddress().getHostAddress();
         boolean changed = !currentIP.equals(previousIP);
         if (changed) {
-            LoggerUtils.logMsg
-                (logger, repImpl, formatter, Level.INFO,
-                 "ServiceDispatcher IP changed, from " + previousIP +
-                 " to " + currentIP);
+            LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
+                    "ServiceDispatcher IP changed, from " + previousIP + " to " + currentIP);
         }
         return changed;
     }
@@ -854,6 +762,7 @@ public class ServiceDispatcher extends StoppableThread {
     /**
      * Performs the guts of the work underlying a service request. It validates
      * the service request and writes an appropriate response to the channel.
+     * 
      * @param channel
      * @param serviceName
      */
@@ -869,9 +778,7 @@ public class ServiceDispatcher extends StoppableThread {
                  * before a service is actually registered.
                  */
                 LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                                   "Request for unknown Service: " +
-                                   serviceName + " Registered services: " +
-                                   serviceMap.keySet());
+                        "Request for unknown Service: " + serviceName + " Registered services: " + serviceMap.keySet());
                 return;
             }
             Response response = Response.OK;
@@ -879,23 +786,19 @@ public class ServiceDispatcher extends StoppableThread {
                 response = Response.BUSY;
             }
             LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE,
-                               "Service response: " + response +
-                               " for service: " + service.name);
+                    "Service response: " + response + " for service: " + service.name);
 
             if (channel.write(response.byteBuffer()) == 0) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("Failed to write byte. Send buffer size: " +
-                     channel.getSocketChannel().socket().getSendBufferSize());
+                throw EnvironmentFailureException.unexpectedState("Failed to write byte. Send buffer size: "
+                        + channel.getSocketChannel().socket().getSendBufferSize());
             }
             if (response == Response.OK) {
                 service.requestDispatch(channel);
             }
         } catch (IOException e) {
             closeChannel(channel);
-            LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING,
-                               "IO error writing to channel for " +
-                               "service: " +  serviceName +
-                               LoggerUtils.exceptionTypeAndMsg(e));
+            LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING, "IO error writing to channel for "
+                    + "service: " + serviceName + LoggerUtils.exceptionTypeAndMsg(e));
         }
     }
 
@@ -905,15 +808,14 @@ public class ServiceDispatcher extends StoppableThread {
     static private abstract class Service {
 
         /* The name associated with the service. */
-        final String name;
+        final String    name;
 
         private boolean simulateIOException = false;
 
         public Service(String name) {
             super();
             if (name == null) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("Service name was null");
+                throw EnvironmentFailureException.unexpectedState("Service name was null");
             }
             this.name = name;
         }
@@ -951,17 +853,16 @@ public class ServiceDispatcher extends StoppableThread {
     }
 
     /**
-     * A service where requests are simply added to the supplied queue. It's
-     * the responsibility of the service creator to drain the queue. This
-     * service is used when the service carries out a long-running dialog with
-     * the service requester. For example, a Feeder service.
+     * A service where requests are simply added to the supplied queue. It's the
+     * responsibility of the service creator to drain the queue. This service is
+     * used when the service carries out a long-running dialog with the service
+     * requester. For example, a Feeder service.
      */
     public class QueuingService extends Service {
         /* Holds the queue of pending requests, one per channel */
         private final BlockingQueue<DataChannel> queue;
 
-        QueuingService(String serviceName,
-                       BlockingQueue<DataChannel> queue) {
+        QueuingService(String serviceName, BlockingQueue<DataChannel> queue) {
             super(serviceName);
             this.queue = queue;
         }
@@ -973,24 +874,20 @@ public class ServiceDispatcher extends StoppableThread {
         @Override
         void requestDispatch(DataChannel channel) {
             if (simulateIOException()) {
-                LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO,
-                                   "Simulated test IO exception");
+                LoggerUtils.logMsg(logger, repImpl, formatter, Level.INFO, "Simulated test IO exception");
                 try {
                     /*
-                     * This will provoke an IOException later when we try to
-                     * use the channel in takeChannel().
+                     * This will provoke an IOException later when we try to use
+                     * the channel in takeChannel().
                      */
                     channel.close();
                 } catch (IOException e) {
                     LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINEST,
-                                       "Close failure in '" + name +
-                                       "' service: " +
-                                       LoggerUtils.exceptionTypeAndMsg(e));
+                            "Close failure in '" + name + "' service: " + LoggerUtils.exceptionTypeAndMsg(e));
                 }
             }
             if (!queue.add(channel)) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("request queue overflow");
+                throw EnvironmentFailureException.unexpectedState("request queue overflow");
             }
         }
 
@@ -1015,19 +912,15 @@ public class ServiceDispatcher extends StoppableThread {
     /**
      * A queuing service that starts the thread that services the requests
      * lazily, upon first request and terminates the thread when the service is
-     * unregistered. The thread must be "interrupt aware" and must exit when
-     * it receives an interrupt.
-     *
-     * This type of service is suitable for services that are used
-     * infrequently.
+     * unregistered. The thread must be "interrupt aware" and must exit when it
+     * receives an interrupt. This type of service is suitable for services that
+     * are used infrequently.
      */
     public class LazyQueuingService extends QueuingService {
 
         private final Thread serviceThread;
 
-        public LazyQueuingService(String serviceName,
-                                  BlockingQueue<DataChannel> queue,
-                                  Thread serviceThread) {
+        public LazyQueuingService(String serviceName, BlockingQueue<DataChannel> queue, Thread serviceThread) {
 
             super(serviceName, queue);
             this.serviceThread = serviceThread;
@@ -1040,8 +933,7 @@ public class ServiceDispatcher extends StoppableThread {
 
                 case NEW:
                     serviceThread.start();
-                    LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE,
-                                       "Thread started for service: " + name);
+                    LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE, "Thread started for service: " + name);
                     break;
 
                 case RUNNABLE:
@@ -1049,18 +941,13 @@ public class ServiceDispatcher extends StoppableThread {
                 case WAITING:
                 case BLOCKED:
                     /* Was previously activated. */
-                    LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE,
-                                       "Thread started for service: " + name);
+                    LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE, "Thread started for service: " + name);
                     break;
 
                 default:
-                    RuntimeException e =
-                        EnvironmentFailureException.unexpectedState
-                            ("Thread for service:" + name +
-                             "is in state:" + serviceThread.getState());
-                    LoggerUtils.logMsg(logger, repImpl, formatter,
-                                       Level.WARNING,
-                                       LoggerUtils.exceptionTypeAndMsg(e));
+                    RuntimeException e = EnvironmentFailureException
+                            .unexpectedState("Thread for service:" + name + "is in state:" + serviceThread.getState());
+                    LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING, LoggerUtils.exceptionTypeAndMsg(e));
                     throw e;
             }
             super.requestDispatch(channel);
@@ -1085,16 +972,15 @@ public class ServiceDispatcher extends StoppableThread {
 
     /**
      * A service that is run immediately in a thread allocated to it. Subtypes
-     * implement the getRunnable() method which provides the runnable object
-     * for the service. This service frees up the caller from managing the the
+     * implement the getRunnable() method which provides the runnable object for
+     * the service. This service frees up the caller from managing the the
      * threads associated with the service. The runnable must manage interrupts
      * so that it can be shut down by the underlying thread pool.
      */
     static public abstract class ExecutingService extends Service {
         final private ServiceDispatcher dispatcher;
 
-        public ExecutingService(String serviceName,
-                                ServiceDispatcher dispatcher) {
+        public ExecutingService(String serviceName, ServiceDispatcher dispatcher) {
             super(serviceName);
             this.dispatcher = dispatcher;
         }
@@ -1115,11 +1001,10 @@ public class ServiceDispatcher extends StoppableThread {
     @SuppressWarnings("serial")
     static public class ServiceConnectFailedException extends Exception {
         final Response response;
-        final String serviceName;
+        final String   serviceName;
 
-        ServiceConnectFailedException(String serviceName,
-                                      Response response) {
-            assert(response != Response.OK);
+        ServiceConnectFailedException(String serviceName, Response response) {
+            assert (response != Response.OK);
             this.response = response;
             this.serviceName = serviceName;
         }
@@ -1151,25 +1036,22 @@ public class ServiceDispatcher extends StoppableThread {
 
                 case OK:
                     /*
-                     * Don't expect an OK response to provoke an exception.
-                     * Fall through.
+                     * Don't expect an OK response to provoke an exception. Fall
+                     * through.
                      */
                 default:
-                    throw EnvironmentFailureException.unexpectedState
-                        ("Unexpected response:" + response +
-                         " for service:" + serviceName);
+                    throw EnvironmentFailureException
+                            .unexpectedState("Unexpected response:" + response + " for service:" + serviceName);
             }
         }
     }
 
     abstract public static class ExecutingRunnable implements Runnable {
-        protected final DataChannel channel;
+        protected final DataChannel  channel;
         protected final TextProtocol protocol;
-        protected final boolean expectResponse;
+        protected final boolean      expectResponse;
 
-        public ExecutingRunnable(DataChannel channel,
-                                 TextProtocol protocol,
-                                 boolean expectResponse) {
+        public ExecutingRunnable(DataChannel channel, TextProtocol protocol, boolean expectResponse) {
             this.channel = channel;
             this.protocol = protocol;
             this.expectResponse = expectResponse;
@@ -1186,32 +1068,28 @@ public class ServiceDispatcher extends StoppableThread {
                 }
                 ResponseMessage response = getResponse(request);
                 if (expectResponse && response != null) {
-                    PrintWriter out = new PrintWriter
-                        (Channels.newOutputStream(channel), true);
+                    PrintWriter out = new PrintWriter(Channels.newOutputStream(channel), true);
                     out.println(response.wireFormat());
                 } else {
                     assert (response == null);
                 }
             } catch (IOException e) {
-                logMessage("IO error on socket: " +
-                            LoggerUtils.exceptionTypeAndMsg(e));
+                logMessage("IO error on socket: " + LoggerUtils.exceptionTypeAndMsg(e));
                 return;
             } finally {
                 if (channel.isOpen()) {
                     try {
                         channel.close();
                     } catch (IOException e) {
-                        logMessage("IO error on socket close: " +
-                                   LoggerUtils.exceptionTypeAndMsg(e));
-                         return;
+                        logMessage("IO error on socket close: " + LoggerUtils.exceptionTypeAndMsg(e));
+                        return;
                     }
                 }
             }
         }
 
         /* Get the response for a request. */
-        abstract protected ResponseMessage getResponse(RequestMessage request)
-            throws IOException;
+        abstract protected ResponseMessage getResponse(RequestMessage request) throws IOException;
 
         /* Log the message. */
         abstract protected void logMessage(String message);

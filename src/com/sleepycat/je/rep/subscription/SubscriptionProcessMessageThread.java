@@ -36,30 +36,27 @@ import static com.sleepycat.je.log.LogEntryType.LOG_TXN_COMMIT;
 class SubscriptionProcessMessageThread extends StoppableThread {
 
     /* handle to stats */
-    private final SubscriptionStat stats;
+    private final SubscriptionStat      stats;
     /* configuration */
-    private final SubscriptionConfig config;
+    private final SubscriptionConfig    config;
     /* input queue from which to consume messages */
     private final BlockingQueue<Object> queue;
     /* logger */
-    private final Logger logger;
+    private final Logger                logger;
 
     /* exit flag to specify exit type */
-    private volatile ExitType exitRequest;
+    private volatile ExitType           exitRequest;
 
     /**
      * Construct a subscription thread to process messages
      *
-     * @param impl   RepImpl of the RN where thread is running
-     * @param queue  Input queue from which to consume messages
+     * @param impl RepImpl of the RN where thread is running
+     * @param queue Input queue from which to consume messages
      * @param config Subscription configuration
      * @param logger Logger
      */
-    SubscriptionProcessMessageThread(RepImpl impl,
-                                     BlockingQueue<Object> queue,
-                                     SubscriptionConfig config,
-                                     SubscriptionStat stats,
-                                     Logger logger) {
+    SubscriptionProcessMessageThread(RepImpl impl, BlockingQueue<Object> queue, SubscriptionConfig config,
+                                     SubscriptionStat stats, Logger logger) {
         super(impl, "SubscriptionProcessMessageThread");
         this.logger = logger;
         this.config = config;
@@ -81,9 +78,9 @@ class SubscriptionProcessMessageThread extends StoppableThread {
      * Implement a soft shutdown. The thread will exist after all messages in
      * the queue are consumed and processed.
      *
-     * @return the amount of time in ms that the shutdownThread method will
-     * wait for the thread to exit. A -ve value means that the method will not
-     * wait. A zero value means it will wait indefinitely.
+     * @return the amount of time in ms that the shutdownThread method will wait
+     *         for the thread to exit. A -ve value means that the method will
+     *         not wait. A zero value means it will wait indefinitely.
      */
     @Override
     public int initiateSoftShutdown() {
@@ -93,9 +90,8 @@ class SubscriptionProcessMessageThread extends StoppableThread {
     }
 
     /**
-     * Implement thread run() method. Dequeue message from the queue and
-     * process it via the callback.
-     *
+     * Implement thread run() method. Dequeue message from the queue and process
+     * it via the callback.
      */
     @Override
     public void run() {
@@ -103,51 +99,45 @@ class SubscriptionProcessMessageThread extends StoppableThread {
         /* callback provided by client to process each message in input queue */
         final SubscriptionCallback callBack = config.getCallBack();
 
-        logger.info("Input thread started. Message queue size:" +
-                    queue.remainingCapacity());
+        logger.info("Input thread started. Message queue size:" + queue.remainingCapacity());
 
         /* loop to process each message in the queue */
         try {
             while (true) {
                 if (exitRequest == ExitType.IMMEDIATE) {
                     /*
-                     * if immediate exit is requested,  exit without
-                     * consuming any message in the queue
+                     * if immediate exit is requested, exit without consuming
+                     * any message in the queue
                      */
                     break;
                 } else {
 
                     /* fetch next message from queue */
-                    final Object message =
-                        queue.poll(SubscriptionConfig.QUEUE_POLL_INTERVAL_MS,
-                                   TimeUnit.MILLISECONDS);
+                    final Object message = queue.poll(SubscriptionConfig.QUEUE_POLL_INTERVAL_MS, TimeUnit.MILLISECONDS);
 
                     if (message == null) {
                         /*
-                         * No message to consume, continue and wait for the
-                         * next message.
+                         * No message to consume, continue and wait for the next
+                         * message.
                          */
                         continue;
 
-                    }  else if (message instanceof Exception) {
-                        
+                    } else if (message instanceof Exception) {
+
                         callBack.processException((Exception) message);
-                        
+
                         /* exits if shutdown message from feeder */
                         if (message instanceof GroupShutdownException) {
                             exitRequest = ExitType.IMMEDIATE;
-                            GroupShutdownException gse = 
-                                (GroupShutdownException) message;
-                            logger.info("Received shutdown message from " +
-                                        config.getFeederHost() +
-                                        " at VLSN " + gse.getShutdownVLSN());
+                            GroupShutdownException gse = (GroupShutdownException) message;
+                            logger.info("Received shutdown message from " + config.getFeederHost() + " at VLSN "
+                                    + gse.getShutdownVLSN());
                             break;
                         }
                     } else {
 
                         /* use different callbacks depending on entry type */
-                        final InputWireRecord wireRecord =
-                            ((Protocol.Entry) message).getWireRecord();
+                        final InputWireRecord wireRecord = ((Protocol.Entry) message).getWireRecord();
                         final VLSN vlsn = wireRecord.getVLSN();
                         final byte type = wireRecord.getEntryType();
                         final LogEntry entry = wireRecord.getLogEntry();
@@ -172,48 +162,41 @@ class SubscriptionProcessMessageThread extends StoppableThread {
                         if (entry instanceof LNLogEntry) {
 
                             /* receive a LNLogEntry from Feeder */
-                            final LNLogEntry<?> lnEntry = (LNLogEntry<?>)entry;
+                            final LNLogEntry<?> lnEntry = (LNLogEntry<?>) entry;
 
                             /*
                              * We have to call postFetchInit to avoid EFE. The
                              * function will reformat the key/data if entry is
                              * from a dup DB. The default feeder filter would
-                             * filter out all dup db entries for us.
-                             *
-                             * TODO:
-                             * Note today we temporarily disabled user-defined
-                             * feeder filter and thus users are unable to
-                             * replace the default feeder filter with their own.
-                             * So here it is safe to assume no dup db entry.
-                             *
-                             * We will have to address the dup db entry issue
-                             * in future to make the Subscription API public,
-                             * in which users will be allowed to use their own
-                             * feeder filter.
+                             * filter out all dup db entries for us. TODO: Note
+                             * today we temporarily disabled user-defined feeder
+                             * filter and thus users are unable to replace the
+                             * default feeder filter with their own. So here it
+                             * is safe to assume no dup db entry. We will have
+                             * to address the dup db entry issue in future to
+                             * make the Subscription API public, in which users
+                             * will be allowed to use their own feeder filter.
                              */
                             lnEntry.postFetchInit(false);
 
                             if (lnEntry.getLN().isDeleted()) {
-                                callBack.processDel(vlsn, lnEntry.getKey(),
-                                                    txnId);
+                                callBack.processDel(vlsn, lnEntry.getKey(), txnId);
                             } else {
-                                callBack.processPut(vlsn, lnEntry.getKey(),
-                                                    lnEntry.getData(), txnId);
+                                callBack.processPut(vlsn, lnEntry.getKey(), lnEntry.getData(), txnId);
                             }
                         }
                     }
                 }
             }
         } catch (InterruptedException e) {
-            logger.warning("input thread receives exception " + e.getMessage() +
-                           ", process the exception in callback, clear queue " +
-                           "and exit." + "\n" + LoggerUtils.getStackTrace(e));
+            logger.warning("input thread receives exception " + e.getMessage()
+                    + ", process the exception in callback, clear queue " + "and exit." + "\n"
+                    + LoggerUtils.getStackTrace(e));
 
             exitRequest = ExitType.IMMEDIATE;
         } finally {
             queue.clear();
-            logger.info("message queue cleared, thread exits with type: " +
-                        exitRequest);
+            logger.info("message queue cleared, thread exits with type: " + exitRequest);
         }
     }
 
@@ -222,10 +205,10 @@ class SubscriptionProcessMessageThread extends StoppableThread {
         return logger;
     }
 
-    /* types of exits  */
+    /* types of exits */
     private enum ExitType {
-        NONE,      /* No exit requested */
+        NONE, /* No exit requested */
         IMMEDIATE, /* An immediate exit; ignore queued requests. */
-        SOFT       /* Process pending requests in queue, then exit */
+        SOFT /* Process pending requests in queue, then exit */
     }
 }

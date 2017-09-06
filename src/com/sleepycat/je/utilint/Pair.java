@@ -18,7 +18,7 @@ package com.sleepycat.je.utilint;
  * specific class is unwarranted.
  */
 public class Pair<FIRST, SECOND> {
-    private final FIRST first;
+    private final FIRST  first;
     private final SECOND second;
 
     public Pair(FIRST first, SECOND second) {
@@ -29,7 +29,7 @@ public class Pair<FIRST, SECOND> {
     public FIRST first() {
         return first;
     }
-    
+
     public SECOND second() {
         return second;
     }

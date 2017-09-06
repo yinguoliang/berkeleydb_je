@@ -140,75 +140,73 @@ import com.sleepycat.je.utilint.StatGroup;
 import com.sleepycat.je.utilint.StringStat;
 import com.sleepycat.je.utilint.VLSN;
 
-public class RepImpl
-    extends EnvironmentImpl
-    implements RepEnvConfigObserver {
+public class RepImpl extends EnvironmentImpl implements RepEnvConfigObserver {
 
-    private VLSNIndex vlsnIndex;
+    private VLSNIndex                              vlsnIndex;
     /* VLSNIndexAccess coordinates the closing of the vlsn index */
-    private final VLSNIndexAccess vlsnIndexAccess = new VLSNIndexAccess();
+    private final VLSNIndexAccess                  vlsnIndexAccess         = new VLSNIndexAccess();
 
-    private final FeederTxns feederTxns;
+    private final FeederTxns                       feederTxns;
 
     /*
-     * The repNode is only non-null when the replicated environment has joined
-     * a group. It's null otherwise.
+     * The repNode is only non-null when the replicated environment has joined a
+     * group. It's null otherwise.
      */
-    private volatile RepNode repNode;
-    private Replay replay;
+    private volatile RepNode                       repNode;
+    private Replay                                 replay;
 
     /*
      * This is the canonical nameIdPair instance used by the node. The internal
      * Id part of the pair will be updated when the node actually joins the
      * group.
      */
-    private NameIdPair nameIdPair;
+    private NameIdPair                             nameIdPair;
 
-    private final NodeState nodeState;
+    private final NodeState                        nodeState;
 
     /*
      * The clockskew used by this environment in ms. It's only used by testing
      * to inject clock skew between ReplicatedEnvironments.
      */
-    private static int clockSkewMs = 0;
+    private static int                             clockSkewMs             = 0;
 
     /*
      * A handle to the group database. This handle is initialized lazily when
      * the contents of the database are first required. It's set to null upon
      * shutdown. The handle must be initialized lazily because the database is
-     * created by the master, and we only know master identity later.  The
+     * created by the master, and we only know master identity later. The
      * RepImpl manages the rep group database, so that the lifetime of the
      * databaseImpl handle can be managed more easily to mesh with the opening
      * and closing of the RepImpl.
      */
-    private DatabaseImpl groupDbImpl = null;
+    private DatabaseImpl                           groupDbImpl             = null;
 
     /* The status presents whether this replica is doing rollback. */
-    private boolean backupProhibited = false;
+    private boolean                                backupProhibited        = false;
 
     /*
      * Represents whether this Environment is allowed to convert a
      * non-replicated Environment to replicated.
      */
-    private boolean allowConvert = false;
+    private boolean                                allowConvert            = false;
 
     /** Config params for preserving and caching the VLSN. */
-    private boolean preserveVLSN;
-    private boolean cacheVLSN;
+    private boolean                                preserveVLSN;
+    private boolean                                cacheVLSN;
 
     /*
      * True if TTL is available. Volatile is not used, since checking more than
      * once is idempotent.
      */
-    private boolean isTTLAvailable = false;
+    private boolean                                isTTLAvailable          = false;
 
     /* Keep an eye on the ongoing DbBackups. */
-    private final Set<DbBackup> backups = new HashSet<DbBackup>();
+    private final Set<DbBackup>                    backups                 = new HashSet<DbBackup>();
 
     /*
      * The list of observers who are notified when a mutable rep param changes.
      */
-    private final List<RepEnvConfigObserver> repConfigObservers;
+    private final List<RepEnvConfigObserver>       repConfigObservers;
 
     /*
      * Lock used to control access and lazy initialization of groupDbImpl,
@@ -216,53 +214,53 @@ public class RepImpl
      * than synchronization to allow us to probe for contention on the
      * groupDbImpl.
      */
-    private final ReentrantLock groupDbLock = new ReentrantLock();
+    private final ReentrantLock                    groupDbLock             = new ReentrantLock();
 
-    private int replicaAckTimeout;
-    private int arbiterAckTimeout;
-    private int insufficientReplicasTimeout;
-    private int replayTxnTimeout;
-    private ReplicaConsistencyPolicy defaultConsistencyPolicy;
-    private boolean allowArbiterAck;
-
-    /*
-     * Arbiters, subscribers and networkBackup use RepImpls which are read
-     * only and have some daemon functionality disabled.
-     */
-    private boolean isArbiter;
-    private boolean isSubscriber;
-    private boolean isNetworkBackup;
+    private int                                    replicaAckTimeout;
+    private int                                    arbiterAckTimeout;
+    private int                                    insufficientReplicasTimeout;
+    private int                                    replayTxnTimeout;
+    private ReplicaConsistencyPolicy               defaultConsistencyPolicy;
+    private boolean                                allowArbiterAck;
 
     /*
-     * NodeStats are currently not public, but we may want to evaluate
-     * and decide if they would be useful, perhaps as a debugging aid.
+     * Arbiters, subscribers and networkBackup use RepImpls which are read only
+     * and have some daemon functionality disabled.
      */
-    private final StatGroup nodeStats;
-    private final BooleanStat hardRecoveryStat;
-    private final StringStat hardRecoveryInfoStat;
+    private boolean                                isArbiter;
+    private boolean                                isSubscriber;
+    private boolean                                isNetworkBackup;
 
     /*
-     * Used to block transaction commit/abort execution just before completing
-     * a Master Transfer operation.
+     * NodeStats are currently not public, but we may want to evaluate and
+     * decide if they would be useful, perhaps as a debugging aid.
      */
-    private volatile CountDownLatch blockTxnLatch = new CountDownLatch(0);
+    private final StatGroup                        nodeStats;
+    private final BooleanStat                      hardRecoveryStat;
+    private final StringStat                       hardRecoveryInfoStat;
+
+    /*
+     * Used to block transaction commit/abort execution just before completing a
+     * Master Transfer operation.
+     */
+    private volatile CountDownLatch                blockTxnLatch           = new CountDownLatch(0);
 
     /**
      * A lock used to coordinate access to {@link #blockTxnLatch}.
      * <p>
      * When a Master Transfer operation completes Phase 1, it sets a new {@code
      * CountDownLatch} in order to block the completion of transactions at the
-     * commit or abort stage.  We must avoid having it do so at an awkward
-     * moment.  There are two (unrelated) cases:
+     * commit or abort stage. We must avoid having it do so at an awkward
+     * moment. There are two (unrelated) cases:
      * <ol>
      * <li>There is a brief period between the time a transaction "awaits" the
-     * latch (in {@code checkBlock()}) and the time it publishes its VLSN.  We
+     * latch (in {@code checkBlock()}) and the time it publishes its VLSN. We
      * must avoid having Master Transfer read its "ultimate goal" VLSN during
      * that interval.
      * <li>The Feeder input thread occasionally updates the GroupDB, upon
-     * receiving a Heartbeat response.  That happens in a transaction, like any
-     * other, so it could be subject to the normal blockage in Phase 2.  But
-     * the Feeder input thread is of course also the thread that we rely on for
+     * receiving a Heartbeat response. That happens in a transaction, like any
+     * other, so it could be subject to the normal blockage in Phase 2. But the
+     * Feeder input thread is of course also the thread that we rely on for
      * making progress towards the goal of Master Transfer; so blocking it is
      * counterproductive.
      * </ol>
@@ -270,62 +268,57 @@ public class RepImpl
      * @see MasterTransfer
      * @see ReplicatedEnvironment#transferMaster
      */
-    private final ReentrantReadWriteLock blockLatchLock =
-        new ReentrantReadWriteLock(true);
+    private final ReentrantReadWriteLock           blockLatchLock          = new ReentrantReadWriteLock(true);
 
     /* application listener for syncups. */
     private final ProgressListener<SyncupProgress> syncupProgressListener;
 
     /* Application callback to be notified before we overwrite log files. */
-    private final LogFileRewriteListener logRewriteListener;
+    private final LogFileRewriteListener           logRewriteListener;
 
     /* Configuration for ServiceDispatcher communication */
-    private final ReplicationNetworkConfig repNetConfig;
+    private final ReplicationNetworkConfig         repNetConfig;
 
     /*
-     * Factory for creating channel instances.  Not available until
+     * Factory for creating channel instances. Not available until
      * initializeChannelFactory is called.
      */
-    private volatile DataChannelFactory channelFactory;
+    private volatile DataChannelFactory            channelFactory;
 
     /**
      * Used for testing, to create log files with
      * VLSN.UNINITIALIZED_VLSN_SEQUENCE as the value for the dtvlsn
      */
-    private static boolean simulatePreDTVLSNMaster = false;
+    private static boolean                         simulatePreDTVLSNMaster = false;
 
     /*
      * Used to verify VLSN invariants as they are written to the log on the
      * master
      */
-    private long prevLoggedVLSN = VLSN.NULL_VLSN_SEQUENCE;
-    private long prevLoggedDTVLSN = VLSN.NULL_VLSN_SEQUENCE;
+    private long                                   prevLoggedVLSN          = VLSN.NULL_VLSN_SEQUENCE;
+    private long                                   prevLoggedDTVLSN        = VLSN.NULL_VLSN_SEQUENCE;
 
     /*
-     * The filter transmitted to a Feeder so that records can be filtered at
-     * the source
+     * The filter transmitted to a Feeder so that records can be filtered at the
+     * source
      */
-    private final FeederFilter feederFilter;
+    private final FeederFilter                     feederFilter;
 
-    public RepImpl(File envHome,
-                   EnvironmentConfig envConfig,
-                   EnvironmentImpl sharedCacheEnv,
+    public RepImpl(File envHome, EnvironmentConfig envConfig, EnvironmentImpl sharedCacheEnv,
                    RepConfigProxy repConfigProxy)
-        throws EnvironmentNotFoundException, EnvironmentLockedException {
+            throws EnvironmentNotFoundException, EnvironmentLockedException {
 
         super(envHome, envConfig, sharedCacheEnv, repConfigProxy);
 
-        allowConvert =
-            RepInternal.getAllowConvert(((ReplicationConfig) repConfigProxy));
+        allowConvert = RepInternal.getAllowConvert(((ReplicationConfig) repConfigProxy));
 
         repConfigObservers = new ArrayList<RepEnvConfigObserver>();
         addRepConfigObserver(this);
 
-        repNetConfig =
-                ((ReplicationConfig)repConfigProxy).getRepNetConfig();
+        repNetConfig = ((ReplicationConfig) repConfigProxy).getRepNetConfig();
         nodeState = new NodeState(nameIdPair, this);
 
-        if (isArbiter || isSubscriber || isNetworkBackup ) {
+        if (isArbiter || isSubscriber || isNetworkBackup) {
             nodeStats = null;
             syncupProgressListener = null;
             logRewriteListener = null;
@@ -339,59 +332,41 @@ public class RepImpl
         feederTxns = new FeederTxns(this);
         replay = new Replay(this, nameIdPair);
 
-        nodeStats = new StatGroup(RepImplStatDefinition.GROUP_NAME,
-                                  RepImplStatDefinition.GROUP_DESC);
-        hardRecoveryStat = new BooleanStat(nodeStats,
-                                           RepImplStatDefinition.HARD_RECOVERY);
-        hardRecoveryInfoStat =
-            new StringStat(nodeStats, RepImplStatDefinition.HARD_RECOVERY_INFO,
-                           "This node did not incur a hard recovery.");
+        nodeStats = new StatGroup(RepImplStatDefinition.GROUP_NAME, RepImplStatDefinition.GROUP_DESC);
+        hardRecoveryStat = new BooleanStat(nodeStats, RepImplStatDefinition.HARD_RECOVERY);
+        hardRecoveryInfoStat = new StringStat(nodeStats, RepImplStatDefinition.HARD_RECOVERY_INFO,
+                "This node did not incur a hard recovery.");
 
-        syncupProgressListener =
-            ((ReplicationConfig)repConfigProxy).getSyncupProgressListener();
-        logRewriteListener =
-            ((ReplicationConfig)repConfigProxy).getLogFileRewriteListener();
+        syncupProgressListener = ((ReplicationConfig) repConfigProxy).getSyncupProgressListener();
+        logRewriteListener = ((ReplicationConfig) repConfigProxy).getLogFileRewriteListener();
 
-        feederFilter =
-            ((ReplicationConfig)repConfigProxy).getFeederFilter();
+        feederFilter = ((ReplicationConfig) repConfigProxy).getFeederFilter();
     }
 
     /**
-     * Called by the EnvironmentImpl constructor.  Some rep params,
-     * preserveVLSN for example, are accessed by the EnvironmentImpl via
-     * methods (getPreserveVLSN for example), so they need to be initialized
-     * early.
+     * Called by the EnvironmentImpl constructor. Some rep params, preserveVLSN
+     * for example, are accessed by the EnvironmentImpl via methods
+     * (getPreserveVLSN for example), so they need to be initialized early.
      */
     @Override
-    protected void initConfigParams(EnvironmentConfig envConfig,
-                                    RepConfigProxy repConfigProxy) {
+    protected void initConfigParams(EnvironmentConfig envConfig, RepConfigProxy repConfigProxy) {
 
         /* Init standalone config params first. */
         super.initConfigParams(envConfig, repConfigProxy);
 
         /* Init rep config params. */
-        replicaAckTimeout =
-            configManager.getDuration(RepParams.REPLICA_ACK_TIMEOUT);
-        insufficientReplicasTimeout =
-            configManager.getDuration(RepParams.INSUFFICIENT_REPLICAS_TIMEOUT);
-        replayTxnTimeout =
-            configManager.getDuration(RepParams.REPLAY_TXN_LOCK_TIMEOUT);
-        defaultConsistencyPolicy = RepUtils.getReplicaConsistencyPolicy
-            (configManager.get(RepParams.CONSISTENCY_POLICY));
-        preserveVLSN =
-            configManager.getBoolean(RepParams.PRESERVE_RECORD_VERSION);
-        cacheVLSN =
-            configManager.getBoolean(RepParams.CACHE_RECORD_VERSION);
-        allowArbiterAck =
-            configManager.getBoolean(RepParams.ALLOW_ARBITER_ACK);
-        isArbiter =
-            configManager.getBoolean(RepParams.ARBITER_USE);
-        isSubscriber =
-            configManager.getBoolean(RepParams.SUBSCRIBER_USE);
-        isNetworkBackup =
-            configManager.getBoolean(RepParams.NETWORKBACKUP_USE);
-        arbiterAckTimeout =
-            configManager.getDuration(RepParams.ARBITER_ACK_TIMEOUT);
+        replicaAckTimeout = configManager.getDuration(RepParams.REPLICA_ACK_TIMEOUT);
+        insufficientReplicasTimeout = configManager.getDuration(RepParams.INSUFFICIENT_REPLICAS_TIMEOUT);
+        replayTxnTimeout = configManager.getDuration(RepParams.REPLAY_TXN_LOCK_TIMEOUT);
+        defaultConsistencyPolicy = RepUtils
+                .getReplicaConsistencyPolicy(configManager.get(RepParams.CONSISTENCY_POLICY));
+        preserveVLSN = configManager.getBoolean(RepParams.PRESERVE_RECORD_VERSION);
+        cacheVLSN = configManager.getBoolean(RepParams.CACHE_RECORD_VERSION);
+        allowArbiterAck = configManager.getBoolean(RepParams.ALLOW_ARBITER_ACK);
+        isArbiter = configManager.getBoolean(RepParams.ARBITER_USE);
+        isSubscriber = configManager.getBoolean(RepParams.SUBSCRIBER_USE);
+        isNetworkBackup = configManager.getBoolean(RepParams.NETWORKBACKUP_USE);
+        arbiterAckTimeout = configManager.getDuration(RepParams.ARBITER_ACK_TIMEOUT);
     }
 
     @Override
@@ -421,9 +396,7 @@ public class RepImpl
      * @see super#initConfigManager
      */
     @Override
-    protected DbConfigManager
-        initConfigManager(EnvironmentConfig envConfig,
-                          RepConfigProxy repConfigProxy) {
+    protected DbConfigManager initConfigManager(EnvironmentConfig envConfig, RepConfigProxy repConfigProxy) {
         return new RepConfigManager(envConfig, repConfigProxy);
     }
 
@@ -450,9 +423,7 @@ public class RepImpl
 
     /* Make an ReplicatedEnvironment handle for this RepImpl. */
     public ReplicatedEnvironment makeEnvironment() {
-        return new ReplicatedEnvironment(getEnvironmentHome(),
-                                         cloneRepConfig(),
-                                         cloneConfig());
+        return new ReplicatedEnvironment(getEnvironmentHome(), cloneRepConfig(), cloneConfig());
     }
 
     public ReplicationMutableConfig cloneRepMutableConfig() {
@@ -460,8 +431,7 @@ public class RepImpl
         return repConfigManager.makeReplicationConfig();
     }
 
-    public void setRepMutableConfig(ReplicationMutableConfig config)
-        throws DatabaseException {
+    public void setRepMutableConfig(ReplicationMutableConfig config) throws DatabaseException {
 
         /* Clone the current config. */
         RepConfigManager repConfigManager = (RepConfigManager) configManager;
@@ -469,18 +439,15 @@ public class RepImpl
 
         /* Copy in the mutable props. */
         config.copyMutablePropsTo(newConfig);
-        repConfigManager = new RepConfigManager
-            (configManager.getEnvironmentConfig(), newConfig);
+        repConfigManager = new RepConfigManager(configManager.getEnvironmentConfig(), newConfig);
 
         /*
-         * Update the current config and notify observers.  The config manager
-         * is replaced with a new instance that uses the new configuration.
-         * This avoids synchronization issues: other threads that have a
-         * reference to the old configuration object are not impacted.
-         *
-         * Notify listeners in reverse order of registration so that the
-         * environment listener is notified last and can start daemon threads
-         * after they are configured.
+         * Update the current config and notify observers. The config manager is
+         * replaced with a new instance that uses the new configuration. This
+         * avoids synchronization issues: other threads that have a reference to
+         * the old configuration object are not impacted. Notify listeners in
+         * reverse order of registration so that the environment listener is
+         * notified last and can start daemon threads after they are configured.
          */
         for (int i = repConfigObservers.size() - 1; i >= 0; i -= 1) {
             RepEnvConfigObserver o = repConfigObservers.get(i);
@@ -489,12 +456,10 @@ public class RepImpl
     }
 
     @Override
-    public void repEnvConfigUpdate(RepConfigManager configMgr,
-                                   ReplicationMutableConfig newConfig)
-        throws DatabaseException {
+    public void repEnvConfigUpdate(RepConfigManager configMgr, ReplicationMutableConfig newConfig)
+            throws DatabaseException {
 
-        allowArbiterAck =
-            configMgr.getBoolean(RepParams.ALLOW_ARBITER_ACK);
+        allowArbiterAck = configMgr.getBoolean(RepParams.ALLOW_ARBITER_ACK);
 
         if (repNode == null) {
             return;
@@ -502,8 +467,7 @@ public class RepImpl
 
         repNode.getArbiter().processConfigChange(newConfig);
 
-        repNode.getElectionQuorum().setElectableGroupSizeOverride
-            (newConfig.getElectableGroupSizeOverride());
+        repNode.getElectionQuorum().setElectableGroupSizeOverride(newConfig.getElectableGroupSizeOverride());
 
         /* Account for mutation of deprecated HA LogFlusher params. */
         getLogFlusher().configFlushTask(configMgr);
@@ -518,37 +482,23 @@ public class RepImpl
     /**
      * The VLSNIndex must be created, merged and flushed before the recovery
      * checkpoint. This method should be called even if there is no recovery
-     * checkpoint, because it sets up needed data structures.
-     *
-     * On the face of it, it seems that one could flush the VLSNIndex cache
-     * after the recovery checkpoint, before the Replicator constructor returns
-     * and before any user level HA operations can start. That's not sufficient
-     * because the recovery checkpoint is shortening the recovery interval for
-     * future recoveries, and any information that has been garnered must be
-     * persisted. Here's an example of what might happen after a series of
-     * recoveries if we fail to flush VLSNIndex as part of the recovery
-     * checkpoint:
-     *
-     * Environment recovers for first time, brand new environment
-     *    recovery did not find any VLSNs in log, because log is brand new
-     *    recovery logs ckpt 1start
-     *    recovery logs ckpt 1 end
-     *
-     *    VLSN 1 logged
-     *    VLSN 2 logged
-     *    VLSN 3 logged
-     *
-     *  crash .... Environment recovers
-     *  recovery crawls log from ckpt 1 start onward, finds VLSNs 1-3
-     *  recovery logs ckpt 2 start
-     *  recovery logs ckpt 2 end
-     *  VLSN index instantiated, VLSNs 1-3 added in but not written too disk
-     *
-     *  crash ... Environment recovers
-     *  recovery crawls log from ckpt start 2 start onward, finds no VLSNs.
-     *
-     * Instead, the flushed VLSN has to be logged before the checkpoint end
-     * record that is used for the next recovery.
+     * checkpoint, because it sets up needed data structures. On the face of it,
+     * it seems that one could flush the VLSNIndex cache after the recovery
+     * checkpoint, before the Replicator constructor returns and before any user
+     * level HA operations can start. That's not sufficient because the recovery
+     * checkpoint is shortening the recovery interval for future recoveries, and
+     * any information that has been garnered must be persisted. Here's an
+     * example of what might happen after a series of recoveries if we fail to
+     * flush VLSNIndex as part of the recovery checkpoint: Environment recovers
+     * for first time, brand new environment recovery did not find any VLSNs in
+     * log, because log is brand new recovery logs ckpt 1start recovery logs
+     * ckpt 1 end VLSN 1 logged VLSN 2 logged VLSN 3 logged crash ....
+     * Environment recovers recovery crawls log from ckpt 1 start onward, finds
+     * VLSNs 1-3 recovery logs ckpt 2 start recovery logs ckpt 2 end VLSN index
+     * instantiated, VLSNs 1-3 added in but not written too disk crash ...
+     * Environment recovers recovery crawls log from ckpt start 2 start onward,
+     * finds no VLSNs. Instead, the flushed VLSN has to be logged before the
+     * checkpoint end record that is used for the next recovery.
      */
     @Override
     public void preRecoveryCheckpointInit(RecoveryInfo recoveryInfo) {
@@ -561,12 +511,10 @@ public class RepImpl
          * Our local nameIdPair field isn't set yet because we haven't finished
          * our initialization, so get it from the config manager.
          */
-        NameIdPair useNameIdPair =
-            new NameIdPair(configManager.get(NODE_NAME));
+        NameIdPair useNameIdPair = new NameIdPair(configManager.get(NODE_NAME));
 
-        vlsnIndex = new VLSNIndex(this, DbType.VLSN_MAP.getInternalName(),
-                                  useNameIdPair, stride, maxMappings, maxDist,
-                                  recoveryInfo);
+        vlsnIndex = new VLSNIndex(this, DbType.VLSN_MAP.getInternalName(), useNameIdPair, stride, maxMappings, maxDist,
+                recoveryInfo);
         replay.preRecoveryCheckpointInit(recoveryInfo);
     }
 
@@ -580,8 +528,8 @@ public class RepImpl
     }
 
     /**
-     * Returns the state change event that transitioned the
-     * ReplicatedEnviroment to its current state.
+     * Returns the state change event that transitioned the ReplicatedEnviroment
+     * to its current state.
      */
     public StateChangeEvent getStateChangeEvent() {
         return nodeState.getStateChangeEvent();
@@ -592,14 +540,13 @@ public class RepImpl
     }
 
     /**
-     * Wait for this node to join a replication group and return whether it is
-     * a MASTER or REPLICA. Note that any method that creates or clears the
+     * Wait for this node to join a replication group and return whether it is a
+     * MASTER or REPLICA. Note that any method that creates or clears the
      * repNode field must be synchronized.
      */
-    public synchronized ReplicatedEnvironment.State
-        joinGroup(ReplicaConsistencyPolicy consistency,
-                  QuorumPolicy initialElectionPolicy)
-        throws ReplicaConsistencyException, DatabaseException {
+    public synchronized ReplicatedEnvironment.State joinGroup(ReplicaConsistencyPolicy consistency,
+                                                              QuorumPolicy initialElectionPolicy)
+            throws ReplicaConsistencyException, DatabaseException {
 
         startupTracker.start(Phase.TOTAL_JOIN_GROUP);
         try {
@@ -609,18 +556,19 @@ public class RepImpl
 
             return repNode.joinGroup(consistency, initialElectionPolicy);
         } catch (IOException ioe) {
-            throw EnvironmentFailureException.unexpectedException
-                (this, "Problem attempting to join on " + getSocket(), ioe);
+            throw EnvironmentFailureException.unexpectedException(this, "Problem attempting to join on " + getSocket(),
+                    ioe);
         } finally {
             startupTracker.stop(Phase.TOTAL_JOIN_GROUP);
         }
     }
 
     /**
-     * Initialize the DataChannelFactory in our configuration for use.
-     * This is public to allow access by the ReplicatedEnvironment constructor.
-     * @throws IllegalArgumentException if the ReplicationNetworkConfig
-     * is invalid.
+     * Initialize the DataChannelFactory in our configuration for use. This is
+     * public to allow access by the ReplicatedEnvironment constructor.
+     * 
+     * @throws IllegalArgumentException if the ReplicationNetworkConfig is
+     *             invalid.
      */
     public void initializeChannelFactory() {
         if (channelFactory != null) {
@@ -629,9 +577,7 @@ public class RepImpl
 
         synchronized (this) {
             if (channelFactory == null) {
-                channelFactory =
-                    DataChannelFactoryBuilder.construct(
-                        repNetConfig,
+                channelFactory = DataChannelFactoryBuilder.construct(repNetConfig,
                         DataChannelFactoryBuilder.makeLoggerFactory(this));
             }
         }
@@ -639,30 +585,24 @@ public class RepImpl
 
     @Override
     protected Environment createInternalEnvironment() {
-        return new InternalReplicatedEnvironment
-            (getEnvironmentHome(), cloneRepConfig(), cloneConfig(), this);
+        return new InternalReplicatedEnvironment(getEnvironmentHome(), cloneRepConfig(), cloneConfig(), this);
     }
 
     /**
-     * @see EnvironmentImpl#setupClose
-     * Release all replication resources that can be released before the
-     * checkpoint. Note that any method that creates or clears the repNode
-     * field must be called from a synchronized caller.
-     *
-     * Note that the vlsnIndex is closed as a callback, from
-     * postCheckpointPreEnvClose()
+     * @see EnvironmentImpl#setupClose Release all replication resources that
+     *      can be released before the checkpoint. Note that any method that
+     *      creates or clears the repNode field must be called from a
+     *      synchronized caller. Note that the vlsnIndex is closed as a
+     *      callback, from postCheckpointPreEnvClose()
      * @throws DatabaseException
-     *
      */
     @Override
-    protected synchronized void setupClose(PrintWriter errors)
-        throws DatabaseException {
+    protected synchronized void setupClose(PrintWriter errors) throws DatabaseException {
 
         if (groupDbImpl != null) {
             getDbTree().releaseDb(groupDbImpl);
             groupDbImpl = null;
-            LoggerUtils.fine
-                (envLogger, this, "Group member database shutdown");
+            LoggerUtils.fine(envLogger, this, "Group member database shutdown");
         }
 
         try {
@@ -677,13 +617,12 @@ public class RepImpl
 
     /**
      * Close any resources that need to be closed after the closing checkpoint.
-     * Note that since Replay.close closes open transactions, it must be
-     * invoked after the checkpoint has been completed, so that the checkpoint
-     * operation can correctly account for the open transactions.
+     * Note that since Replay.close closes open transactions, it must be invoked
+     * after the checkpoint has been completed, so that the checkpoint operation
+     * can correctly account for the open transactions.
      */
     @Override
-    protected synchronized void postCheckpointClose(boolean checkpointed)
-        throws DatabaseException {
+    protected synchronized void postCheckpointClose(boolean checkpointed) throws DatabaseException {
 
         if (replay != null) {
             replay.close();
@@ -694,12 +633,11 @@ public class RepImpl
     }
 
     /**
-     * @see EnvironmentImpl#setupClose
-     *
-     * Note: this conversion process will iterate over all user created
-     * databases in the environment, which could be potentially be a costly
-     * affair. However, let's opt for simplicity and defer any optimizations
-     * until we see whether this is an important use case.
+     * @see EnvironmentImpl#setupClose Note: this conversion process will
+     *      iterate over all user created databases in the environment, which
+     *      could be potentially be a costly affair. However, let's opt for
+     *      simplicity and defer any optimizations until we see whether this is
+     *      an important use case.
      */
     @Override
     protected void postRecoveryConversion() {
@@ -727,8 +665,7 @@ public class RepImpl
                 DatabaseImpl db = null;
                 try {
                     db = dbMapTree.getDb(id);
-                    if (db != null &&
-                        !DbTree.isReservedDbName(idNameMap.get(id))) {
+                    if (db != null && !DbTree.isReservedDbName(idNameMap.get(id))) {
 
                         db.setIsReplicatedBit();
                         db.setDirty();
@@ -773,15 +710,14 @@ public class RepImpl
 
     /**
      * Used by error handling to forcibly close an environment, and by tests to
-     * close an environment to simulate a crash.  Database handles do not have
-     * to be closed before calling this method.  A checkpoint is not performed.
-     * The various thread pools will be shutdown abruptly.
+     * close an environment to simulate a crash. Database handles do not have to
+     * be closed before calling this method. A checkpoint is not performed. The
+     * various thread pools will be shutdown abruptly.
      *
      * @throws DatabaseException
      */
     @Override
-    public void abnormalClose()
-        throws DatabaseException {
+    public void abnormalClose() throws DatabaseException {
 
         /*
          * Shutdown the daemons, and the checkpointer in particular, before
@@ -821,6 +757,7 @@ public class RepImpl
     /**
      * A replicated log entry has been written on this node. Update the
      * VLSN->LSN mapping. Called outside the log write latch.
+     * 
      * @throws DatabaseException
      */
     @Override
@@ -832,57 +769,46 @@ public class RepImpl
          * Although the very first replicated entry of the system is never a
          * syncable log entry type, the first GlobalCBVLSN of the system must
          * start at 1. If we only track the first syncable entry, the
-         * GlobalCBVLSN will start a a value > 1, and replicas that are
-         * starting up from VLSN 1 will be caught in spurious network restores
-         * because VLSN 1 < the GlobalCBVLSN. Therefore treat the VLSN 1 as a
-         * syncable entry for the sake of the GlobalCBVLSN.
+         * GlobalCBVLSN will start a a value > 1, and replicas that are starting
+         * up from VLSN 1 will be caught in spurious network restores because
+         * VLSN 1 < the GlobalCBVLSN. Therefore treat the VLSN 1 as a syncable
+         * entry for the sake of the GlobalCBVLSN.
          */
-        if (LogEntryType.isSyncPoint(header.getType()) ||
-            VLSN.FIRST_VLSN.equals(vlsn)) {
+        if (LogEntryType.isSyncPoint(header.getType()) || VLSN.FIRST_VLSN.equals(vlsn)) {
             repNode.trackSyncableVLSN(vlsn, logItem.lsn);
         }
         vlsnIndex.put(logItem);
     }
 
     /**
-     * Generate the next VLSN and update the DTVLSN value in the item. Note
-     * that this method is only invoked when the node is in the Master state,
-     * since the master assigns new VLSNs and DTVLSNs, and the replicas simply
-     * preserve them.
+     * Generate the next VLSN and update the DTVLSN value in the item. Note that
+     * this method is only invoked when the node is in the Master state, since
+     * the master assigns new VLSNs and DTVLSNs, and the replicas simply
+     * preserve them. The DTVLSN value must be calculated under the same latch
+     * as the updating of the VLSN to ensure that the following invariants are
+     * maintained: lsn1 > lsn2 ==> VLSN(lsn1) > VLSN(lsn2) vlsn2 > vlsn1 ==>
+     * DTVLSN(vlsn2) >= DTVLSN(vlsn1) where vlsn2 and vlsn1 are transaction
+     * commit or abort records. Replicas, when replaying their stream, verify
+     * that this invariant is maintained. Commit/Abort records for Replication
+     * groups that have a single electable and durable node have their dtvlsn
+     * written as the associated VLSN, that is, DTVLSN(vlsn) == vlsn. For all
+     * other RG configurations, DTVLSN(vlsn) < vlsn. Commit/Abort Log records
+     * that are created by replaying an HA stream from a pre DTVLSN feeder, will
+     * have their dtvlsns set to VLSN.UNINITIALIZED_VLSN_SEQUENCE during replica
+     * replay. They do not follow this code path.
      *
-     * The DTVLSN value must be calculated under the same latch as the updating
-     * of the VLSN to ensure that the following invariants are maintained:
-     *
-     * lsn1 > lsn2 ==> VLSN(lsn1) > VLSN(lsn2)
-     * vlsn2 > vlsn1 ==> DTVLSN(vlsn2) >= DTVLSN(vlsn1)
-     *
-     * where vlsn2 and vlsn1 are transaction commit or abort records.
-     *
-     * Replicas, when replaying their stream, verify that this invariant is
-     * maintained.
-     *
-     * Commit/Abort records for Replication groups that have a single electable
-     * and durable node have their dtvlsn written as the associated VLSN, that
-     * is, DTVLSN(vlsn) == vlsn. For all other RG configurations, DTVLSN(vlsn)
-     * < vlsn.
-     *
-     * Commit/Abort Log records that are created by replaying an HA stream from
-     * a pre DTVLSN feeder, will have their dtvlsns set to
-     * VLSN.UNINITIALIZED_VLSN_SEQUENCE during replica replay. They do not
-     * follow this code path.
-     *
-     * @param entry the log entry with which the VLSN will be associated. If
-     * the log entry represents a commit or abort entry, its DTVLSN is modified
-     * so that it's correct when it's serialized out.
+     * @param entry the log entry with which the VLSN will be associated. If the
+     *            log entry represents a commit or abort entry, its DTVLSN is
+     *            modified so that it's correct when it's serialized out.
      */
     @Override
     public VLSN assignVLSNs(LogEntry entry) {
         final VLSN vlsn = vlsnIndex.bump();
 
         final byte itemType = entry.getLogType().getTypeNum();
-        if (itemType != LogEntryType.LOG_TXN_COMMIT.getTypeNum() &&
-            itemType !=  LogEntryType.LOG_TXN_ABORT.getTypeNum()) {
-            return  vlsn;
+        if (itemType != LogEntryType.LOG_TXN_COMMIT.getTypeNum()
+                && itemType != LogEntryType.LOG_TXN_ABORT.getTypeNum()) {
+            return vlsn;
         }
 
         /*
@@ -909,8 +835,7 @@ public class RepImpl
             dtvlsn = getRepNode().updateDTVLSN(vlsn.getSequence());
         }
 
-        final VersionedWriteTxnEnd txnEnd =
-            (VersionedWriteTxnEnd)entry.getMainItem();
+        final VersionedWriteTxnEnd txnEnd = (VersionedWriteTxnEnd) entry.getMainItem();
 
         /*
          * As a cheap sanity check, commits/aborts on the master are created
@@ -918,8 +843,7 @@ public class RepImpl
          */
         final long checkDTVLSN = txnEnd.getDTVLSN();
         if (checkDTVLSN != VLSN.NULL_VLSN_SEQUENCE) {
-            throw new IllegalStateException("NULL DTVLSN expected at VLSN:" +
-                                            vlsn + " not " + checkDTVLSN);
+            throw new IllegalStateException("NULL DTVLSN expected at VLSN:" + vlsn + " not " + checkDTVLSN);
         }
 
         txnEnd.setDTVLSN(dtvlsn);
@@ -927,10 +851,8 @@ public class RepImpl
         /* Verify invariant */
         if (prevLoggedVLSN > vlsn.getSequence()) {
             if (dtvlsn < prevLoggedDTVLSN) {
-                String msg =
-                    "DTVLSNs must be in ascending order in the stream. " +
-                    " prev DTVLSN:" + prevLoggedDTVLSN +
-                    " next DTVLSN:" + dtvlsn + " at VLSN: " + vlsn;
+                String msg = "DTVLSNs must be in ascending order in the stream. " + " prev DTVLSN:" + prevLoggedDTVLSN
+                        + " next DTVLSN:" + dtvlsn + " at VLSN: " + vlsn;
                 throw EnvironmentFailureException.unexpectedState(this, msg);
             }
         }
@@ -941,20 +863,18 @@ public class RepImpl
     }
 
     /**
-     * Flush any information that needs to go out at checkpoint.  Specifically,
+     * Flush any information that needs to go out at checkpoint. Specifically,
      * write any in-memory VLSN->LSN mappings to the VLSNIndex database so we
-     * are guaranteed that the VLSNIndex database will recover properly.
-     * This must be committed with noSync because
-     *  - the ensuing checkpoint end record will be logged with an fsync and
-     *    will effectively force this out
-     *  - it's important to minmize lock contention on the vlsn index and
-     *    any fsync done during a checkpoint will be expensive, as there may
-     *    be quite a lot to push to disk. We don't want to incur that cost
-     *    while holding locks on the vlsn index. [#20702]
+     * are guaranteed that the VLSNIndex database will recover properly. This
+     * must be committed with noSync because - the ensuing checkpoint end record
+     * will be logged with an fsync and will effectively force this out - it's
+     * important to minmize lock contention on the vlsn index and any fsync done
+     * during a checkpoint will be expensive, as there may be quite a lot to
+     * push to disk. We don't want to incur that cost while holding locks on the
+     * vlsn index. [#20702]
      */
     @Override
-    public void preCheckpointEndFlush()
-        throws DatabaseException {
+    public void preCheckpointEndFlush() throws DatabaseException {
 
         if (vlsnIndex != null) {
             vlsnIndex.flushToDatabase(Durability.COMMIT_NO_SYNC);
@@ -982,24 +902,19 @@ public class RepImpl
         nodeState.setChangeListener(listener);
 
         /*
-         * Call back so that it's aware of the last state change event and
-         * the application can initialize itself correctly as a master or
-         * replica.
+         * Call back so that it's aware of the last state change event and the
+         * application can initialize itself correctly as a master or replica.
          */
-        final StateChangeEvent stateChangeEvent =
-            nodeState.getStateChangeEvent();
+        final StateChangeEvent stateChangeEvent = nodeState.getStateChangeEvent();
         try {
             /* Invoke application code and handle any app exceptions. */
             listener.stateChange(stateChangeEvent);
         } catch (Exception e) {
             /* Revert the change. */
             nodeState.setChangeListener(prevListener);
-            LoggerUtils.severe
-                (envLogger, this,
-                 "State Change listener exception: " + e.getMessage());
+            LoggerUtils.severe(envLogger, this, "State Change listener exception: " + e.getMessage());
             /* An application error. */
-            throw new EnvironmentFailureException
-                (this, EnvironmentFailureReason.LISTENER_EXCEPTION, e);
+            throw new EnvironmentFailureException(this, EnvironmentFailureReason.LISTENER_EXCEPTION, e);
         }
     }
 
@@ -1020,8 +935,7 @@ public class RepImpl
     }
 
     @Override
-    public Collection<StatGroup> getRepStatGroups(StatsConfig config,
-                                                  Integer statKey1) {
+    public Collection<StatGroup> getRepStatGroups(StatsConfig config, Integer statKey1) {
         ReplicatedEnvironmentStats res = getStats(config, statKey1);
         return (res == null) ? null : res.getStatGroups();
     }
@@ -1047,10 +961,8 @@ public class RepImpl
         return repNode.getStats(config);
     }
 
-    public ReplicatedEnvironmentStats getStats(
-            StatsConfig config,
-            Integer contextKey) {
-        return ((RepStatManager)statManager).getRepStats(config, contextKey);
+    public ReplicatedEnvironmentStats getStats(StatsConfig config, Integer contextKey) {
+        return ((RepStatManager) statManager).getRepStats(config, contextKey);
     }
 
     public Replay getReplay() {
@@ -1058,14 +970,13 @@ public class RepImpl
     }
 
     /**
-     * Ensures that the environment is currently a Master before proceeding
-     * with an operation that requires it to be the master.
+     * Ensures that the environment is currently a Master before proceeding with
+     * an operation that requires it to be the master.
      *
      * @throws UnknownMasterException if the node is disconnected
      * @throws ReplicaWriteException if the node is currently a replica
      */
-    public void checkIfMaster(Locker locker)
-        throws UnknownMasterException, ReplicaWriteException {
+    public void checkIfMaster(Locker locker) throws UnknownMasterException, ReplicaWriteException {
 
         final StateChangeEvent event = nodeState.getStateChangeEvent();
 
@@ -1083,8 +994,7 @@ public class RepImpl
                 throw new UnknownMasterException(locker, event);
 
             default:
-                throw EnvironmentFailureException.unexpectedState
-                    ("Unexpected state: " + nodeState.getRepEnvState());
+                throw EnvironmentFailureException.unexpectedState("Unexpected state: " + nodeState.getRepEnvState());
         }
     }
 
@@ -1098,57 +1008,45 @@ public class RepImpl
     /**
      * Create an appropriate type of ThreadLocker. Specifically, it creates an
      * MasterThreadLocker if the node is currently a Master, and a
-     * ReplicaThreadLocker otherwise, that is, if the node is a Replica, or
-     * it's currently in a DETACHED state.
+     * ReplicaThreadLocker otherwise, that is, if the node is a Replica, or it's
+     * currently in a DETACHED state.
      *
      * @return an instance of MasterThreadLocker or ReplicaThreadLocker
      */
     @Override
     public ThreadLocker createRepThreadLocker() {
-        return (isMaster() ?
-                new MasterThreadLocker(this) :
-                new ReplicaThreadLocker(this));
+        return (isMaster() ? new MasterThreadLocker(this) : new ReplicaThreadLocker(this));
     }
 
     /**
-     * Create an appropriate type of Replicated transaction. Specifically,
-     * it creates a MasterTxn, if the node is currently a Master, a ReadonlyTxn
+     * Create an appropriate type of Replicated transaction. Specifically, it
+     * creates a MasterTxn, if the node is currently a Master, a ReadonlyTxn
      * otherwise, that is, if the node is a Replica, or it's currently in a
-     * DETACHED state.
+     * DETACHED state. Note that a ReplicaTxn, used for transaction replay on a
+     * Replica is not created on this path. It's created explicitly in the
+     * Replay loop by a Replica.
      *
-     * Note that a ReplicaTxn, used for transaction replay on a Replica is not
-     * created on this path. It's created explicitly in the Replay loop by a
-     * Replica.
-     *
-     * @param config  the transaction configuration
-     *
+     * @param config the transaction configuration
      * @return an instance of MasterTxn or ReadonlyTxn
      * @throws DatabaseException
      */
     @Override
-    public Txn createRepUserTxn(TransactionConfig config)
-        throws DatabaseException {
+    public Txn createRepUserTxn(TransactionConfig config) throws DatabaseException {
 
-        return (isMaster() &&
-            !config.getReadOnly() &&
-            !config.getLocalWrite()) ?
-            MasterTxn.create(this, config, nameIdPair) :
-            new ReadonlyTxn(this, config);
+        return (isMaster() && !config.getReadOnly() && !config.getLocalWrite())
+                ? MasterTxn.create(this, config, nameIdPair) : new ReadonlyTxn(this, config);
     }
 
     /**
-     * Ensure that a  sufficient number of feeders are available before
+     * Ensure that a sufficient number of feeders are available before
      * proceeding with a master transaction begin.
      *
      * @param txn the master transaction being initiated.
-     *
      * @throws InterruptedException
      * @throws DatabaseException if there were insufficient Replicas after the
-     * timeout period.
+     *             timeout period.
      */
-    public void txnBeginHook(MasterTxn txn)
-        throws InterruptedException,
-               DatabaseException {
+    public void txnBeginHook(MasterTxn txn) throws InterruptedException, DatabaseException {
 
         checkIfInvalid();
         final long txnTimeout = txn.getTxnTimeout();
@@ -1167,8 +1065,7 @@ public class RepImpl
      *
      * @see #updateCBVLSN(LocalCBVLSNUpdater)
      */
-    public void blockTxnCompletion(CountDownLatch blocker)
-        throws InterruptedException {
+    public void blockTxnCompletion(CountDownLatch blocker) throws InterruptedException {
 
         ReentrantReadWriteLock.WriteLock lock = blockLatchLock.writeLock();
         lock.lockInterruptibly();
@@ -1185,9 +1082,9 @@ public class RepImpl
      * resulting GroupDB update may get blocked behind the final phase of a
      * master transfer.
      * <p>
-     * We skip the update if we're at the point of blocking new transactions
-     * for a master transfer.  And we use a read/write lock in order to be able
-     * to examine that state safely.
+     * We skip the update if we're at the point of blocking new transactions for
+     * a master transfer. And we use a read/write lock in order to be able to
+     * examine that state safely.
      */
     public void updateCBVLSN(LocalCBVLSNUpdater updater) {
         ReentrantReadWriteLock.ReadLock lock = blockLatchLock.readLock();
@@ -1212,68 +1109,50 @@ public class RepImpl
 
     /**
      * This hook is used primarily to perform the final checks before allowing
-     * the commit operation to proceed. The following checks are performed
-     * here:
-     *
-     * 1) Check for master
-     * 2) Check for sufficient Feeder connections to ensure that the commit
-     *    policy could be implemented. There is no guarantee that they will all
-     *    ack the commit request.
-     *
-     * The method also associates a latch with the transaction. The latch is
-     * used to delay the commit operation until a sufficient number of commits
-     * have been received.
-     *
-     * In addition, when mastership transfers are done, and this node is the
-     * original master, commits and aborts are blocked so as to avoid hard
-     * recovery after electing a new master, see [#18081].
+     * the commit operation to proceed. The following checks are performed here:
+     * 1) Check for master 2) Check for sufficient Feeder connections to ensure
+     * that the commit policy could be implemented. There is no guarantee that
+     * they will all ack the commit request. The method also associates a latch
+     * with the transaction. The latch is used to delay the commit operation
+     * until a sufficient number of commits have been received. In addition,
+     * when mastership transfers are done, and this node is the original master,
+     * commits and aborts are blocked so as to avoid hard recovery after
+     * electing a new master, see [#18081].
      *
      * @param txn the master transaction being committed
-     *
      * @throws InsufficientReplicasException if the feeder is not in contact
-     * with enough replicas.
+     *             with enough replicas.
      * @throws RestartRequiredException if the environment is invalid.
      * @throws UnknownMasterException if the current master is unknown.
-     * @throws ReplicaWriteException if the node transitioned to a Replica
-     * after the transaction was initiated.
+     * @throws ReplicaWriteException if the node transitioned to a Replica after
+     *             the transaction was initiated.
      */
-    public void preLogCommitHook(MasterTxn txn)
-        throws InsufficientReplicasException,
-               RestartRequiredException,
-               UnknownMasterException,
-               ReplicaWriteException,
-               EnvironmentFailureException {
+    public void preLogCommitHook(MasterTxn txn) throws InsufficientReplicasException, RestartRequiredException,
+            UnknownMasterException, ReplicaWriteException, EnvironmentFailureException {
 
         checkIfInvalid();
         checkIfMaster(txn);
         checkBlock(txn);
 
         /* Still a master, check for a sufficient number of connections */
-        int activeReplicaCount =
-            repNode.feederManager().activeAckReplicaCount();
-        ReplicaAckPolicy ackPolicy =
-            txn.getCommitDurability().getReplicaAck();
+        int activeReplicaCount = repNode.feederManager().activeAckReplicaCount();
+        ReplicaAckPolicy ackPolicy = txn.getCommitDurability().getReplicaAck();
         int requiredAckCount = txn.getRequiredAckCount();
 
         if (envLogger.isLoggable(Level.FINE)) {
-            LoggerUtils.fine(envLogger, this,
-                             "Txn " + txn.getId() + " requires: " +
-                             requiredAckCount + " active: " +
-                             activeReplicaCount +
-                             " replica acks. Commit Policy: " + ackPolicy);
+            LoggerUtils.fine(envLogger, this, "Txn " + txn.getId() + " requires: " + requiredAckCount + " active: "
+                    + activeReplicaCount + " replica acks. Commit Policy: " + ackPolicy);
         }
 
         if (requiredAckCount > activeReplicaCount) {
             /* Check for possible activation of Primary */
-            if (ackPolicy.equals(ReplicaAckPolicy.SIMPLE_MAJORITY) &&
-                repNode.getArbiter().activateArbitration()) {
+            if (ackPolicy.equals(ReplicaAckPolicy.SIMPLE_MAJORITY) && repNode.getArbiter().activateArbitration()) {
                 txn.resetRequiredAckCount();
             } else if (useArbiter(txn)) {
                 /*
-                 * Note we could change the check to allow a degraded
-                 * write from any group size. Limit is place at rep group
-                 * size of two due to the priority of requirements
-                 * and lower cost of testing.
+                 * Note we could change the check to allow a degraded write from
+                 * any group size. Limit is place at rep group size of two due
+                 * to the priority of requirements and lower cost of testing.
                  */
                 txn.setArbiterAck(true);
             } else {
@@ -1281,23 +1160,20 @@ public class RepImpl
                  * Capture the set to ensure it's consistent with the exception
                  * message.
                  */
-                final boolean includeArbiters =
-                    !ackPolicy.equals(ReplicaAckPolicy.ALL);
-                final Set<String> activeAckRepSet =
-                    repNode.feederManager().activeAckReplicas(includeArbiters);
+                final boolean includeArbiters = !ackPolicy.equals(ReplicaAckPolicy.ALL);
+                final Set<String> activeAckRepSet = repNode.feederManager().activeAckReplicas(includeArbiters);
 
                 if (requiredAckCount > activeAckRepSet.size()) {
                     /* No change in window, throw exception */
-                    InsufficientReplicasException ire =
-                    new InsufficientReplicasException
-                        (txn, ackPolicy, requiredAckCount, activeAckRepSet);
+                    InsufficientReplicasException ire = new InsufficientReplicasException(txn, ackPolicy,
+                            requiredAckCount, activeAckRepSet);
                     LoggerUtils.info(envLogger, this, ire.getMessage());
                     throw ire;
                 }
 
                 /**
-                 * A new replica became active in the window between the
-                 * first fast check and the second slower check, just continue
+                 * A new replica became active in the window between the first
+                 * fast check and the second slower check, just continue
                  */
             }
         }
@@ -1305,19 +1181,19 @@ public class RepImpl
     }
 
     /*
-     * Block transaction commits/aborts if this node is the original master
-     * and we're doing Master Transfer.
+     * Block transaction commits/aborts if this node is the original master and
+     * we're doing Master Transfer.
      */
     private void checkBlock(MasterTxn txn) {
         try {
 
             /*
-             * Lock out the setting of the block latch by Master Transfer in
-             * the interval between waiting on the latch and setting the VLSN
-             * for the commit: Master Transfer needs to get a coherent idea of
-             * the final VLSN when it sets the latch.  This lock will be
-             * released by the {@code postLogXxxHook()} functions, one of which
-             * is guaranteed to be called, unless an Environment-invalidating
+             * Lock out the setting of the block latch by Master Transfer in the
+             * interval between waiting on the latch and setting the VLSN for
+             * the commit: Master Transfer needs to get a coherent idea of the
+             * final VLSN when it sets the latch. This lock will be released by
+             * the {@code postLogXxxHook()} functions, one of which is
+             * guaranteed to be called, unless an Environment-invalidating
              * exception occurs.
              */
             if (txn.lockOnce()) {
@@ -1325,21 +1201,17 @@ public class RepImpl
             }
 
             if (blockTxnLatch.getCount() > 0) {
-                LoggerUtils.info(envLogger, this,
-                                 "Block transaction: " + txn.getId() +
-                                 " pending master transfer. Write locks = " +
-                                 txn.getWriteLockIds());
+                LoggerUtils.info(envLogger, this, "Block transaction: " + txn.getId()
+                        + " pending master transfer. Write locks = " + txn.getWriteLockIds());
             }
 
             final long txnTimeout = txn.getTxnTimeout();
             if (txnTimeout <= 0) {
                 blockTxnLatch.await();
-            } else if (! blockTxnLatch.await(txnTimeout,
-                                             TimeUnit.MILLISECONDS)) {
+            } else if (!blockTxnLatch.await(txnTimeout, TimeUnit.MILLISECONDS)) {
 
-                final String message =
-                    "Timed out waiting for master transfer. " +
-                    "Configured transaction timeout:" + txnTimeout + "ms";
+                final String message = "Timed out waiting for master transfer. " + "Configured transaction timeout:"
+                        + txnTimeout + "ms";
 
                 throw new TransactionTimeoutException(txn, message);
             }
@@ -1349,8 +1221,8 @@ public class RepImpl
             /*
              * Check again, after the block! The block may be a result of a
              * master->replica transfer, and if this node transitions from
-             * master to replica, this node will be disqualified from being
-             * able to commit transactions.
+             * master to replica, this node will be disqualified from being able
+             * to commit transactions.
              */
             checkIfMaster(txn);
 
@@ -1364,18 +1236,15 @@ public class RepImpl
      * acknowledgments required for a successful commit.
      *
      * @param txn The MasterTxn that was committed locally.
-     *
-     * @throws InterruptedException if the thread was interrupted while
-     * waiting for acknowledgments.
+     * @throws InterruptedException if the thread was interrupted while waiting
+     *             for acknowledgments.
      * @throws InsufficientAcksException if the master received an insufficient
-     * number of commit acknowledgments within the replica commit timeout
-     * period.
+     *             number of commit acknowledgments within the replica commit
+     *             timeout period.
      * @throws EnvironmentFailureException
      */
     public void postLogCommitHook(MasterTxn txn, LogItem commitItem)
-       throws InsufficientAcksException,
-              InterruptedException,
-              EnvironmentFailureException {
+            throws InsufficientAcksException, InterruptedException, EnvironmentFailureException {
         final long txnTimeout = txn.getTxnTimeout();
         int timeout = replicaAckTimeout;
 
@@ -1385,25 +1254,18 @@ public class RepImpl
         postLogCommitHookInternal(txn, commitItem, timeout);
     }
 
-
-    private void postLogCommitHookInternal(MasterTxn txn, LogItem commitItem,
-                                           int ackTimeout)
-        throws InsufficientAcksException,
-               InterruptedException,
-               EnvironmentFailureException {
+    private void postLogCommitHookInternal(MasterTxn txn, LogItem commitItem, int ackTimeout)
+            throws InsufficientAcksException, InterruptedException, EnvironmentFailureException {
         if (txn.unlockOnce()) {
             blockLatchLock.readLock().unlock();
         }
 
         if (!isValid()) {
-            final int currentRequiredAckCount = repNode.getDurabilityQuorum().
-            getCurrentRequiredAckCount(txn.getCommitDurability().
-                                       getReplicaAck());
+            final int currentRequiredAckCount = repNode.getDurabilityQuorum()
+                    .getCurrentRequiredAckCount(txn.getCommitDurability().getReplicaAck());
             if (currentRequiredAckCount > 0) {
                 /* Throw a more actionable and accurate exception than EFE */
-                final String msg =
-                    "Acks could not be obtained because the environment" +
-                    "was invalidated";
+                final String msg = "Acks could not be obtained because the environment" + "was invalidated";
                 LoggerUtils.info(envLogger, this, msg);
                 throw new InsufficientAcksException(msg);
             }
@@ -1442,16 +1304,13 @@ public class RepImpl
      * no hard recovery would happen after its election, see SR [#18081].
      *
      * @param txn The MasterTxn that was aborted locally.
-     *
-     * @throws ReplicaWriteException if the node transitioned to a Replica
-     * after the transaction was initiated.
+     * @throws ReplicaWriteException if the node transitioned to a Replica after
+     *             the transaction was initiated.
      * @throws UnknownMasterException if the current master is unknown.
      * @throws EnvironmentFailureException
      */
     public void preLogAbortHook(MasterTxn txn)
-        throws EnvironmentFailureException,
-               ReplicaWriteException,
-               UnknownMasterException {
+            throws EnvironmentFailureException, ReplicaWriteException, UnknownMasterException {
 
         checkIfInvalid();
         checkIfMaster(txn);
@@ -1459,9 +1318,9 @@ public class RepImpl
     }
 
     /**
-     * Releases the block latch lock, if held.  This hook is called in the
-     * normal course of Txn.abort(), once the abort log record has been written
-     * and the associated VLSN stored.
+     * Releases the block latch lock, if held. This hook is called in the normal
+     * course of Txn.abort(), once the abort log record has been written and the
+     * associated VLSN stored.
      */
     public void postLogAbortHook(MasterTxn txn) {
         if (txn.unlockOnce()) {
@@ -1471,12 +1330,11 @@ public class RepImpl
 
     /**
      * Removes any pending acknowledgments that were registered by the
-     * preLogCommitHook.  This hook is called only when a {@code commit()}
-     * fails and therefore must be aborted.
+     * preLogCommitHook. This hook is called only when a {@code commit()} fails
+     * and therefore must be aborted.
      */
     public void postLogCommitAbortHook(MasterTxn txn) {
-        LoggerUtils.info(envLogger, this,
-                         "post log abort hook for txn: " + txn.getId());
+        LoggerUtils.info(envLogger, this, "post log abort hook for txn: " + txn.getId());
         if (txn.unlockOnce()) {
             blockLatchLock.readLock().unlock();
         }
@@ -1487,17 +1345,15 @@ public class RepImpl
      * Create a ReplayTxn for recovery processing.
      */
     @Override
-    public Txn createReplayTxn(long txnId)
-        throws DatabaseException {
+    public Txn createReplayTxn(long txnId) throws DatabaseException {
 
-        return
-            new ReplayTxn(this, TransactionConfig.DEFAULT, txnId, envLogger);
+        return new ReplayTxn(this, TransactionConfig.DEFAULT, txnId, envLogger);
     }
 
     /**
      * Used by environment recovery to get a tracker to collect VLSN-LSN
-     * mappings that are within the recovery part of the log. These might
-     * not be reflected in the persistent mapping db.
+     * mappings that are within the recovery part of the log. These might not be
+     * reflected in the persistent mapping db.
      */
     @Override
     public VLSNRecoveryProxy getVLSNProxy() {
@@ -1524,9 +1380,9 @@ public class RepImpl
     }
 
     /**
-     * Delete from the first VLSN in the range to lastVLSN, inclusive. This
-     * will be fsynced to guarantee that the persistent vlsn index does not
-     * refer to any deleted files. [#20702]
+     * Delete from the first VLSN in the range to lastVLSN, inclusive. This will
+     * be fsynced to guarantee that the persistent vlsn index does not refer to
+     * any deleted files. [#20702]
      *
      * @param lastVLSN was cleaned by the cleaner
      * @param deleteFileNum was the file that was deleted by the cleaner.
@@ -1558,9 +1414,8 @@ public class RepImpl
 
     /**
      * The default consistency is not currently mutable in the API, but can be
-     * set for testing purposes.
-     *
-     * TODO: Make it mutable in the API, since Durability is mutable.
+     * set for testing purposes. TODO: Make it mutable in the API, since
+     * Durability is mutable.
      */
     public void setDefaultConsistencyPolicy(ReplicaConsistencyPolicy policy) {
         defaultConsistencyPolicy = policy;
@@ -1573,12 +1428,8 @@ public class RepImpl
         long fileNumber = vlsnIndex.getLTEFileNumber(vlsn);
 
         /* Start reading from the nearest file. */
-        FeederReader feederReader =
-            new FeederReader(this,
-                             vlsnIndex,
-                             DbLsn.makeLsn(fileNumber, 0),
-                             readBufferSize,
-                             nameIdPair);
+        FeederReader feederReader = new FeederReader(this, vlsnIndex, DbLsn.makeLsn(fileNumber, 0), readBufferSize,
+                nameIdPair);
 
         try {
             feederReader.initScan(vlsn);
@@ -1588,8 +1439,7 @@ public class RepImpl
              * thrown out an EnvironmentFailureException if it can't be found.
              */
             if (!feederReader.readNextEntry()) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("VLSN not found: " + vlsn);
+                throw EnvironmentFailureException.unexpectedState("VLSN not found: " + vlsn);
             }
         } catch (IOException e) {
             throw EnvironmentFailureException.unexpectedException(e);
@@ -1603,15 +1453,13 @@ public class RepImpl
      * last txn commit or abort entry.
      *
      * @return the persistent DTVLSN. The value may be
-     * VLSN.UNINITIALIZED_VLSN_SEQUENCE if the environment was newly created,
-     * that is, it has no transactions in it as yet, or if the last entry was
-     * created by a pre-DTVLSN master.
-     *
+     *         VLSN.UNINITIALIZED_VLSN_SEQUENCE if the environment was newly
+     *         created, that is, it has no transactions in it as yet, or if the
+     *         last entry was created by a pre-DTVLSN master.
      * @throws FileNotFoundException if the file containing the last txn commit
-     * or abort entry does not exist
+     *             or abort entry does not exist
      */
-    public long getLoggedDTVLSN()
-        throws FileNotFoundException {
+    public long getLoggedDTVLSN() throws FileNotFoundException {
 
         final VLSN lastTxnEnd = getLastTxnEnd();
 
@@ -1621,9 +1469,8 @@ public class RepImpl
         }
 
         final long lsn = getLsnForVLSN(lastTxnEnd,
-                                       1024 /* buffer size for txn end */);
-        final TxnEnd txnEnd =
-            (TxnEnd)getLogManager().getLogEntry(lsn).getMainItem();
+                1024 /* buffer size for txn end */);
+        final TxnEnd txnEnd = (TxnEnd) getLogManager().getLogEntry(lsn).getMainItem();
 
         long dtvlsn = txnEnd.getDTVLSN();
         if (dtvlsn != VLSN.UNINITIALIZED_VLSN_SEQUENCE) {
@@ -1631,8 +1478,7 @@ public class RepImpl
         }
 
         /* A JE version <= 7.1 log entry. */
-        LoggerUtils.logMsg(envLogger, this, Level.INFO,
-                           "Pre DTVLSN log, starting with zero dtvlsn");
+        LoggerUtils.logMsg(envLogger, this, Level.INFO, "Pre DTVLSN log, starting with zero dtvlsn");
 
         return dtvlsn;
     }
@@ -1700,9 +1546,8 @@ public class RepImpl
      * directory.
      */
     @Override
-    public void checkRulesForExistingEnv(boolean dbTreeReplicatedBit,
-                                         boolean dbTreePreserveVLSN)
-        throws UnsupportedOperationException {
+    public void checkRulesForExistingEnv(boolean dbTreeReplicatedBit, boolean dbTreePreserveVLSN)
+            throws UnsupportedOperationException {
 
         if (!dbTreeReplicatedBit) {
 
@@ -1710,18 +1555,15 @@ public class RepImpl
              * We are attempting to open an existing, non-replicated
              * environment.
              */
-            throw new UnsupportedOperationException
-                ("This environment must be converted for replication." +
-                 " using com.sleepycat.je.rep.util.DbEnableReplication.");
+            throw new UnsupportedOperationException("This environment must be converted for replication."
+                    + " using com.sleepycat.je.rep.util.DbEnableReplication.");
         }
 
         /* The preserveVLSN setting is forever immutable. */
         if (dbTreePreserveVLSN != getPreserveVLSN()) {
-            throw new IllegalArgumentException
-                (RepParams.PRESERVE_RECORD_VERSION.getName() +
-                 " parameter may not be changed." +
-                 " Previous value: " + dbTreePreserveVLSN +
-                 " New value: " + getPreserveVLSN());
+            throw new IllegalArgumentException(
+                    RepParams.PRESERVE_RECORD_VERSION.getName() + " parameter may not be changed." + " Previous value: "
+                            + dbTreePreserveVLSN + " New value: " + getPreserveVLSN());
         }
     }
 
@@ -1733,22 +1575,19 @@ public class RepImpl
     public String getHostName() {
         String hostAndPort = configManager.get(RepParams.NODE_HOST_PORT);
         int colonToken = hostAndPort.indexOf(":");
-        return (colonToken >= 0) ?
-               hostAndPort.substring(0, colonToken) :
-               hostAndPort;
+        return (colonToken >= 0) ? hostAndPort.substring(0, colonToken) : hostAndPort;
     }
 
     /**
-     * Returns the  port used by the replication node.
+     * Returns the port used by the replication node.
      *
      * @return the port number
      */
     public int getPort() {
         String hostAndPort = configManager.get(RepParams.NODE_HOST_PORT);
         int colonToken = hostAndPort.indexOf(":");
-        return (colonToken >= 0) ?
-                Integer.parseInt(hostAndPort.substring(colonToken + 1)) :
-                configManager.getInt(RepParams.DEFAULT_PORT);
+        return (colonToken >= 0) ? Integer.parseInt(hostAndPort.substring(colonToken + 1))
+                : configManager.getInt(RepParams.DEFAULT_PORT);
     }
 
     /* Convenience method for returning replication sockets. */
@@ -1757,22 +1596,19 @@ public class RepImpl
     }
 
     /**
-     * Returns the JE version that is currently running on this node,
-     * consulting the TEST_JE_VERSION configuration parameter for a test
-     * override.
+     * Returns the JE version that is currently running on this node, consulting
+     * the TEST_JE_VERSION configuration parameter for a test override.
      */
     public JEVersion getCurrentJEVersion() {
         final String testJEVersion = configManager.get(TEST_JE_VERSION);
-        return testJEVersion.isEmpty() ?
-            JEVersion.CURRENT_VERSION :
-            new JEVersion(testJEVersion);
+        return testJEVersion.isEmpty() ? JEVersion.CURRENT_VERSION : new JEVersion(testJEVersion);
     }
 
     /**
      * Returns the set of sockets associated with helper nodes.
      *
-     * @return the set of helper sockets, returns an empty set if there
-     * are no helpers.
+     * @return the set of helper sockets, returns an empty set if there are no
+     *         helpers.
      */
     public Set<InetSocketAddress> getHelperSockets() {
         String helperHosts = configManager.get(RepParams.HELPER_HOSTS);
@@ -1780,15 +1616,13 @@ public class RepImpl
     }
 
     /**
-     * Called when a node has identified itself as the master, which is when
-     * the RepNode.selfElect is called. The database should not exist at
-     * this point.
-     *
+     * Called when a node has identified itself as the master, which is when the
+     * RepNode.selfElect is called. The database should not exist at this point.
      * Lock hierarchy: GroupDbLock -> sync on EnvironmentImpl
+     * 
      * @throws DatabaseException
      */
-    public DatabaseImpl createGroupDb()
-        throws DatabaseException {
+    public DatabaseImpl createGroupDb() throws DatabaseException {
 
         assert isMaster();
 
@@ -1800,21 +1634,16 @@ public class RepImpl
 
         try {
             if (groupDbImpl != null) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("GroupDb should not exist.");
+                throw EnvironmentFailureException.unexpectedState("GroupDb should not exist.");
             }
 
             DatabaseImpl newDbImpl = null;
             Txn txn = null;
             try {
                 TransactionConfig txnConfig = new TransactionConfig();
-                txnConfig.setDurability(new Durability(SyncPolicy.SYNC,
-                                                       SyncPolicy.SYNC,
-                                                       ReplicaAckPolicy.NONE));
+                txnConfig.setDurability(new Durability(SyncPolicy.SYNC, SyncPolicy.SYNC, ReplicaAckPolicy.NONE));
                 txnConfig.setConsistencyPolicy(NO_CONSISTENCY);
-                txn = new MasterTxn(this,
-                                    txnConfig,
-                                    getNameIdPair());
+                txn = new MasterTxn(this, txnConfig, getNameIdPair());
 
                 /* Database should not exist yet, create it now */
                 DatabaseConfig dbConfig = new DatabaseConfig();
@@ -1823,8 +1652,7 @@ public class RepImpl
                 dbConfig.setExclusiveCreate(true);
                 dbConfig.setReplicated(true);
 
-                newDbImpl = getDbTree().createInternalDb
-                    (txn, DbType.REP_GROUP.getInternalName(), dbConfig);
+                newDbImpl = getDbTree().createInternalDb(txn, DbType.REP_GROUP.getInternalName(), dbConfig);
                 txn.commit();
                 txn = null;
             } finally {
@@ -1849,8 +1677,7 @@ public class RepImpl
      * @returns null if file deletion is prohibited
      */
     @Override
-    public NavigableSet<Long> getUnprotectedFileSet(NavigableSet<Long> files,
-                                                    StringBuilder msg) {
+    public NavigableSet<Long> getUnprotectedFileSet(NavigableSet<Long> files, StringBuilder msg) {
         if (repNode == null) {
             return null;
         }
@@ -1864,9 +1691,7 @@ public class RepImpl
     /**
      * Open the group db, which should exist already, using NO_CONSISTENCY.
      */
-    public DatabaseImpl getGroupDb()
-        throws DatabaseNotFoundException,
-               DatabaseException {
+    public DatabaseImpl getGroupDb() throws DatabaseNotFoundException, DatabaseException {
 
         return openGroupDb(false /* doLockProbe */);
     }
@@ -1874,12 +1699,10 @@ public class RepImpl
     /**
      * Open the group db, which should exist already, using NO_CONSISTENCY. Do
      * not wait on the group db lock, return null if the databaseImpl hasn't
-     * been created and we can't obtain it.
-     *
-     * Lock hierarchy: GroupDbLock -> sync on EnvironmentImpl
+     * been created and we can't obtain it. Lock hierarchy: GroupDbLock -> sync
+     * on EnvironmentImpl
      */
-    public DatabaseImpl probeGroupDb()
-        throws DatabaseException {
+    public DatabaseImpl probeGroupDb() throws DatabaseException {
 
         try {
             return openGroupDb(true /* doLockProbe */);
@@ -1896,8 +1719,7 @@ public class RepImpl
      * @throws DatabaseException
      * @throws DatabaseNotFoundException
      */
-    private DatabaseImpl openGroupDb(final boolean doLockProbe)
-        throws DatabaseNotFoundException, DatabaseException {
+    private DatabaseImpl openGroupDb(final boolean doLockProbe) throws DatabaseNotFoundException, DatabaseException {
 
         /* Acquire the lock. */
         try {
@@ -1909,7 +1731,7 @@ public class RepImpl
             } else {
                 groupDbLock.lockInterruptibly();
             }
-        } catch(InterruptedException e) {
+        } catch (InterruptedException e) {
             throw EnvironmentFailureException.unexpectedException(e);
         }
 
@@ -1924,13 +1746,9 @@ public class RepImpl
             txnConfig.setConsistencyPolicy(NO_CONSISTENCY);
             txn = new ReadonlyTxn(this, txnConfig);
 
-            newDbImpl = getDbTree().getDb(txn,
-                                          DbType.REP_GROUP.getInternalName(),
-                                          null /* databaseHandle */,
-                                          false);
+            newDbImpl = getDbTree().getDb(txn, DbType.REP_GROUP.getInternalName(), null /* databaseHandle */, false);
             if (newDbImpl == null) {
-                throw new DatabaseNotFoundException
-                    (DbType.REP_GROUP.getInternalName());
+                throw new DatabaseNotFoundException(DbType.REP_GROUP.getInternalName());
             }
             txn.commit();
             txn = null;
@@ -1946,8 +1764,8 @@ public class RepImpl
     }
 
     /**
-     * Return true if the node has been configured as a Designated Primary.
-     * This does not necessarily mean that the node is actively operating in
+     * Return true if the node has been configured as a Designated Primary. This
+     * does not necessarily mean that the node is actively operating in
      * designated primary mode. See
      * {@link com.sleepycat.je.rep.arbitration.Arbiter#isActive}
      */
@@ -1996,17 +1814,13 @@ public class RepImpl
 
     /* For creating a rep exception from standalone code. */
     @Override
-    public LockPreemptedException
-        createLockPreemptedException(Locker locker, Throwable cause) {
+    public LockPreemptedException createLockPreemptedException(Locker locker, Throwable cause) {
         return new LockPreemptedException(locker, cause);
     }
 
     /* For creating a rep exception from standalone code. */
     @Override
-    public DatabasePreemptedException
-        createDatabasePreemptedException(String msg,
-                                         String dbName,
-                                         Database db) {
+    public DatabasePreemptedException createDatabasePreemptedException(String msg, String dbName, Database db) {
         return new DatabasePreemptedException(msg, dbName, db);
     }
 
@@ -2025,24 +1839,18 @@ public class RepImpl
     public void shutdownGroupSetup(long timeoutMs) {
         final int openCount = getAppOpenCount();
         if (openCount > 1) {
-            throw new IllegalStateException
-                ("Environment has " + (openCount - 1) +
-                 " additional open handles.");
+            throw new IllegalStateException("Environment has " + (openCount - 1) + " additional open handles.");
         }
 
         final int backupCount = getBackupCount();
         if (backupCount > 0) {
-            throw new IllegalStateException
-                ("Environment has " + backupCount +
-                 " DbBackups in progress.");
+            throw new IllegalStateException("Environment has " + backupCount + " DbBackups in progress.");
         }
 
         repNode.shutdownGroupOnClose(timeoutMs);
     }
 
-    public String transferMaster(Set<String> replicas,
-                               long timeout,
-                               boolean force) {
+    public String transferMaster(Set<String> replicas, long timeout, boolean force) {
         return repNode.transferMaster(replicas, timeout, force);
     }
 
@@ -2054,7 +1862,7 @@ public class RepImpl
         StringBuilder sb = new StringBuilder();
 
         sb.append(getNameIdPair());
-        sb.append("[").append(getState()).append("] " );
+        sb.append("[").append(getState()).append("] ");
 
         if (repNode != null) {
             sb.append(repNode.dumpState());
@@ -2078,13 +1886,11 @@ public class RepImpl
      * its current HA state.
      */
     public String dumpAckFeederState() {
-        return getNameIdPair() + "[" + getState() + "]" +
-               repNode.dumpAckFeederState() ;
+        return getNameIdPair() + "[" + getState() + "]" + repNode.dumpAckFeederState();
     }
 
     /**
-     * If this node was started with a hard recovery, preserve that
-     * information.
+     * If this node was started with a hard recovery, preserve that information.
      */
     public void setHardRecoveryInfo(RollbackException e) {
         hardRecoveryStat.set(true);
@@ -2115,9 +1921,8 @@ public class RepImpl
         }
 
         if (!(syncupProgressListener.progress(progress, n, total))) {
-            throw new EnvironmentFailureException
-              (this, EnvironmentFailureReason.PROGRESS_LISTENER_HALT,
-              "ReplicatedEnvironmentConfig.syncupProgressListener: ");
+            throw new EnvironmentFailureException(this, EnvironmentFailureReason.PROGRESS_LISTENER_HALT,
+                    "ReplicatedEnvironmentConfig.syncupProgressListener: ");
         }
     }
 
@@ -2128,8 +1933,7 @@ public class RepImpl
      * deserialization would assign to it if a new replica came across an older
      * version commit or abort record.
      */
-    public static void setSimulatePreDTVLSNMaster(
-        boolean simulatePreDTVLSNMaster) {
+    public static void setSimulatePreDTVLSNMaster(boolean simulatePreDTVLSNMaster) {
 
         RepImpl.simulatePreDTVLSNMaster = simulatePreDTVLSNMaster;
     }
@@ -2162,19 +1966,15 @@ public class RepImpl
     }
 
     /**
-     * Private class to prevent used of the close() method by the application
-     * on an internal handle.
+     * Private class to prevent used of the close() method by the application on
+     * an internal handle.
      */
-    private static class InternalReplicatedEnvironment
-        extends ReplicatedEnvironment {
+    private static class InternalReplicatedEnvironment extends ReplicatedEnvironment {
 
-        public InternalReplicatedEnvironment(File environmentHome,
-                                             ReplicationConfig cloneRepConfig,
-                                             EnvironmentConfig cloneConfig,
-                                             RepImpl envImpl) {
-            super(environmentHome, cloneRepConfig, cloneConfig,
-                  null /*consistencyPolicy*/, null /*initialElectionPolicy*/,
-                  false /*joinGroup*/, envImpl);
+        public InternalReplicatedEnvironment(File environmentHome, ReplicationConfig cloneRepConfig,
+                                             EnvironmentConfig cloneConfig, RepImpl envImpl) {
+            super(environmentHome, cloneRepConfig, cloneConfig, null /* consistencyPolicy */,
+                    null /* initialElectionPolicy */, false /* joinGroup */, envImpl);
         }
 
         @Override
@@ -2184,14 +1984,14 @@ public class RepImpl
 
         @Override
         public synchronized void close() {
-            throw EnvironmentFailureException.unexpectedState
-                ("close() not permitted on an internal environment handle");
+            throw EnvironmentFailureException
+                    .unexpectedState("close() not permitted on an internal environment handle");
         }
     }
 
     /**
-     * Peruse the environment wide transaction table, and return a set of
-     * all existing MasterTxns.
+     * Peruse the environment wide transaction table, and return a set of all
+     * existing MasterTxns.
      */
     public Set<MasterTxn> getExistingMasterTxns() {
         return getTxnManager().getTxns(MasterTxn.class);
@@ -2201,13 +2001,13 @@ public class RepImpl
      * RepImpl supplies the last txn abort or commit vlsn for use cases such as
      * determining how caught up a feeder or master transfer is. This info is
      * usually obtained from the VLSNRange via the VLSNIndex, but in some types
-     * of environment shutdowns, the VLSNIndex may need to be nulled out.  When
+     * of environment shutdowns, the VLSNIndex may need to be nulled out. When
      * that happens, VLSNIndexAccess will switch over from using the VLSNIndex
-     * to obtain the range, to using a reference to the last known
-     * VLSNRange. Note that the VLSNRange instance held within VLSNIndex is
-     * constantly being replaced when the replication stream is active., and
-     * that's why LastTxnEndAccess generally obtains the range via the
-     * VLSNIndex, rather keeping a reference to a VLSNRange instance.
+     * to obtain the range, to using a reference to the last known VLSNRange.
+     * Note that the VLSNRange instance held within VLSNIndex is constantly
+     * being replaced when the replication stream is active., and that's why
+     * LastTxnEndAccess generally obtains the range via the VLSNIndex, rather
+     * keeping a reference to a VLSNRange instance.
      */
     private class VLSNIndexAccess {
 
@@ -2221,8 +2021,8 @@ public class RepImpl
         }
 
         /**
-         * Save the last range so the lastTxnEnd value can continue
-         * to be available, and null out the vlsnIndex.
+         * Save the last range so the lastTxnEnd value can continue to be
+         * available, and null out the vlsnIndex.
          */
         synchronized void closeVLSNIndex(boolean checkpointed) {
             if (vlsnIndex != null) {
@@ -2233,8 +2033,8 @@ public class RepImpl
         }
 
         /**
-         * Save the last range so the lastTxnEnd value can continue
-         * to be available, and null out the vlsnIndex.
+         * Save the last range so the lastTxnEnd value can continue to be
+         * available, and null out the vlsnIndex.
          */
         synchronized void abnormalCloseVLSNIndex() {
             if (vlsnIndex != null) {
@@ -2249,7 +2049,7 @@ public class RepImpl
      * Checks that writing records with a TTL is allowed.
      *
      * @throws IllegalStateException if any node in the group is less than
-     * JE_TTL_VERSION.
+     *             JE_TTL_VERSION.
      */
     @Override
     public void checkTTLAvailable() {
@@ -2262,21 +2062,14 @@ public class RepImpl
             isTTLAvailable = true;
         } catch (MinJEVersionUnsupportedException e) {
             if (e.nodeVersion == null) {
-                throw new IllegalStateException(
-                    "TTL is not currently supported." +
-                    " The version running on node " + e.nodeName +
-                    " could not be determined," +
-                    " but this feature requires version " +
-                    requiredJEVersion.getNumericVersionString() +
-                    " or later.");
+                throw new IllegalStateException("TTL is not currently supported." + " The version running on node "
+                        + e.nodeName + " could not be determined," + " but this feature requires version "
+                        + requiredJEVersion.getNumericVersionString() + " or later.");
             }
             throw new IllegalStateException(
-                "TTL is not currently supported." +
-                " Node " + e.nodeName + " is running version " +
-                e.nodeVersion.getNumericVersionString() +
-                ", but this feature requires version " +
-                requiredJEVersion.getNumericVersionString() +
-                " or later.");
+                    "TTL is not currently supported." + " Node " + e.nodeName + " is running version "
+                            + e.nodeVersion.getNumericVersionString() + ", but this feature requires version "
+                            + requiredJEVersion.getNumericVersionString() + " or later.");
         }
     }
 
@@ -2285,37 +2078,33 @@ public class RepImpl
      */
     @Override
     public void handleRestoreRequired(RestoreRequired restoreRequired) {
-        if (restoreRequired.getFailureType().equals
-            (RestoreRequired.FailureType.NETWORK_RESTORE)) {
+        if (restoreRequired.getFailureType().equals(RestoreRequired.FailureType.NETWORK_RESTORE)) {
 
             /*
              * A network restore must be done to get a coherent copy of the log
              * files into this enviroment's directory.
              */
             try {
-                throw new InsufficientLogException
-                    (restoreRequired.getProperties(),
-                     configManager.get(RepParams.HELPER_HOSTS));
+                throw new InsufficientLogException(restoreRequired.getProperties(),
+                        configManager.get(RepParams.HELPER_HOSTS));
             } catch (IOException e) {
                 /*
                  * We were unable to get the property list from the
-                 * restoreRequired log entry.  Alas, give up.
+                 * restoreRequired log entry. Alas, give up.
                  */
-                throw EnvironmentFailureException.unexpectedState
-                    ("Unable to handle the following RestoreRequired entry:" +
-                     restoreRequired + " :" + e);
+                throw EnvironmentFailureException.unexpectedState(
+                        "Unable to handle the following RestoreRequired entry:" + restoreRequired + " :" + e);
             }
         } else {
             /* Not a type we can handle, go to the default behavior */
             super.handleRestoreRequired(restoreRequired);
         }
     }
-    
+
     private boolean useArbiter(MasterTxn txn) {
-        if (allowArbiterAck &&
-            repNode.getGroup().getAckGroupSize() == 2 &&
-            repNode.feederManager().activeAckArbiterCount() > 0 &&
-            txn.getCommitDurability().getReplicaAck() == ReplicaAckPolicy.SIMPLE_MAJORITY) {
+        if (allowArbiterAck && repNode.getGroup().getAckGroupSize() == 2
+                && repNode.feederManager().activeAckArbiterCount() > 0
+                && txn.getCommitDurability().getReplicaAck() == ReplicaAckPolicy.SIMPLE_MAJORITY) {
             return true;
         }
         return false;

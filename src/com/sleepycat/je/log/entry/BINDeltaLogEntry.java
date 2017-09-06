@@ -20,10 +20,9 @@ import com.sleepycat.je.tree.BIN;
 import com.sleepycat.je.tree.IN;
 
 /**
- * Holds a partial BIN that serves as a live BIN delta.
- *
- * A live delta (unlike a the obsolete OldBINDelta, which is contained in an
- * OldBINDeltaLogEntry) may appear in the Btree to serve as an incomplete BIN.
+ * Holds a partial BIN that serves as a live BIN delta. A live delta (unlike a
+ * the obsolete OldBINDelta, which is contained in an OldBINDeltaLogEntry) may
+ * appear in the Btree to serve as an incomplete BIN.
  */
 public class BINDeltaLogEntry extends INLogEntry<BIN> {
 
@@ -35,17 +34,14 @@ public class BINDeltaLogEntry extends INLogEntry<BIN> {
      * When constructing an entry for writing to the log, use LOG_BIN_DELTA.
      */
     public BINDeltaLogEntry(BIN bin) {
-        super(bin, true /*isBINDelta*/);
+        super(bin, true /* isBINDelta */);
     }
 
     /**
      * Used to write a pre-serialized log entry.
      */
-    public BINDeltaLogEntry(final ByteBuffer bytes,
-                            final long lastFullLsn,
-                            final long lastDeltaLsn,
-                            final LogEntryType logEntryType,
-                            final IN parent) {
+    public BINDeltaLogEntry(final ByteBuffer bytes, final long lastFullLsn, final long lastDeltaLsn,
+                            final LogEntryType logEntryType, final IN parent) {
         super(bytes, lastFullLsn, lastDeltaLsn, logEntryType, parent);
     }
 

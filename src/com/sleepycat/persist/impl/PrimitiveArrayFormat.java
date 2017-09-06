@@ -22,7 +22,7 @@ import com.sleepycat.persist.model.EntityModel;
 import com.sleepycat.persist.raw.RawObject;
 
 /**
- * An array of primitives having one dimension.  Multidimensional arrays are
+ * An array of primitives having one dimension. Multidimensional arrays are
  * handled by {@link ObjectArrayFormat}.
  *
  * @author Mark Hayes
@@ -31,7 +31,7 @@ public class PrimitiveArrayFormat extends Format {
 
     private static final long serialVersionUID = 8285299924106073591L;
 
-    private SimpleFormat componentFormat;
+    private SimpleFormat      componentFormat;
 
     PrimitiveArrayFormat(Catalog catalog, Class type) {
         super(catalog, type);
@@ -53,8 +53,7 @@ public class PrimitiveArrayFormat extends Format {
     }
 
     @Override
-    void collectRelatedFormats(Catalog catalog,
-                               Map<String, Format> newFormats) {
+    void collectRelatedFormats(Catalog catalog, Map<String, Format> newFormats) {
         /* Component type is simple and simple type formats are predefined. */
     }
 
@@ -65,8 +64,7 @@ public class PrimitiveArrayFormat extends Format {
          * getExistingType is allowed (to support raw mode) because primitive
          * arrays are always available in Java.
          */
-        componentFormat = (SimpleFormat)
-            catalog.getFormat(getExistingType().getComponentType().getName());
+        componentFormat = (SimpleFormat) catalog.getFormat(getExistingType().getComponentType().getName());
     }
 
     @Override
@@ -75,8 +73,7 @@ public class PrimitiveArrayFormat extends Format {
     }
 
     @Override
-    public Object newInstance(EntityInput input, boolean rawAccess)
-        throws RefreshException {
+    public Object newInstance(EntityInput input, boolean rawAccess) throws RefreshException {
 
         int len = input.readArrayLength();
         if (rawAccess) {
@@ -87,8 +84,7 @@ public class PrimitiveArrayFormat extends Format {
     }
 
     @Override
-    public Object readObject(Object o, EntityInput input, boolean rawAccess)
-        throws RefreshException {
+    public Object readObject(Object o, EntityInput input, boolean rawAccess) throws RefreshException {
 
         if (rawAccess) {
             Object[] a = ((RawObject) o).getElements();
@@ -102,8 +98,7 @@ public class PrimitiveArrayFormat extends Format {
     }
 
     @Override
-    void writeObject(Object o, EntityOutput output, boolean rawAccess)
-        throws RefreshException {
+    void writeObject(Object o, EntityOutput output, boolean rawAccess) throws RefreshException {
 
         if (rawAccess) {
             Object[] a = ((RawObject) o).getElements();
@@ -117,14 +112,10 @@ public class PrimitiveArrayFormat extends Format {
     }
 
     @Override
-    Object convertRawObject(Catalog catalog,
-                            boolean rawAccess,
-                            RawObject rawObject,
-                            IdentityHashMap converted)
-        throws RefreshException {
+    Object convertRawObject(Catalog catalog, boolean rawAccess, RawObject rawObject, IdentityHashMap converted)
+            throws RefreshException {
 
-        RawArrayInput input = new RawArrayInput
-            (catalog, rawAccess, converted, rawObject, componentFormat);
+        RawArrayInput input = new RawArrayInput(catalog, rawAccess, converted, rawObject, componentFormat);
         Object a = newInstance(input, rawAccess);
         converted.put(rawObject, a);
         return readObject(a, input, rawAccess);

@@ -30,17 +30,15 @@ import com.sleepycat.je.utilint.VLSN;
 /**
  * An OldBINDelta contains the information needed to create a partial (delta)
  * BIN log entry. It also knows how to combine a full BIN log entry and a delta
- * to generate a new BIN.
- *
- * An OldBINDelta is no longer written by this version of JE, but it may be
- * read from a log file written by earlier versions.
+ * to generate a new BIN. An OldBINDelta is no longer written by this version of
+ * JE, but it may be read from a log file written by earlier versions.
  */
 public class OldBINDelta implements Loggable {
 
-    private final DatabaseId dbId;    // owning db for this bin.
-    private long lastFullLsn;   // location of last full version
-    private long prevDeltaLsn;  // location of previous delta version
-    private final ArrayList<DeltaInfo> deltas;  // list of key/action changes
+    private final DatabaseId           dbId;         // owning db for this bin.
+    private long                       lastFullLsn;  // location of last full version
+    private long                       prevDeltaLsn; // location of previous delta version
+    private final ArrayList<DeltaInfo> deltas;       // list of key/action changes
 
     /**
      * For instantiating from the log.
@@ -72,8 +70,8 @@ public class OldBINDelta implements Loggable {
 
     /**
      * @return the prior delta version of this BIN, or NULL_LSN if the prior
-     * version is a full BIN.  The returned value is the LSN that is obsoleted
-     * by this delta.
+     *         version is a full BIN. The returned value is the LSN that is
+     *         obsoleted by this delta.
      */
     public long getPrevDeltaLsn() {
         return prevDeltaLsn;
@@ -81,7 +79,7 @@ public class OldBINDelta implements Loggable {
 
     /**
      * Returns a key that can be used to find the BIN associated with this
-     * delta.  The key of any slot will do.
+     * delta. The key of any slot will do.
      */
     public byte[] getSearchKey() {
         assert (deltas.size() > 0);
@@ -95,8 +93,7 @@ public class OldBINDelta implements Loggable {
 
         final EnvironmentImpl envImpl = dbImpl.getEnv();
 
-        final BIN fullBIN = (BIN)
-            envImpl.getLogManager().getEntryHandleFileNotFound(lastFullLsn);
+        final BIN fullBIN = (BIN) envImpl.getLogManager().getEntryHandleFileNotFound(lastFullLsn);
 
         reconstituteBIN(dbImpl, fullBIN);
 
@@ -113,26 +110,24 @@ public class OldBINDelta implements Loggable {
         try {
 
             /*
-             * The BIN's lastFullLsn is set here, while its lastLoggedLsn is
-             * set by postFetchInit or postRecoveryInit.
+             * The BIN's lastFullLsn is set here, while its lastLoggedLsn is set
+             * by postFetchInit or postRecoveryInit.
              */
             fullBIN.setLastFullLsn(lastFullLsn);
 
             /* Process each delta. */
             for (int i = 0; i < deltas.size(); i++) {
                 final DeltaInfo info = deltas.get(i);
-                fullBIN.applyDelta(
-                    info.getKey(), null/*data*/, info.getLsn(),
-                    info.getState(), 0 /*lastLoggedSize*/, 0 /*memId*/,
-                    VLSN.NULL_VLSN_SEQUENCE, null /*child*/,
-                    0 /*expiration*/, false /*expirationInHours*/);
+                fullBIN.applyDelta(info.getKey(), null/* data */, info.getLsn(), info.getState(),
+                        0 /* lastLoggedSize */, 0 /* memId */, VLSN.NULL_VLSN_SEQUENCE, null /* child */,
+                        0 /* expiration */, false /* expirationInHours */);
             }
 
             /*
              * The applied deltas will leave some slots dirty, which is
              * necessary as a record of changes that will be included in the
-             * next delta.  However, the BIN itself should not be dirty,
-             * because this delta is a persistent record of those changes.
+             * next delta. However, the BIN itself should not be dirty, because
+             * this delta is a persistent record of those changes.
              */
             fullBIN.setDirty(false);
         } finally {
@@ -162,7 +157,7 @@ public class OldBINDelta implements Loggable {
         }
         int numDeltas = LogUtils.readInt(itemBuffer, (entryVersion < 6));
 
-        for (int i=0; i < numDeltas; i++) {
+        for (int i = 0; i < numDeltas; i++) {
             DeltaInfo info = new DeltaInfo();
             info.readFromLog(itemBuffer, entryVersion);
             deltas.add(info);
@@ -199,14 +194,13 @@ public class OldBINDelta implements Loggable {
     }
 
     /**
-     * Returns the number of bytes occupied by this object.  Deltas are not
+     * Returns the number of bytes occupied by this object. Deltas are not
      * stored in the Btree, but they are budgeted during a SortedLSNTreeWalker
      * run.
      */
     public long getMemorySize() {
-        long size = MemoryBudget.BINDELTA_OVERHEAD +
-                    MemoryBudget.ARRAYLIST_OVERHEAD +
-                    MemoryBudget.objectArraySize(deltas.size());
+        long size = MemoryBudget.BINDELTA_OVERHEAD + MemoryBudget.ARRAYLIST_OVERHEAD
+                + MemoryBudget.objectArraySize(deltas.size());
         for (DeltaInfo info : deltas) {
             size += info.getMemorySize();
         }

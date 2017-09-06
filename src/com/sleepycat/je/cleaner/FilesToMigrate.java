@@ -25,55 +25,48 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
 import com.sleepycat.je.log.LogEntryType;
 
 /**
- * Iterator over files that should be migrated by cleaning them, even if
- * they don't need to be cleaned for other reasons.
- *
- * Files are migrated either because they are named in the
- * CLEANER_FORCE_CLEAN_FILES parameter or their log version is prior to the
- * CLEANER_UPGRADE_TO_LOG_VERSION parameter.
- *
- * An iterator is used rather than finding the entire set at startup to
- * avoid opening a large number of files to examine their log version.  For
- * example, if all files are being migrated in a very large data set, this
- * would involve opening a very large number of files in order to read
- * their header.  This could significantly delay application startup.
- *
- * Because we don't have the entire set at startup, we can't select the
- * lowest utilization file from the set to clean next.  Inteaad we iterate
- * in file number order to increase the odds of cleaning lower utilization
- * files first.
+ * Iterator over files that should be migrated by cleaning them, even if they
+ * don't need to be cleaned for other reasons. Files are migrated either because
+ * they are named in the CLEANER_FORCE_CLEAN_FILES parameter or their log
+ * version is prior to the CLEANER_UPGRADE_TO_LOG_VERSION parameter. An iterator
+ * is used rather than finding the entire set at startup to avoid opening a
+ * large number of files to examine their log version. For example, if all files
+ * are being migrated in a very large data set, this would involve opening a
+ * very large number of files in order to read their header. This could
+ * significantly delay application startup. Because we don't have the entire set
+ * at startup, we can't select the lowest utilization file from the set to clean
+ * next. Inteaad we iterate in file number order to increase the odds of
+ * cleaning lower utilization files first.
  */
 class FilesToMigrate {
 
     private final EnvironmentImpl env;
 
     /**
-     * An array of pairs of file numbers, where each pair is a range of
-     * files to be force cleaned.  Index i is the from value and i+1 is the
-     * to value, both inclusive.
+     * An array of pairs of file numbers, where each pair is a range of files to
+     * be force cleaned. Index i is the from value and i+1 is the to value, both
+     * inclusive.
      */
-    private long[] forceCleanFiles;
+    private long[]                forceCleanFiles;
 
     /** Log version to upgrade to, or zero if none. */
-    private int upgradeToVersion;
+    private int                   upgradeToVersion;
 
     /** Whether to continue checking the log version. */
-    private boolean checkLogVersion;
+    private boolean               checkLogVersion;
 
     /** Whether hasNext() has prepared a valid nextFile. */
-    private boolean nextAvailable;
+    private boolean               nextAvailable;
 
     /** File to return; set by hasNext() and returned by next(). */
-    private long nextFile;
+    private long                  nextFile;
 
     FilesToMigrate(EnvironmentImpl env) {
         this.env = env;
-        String forceCleanProp = env.getConfigManager().get
-            (EnvironmentParams.CLEANER_FORCE_CLEAN_FILES);
+        String forceCleanProp = env.getConfigManager().get(EnvironmentParams.CLEANER_FORCE_CLEAN_FILES);
         parseForceCleanFiles(forceCleanProp);
 
-        upgradeToVersion = env.getConfigManager().getInt
-            (EnvironmentParams.CLEANER_UPGRADE_TO_LOG_VERSION);
+        upgradeToVersion = env.getConfigManager().getInt(EnvironmentParams.CLEANER_UPGRADE_TO_LOG_VERSION);
         if (upgradeToVersion == -1) {
             upgradeToVersion = LogEntryType.LOG_VERSION;
         }
@@ -84,8 +77,8 @@ class FilesToMigrate {
     }
 
     /**
-     * Returns whether there are more files to be migrated.  Must be called
-     * while synchronized on the UtilizationProfile.
+     * Returns whether there are more files to be migrated. Must be called while
+     * synchronized on the UtilizationProfile.
      */
     boolean hasNext(SortedMap<Long, FileSummary> fileSummaryMap) {
         if (nextAvailable) {
@@ -93,16 +86,14 @@ class FilesToMigrate {
             return true;
         }
         long foundFile = -1;
-        for (long file :
-             fileSummaryMap.tailMap(nextFile + 1).keySet()) {
+        for (long file : fileSummaryMap.tailMap(nextFile + 1).keySet()) {
             if (isForceCleanFile(file)) {
                 /* Found a file to force clean. */
                 foundFile = file;
                 break;
             } else if (checkLogVersion) {
                 try {
-                    int logVersion =
-                        env.getFileManager().getFileLogVersion(file);
+                    int logVersion = env.getFileManager().getFileLogVersion(file);
                     if (logVersion < upgradeToVersion) {
                         /* Found a file to migrate. */
                         foundFile = file;
@@ -110,8 +101,8 @@ class FilesToMigrate {
                     } else {
 
                         /*
-                         * All following files have a log version greater
-                         * or equal to this one; stop checking.
+                         * All following files have a log version greater or
+                         * equal to this one; stop checking.
                          */
                         checkLogVersion = false;
                     }
@@ -132,11 +123,10 @@ class FilesToMigrate {
     }
 
     /**
-     * Returns the next file file to be migrated.  Must be called while
+     * Returns the next file file to be migrated. Must be called while
      * synchronized on the UtilizationProfile.
      */
-    long next(SortedMap<Long, FileSummary> fileSummaryMap)
-        throws NoSuchElementException {
+    long next(SortedMap<Long, FileSummary> fileSummaryMap) throws NoSuchElementException {
 
         if (hasNext(fileSummaryMap)) {
             nextAvailable = false;
@@ -164,24 +154,21 @@ class FilesToMigrate {
     }
 
     /**
-     * Parses the je.cleaner.forceCleanFiles property value and initializes
-     * the forceCleanFiles field.
+     * Parses the je.cleaner.forceCleanFiles property value and initializes the
+     * forceCleanFiles field.
      *
      * @throws IllegalArgumentException via Environment ctor and
-     * setMutableConfig.
+     *             setMutableConfig.
      */
-    private void parseForceCleanFiles(String propValue)
-        throws IllegalArgumentException {
+    private void parseForceCleanFiles(String propValue) throws IllegalArgumentException {
 
         if (propValue == null || propValue.length() == 0) {
             forceCleanFiles = null;
         } else {
-            String errPrefix = "Error in " +
-                EnvironmentParams.CLEANER_FORCE_CLEAN_FILES.getName() +
-                "=" + propValue + ": ";
+            String errPrefix = "Error in " + EnvironmentParams.CLEANER_FORCE_CLEAN_FILES.getName() + "=" + propValue
+                    + ": ";
 
-            StringTokenizer tokens = new StringTokenizer
-                (propValue, ",-", true /*returnDelims*/);
+            StringTokenizer tokens = new StringTokenizer(propValue, ",-", true /* returnDelims */);
 
             /* Resulting list of Long file numbers. */
             List<Long> list = new ArrayList<Long>();
@@ -194,9 +181,7 @@ class FilesToMigrate {
                 try {
                     fromNum = Long.parseLong(fromStr, 16);
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException
-                        (errPrefix + "Invalid hex file number: " +
-                         fromStr);
+                    throw new IllegalArgumentException(errPrefix + "Invalid hex file number: " + fromStr);
                 }
 
                 long toNum = -1;
@@ -214,19 +199,13 @@ class FilesToMigrate {
                             try {
                                 toNum = Long.parseLong(toStr, 16);
                             } catch (NumberFormatException e) {
-                                throw new IllegalArgumentException
-                                    (errPrefix +
-                                     "Invalid hex file number: " +
-                                     toStr);
+                                throw new IllegalArgumentException(errPrefix + "Invalid hex file number: " + toStr);
                             }
                         } else {
-                            throw new IllegalArgumentException
-                                (errPrefix + "Expected file number: " +
-                                 delim);
+                            throw new IllegalArgumentException(errPrefix + "Expected file number: " + delim);
                         }
                     } else {
-                        throw new IllegalArgumentException
-                            (errPrefix + "Expected '-' or ',': " + delim);
+                        throw new IllegalArgumentException(errPrefix + "Expected '-' or ',': " + delim);
                     }
                 } else {
                     toNum = fromNum;

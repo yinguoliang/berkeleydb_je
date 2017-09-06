@@ -21,7 +21,7 @@ import com.sleepycat.je.utilint.StatDefinition.StatType;
  * A int JE stat that uses {@link AtomicInteger} to be thread safe.
  */
 public class AtomicIntStat extends Stat<Integer> {
-    private static final long serialVersionUID = 1L;
+    private static final long   serialVersionUID = 1L;
 
     private final AtomicInteger counter;
 
@@ -82,7 +82,7 @@ public class AtomicIntStat extends Stat<Integer> {
 
             /*
              * Negate the value atomically, retrying if another change
-             * intervenes.  This loop emulates the behavior of
+             * intervenes. This loop emulates the behavior of
              * AtomicInteger.getAndIncrement.
              */
             while (true) {

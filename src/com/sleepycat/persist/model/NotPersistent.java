@@ -24,14 +24,16 @@ import java.lang.annotation.Target;
  * Overrides the default rules for field persistence and defines a field as
  * being non-persistent even when it is not declared with the
  * <code>transient</code> keyword.
- *
- * <p>By default, the persistent fields of a class are all declared instance
- * fields that are non-transient (are not declared with the
- * <code>transient</code> keyword).  The default rules may be overridden by
- * specifying the {@link NotPersistent} or {@link NotTransient} annotation.</p>
- *
- * <p>For example, the following field is non-transient (persistent) with
- * respect to Java serialization but is transient with respect to the DPL.</p>
+ * <p>
+ * By default, the persistent fields of a class are all declared instance fields
+ * that are non-transient (are not declared with the <code>transient</code>
+ * keyword). The default rules may be overridden by specifying the
+ * {@link NotPersistent} or {@link NotTransient} annotation.
+ * </p>
+ * <p>
+ * For example, the following field is non-transient (persistent) with respect
+ * to Java serialization but is transient with respect to the DPL.
+ * </p>
  *
  * <pre style="code">
  *      {@code @NotPersistent}
@@ -42,6 +44,8 @@ import java.lang.annotation.Target;
  * @see NotTransient
  * @author Mark Hayes
  */
-@Documented @Retention(RUNTIME) @Target(FIELD)
+@Documented
+@Retention(RUNTIME)
+@Target(FIELD)
 public @interface NotPersistent {
 }

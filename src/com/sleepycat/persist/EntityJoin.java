@@ -35,15 +35,19 @@ import com.sleepycat.je.Transaction;
 
 /**
  * Performs an equality join on two or more secondary keys.
- *
- * <p>{@code EntityJoin} objects are thread-safe.  Multiple threads may safely
- * call the methods of a shared {@code EntityJoin} object.</p>
- *
- * <p>An equality join is a match on all entities in a given primary index that
- * have two or more specific secondary key values.  Note that key ranges may
- * not be matched by an equality join, only exact keys are matched.</p>
- *
- * <p>For example:</p>
+ * <p>
+ * {@code EntityJoin} objects are thread-safe. Multiple threads may safely call
+ * the methods of a shared {@code EntityJoin} object.
+ * </p>
+ * <p>
+ * An equality join is a match on all entities in a given primary index that
+ * have two or more specific secondary key values. Note that key ranges may not
+ * be matched by an equality join, only exact keys are matched.
+ * </p>
+ * <p>
+ * For example:
+ * </p>
+ * 
  * <pre class="code">
  *  // Index declarations -- see <a href="package-summary.html#example">package summary example</a>.
  *  //
@@ -69,14 +73,15 @@ import com.sleepycat.je.Transaction;
  *      }
  *  } finally {
  *      results.close();
- *  }</pre>
+ *  }
+ * </pre>
  *
  * @author Mark Hayes
  */
 public class EntityJoin<PK, E> {
 
     private PrimaryIndex<PK, E> primary;
-    private List<Condition> conditions;
+    private List<Condition>     conditions;
 
     /**
      * Creates a join object for a given primary index.
@@ -89,14 +94,12 @@ public class EntityJoin<PK, E> {
     }
 
     /**
-     * Adds a secondary key condition to the equality join.  Only entities
-     * having the given key value in the given secondary index will be returned
-     * by the join operation.
+     * Adds a secondary key condition to the equality join. Only entities having
+     * the given key value in the given secondary index will be returned by the
+     * join operation.
      *
      * @param index the secondary index containing the given key value.
-     *
      * @param key the key value to match during the join.
-     *
      * @param <SK> the secondary key class.
      */
     public <SK> void addCondition(SecondaryIndex<SK, PK, E> index, SK key) {
@@ -116,136 +119,108 @@ public class EntityJoin<PK, E> {
     }
 
     /**
-     * Opens a cursor that returns the entities qualifying for the join.  The
+     * Opens a cursor that returns the entities qualifying for the join. The
      * join operation is performed as the returned cursor is accessed.
+     * <p>
+     * The operations performed with the cursor will not be transaction
+     * protected, and {@link CursorConfig#DEFAULT} is used implicitly.
+     * </p>
      *
-     * <p>The operations performed with the cursor will not be transaction
-     * protected, and {@link CursorConfig#DEFAULT} is used implicitly.</p>
-     *
-     * @return the cursor.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * @return the cursor. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws IllegalStateException if less than two conditions were added.
-     *
      * @throws DatabaseException the base class for all BDB exceptions.
      */
-    public ForwardCursor<E> entities()
-        throws DatabaseException {
+    public ForwardCursor<E> entities() throws DatabaseException {
 
         return entities(null, null);
     }
 
     /**
-     * Opens a cursor that returns the entities qualifying for the join.  The
+     * Opens a cursor that returns the entities qualifying for the join. The
      * join operation is performed as the returned cursor is accessed.
      *
      * @param txn the transaction used to protect all operations performed with
-     * the cursor, or null if the operations should not be transaction
-     * protected.  If the store is non-transactional, null must be specified.
-     * For a transactional store the transaction is optional for read-only
-     * access and required for read-write access.
-     *
+     *            the cursor, or null if the operations should not be
+     *            transaction protected. If the store is non-transactional, null
+     *            must be specified. For a transactional store the transaction
+     *            is optional for read-only access and required for read-write
+     *            access.
      * @param config the cursor configuration that determines the default lock
-     * mode used for all cursor operations, or null to implicitly use {@link
-     * CursorConfig#DEFAULT}.
-     *
-     * @return the cursor.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     *            mode used for all cursor operations, or null to implicitly use
+     *            {@link CursorConfig#DEFAULT}.
+     * @return the cursor. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws IllegalStateException if less than two conditions were added.
-     *
      * @throws DatabaseException the base class for all BDB exceptions.
      */
-    public ForwardCursor<E> entities(Transaction txn, CursorConfig config)
-        throws DatabaseException {
+    public ForwardCursor<E> entities(Transaction txn, CursorConfig config) throws DatabaseException {
 
         return new JoinForwardCursor<E>(txn, config, false);
     }
 
     /**
      * Opens a cursor that returns the primary keys of entities qualifying for
-     * the join.  The join operation is performed as the returned cursor is
+     * the join. The join operation is performed as the returned cursor is
      * accessed.
+     * <p>
+     * The operations performed with the cursor will not be transaction
+     * protected, and {@link CursorConfig#DEFAULT} is used implicitly.
+     * </p>
      *
-     * <p>The operations performed with the cursor will not be transaction
-     * protected, and {@link CursorConfig#DEFAULT} is used implicitly.</p>
-     *
-     * @return the cursor.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * @return the cursor. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws IllegalStateException if less than two conditions were added.
-     *
      * @throws DatabaseException the base class for all BDB exceptions.
      */
-    public ForwardCursor<PK> keys()
-        throws DatabaseException {
+    public ForwardCursor<PK> keys() throws DatabaseException {
 
         return keys(null, null);
     }
 
     /**
      * Opens a cursor that returns the primary keys of entities qualifying for
-     * the join.  The join operation is performed as the returned cursor is
+     * the join. The join operation is performed as the returned cursor is
      * accessed.
      *
      * @param txn the transaction used to protect all operations performed with
-     * the cursor, or null if the operations should not be transaction
-     * protected.  If the store is non-transactional, null must be specified.
-     * For a transactional store the transaction is optional for read-only
-     * access and required for read-write access.
-     *
+     *            the cursor, or null if the operations should not be
+     *            transaction protected. If the store is non-transactional, null
+     *            must be specified. For a transactional store the transaction
+     *            is optional for read-only access and required for read-write
+     *            access.
      * @param config the cursor configuration that determines the default lock
-     * mode used for all cursor operations, or null to implicitly use {@link
-     * CursorConfig#DEFAULT}.
-     *
-     * @return the cursor.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     *            mode used for all cursor operations, or null to implicitly use
+     *            {@link CursorConfig#DEFAULT}.
+     * @return the cursor. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws IllegalStateException if less than two conditions were added.
-     *
      * @throws DatabaseException the base class for all BDB exceptions.
      */
-    public ForwardCursor<PK> keys(Transaction txn, CursorConfig config)
-        throws DatabaseException {
+    public ForwardCursor<PK> keys(Transaction txn, CursorConfig config) throws DatabaseException {
 
         return new JoinForwardCursor<PK>(txn, config, true);
     }
 
     private static class Condition {
 
-        private Database db;
+        private Database      db;
         private DatabaseEntry key;
 
         Condition(Database db, DatabaseEntry key) {
@@ -253,8 +228,7 @@ public class EntityJoin<PK, E> {
             this.key = key;
         }
 
-        Cursor openCursor(Transaction txn, CursorConfig config)
-            throws DatabaseException {
+        Cursor openCursor(Transaction txn, CursorConfig config) throws DatabaseException {
 
             OperationStatus status;
             Cursor cursor = db.openCursor(txn, config);
@@ -264,7 +238,8 @@ public class EntityJoin<PK, E> {
             } catch (DatabaseException e) {
                 try {
                     cursor.close();
-                } catch (DatabaseException ignored) {}
+                } catch (DatabaseException ignored) {
+                }
                 throw e;
             }
             if (status == OperationStatus.SUCCESS) {
@@ -278,12 +253,11 @@ public class EntityJoin<PK, E> {
 
     private class JoinForwardCursor<V> implements ForwardCursor<V> {
 
-        private Cursor[] cursors;
+        private Cursor[]   cursors;
         private JoinCursor joinCursor;
-        private boolean doKeys;
+        private boolean    doKeys;
 
-        JoinForwardCursor(Transaction txn, CursorConfig config, boolean doKeys)
-            throws DatabaseException {
+        JoinForwardCursor(Transaction txn, CursorConfig config, boolean doKeys) throws DatabaseException {
 
             this.doKeys = doKeys;
             try {
@@ -305,14 +279,12 @@ public class EntityJoin<PK, E> {
             }
         }
 
-        public V next()
-            throws DatabaseException {
+        public V next() throws DatabaseException {
 
             return next(null);
         }
 
-        public V next(LockMode lockMode)
-            throws DatabaseException {
+        public V next(LockMode lockMode) throws DatabaseException {
 
             if (joinCursor == null) {
                 return null;
@@ -327,8 +299,7 @@ public class EntityJoin<PK, E> {
             } else {
                 DatabaseEntry key = new DatabaseEntry();
                 DatabaseEntry data = new DatabaseEntry();
-                OperationStatus status =
-                    joinCursor.getNext(key, data, lockMode);
+                OperationStatus status = joinCursor.getNext(key, data, lockMode);
                 if (status == OperationStatus.SUCCESS) {
                     EntityBinding binding = primary.getEntityBinding();
                     return (V) binding.entryToObject(key, data);
@@ -345,14 +316,12 @@ public class EntityJoin<PK, E> {
             return new BasicIterator<V>(this, lockMode);
         }
 
-        public void close()
-            throws DatabaseException {
+        public void close() throws DatabaseException {
 
             doClose(null);
         }
 
-        private void doClose(DatabaseException firstException)
-            throws DatabaseException {
+        private void doClose(DatabaseException firstException) throws DatabaseException {
 
             if (joinCursor != null) {
                 try {

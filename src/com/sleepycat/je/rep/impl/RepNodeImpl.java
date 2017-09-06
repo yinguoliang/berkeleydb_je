@@ -32,44 +32,44 @@ import com.sleepycat.je.utilint.VLSN;
  */
 public class RepNodeImpl implements ReplicationNode, Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long  serialVersionUID = 1L;
 
     /* Identifies the node both by external name and internal node ID. */
-    private final NameIdPair nameIdPair;
+    private final NameIdPair   nameIdPair;
 
     /* The node type, electable, monitor, etc. */
-    private final NodeType type;
+    private final NodeType     type;
 
     /*
      * True if the node was acknowledged by a quorum and its entry is therefore
-     * considered durable.  SECONDARY and EXTERNAL nodes are always considered
+     * considered durable. SECONDARY and EXTERNAL nodes are always considered
      * acknowledged.
      */
-    private boolean quorumAck;
+    private boolean            quorumAck;
 
     /*
      * True if the node has been removed and is no longer an active part of the
      * group
      */
-    private boolean isRemoved;
+    private boolean            isRemoved;
 
     /* The hostname used for communications with the node. */
-    private String hostName;
+    private String             hostName;
 
     /* The port used by a node. */
-    private int port;
+    private int                port;
 
     /* The Cleaner Barrier state associated with the node. */
-    private BarrierState barrierState;
+    private BarrierState       barrierState;
 
     /*
-     * This version is used in conjunction with the group level change
-     * version to identify the incremental changes made to individual
-     * changes made to a group.
+     * This version is used in conjunction with the group level change version
+     * to identify the incremental changes made to individual changes made to a
+     * group.
      */
-    private int changeVersion = NULL_CHANGE;
+    private int                changeVersion    = NULL_CHANGE;
 
-    private static final int NULL_CHANGE = -1;
+    private static final int   NULL_CHANGE      = -1;
 
     /**
      * The JE version most recently noted running on this node, or null if not
@@ -78,35 +78,25 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
     private volatile JEVersion jeVersion;
 
     /**
-     * @hidden
-     *
-     * Constructor used to de-serialize a Node. All other convenience
-     * constructors funnel through this one so that argument checks can
-     * be systematically enforced.
+     * @hidden Constructor used to de-serialize a Node. All other convenience
+     *         constructors funnel through this one so that argument checks can
+     *         be systematically enforced.
      */
-    public RepNodeImpl(final NameIdPair nameIdPair,
-                       final NodeType type,
-                       final boolean quorumAck,
-                       final boolean isRemoved,
-                       final String hostName,
-                       final int port,
-                       final BarrierState barrierState,
-                       final int changeVersion,
-                       final JEVersion jeVersion) {
+    public RepNodeImpl(final NameIdPair nameIdPair, final NodeType type, final boolean quorumAck,
+                       final boolean isRemoved, final String hostName, final int port, final BarrierState barrierState,
+                       final int changeVersion, final JEVersion jeVersion) {
 
         if (nameIdPair.getName().equals(RepGroupDB.GROUP_KEY)) {
-            throw EnvironmentFailureException.unexpectedState
-            ("Member node ID is the reserved key value: " + nameIdPair);
+            throw EnvironmentFailureException
+                    .unexpectedState("Member node ID is the reserved key value: " + nameIdPair);
         }
 
         if (hostName == null) {
-            throw EnvironmentFailureException.unexpectedState
-            ("The hostname argument must not be null");
+            throw EnvironmentFailureException.unexpectedState("The hostname argument must not be null");
         }
 
         if (type == null) {
-            throw EnvironmentFailureException.unexpectedState
-            ("The nodeType argument must not be null");
+            throw EnvironmentFailureException.unexpectedState("The nodeType argument must not be null");
         }
 
         this.nameIdPair = nameIdPair;
@@ -121,75 +111,47 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
     }
 
     /**
-     * @hidden
-     *
-     * Convenience constructor for the above.
+     * @hidden Convenience constructor for the above.
      */
-    public RepNodeImpl(final NameIdPair nameIdPair,
-                       final NodeType type,
-                       final boolean quorumAck,
-                       final boolean isRemoved,
-                       final String hostName,
-                       final int port,
-                       final int changeVersion,
+    public RepNodeImpl(final NameIdPair nameIdPair, final NodeType type, final boolean quorumAck,
+                       final boolean isRemoved, final String hostName, final int port, final int changeVersion,
                        final JEVersion jeVersion) {
         this(nameIdPair, type, quorumAck, isRemoved, hostName, port,
-             new BarrierState(VLSN.NULL_VLSN, System.currentTimeMillis()),
-             changeVersion, jeVersion);
+                new BarrierState(VLSN.NULL_VLSN, System.currentTimeMillis()), changeVersion, jeVersion);
     }
 
     /**
-     * @hidden
-     * Convenience constructor for transient nodes
+     * @hidden Convenience constructor for transient nodes
      */
-    public RepNodeImpl(final NameIdPair nameIdPair,
-                       final NodeType type,
-                       final String hostName,
-                       final int port,
+    public RepNodeImpl(final NameIdPair nameIdPair, final NodeType type, final String hostName, final int port,
                        final JEVersion jeVersion) {
-        this(nameIdPair, type, false, false, hostName, port, NULL_CHANGE,
-             jeVersion);
+        this(nameIdPair, type, false, false, hostName, port, NULL_CHANGE, jeVersion);
     }
 
     /**
-     * @hidden
-     * Convenience constructor for transient nodes during unit tests.
+     * @hidden Convenience constructor for transient nodes during unit tests.
      */
     public RepNodeImpl(final ReplicationConfig repConfig) {
-        this(new NameIdPair(repConfig.getNodeName(), NameIdPair.NULL_NODE_ID),
-             repConfig.getNodeType(),
-             repConfig.getNodeHostname(),
-             repConfig.getNodePort(),
-             JEVersion.CURRENT_VERSION);
+        this(new NameIdPair(repConfig.getNodeName(), NameIdPair.NULL_NODE_ID), repConfig.getNodeType(),
+                repConfig.getNodeHostname(), repConfig.getNodePort(), JEVersion.CURRENT_VERSION);
     }
 
     /**
-     * @hidden
-     *
-     * Convenience constructor for the above.
+     * @hidden Convenience constructor for the above.
      */
-    public RepNodeImpl(final String nodeName,
-                       final String hostName,
-                       final int port,
-                       final JEVersion jeVersion) {
-        this(new NameIdPair(nodeName, NameIdPair.NULL.getId()),
-             NodeType.ELECTABLE, hostName, port, jeVersion);
+    public RepNodeImpl(final String nodeName, final String hostName, final int port, final JEVersion jeVersion) {
+        this(new NameIdPair(nodeName, NameIdPair.NULL.getId()), NodeType.ELECTABLE, hostName, port, jeVersion);
     }
 
     /**
-     * @hidden
-     *
-     * Convenience constructor for the above.
+     * @hidden Convenience constructor for the above.
      */
     public RepNodeImpl(Protocol.NodeGroupInfo mi) {
-        this(mi.getNameIdPair(),
-             mi.getNodeType(),
-             mi.getHostName(),
-             mi.port(),
-             mi.getJEVersion());
+        this(mi.getNameIdPair(), mi.getNodeType(), mi.getHostName(), mi.port(), mi.getJEVersion());
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
      * @see com.sleepycat.je.rep.ReplicationNode#getSocketAddress()
      */
     @Override
@@ -199,7 +161,7 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
 
     /**
      * Returns whether the node was acknowledged by a quorum and its entry is
-     * therefore considered durable.  Secondary nodes are always considered
+     * therefore considered durable. Secondary nodes are always considered
      * acknowledged.
      */
     public boolean isQuorumAck() {
@@ -207,8 +169,7 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
     }
 
     public boolean isRemoved() {
-        assert !(isRemoved && type.hasTransientId())
-            : "Nodes with transient IDs are never marked removed";
+        assert !(isRemoved && type.hasTransientId()) : "Nodes with transient IDs are never marked removed";
         return isRemoved;
     }
 
@@ -224,7 +185,8 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
         return nameIdPair;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
      * @see com.sleepycat.je.rep.ReplicationNode#getName()
      */
     @Override
@@ -236,7 +198,8 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
         return nameIdPair.getId();
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
      * @see com.sleepycat.je.rep.ReplicationNode#getNodeType()
      */
     @Override
@@ -244,7 +207,8 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
         return type;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
      * @see com.sleepycat.je.rep.ReplicationNode#getHostName()
      */
     @Override
@@ -256,7 +220,8 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
         this.hostName = hostName;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
      * @see com.sleepycat.je.rep.ReplicationNode#getPort()
      */
     @Override
@@ -298,7 +263,7 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
 
     /**
      * Updates the JE version most recently known running on this node to match
-     * the version specified.  Does nothing if the argument is null.
+     * the version specified. Does nothing if the argument is null.
      *
      * @param otherJEVersion the version or {@code null}
      */
@@ -321,30 +286,22 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
             acked = " (is removed)";
         }
 
-        String info =
-            String.format("Node:%s %s:%d%s%s changeVersion:%d %s%s\n",
-                          getName(), getHostName(), getPort(),
-                          acked,
-                          (!type.isElectable() ? " " + type : ""),
-                          getChangeVersion(),
-                          barrierState,
-                          ((jeVersion != null) ?
-                           " jeVersion:" + jeVersion :
-                           ""));
+        String info = String.format("Node:%s %s:%d%s%s changeVersion:%d %s%s\n", getName(), getHostName(), getPort(),
+                acked, (!type.isElectable() ? " " + type : ""), getChangeVersion(), barrierState,
+                ((jeVersion != null) ? " jeVersion:" + jeVersion : ""));
         return info;
 
     }
 
     /**
      * Checks if the argument represents the same node, ignoring fields that
-     * might legitimately vary over time.  Like the equals method, considers
-     * all fields, except ignores the quorumAck field (which may change
+     * might legitimately vary over time. Like the equals method, considers all
+     * fields, except ignores the quorumAck field (which may change
      * temporarily), the nodeId (since it may not have been resolved as yet),
      * and the isRemoved, barrierState, changeVersion, and jeVersion fields
      * (which can change over time).
      *
      * @param mi the other object in the comparison
-     *
      * @return true if the two are equivalent
      */
     public boolean equivalent(RepNodeImpl mi) {
@@ -389,13 +346,11 @@ public class RepNodeImpl implements ReplicationNode, Serializable {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result
-                + ((hostName == null) ? 0 : hostName.hashCode());
+        result = prime * result + ((hostName == null) ? 0 : hostName.hashCode());
         result = prime * result + nameIdPair.hashCode();
         result = prime * result + port;
         result = prime * result + (isQuorumAck() ? 1231 : 1237);
-        result = prime * result +
-            (jeVersion == null ? 0 : jeVersion.hashCode());
+        result = prime * result + (jeVersion == null ? 0 : jeVersion.hashCode());
         return result;
     }
 

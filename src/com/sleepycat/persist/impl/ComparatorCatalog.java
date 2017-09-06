@@ -25,8 +25,7 @@ class ComparatorCatalog extends SimpleCatalog {
 
     private final Map<String, Format> formatMap;
 
-    ComparatorCatalog(final ClassLoader classLoader,
-                      final Map<String, Format> formatMap) {
+    ComparatorCatalog(final ClassLoader classLoader, final Map<String, Format> formatMap) {
         super(classLoader);
         this.formatMap = formatMap;
     }

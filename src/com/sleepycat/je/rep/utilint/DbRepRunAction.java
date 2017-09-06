@@ -23,27 +23,23 @@ import com.sleepycat.je.rep.ReplicationConfig;
 import com.sleepycat.je.utilint.CmdUtil;
 
 /**
- * @hidden
- * RepRunAction is a debugging aid that invokes a ReplicatedEnvironment recovery
- * from the command line.
+ * @hidden RepRunAction is a debugging aid that invokes a ReplicatedEnvironment
+ *         recovery from the command line.
  */
 public class DbRepRunAction {
     private static final String USAGE =
 
-        "usage: " + CmdUtil.getJavaCommand(DbRepRunAction.class) + "\n" +
-        "       -h <dir> # environment home directory\n" +
-        "       -group <name> # groupName\n" +
-        "       -name <name> # nodeName\n" +
-        "       -host <host> # nodeHost\n" +
-        "       -showVLSN (dump vlsn index )\n" +
-        "       -checkpoint (forced )\n";
+            "usage: " + CmdUtil.getJavaCommand(DbRepRunAction.class) + "\n"
+                    + "       -h <dir> # environment home directory\n" + "       -group <name> # groupName\n"
+                    + "       -name <name> # nodeName\n" + "       -host <host> # nodeHost\n"
+                    + "       -showVLSN (dump vlsn index )\n" + "       -checkpoint (forced )\n";
 
-    private File envHome;
-    private String nodeName;
-    private String nodeHost;
-    private String groupName;
-    private boolean showVLSN;
-    private boolean doCheckpoint;
+    private File                envHome;
+    private String              nodeName;
+    private String              nodeHost;
+    private String              groupName;
+    private boolean             showVLSN;
+    private boolean             doCheckpoint;
 
     public static void main(String[] argv) {
 
@@ -125,9 +121,7 @@ public class DbRepRunAction {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setTransactional(true);
 
-        return RepInternal.createDetachedEnv(envHome,
-                                             repConfig,
-                                             envConfig);
+        return RepInternal.createDetachedEnv(envHome, repConfig, envConfig);
 
     }
 

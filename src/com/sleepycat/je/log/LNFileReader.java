@@ -43,45 +43,39 @@ public class LNFileReader extends FileReader {
      * entry.
      */
     protected Map<LogEntryType, LogEntry> targetEntryMap;
-    protected LogEntry targetLogEntry;
+    protected LogEntry                    targetLogEntry;
 
-    private long ckptEnd;
+    private long                          ckptEnd;
 
     /**
      * Create this reader to start at a given LSN.
+     * 
      * @param env The relevant EnvironmentImpl
      * @param readBufferSize buffer size in bytes for reading in log
      * @param startLsn where to start in the log
-     * @param redo If true, we're going to go forward from
-     *             the start LSN to the end of the log. If false, we're going
-     *             backwards from the end of the log to the start LSN.
-     * @param finishLsn the last LSN to read in the log. May be null if we
-     *  want to read to the end of the log.
+     * @param redo If true, we're going to go forward from the start LSN to the
+     *            end of the log. If false, we're going backwards from the end
+     *            of the log to the start LSN.
+     * @param finishLsn the last LSN to read in the log. May be null if we want
+     *            to read to the end of the log.
      * @param endOfFileLsn the virtual LSN that marks the end of the log. (The
-     *  one off the end of the log). Only used if we're reading backwards.
-     *  Different from the startLsn because the startLsn tells us where the
-     *  beginning of the start entry is, but not the length/end of the start
-     *  entry. May be null if we're going foward.
+     *            one off the end of the log). Only used if we're reading
+     *            backwards. Different from the startLsn because the startLsn
+     *            tells us where the beginning of the start entry is, but not
+     *            the length/end of the start entry. May be null if we're going
+     *            foward.
      */
-    public LNFileReader(EnvironmentImpl env,
-                        int readBufferSize,
-                        long startLsn,
-                        boolean redo,
-                        long endOfFileLsn,
-                        long finishLsn,
-                        Long singleFileNum,
-                        long ckptEnd)
-        throws DatabaseException {
+    public LNFileReader(EnvironmentImpl env, int readBufferSize, long startLsn, boolean redo, long endOfFileLsn,
+                        long finishLsn, Long singleFileNum, long ckptEnd)
+            throws DatabaseException {
 
-        super(env, readBufferSize, redo /*forward*/, startLsn,
-              singleFileNum, endOfFileLsn, finishLsn);
+        super(env, readBufferSize, redo /* forward */, startLsn, singleFileNum, endOfFileLsn, finishLsn);
 
         this.ckptEnd = ckptEnd;
         targetEntryMap = new HashMap<LogEntryType, LogEntry>();
     }
 
-    public void addTargetType(LogEntryType entryType)
-        throws DatabaseException {
+    public void addTargetType(LogEntryType entryType) throws DatabaseException {
 
         targetEntryMap.put(entryType, entryType.getNewLogEntry());
     }
@@ -92,13 +86,11 @@ public class LNFileReader extends FileReader {
     @Override
     protected boolean isTargetEntry() {
 
-        if (currentEntryHeader.getProvisional().isProvisional
-            (getLastLsn(), ckptEnd)) {
+        if (currentEntryHeader.getProvisional().isProvisional(getLastLsn(), ckptEnd)) {
             /* Skip provisionial entries */
             targetLogEntry = null;
         } else {
-            LogEntryType fromLogType =
-                new LogEntryType(currentEntryHeader.getType());
+            LogEntryType fromLogType = new LogEntryType(currentEntryHeader.getType());
 
             /* Is it a target entry? */
             targetLogEntry = targetEntryMap.get(fromLogType);
@@ -110,8 +102,7 @@ public class LNFileReader extends FileReader {
      * This reader instantiates an LN and key for every LN entry.
      */
     @Override
-    protected boolean processEntry(ByteBuffer entryBuffer)
-        throws DatabaseException {
+    protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
         targetLogEntry.readEntry(envImpl, currentEntryHeader, entryBuffer);
         return true;
@@ -125,9 +116,9 @@ public class LNFileReader extends FileReader {
     }
 
     /**
-     * Get the last LN log entry seen by the reader.  Note that
-     * LNLogEntry.postFetchInit must be called before calling certain
-     * LNLogEntry methods.
+     * Get the last LN log entry seen by the reader. Note that
+     * LNLogEntry.postFetchInit must be called before calling certain LNLogEntry
+     * methods.
      */
     public LNLogEntry<?> getLNLogEntry() {
         return (LNLogEntry<?>) targetLogEntry;
@@ -137,9 +128,7 @@ public class LNFileReader extends FileReader {
      * Returns a NameLNLogEntry if the LN is a NameLN, or null otherwise.
      */
     public NameLNLogEntry getNameLNLogEntry() {
-        return (targetLogEntry instanceof NameLNLogEntry) ?
-            ((NameLNLogEntry) targetLogEntry) :
-            null;
+        return (targetLogEntry instanceof NameLNLogEntry) ? ((NameLNLogEntry) targetLogEntry) : null;
     }
 
     /**

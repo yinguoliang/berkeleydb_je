@@ -64,14 +64,12 @@ import com.sleepycat.je.utilint.LoggerUtils;
  * after the start of the scan. For example, if the record referred to by the
  * DiskOrderedCursor is deleted after the DiskOrderedCursor is positioned at
  * that record, getCurrent() will still return the key and value of that record
- * and OperationStatus.SUCCESS.
- * 
- * If a transactionally correct data set is required (as defined by
- * READ_COMMITTED), the application must ensure that all transactions that write
- * to the database are committed before the beginning of the scan. During the
- * scan, no records in the database of the scan may be inserted, deleted, or
- * modified. While this is possible, it is not the expected use case for a
- * DiskOrderedCursor.
+ * and OperationStatus.SUCCESS. If a transactionally correct data set is
+ * required (as defined by READ_COMMITTED), the application must ensure that all
+ * transactions that write to the database are committed before the beginning of
+ * the scan. During the scan, no records in the database of the scan may be
+ * inserted, deleted, or modified. While this is possible, it is not the
+ * expected use case for a DiskOrderedCursor.
  * <p>
  * <h3>Performance Considerations</h3>
  * <p>
@@ -130,238 +128,232 @@ import com.sleepycat.je.utilint.LoggerUtils;
  */
 public class DiskOrderedCursor implements ForwardCursor {
 
-	private final Database[] dbHandles;
+    private final Database[]              dbHandles;
 
-	private final DatabaseImpl[] dbImpls;
+    private final DatabaseImpl[]          dbImpls;
 
-	private final DiskOrderedCursorConfig config;
+    private final DiskOrderedCursorConfig config;
 
-	private final DiskOrderedCursorImpl dosCursorImpl;
+    private final DiskOrderedCursorImpl   dosCursorImpl;
 
-	private final Logger logger;
+    private final Logger                  logger;
 
-	DiskOrderedCursor(final Database[] dbHandles, final DiskOrderedCursorConfig config) {
+    DiskOrderedCursor(final Database[] dbHandles, final DiskOrderedCursorConfig config) {
 
-		this.dbHandles = dbHandles;
-		this.config = config;
+        this.dbHandles = dbHandles;
+        this.config = config;
 
-		assert (dbHandles != null && dbHandles.length > 0);
+        assert (dbHandles != null && dbHandles.length > 0);
 
-		dbImpls = new DatabaseImpl[dbHandles.length];
+        dbImpls = new DatabaseImpl[dbHandles.length];
 
-		boolean dups = false;
-		int i = 0;
+        boolean dups = false;
+        int i = 0;
 
-		try {
-			for (; i < dbHandles.length; ++i) {
+        try {
+            for (; i < dbHandles.length; ++i) {
 
-				Database db = dbHandles[i];
-				DatabaseImpl dbImpl;
+                Database db = dbHandles[i];
+                DatabaseImpl dbImpl;
 
-				synchronized (db) {
-					db.addCursor(this);
-					dbImpl = db.getDbImpl();
-				}
+                synchronized (db) {
+                    db.addCursor(this);
+                    dbImpl = db.getDbImpl();
+                }
 
-				assert (dbImpl != null);
+                assert (dbImpl != null);
 
-				if (i == 0) {
-					dups = dbImpl.getSortedDuplicates();
+                if (i == 0) {
+                    dups = dbImpl.getSortedDuplicates();
 
-				} else if (dbImpl.getSortedDuplicates() != dups) {
-					throw new IllegalArgumentException("In a multi-database disk ordered cursor "
-							+ "either all or none of the databases should support " + "duplicates");
-				}
+                } else if (dbImpl.getSortedDuplicates() != dups) {
+                    throw new IllegalArgumentException("In a multi-database disk ordered cursor "
+                            + "either all or none of the databases should support " + "duplicates");
+                }
 
-				dbImpls[i] = dbImpl;
-			}
+                dbImpls[i] = dbImpl;
+            }
 
-			dosCursorImpl = new DiskOrderedCursorImpl(dbImpls, config);
+            dosCursorImpl = new DiskOrderedCursorImpl(dbImpls, config);
 
-			this.logger = dbImpls[0].getEnv().getLogger();
+            this.logger = dbImpls[0].getEnv().getLogger();
 
-		} catch (final Throwable e) {
-			for (int j = 0; j < i; ++j) {
-				dbHandles[j].removeCursor(this);
-			}
+        } catch (final Throwable e) {
+            for (int j = 0; j < i; ++j) {
+                dbHandles[j].removeCursor(this);
+            }
 
-			throw e;
-		}
-	}
+            throw e;
+        }
+    }
 
-	/**
-	 * Returns the Database handle for the database that contains the latest
-	 * record returned by getNext().
-	 *
-	 * @return The Database handle associated with this Cursor.
-	 */
-	@Override
-	public Database getDatabase() {
-		return dbHandles[dosCursorImpl.getCurrDb()];
-	}
+    /**
+     * Returns the Database handle for the database that contains the latest
+     * record returned by getNext().
+     *
+     * @return The Database handle associated with this Cursor.
+     */
+    @Override
+    public Database getDatabase() {
+        return dbHandles[dosCursorImpl.getCurrDb()];
+    }
 
-	/**
-	 * Discards the cursor.
-	 *
-	 * <p>
-	 * The cursor handle may not be used again after this method has been
-	 * called, regardless of the method's success or failure.
-	 * </p>
-	 *
-	 * <p>
-	 * WARNING: To guard against memory leaks, the application should discard
-	 * all references to the closed handle. While BDB makes an effort to discard
-	 * references from closed objects to the allocated memory for an
-	 * environment, this behavior is not guaranteed. The safe course of action
-	 * for an application is to discard all references to closed BDB objects.
-	 * </p>
-	 *
-	 * @throws EnvironmentFailureException
-	 *             if an unexpected, internal or environment-wide failure
-	 *             occurs.
-	 */
-	@Override
-	public void close() throws DatabaseException {
+    /**
+     * Discards the cursor.
+     * <p>
+     * The cursor handle may not be used again after this method has been
+     * called, regardless of the method's success or failure.
+     * </p>
+     * <p>
+     * WARNING: To guard against memory leaks, the application should discard
+     * all references to the closed handle. While BDB makes an effort to discard
+     * references from closed objects to the allocated memory for an
+     * environment, this behavior is not guaranteed. The safe course of action
+     * for an application is to discard all references to closed BDB objects.
+     * </p>
+     *
+     * @throws EnvironmentFailureException if an unexpected, internal or
+     *             environment-wide failure occurs.
+     */
+    @Override
+    public void close() throws DatabaseException {
 
-		if (dosCursorImpl.isClosed()) {
-			return;
-		}
-		try {
-			dosCursorImpl.checkEnv();
+        if (dosCursorImpl.isClosed()) {
+            return;
+        }
+        try {
+            dosCursorImpl.checkEnv();
 
-			dosCursorImpl.close();
+            dosCursorImpl.close();
 
-			for (int i = 0; i < dbHandles.length; ++i) {
-				dbHandles[i].removeCursor(this);
-			}
+            for (int i = 0; i < dbHandles.length; ++i) {
+                dbHandles[i].removeCursor(this);
+            }
 
-		} catch (Error E) {
-			dbImpls[0].getEnv().invalidate(E);
-			throw E;
-		}
-	}
+        } catch (Error E) {
+            dbImpls[0].getEnv().invalidate(E);
+            throw E;
+        }
+    }
 
-	/**
-	 * @param options
-	 *            the ReadOptions, or null to use default options. For
-	 *            DiskOrderedCursors, {@link ReadOptions#getLockMode} must
-	 *            return null, {@link com.sleepycat.je.LockMode#DEFAULT} or
-	 *            {@link com.sleepycat.je.LockMode#READ_UNCOMMITTED}, and no
-	 *            locking is performed.
-	 */
-	@Override
-	public OperationResult get(final DatabaseEntry key, final DatabaseEntry data, final Get getType,
-			final ReadOptions options) {
+    /**
+     * @param options the ReadOptions, or null to use default options. For
+     *            DiskOrderedCursors, {@link ReadOptions#getLockMode} must
+     *            return null, {@link com.sleepycat.je.LockMode#DEFAULT} or
+     *            {@link com.sleepycat.je.LockMode#READ_UNCOMMITTED}, and no
+     *            locking is performed.
+     */
+    @Override
+    public OperationResult get(final DatabaseEntry key, final DatabaseEntry data, final Get getType,
+                               final ReadOptions options) {
 
-		try {
-			checkState();
-			checkLockMode((options != null) ? options.getLockMode() : null);
-			trace(Level.FINEST, getType);
+        try {
+            checkState();
+            checkLockMode((options != null) ? options.getLockMode() : null);
+            trace(Level.FINEST, getType);
 
-			switch (getType) {
-			case CURRENT:
-				return dosCursorImpl.getCurrent(key, data);
-			case NEXT:
-				return dosCursorImpl.getNext(key, data);
-			default:
-				throw new IllegalArgumentException("Get type not allowed: " + getType);
-			}
+            switch (getType) {
+                case CURRENT:
+                    return dosCursorImpl.getCurrent(key, data);
+                case NEXT:
+                    return dosCursorImpl.getNext(key, data);
+                default:
+                    throw new IllegalArgumentException("Get type not allowed: " + getType);
+            }
 
-		} catch (Error E) {
-			dbImpls[0].getEnv().invalidate(E);
-			throw E;
-		}
-	}
+        } catch (Error E) {
+            dbImpls[0].getEnv().invalidate(E);
+            throw E;
+        }
+    }
 
-	/**
-	 * @param lockMode
-	 *            the locking attributes. For DiskOrderedCursors this parameter
-	 *            must be either null, {@link com.sleepycat.je.LockMode#DEFAULT}
-	 *            or {@link com.sleepycat.je.LockMode#READ_UNCOMMITTED}, and no
-	 *            locking is performed.
-	 *
-	 * @return {@link com.sleepycat.je.OperationStatus#KEYEMPTY
-	 *         OperationStatus.KEYEMPTY} if there are no more records in the
-	 *         DiskOrderedCursor set, otherwise,
-	 *         {@link com.sleepycat.je.OperationStatus#SUCCESS
-	 *         OperationStatus.SUCCESS}. If the record referred to by a
-	 *         DiskOrderedCursor is deleted after the ForwardCursor is
-	 *         positioned at that record, getCurrent() will still return the key
-	 *         and value of that record and OperationStatus.SUCCESS.
-	 */
-	@Override
-	public OperationStatus getCurrent(final DatabaseEntry key, final DatabaseEntry data, final LockMode lockMode) {
+    /**
+     * @param lockMode the locking attributes. For DiskOrderedCursors this
+     *            parameter must be either null,
+     *            {@link com.sleepycat.je.LockMode#DEFAULT} or
+     *            {@link com.sleepycat.je.LockMode#READ_UNCOMMITTED}, and no
+     *            locking is performed.
+     * @return {@link com.sleepycat.je.OperationStatus#KEYEMPTY
+     *         OperationStatus.KEYEMPTY} if there are no more records in the
+     *         DiskOrderedCursor set, otherwise,
+     *         {@link com.sleepycat.je.OperationStatus#SUCCESS
+     *         OperationStatus.SUCCESS}. If the record referred to by a
+     *         DiskOrderedCursor is deleted after the ForwardCursor is
+     *         positioned at that record, getCurrent() will still return the key
+     *         and value of that record and OperationStatus.SUCCESS.
+     */
+    @Override
+    public OperationStatus getCurrent(final DatabaseEntry key, final DatabaseEntry data, final LockMode lockMode) {
 
-		final OperationResult result = get(key, data, Get.CURRENT, DbInternal.getReadOptions(lockMode));
+        final OperationResult result = get(key, data, Get.CURRENT, DbInternal.getReadOptions(lockMode));
 
-		return result == null ? OperationStatus.KEYEMPTY : OperationStatus.SUCCESS;
-	}
+        return result == null ? OperationStatus.KEYEMPTY : OperationStatus.SUCCESS;
+    }
 
-	/**
-	 * @param lockMode
-	 *            the locking attributes. For DiskOrderedCursors this parameter
-	 *            must be either null, {@link com.sleepycat.je.LockMode#DEFAULT}
-	 *            or {@link com.sleepycat.je.LockMode#READ_UNCOMMITTED}, and no
-	 *            locking is performed.
-	 */
-	@Override
-	public OperationStatus getNext(final DatabaseEntry key, final DatabaseEntry data, final LockMode lockMode) {
+    /**
+     * @param lockMode the locking attributes. For DiskOrderedCursors this
+     *            parameter must be either null,
+     *            {@link com.sleepycat.je.LockMode#DEFAULT} or
+     *            {@link com.sleepycat.je.LockMode#READ_UNCOMMITTED}, and no
+     *            locking is performed.
+     */
+    @Override
+    public OperationStatus getNext(final DatabaseEntry key, final DatabaseEntry data, final LockMode lockMode) {
 
-		final OperationResult result = get(key, data, Get.NEXT, DbInternal.getReadOptions(lockMode));
+        final OperationResult result = get(key, data, Get.NEXT, DbInternal.getReadOptions(lockMode));
 
-		return result == null ? OperationStatus.NOTFOUND : OperationStatus.SUCCESS;
-	}
+        return result == null ? OperationStatus.NOTFOUND : OperationStatus.SUCCESS;
+    }
 
-	/**
-	 * Returns this cursor's configuration.
-	 *
-	 * <p>
-	 * This may differ from the configuration used to open this object if the
-	 * cursor existed previously.
-	 * </p>
-	 *
-	 * @return This cursor's configuration.
-	 */
-	public DiskOrderedCursorConfig getConfig() {
-		try {
-			return config.clone();
-		} catch (Error E) {
-			dbImpls[0].getEnv().invalidate(E);
-			throw E;
-		}
-	}
+    /**
+     * Returns this cursor's configuration.
+     * <p>
+     * This may differ from the configuration used to open this object if the
+     * cursor existed previously.
+     * </p>
+     *
+     * @return This cursor's configuration.
+     */
+    public DiskOrderedCursorConfig getConfig() {
+        try {
+            return config.clone();
+        } catch (Error E) {
+            dbImpls[0].getEnv().invalidate(E);
+            throw E;
+        }
+    }
 
-	private void checkLockMode(final LockMode lockMode) {
-		if (lockMode == null || lockMode == LockMode.DEFAULT || lockMode == LockMode.READ_UNCOMMITTED) {
-			return;
-		}
+    private void checkLockMode(final LockMode lockMode) {
+        if (lockMode == null || lockMode == LockMode.DEFAULT || lockMode == LockMode.READ_UNCOMMITTED) {
+            return;
+        }
 
-		throw new IllegalArgumentException("lockMode must be null or LockMode.READ_UNCOMMITTED");
-	}
+        throw new IllegalArgumentException("lockMode must be null or LockMode.READ_UNCOMMITTED");
+    }
 
-	/**
-	 * Checks the environment and cursor state.
-	 */
-	private void checkState() {
-		dosCursorImpl.checkEnv();
-	}
+    /**
+     * Checks the environment and cursor state.
+     */
+    private void checkState() {
+        dosCursorImpl.checkEnv();
+    }
 
-	/**
-	 * Sends trace messages to the java.util.logger. Don't rely on the logger
-	 * alone to conditionalize whether we send this message, we don't even want
-	 * to construct the message if the level is not enabled.
-	 */
-	private void trace(final Level level, final Get getType) {
+    /**
+     * Sends trace messages to the java.util.logger. Don't rely on the logger
+     * alone to conditionalize whether we send this message, we don't even want
+     * to construct the message if the level is not enabled.
+     */
+    private void trace(final Level level, final Get getType) {
 
-		if (logger.isLoggable(level)) {
-			LoggerUtils.logMsg(logger, dbImpls[0].getEnv(), level, getType.toString());
-		}
-	}
+        if (logger.isLoggable(level)) {
+            LoggerUtils.logMsg(logger, dbImpls[0].getEnv(), level, getType.toString());
+        }
+    }
 
-	/**
-	 * For testing and other internal use.
-	 */
-	DiskOrderedCursorImpl getCursorImpl() {
-		return dosCursorImpl;
-	}
+    /**
+     * For testing and other internal use.
+     */
+    DiskOrderedCursorImpl getCursorImpl() {
+        return dosCursorImpl;
+    }
 }

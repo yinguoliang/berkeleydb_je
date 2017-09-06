@@ -27,48 +27,38 @@ import com.sleepycat.je.rep.net.DataChannelFactory;
 
 /**
  * Defines the request/response messages used in the implementation of
- * elections.
- *
- * From Proposer to Acceptor:
- *     Propose -> Promise | Reject
- *     Accept -> Accepted | Reject
- *
- * From Proposer initiator to Learners:
- *    Result -> none
- *
- * The following exchange is not part of the elections process, but is used by
- * the Monitor to query a Learner for the latest election result it's aware of,
- * when the Monitor first starts up.  It is also used by nodes and utilities
- * that are attempting to find the master.
- *
- * From Monitor to Learner
- *    MasterQuery -> MasterQueryResponse | None
- *
+ * elections. From Proposer to Acceptor: Propose -> Promise | Reject Accept ->
+ * Accepted | Reject From Proposer initiator to Learners: Result -> none The
+ * following exchange is not part of the elections process, but is used by the
+ * Monitor to query a Learner for the latest election result it's aware of, when
+ * the Monitor first starts up. It is also used by nodes and utilities that are
+ * attempting to find the master. From Monitor to Learner MasterQuery ->
+ * MasterQueryResponse | None
  */
 public class Protocol extends TextProtocol {
 
     /* Protocol version string. Format: <major version>.<minor version> */
     /* It's used to ensure compatibility across versions. */
-    private static final String VERSION = "2.0";
+    private static final String  VERSION = "2.0";
 
     /* An instance of ProposalParser used to de-serialize proposals */
     private final ProposalParser proposalParser;
 
     /* An instance of ValueParser used to de-serialize values */
-    private final ValueParser valueParser;
+    private final ValueParser    valueParser;
 
     /* Request Operations */
-    public final MessageOp PROPOSE;
-    public final MessageOp ACCEPT;
-    public final MessageOp RESULT;
-    public final MessageOp MASTER_QUERY;
-    public final MessageOp SHUTDOWN;
+    public final MessageOp       PROPOSE;
+    public final MessageOp       ACCEPT;
+    public final MessageOp       RESULT;
+    public final MessageOp       MASTER_QUERY;
+    public final MessageOp       SHUTDOWN;
 
     /* Response operations */
-    public final MessageOp REJECT;
-    public final MessageOp PROMISE;
-    public final MessageOp ACCEPTED;
-    public final MessageOp MASTER_QUERY_RESPONSE;
+    public final MessageOp       REJECT;
+    public final MessageOp       PROMISE;
+    public final MessageOp       ACCEPTED;
+    public final MessageOp       MASTER_QUERY_RESPONSE;
 
     /**
      * Creates an instance of the Protocol.
@@ -78,12 +68,8 @@ public class Protocol extends TextProtocol {
      * @parameter groupName the name of the group running the election process.
      * @param nameIdPair a unique identifier for this election participant.
      */
-    public Protocol(ProposalParser proposalParser,
-                    ValueParser valueParser,
-                    String  groupName,
-                    NameIdPair nameIdPair,
-                    RepImpl repImpl,
-                    DataChannelFactory channelFactory) {
+    public Protocol(ProposalParser proposalParser, ValueParser valueParser, String groupName, NameIdPair nameIdPair,
+                    RepImpl repImpl, DataChannelFactory channelFactory) {
 
         /* Request operations */
         super(VERSION, groupName, nameIdPair, repImpl, channelFactory);
@@ -92,26 +78,16 @@ public class Protocol extends TextProtocol {
         ACCEPT = new MessageOp("A", Accept.class);
         RESULT = new MessageOp("RE", Result.class);
         MASTER_QUERY = new MessageOp("MQ", MasterQuery.class);
-        SHUTDOWN = new MessageOp("X", Shutdown.class );
+        SHUTDOWN = new MessageOp("X", Shutdown.class);
 
         REJECT = new MessageOp("R", Reject.class);
         PROMISE = new MessageOp("PR", Promise.class);
         ACCEPTED = new MessageOp("AD", Accepted.class);
-        MASTER_QUERY_RESPONSE =
-            new MessageOp("MQR", MasterQueryResponse.class);
+        MASTER_QUERY_RESPONSE = new MessageOp("MQR", MasterQueryResponse.class);
 
-        initializeMessageOps(new MessageOp[] {
-                PROPOSE,
-                ACCEPT,
-                RESULT,
-                MASTER_QUERY,
-                SHUTDOWN,
+        initializeMessageOps(new MessageOp[] { PROPOSE, ACCEPT, RESULT, MASTER_QUERY, SHUTDOWN,
 
-                REJECT,
-                PROMISE,
-                ACCEPTED,
-                MASTER_QUERY_RESPONSE,
-        });
+                REJECT, PROMISE, ACCEPTED, MASTER_QUERY_RESPONSE, });
         this.proposalParser = proposalParser;
         this.valueParser = valueParser;
 
@@ -120,62 +96,50 @@ public class Protocol extends TextProtocol {
 
     /**
      * Promise response message. It's sent in response to a Propose message.
-     *
      * Note that the "minor" part of the suggestion ranking is always tagged on
      * to the end of the promise request payload. Older pre 7.1.3 nodes will
      * ignore extra tokens at the end, since they do not know about the minor
      * component of the ranking. This node will use it if it's present and
-     * otherwise use a value of zero for the minor (VLSN) component.
-     *
-     * So when comparing rankings across old and new nodes, we are effectively
-     * comparing a Ranking(VLSN, Long.MIN_VALUE) with a Ranking(DTVLSN, VLSN),
-     * resulting in suboptimal election results (from a dtvlsn perspective)
-     * while an upgrade is in progress, that is, it will tend to favor the
-     * older node. But this inaccuracy will vanish once all nodes have been
-     * upgraded.
+     * otherwise use a value of zero for the minor (VLSN) component. So when
+     * comparing rankings across old and new nodes, we are effectively comparing
+     * a Ranking(VLSN, Long.MIN_VALUE) with a Ranking(DTVLSN, VLSN), resulting
+     * in suboptimal election results (from a dtvlsn perspective) while an
+     * upgrade is in progress, that is, it will tend to favor the older node.
+     * But this inaccuracy will vanish once all nodes have been upgraded.
      */
     public class Promise extends ResponseMessage {
-        private Proposal highestProposal = null;
-        private Value acceptedValue = null;
-        private Value suggestion = null;
+        private Proposal      highestProposal = null;
+        private Value         acceptedValue   = null;
+        private Value         suggestion      = null;
 
         /**
          * The major and minor components of the Ranking represent the DTVLSN
          * and the latest VLSN respectively.
          */
         private final Ranking suggestionRanking;
-        private final int priority;
-        private int logVersion;
-        private JEVersion jeVersion;
+        private final int     priority;
+        private int           logVersion;
+        private JEVersion     jeVersion;
 
-        public Promise(Proposal highestProposal,
-                       Value value,
-                       Value suggestion,
-                       Ranking suggestionRanking,
-                       int priority,
-                       int logVersion,
-                       JEVersion jeVersion) {
+        public Promise(Proposal highestProposal, Value value, Value suggestion, Ranking suggestionRanking, int priority,
+                       int logVersion, JEVersion jeVersion) {
             this.highestProposal = highestProposal;
             this.acceptedValue = value;
             this.suggestion = suggestion;
-            this.suggestionRanking = suggestionRanking ;
+            this.suggestionRanking = suggestionRanking;
             this.priority = priority;
             this.logVersion = logVersion;
             this.jeVersion = jeVersion;
         }
 
-        public Promise(String responseLine, String[] tokens)
-            throws InvalidMessageException {
+        public Promise(String responseLine, String[] tokens) throws InvalidMessageException {
 
             super(responseLine, tokens);
             highestProposal = proposalParser.parse(nextPayloadToken());
             acceptedValue = valueParser.parse(nextPayloadToken());
             suggestion = valueParser.parse(nextPayloadToken());
             String weight = nextPayloadToken();
-            long majorRanking =
-                "".equals(weight) ?
-                Ranking.UNINITIALIZED.major :
-                Long.parseLong(weight);
+            long majorRanking = "".equals(weight) ? Ranking.UNINITIALIZED.major : Long.parseLong(weight);
             long minorRanking = Ranking.UNINITIALIZED.major;
             priority = Integer.parseInt(nextPayloadToken());
             if (getMajorVersionNumber(sendVersion) > 1) {
@@ -202,19 +166,14 @@ public class Protocol extends TextProtocol {
             final int prime = 31;
             int result = super.hashCode();
             result = prime * result + getOuterType().hashCode();
-            result = prime * result
-                    + ((acceptedValue == null) ? 0 : acceptedValue.hashCode());
-            result = prime
-                    * result
-                    + ((highestProposal == null) ? 0
-                            : highestProposal.hashCode());
+            result = prime * result + ((acceptedValue == null) ? 0 : acceptedValue.hashCode());
+            result = prime * result + ((highestProposal == null) ? 0 : highestProposal.hashCode());
             result = prime * result + priority;
-            result = prime * result
-                    + ((suggestion == null) ? 0 : suggestion.hashCode());
+            result = prime * result + ((suggestion == null) ? 0 : suggestion.hashCode());
             result = prime * result + suggestionRanking.hashCode();
 
             if (getMajorVersionNumber(sendVersion) > 1) {
-                result += prime* result + logVersion + jeVersion.hashCode();
+                result += prime * result + logVersion + jeVersion.hashCode();
             }
 
             return result;
@@ -286,30 +245,19 @@ public class Protocol extends TextProtocol {
 
         @Override
         public String wireFormat() {
-            String line =
-                wireFormatPrefix() +
-                SEPARATOR +
-                ((highestProposal != null) ?
-                 highestProposal.wireFormat() :
-                 "") +
-                SEPARATOR +
-                ((acceptedValue != null) ? acceptedValue.wireFormat() : "") +
-                SEPARATOR +
-                ((suggestion != null) ?  suggestion.wireFormat() : "") +
-                SEPARATOR +
-                ((suggestionRanking.major == Long.MIN_VALUE) ?
-                 "" :
-                 Long.toString(suggestionRanking.major)) +
-                 SEPARATOR +
-                 priority;
+            String line = wireFormatPrefix() + SEPARATOR
+                    + ((highestProposal != null) ? highestProposal.wireFormat() : "") + SEPARATOR
+                    + ((acceptedValue != null) ? acceptedValue.wireFormat() : "") + SEPARATOR
+                    + ((suggestion != null) ? suggestion.wireFormat() : "") + SEPARATOR
+                    + ((suggestionRanking.major == Long.MIN_VALUE) ? "" : Long.toString(suggestionRanking.major))
+                    + SEPARATOR + priority;
 
-           if (getMajorVersionNumber(sendVersion) > 1) {
-              line += SEPARATOR + logVersion +
-                      SEPARATOR + jeVersion.toString() +
-                      SEPARATOR + Long.toString(suggestionRanking.minor);
-           }
+            if (getMajorVersionNumber(sendVersion) > 1) {
+                line += SEPARATOR + logVersion + SEPARATOR + jeVersion.toString() + SEPARATOR
+                        + Long.toString(suggestionRanking.minor);
+            }
 
-           return line;
+            return line;
         }
 
         Proposal getHighestProposal() {
@@ -350,29 +298,27 @@ public class Protocol extends TextProtocol {
      */
     public class Accepted extends ResponseMessage {
         private final Proposal proposal;
-        private final Value value;
+        private final Value    value;
 
         Accepted(Proposal proposal, Value value) {
-            assert(proposal!= null);
-            assert(value != null);
+            assert (proposal != null);
+            assert (value != null);
             this.proposal = proposal;
             this.value = value;
         }
 
-        public Accepted(String responseLine, String[] tokens)
-            throws InvalidMessageException {
+        public Accepted(String responseLine, String[] tokens) throws InvalidMessageException {
 
             super(responseLine, tokens);
             proposal = proposalParser.parse(nextPayloadToken());
-            value  = valueParser.parse(nextPayloadToken());
+            value = valueParser.parse(nextPayloadToken());
         }
 
         @Override
         public int hashCode() {
             final int prime = 31;
             int result = super.hashCode();
-            result = prime * result
-                    + ((proposal == null) ? 0 : proposal.hashCode());
+            result = prime * result + ((proposal == null) ? 0 : proposal.hashCode());
             result = prime * result + ((value == null) ? 0 : value.hashCode());
             return result;
         }
@@ -413,8 +359,7 @@ public class Protocol extends TextProtocol {
 
         @Override
         public String wireFormat() {
-            return wireFormatPrefix() + SEPARATOR + proposal.wireFormat() +
-                SEPARATOR + value.wireFormat();
+            return wireFormatPrefix() + SEPARATOR + proposal.wireFormat() + SEPARATOR + value.wireFormat();
         }
 
         public Value getValue() {
@@ -427,8 +372,8 @@ public class Protocol extends TextProtocol {
     }
 
     /**
-     * The response to a Master Query request. It simply repackages the
-     * Accepted response.
+     * The response to a Master Query request. It simply repackages the Accepted
+     * response.
      */
     public class MasterQueryResponse extends Accepted {
 
@@ -436,11 +381,11 @@ public class Protocol extends TextProtocol {
             super(proposal, value);
         }
 
-        public MasterQueryResponse(String responseLine, String[] tokens)
-            throws InvalidMessageException {
+        public MasterQueryResponse(String responseLine, String[] tokens) throws InvalidMessageException {
 
             super(responseLine, tokens);
         }
+
         @Override
         public MessageOp getOp() {
             return MASTER_QUERY_RESPONSE;
@@ -462,8 +407,7 @@ public class Protocol extends TextProtocol {
             this.higherProposal = higherProposal;
         }
 
-        public Reject(String responseLine, String[] tokens)
-            throws InvalidMessageException {
+        public Reject(String responseLine, String[] tokens) throws InvalidMessageException {
 
             super(responseLine, tokens);
             higherProposal = proposalParser.parse(nextPayloadToken());
@@ -473,8 +417,7 @@ public class Protocol extends TextProtocol {
         public int hashCode() {
             final int prime = 31;
             int result = super.hashCode();
-            result = prime * result +
-                ((higherProposal == null) ? 0 : higherProposal.hashCode());
+            result = prime * result + ((higherProposal == null) ? 0 : higherProposal.hashCode());
 
             return result;
         }
@@ -526,8 +469,7 @@ public class Protocol extends TextProtocol {
             this.proposal = proposal;
         }
 
-        public Propose(String requestLine, String[] tokens)
-            throws InvalidMessageException {
+        public Propose(String requestLine, String[] tokens) throws InvalidMessageException {
 
             super(requestLine, tokens);
             proposal = proposalParser.parse(nextPayloadToken());
@@ -537,8 +479,7 @@ public class Protocol extends TextProtocol {
         public int hashCode() {
             final int prime = 31;
             int result = super.hashCode();
-            result = prime * result
-                    + ((proposal == null) ? 0 : proposal.hashCode());
+            result = prime * result + ((proposal == null) ? 0 : proposal.hashCode());
             return result;
         }
 
@@ -571,7 +512,7 @@ public class Protocol extends TextProtocol {
 
         @Override
         public String wireFormat() {
-            return wireFormatPrefix() + SEPARATOR +  proposal.wireFormat();
+            return wireFormatPrefix() + SEPARATOR + proposal.wireFormat();
         }
 
         Proposal getProposal() {
@@ -581,10 +522,10 @@ public class Protocol extends TextProtocol {
 
     public class Shutdown extends RequestMessage {
 
-        public Shutdown() {}
+        public Shutdown() {
+        }
 
-        public Shutdown(String responseLine, String[] tokens)
-            throws InvalidMessageException {
+        public Shutdown(String responseLine, String[] tokens) throws InvalidMessageException {
 
             super(responseLine, tokens);
         }
@@ -612,8 +553,7 @@ public class Protocol extends TextProtocol {
             this.value = value;
         }
 
-        public Accept(String requestLine, String[] tokens)
-            throws InvalidMessageException {
+        public Accept(String requestLine, String[] tokens) throws InvalidMessageException {
 
             super(requestLine, tokens);
             value = valueParser.parse(nextPayloadToken());
@@ -673,8 +613,7 @@ public class Protocol extends TextProtocol {
             super(proposal, value);
         }
 
-        public Result(String requestLine, String[] tokens)
-            throws InvalidMessageException {
+        public Result(String requestLine, String[] tokens) throws InvalidMessageException {
             super(requestLine, tokens);
         }
 
@@ -689,10 +628,10 @@ public class Protocol extends TextProtocol {
      */
     public class MasterQuery extends RequestMessage {
 
-        public MasterQuery() {}
+        public MasterQuery() {
+        }
 
-        public MasterQuery(String responseLine, String[] tokens)
-            throws InvalidMessageException {
+        public MasterQuery(String responseLine, String[] tokens) throws InvalidMessageException {
 
             super(responseLine, tokens);
         }
@@ -719,7 +658,7 @@ public class Protocol extends TextProtocol {
     }
 
     /* Represents a Value in Paxos. */
-    public interface Value extends WireFormatable  {
+    public interface Value extends WireFormatable {
     }
 
     public interface ValueParser {
@@ -727,10 +666,7 @@ public class Protocol extends TextProtocol {
          * Converts the wire format back into a Value
          *
          * @param wireFormat String representation of a Value
-         *
-         *
          * @return the de-serialized Value
-         *
          */
         abstract Value parse(String wireFormat);
     }

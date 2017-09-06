@@ -22,11 +22,8 @@ class FileHandleSource extends FileSource {
 
     private FileHandle fileHandle;
 
-    FileHandleSource(FileHandle fileHandle,
-                     int readBufferSize,
-                     FileManager fileManager) {
-        super(fileHandle.getFile(), readBufferSize, fileManager,
-              fileHandle.getFileNum(), fileHandle.getLogVersion());
+    FileHandleSource(FileHandle fileHandle, int readBufferSize, FileManager fileManager) {
+        super(fileHandle.getFile(), readBufferSize, fileManager, fileHandle.getFileNum(), fileHandle.getLogVersion());
         this.fileHandle = fileHandle;
     }
 
@@ -34,8 +31,7 @@ class FileHandleSource extends FileSource {
      * @see LogSource#release
      */
     @Override
-    public void release()
-        throws DatabaseException {
+    public void release() throws DatabaseException {
 
         fileHandle.release();
     }

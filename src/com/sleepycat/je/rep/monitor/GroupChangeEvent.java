@@ -22,12 +22,12 @@ import com.sleepycat.je.rep.ReplicationGroup;
 
 /**
  * The event generated when the group composition changes. A new instance of
- * this event is generated each time a node is added or removed from the
- * group. Note that SECONDARY nodes do not generate these events.
+ * this event is generated each time a node is added or removed from the group.
+ * Note that SECONDARY nodes do not generate these events.
  */
 /*
- * TODO: EXTERNAL is hidden for now. The doc need updated to include
- * EXTERNAL when it becomes public.
+ * TODO: EXTERNAL is hidden for now. The doc need updated to include EXTERNAL
+ * when it becomes public.
  */
 public class GroupChangeEvent extends MonitorChangeEvent {
 
@@ -55,11 +55,9 @@ public class GroupChangeEvent extends MonitorChangeEvent {
     /**
      * The type of this change.
      */
-    private final GroupChangeType opType;
+    private final GroupChangeType  opType;
 
-    GroupChangeEvent(ReplicationGroup repGroup,
-                     String nodeName,
-                     GroupChangeType opType) {
+    GroupChangeEvent(ReplicationGroup repGroup, String nodeName, GroupChangeType opType) {
         super(nodeName);
         this.repGroup = repGroup;
         this.opType = opType;

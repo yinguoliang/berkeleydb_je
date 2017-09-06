@@ -14,8 +14,8 @@
 package com.sleepycat.je.log;
 
 /**
- * Indicates that a checksum validation failed.  A checked exception is used so
- * it can be caught and handled internally in some cases.  When not handled
+ * Indicates that a checksum validation failed. A checked exception is used so
+ * it can be caught and handled internally in some cases. When not handled
  * internally, it is wrapped with an EnvironmentFailureException with
  * EnvironmentFailureReason.LOG_CHECKSUM before being propagated through the
  * public API.

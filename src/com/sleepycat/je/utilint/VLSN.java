@@ -19,20 +19,20 @@ import com.sleepycat.je.log.LogUtils;
 import com.sleepycat.je.log.Loggable;
 
 public class VLSN implements Loggable, Comparable<VLSN>, Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID            = 1L;
 
-    public static final int LOG_SIZE = 8;
+    public static final int   LOG_SIZE                    = 8;
 
-    public static final int NULL_VLSN_SEQUENCE = -1;
-    public static final VLSN NULL_VLSN = new VLSN(NULL_VLSN_SEQUENCE);
-    public static final VLSN FIRST_VLSN = new VLSN(1);
+    public static final int   NULL_VLSN_SEQUENCE          = -1;
+    public static final VLSN  NULL_VLSN                   = new VLSN(NULL_VLSN_SEQUENCE);
+    public static final VLSN  FIRST_VLSN                  = new VLSN(1);
 
     /*
-     * The distinguished value used to represent VLSN values that have not
-     * been set in log entry fields, because the field did not exist in that
-     * version of the log or in a non-HA commit/abort variant of a log entry.
+     * The distinguished value used to represent VLSN values that have not been
+     * set in log entry fields, because the field did not exist in that version
+     * of the log or in a non-HA commit/abort variant of a log entry.
      */
-    public static final int UNINITIALIZED_VLSN_SEQUENCE = 0;
+    public static final int   UNINITIALIZED_VLSN_SEQUENCE = 0;
 
     /*
      * A replicated log entry is identified by a sequence id. We may change the
@@ -40,7 +40,7 @@ public class VLSN implements Loggable, Comparable<VLSN>, Serializable {
      * its in-memory footprint. In that case, the VLSN value would be a long,
      * and this class would provide static utility methods.
      */
-    private long sequence;   // sequence number
+    private long              sequence;                                                  // sequence number
 
     public VLSN(long sequence) {
         this.sequence = sequence;
@@ -98,19 +98,15 @@ public class VLSN implements Loggable, Comparable<VLSN>, Serializable {
      * Return a VLSN which would precede this one.
      */
     public VLSN getPrev() {
-        return (isNull() || (sequence == 1)) ?
-                NULL_VLSN :
-                new VLSN(sequence - 1);
+        return (isNull() || (sequence == 1)) ? NULL_VLSN : new VLSN(sequence - 1);
     }
 
     /**
-     * Return true if this VLSN's sequence directly follows the "other"
-     * VLSN. This handles the case where "other" is a NULL_VLSN.
+     * Return true if this VLSN's sequence directly follows the "other" VLSN.
+     * This handles the case where "other" is a NULL_VLSN.
      */
     public boolean follows(VLSN other) {
-        return ((other.isNull() && sequence == 1) ||
-                ((!other.isNull()) &&
-                 (other.getSequence() == (sequence - 1))));
+        return ((other.isNull() && sequence == 1) || ((!other.isNull()) && (other.getSequence() == (sequence - 1))));
     }
 
     /**
@@ -121,8 +117,7 @@ public class VLSN implements Loggable, Comparable<VLSN>, Serializable {
     @Override
     public int compareTo(VLSN other) {
 
-        if ((sequence == NULL_VLSN.sequence) &&
-            (other.sequence == NULL_VLSN.sequence)) {
+        if ((sequence == NULL_VLSN.sequence) && (other.sequence == NULL_VLSN.sequence)) {
             return 0;
         }
 
@@ -131,7 +126,7 @@ public class VLSN implements Loggable, Comparable<VLSN>, Serializable {
             return -1;
         }
 
-        if  (other.sequence == NULL_VLSN.sequence) {
+        if (other.sequence == NULL_VLSN.sequence) {
             /* If the "other" is null, this VLSN is always greater. */
             return 1;
         }
@@ -152,14 +147,13 @@ public class VLSN implements Loggable, Comparable<VLSN>, Serializable {
      *
      * @param a a VLSN
      * @param b another VLSN
-     * @return the smaller of {@code a} and {@code b}, ignoring NULL_VLSN
-     * unless both are NULL_VLSN
+     * @return the smaller of {@code a} and {@code b}, ignoring NULL_VLSN unless
+     *         both are NULL_VLSN
      * @throws IllegalArgumentException if either argument is null
      */
     public static VLSN min(final VLSN a, final VLSN b) {
         if ((a == null) || (b == null)) {
-            throw new IllegalArgumentException(
-                "The arguments must not be null");
+            throw new IllegalArgumentException("The arguments must not be null");
         }
         if (a.isNull()) {
             return b;
@@ -186,7 +180,7 @@ public class VLSN implements Loggable, Comparable<VLSN>, Serializable {
     }
 
     /*
-     *  Reading from a byte buffer
+     * Reading from a byte buffer
      */
 
     /**

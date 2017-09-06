@@ -21,7 +21,7 @@ import com.sleepycat.je.utilint.StatDefinition.StatType;
 public class FloatStat extends Stat<Float> {
     private static final long serialVersionUID = 1L;
 
-    private float val;
+    private float             val;
 
     public FloatStat(StatGroup group, StatDefinition definition) {
         super(group, definition);

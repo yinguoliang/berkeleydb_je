@@ -26,7 +26,7 @@ import com.sleepycat.je.log.Loggable;
  */
 public abstract class Node implements Loggable {
 
-    /* Used to mean null or none.  See NodeSequence. */
+    /* Used to mean null or none. See NodeSequence. */
     public static final long NULL_NODE_ID = -1L;
 
     protected Node() {
@@ -35,8 +35,7 @@ public abstract class Node implements Loggable {
     /**
      * Initialize a node that has been faulted in from the log.
      */
-    public void postFetchInit(DatabaseImpl db, long sourceLsn)
-        throws DatabaseException {
+    public void postFetchInit(DatabaseImpl db, long sourceLsn) throws DatabaseException {
 
         /* Nothing to do. */
     }
@@ -44,19 +43,16 @@ public abstract class Node implements Loggable {
     public void latch() {
     }
 
-    public void latchShared()
-        throws DatabaseException {
+    public void latchShared() throws DatabaseException {
     }
 
-    public void latchShared(CacheMode ignore)
-        throws DatabaseException {
+    public void latchShared(CacheMode ignore) throws DatabaseException {
     }
 
     public void releaseLatch() {
     }
 
-    public void verify(byte[] maxKey)
-        throws DatabaseException {
+    public void verify(byte[] maxKey) throws DatabaseException {
     }
 
     /**
@@ -64,33 +60,31 @@ public abstract class Node implements Loggable {
      * should normally only be used by dup conversion or entities that do not
      * access records via the Btree.
      *
-     * @return true if this node is a duplicate-bearing node type, false
-     * if otherwise.
+     * @return true if this node is a duplicate-bearing node type, false if
+     *         otherwise.
      */
     public boolean containsDuplicates() {
         return false;
     }
 
     /**
-     * Cover for LN's and just return 0 since they'll always be at the bottom
-     * of the tree.
+     * Cover for LN's and just return 0 since they'll always be at the bottom of
+     * the tree.
      */
     public int getLevel() {
         return 0;
     }
 
     /**
-     * Add yourself to the in memory list if you're a type of node that
-     * should belong.
+     * Add yourself to the in memory list if you're a type of node that should
+     * belong.
      */
-    abstract void rebuildINList(INList inList)
-        throws DatabaseException;
+    abstract void rebuildINList(INList inList) throws DatabaseException;
 
     /**
      * @return true if you're part of a deletable subtree.
      */
-    abstract boolean isValidForDelete()
-        throws DatabaseException;
+    abstract boolean isValidForDelete() throws DatabaseException;
 
     public boolean isLN() {
         return false;
@@ -99,11 +93,10 @@ public abstract class Node implements Loggable {
     public boolean isIN() {
         return false;
     }
-    
+
     public boolean isUpperIN() {
         return false;
     }
-    
 
     public boolean isBIN() {
         return false;
@@ -127,9 +120,9 @@ public abstract class Node implements Loggable {
 
     /**
      * Return the approximate size of this node in memory, if this size should
-     * be included in its parents memory accounting.  For example, all INs
-     * return 0, because they are accounted for individually. LNs must return a
-     * count, they're not counted on the INList.
+     * be included in its parents memory accounting. For example, all INs return
+     * 0, because they are accounted for individually. LNs must return a count,
+     * they're not counted on the INList.
      */
     public long getMemorySizeIncludedByParent() {
         return 0;
@@ -156,19 +149,18 @@ public abstract class Node implements Loggable {
     }
 
     /**
-     * We categorize fetch stats by the type of node, so node subclasses
-     * update different stats.
+     * We categorize fetch stats by the type of node, so node subclasses update
+     * different stats.
      */
     abstract void incFetchStats(EnvironmentImpl envImpl, boolean isMiss);
 
     /**
-     * Returns the generic LogEntryType for this node. Returning the actual
-     * type used to log the node is not always possible. Specifically, for LN 
-     * nodes the generic type is less specific than the actual type used to log
-     * the node:
-     *  + A non-transactional type is always returned.
-     *  + LOG_INS_LN is returned rather than LOG_UPD_LN.
-     *  + LOG_DEL_LN is returned rather than LOG_DEL_DUPLN.
+     * Returns the generic LogEntryType for this node. Returning the actual type
+     * used to log the node is not always possible. Specifically, for LN nodes
+     * the generic type is less specific than the actual type used to log the
+     * node: + A non-transactional type is always returned. + LOG_INS_LN is
+     * returned rather than LOG_UPD_LN. + LOG_DEL_LN is returned rather than
+     * LOG_DEL_DUPLN.
      */
     public abstract LogEntryType getGenericLogType();
 

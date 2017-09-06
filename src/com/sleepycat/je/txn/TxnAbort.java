@@ -43,7 +43,6 @@ public class TxnAbort extends VersionedWriteTxnEnd {
 
         TxnAbort otherAbort = (TxnAbort) other;
 
-        return ((id == otherAbort.id) &&
-                (repMasterNodeId == otherAbort.repMasterNodeId));
+        return ((id == otherAbort.id) && (repMasterNodeId == otherAbort.repMasterNodeId));
     }
 }

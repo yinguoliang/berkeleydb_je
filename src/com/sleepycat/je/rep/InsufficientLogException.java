@@ -38,10 +38,9 @@ import com.sleepycat.je.utilint.VLSN;
  * when a node has been down for a long period of time and is being started up
  * again. It may also be thrown when a brand new node attempts to become a
  * member of the group and it does not have a sufficiently current set of log
- * files. If the group experiences sustained network connectivity problems,
- * this exception may also be thrown by an active Replica that has been unable
- * to stay in touch with the members of its group for an extended period of
- * time.
+ * files. If the group experiences sustained network connectivity problems, this
+ * exception may also be thrown by an active Replica that has been unable to
+ * stay in touch with the members of its group for an extended period of time.
  * <p>
  * In the typical case, application handles the exception by invoking
  * {@link NetworkRestore#execute} to obtain the log files it needs from one of
@@ -52,48 +51,46 @@ import com.sleepycat.je.utilint.VLSN;
  * @see NetworkRestore
  */
 public class InsufficientLogException extends RestartRequiredException {
-    private static final long serialVersionUID = 1;
+    private static final long          serialVersionUID = 1;
 
     /*
      * These properties store information to serialize the ILE and save it in a
-     * RestoreRequired log entry.
-     *
-     * The properties named P_* describe a log provider. An ILE may have one or
-     * more log providers, and a more structured format like Json would make it
-     * easier to describe an array of items. Since we're currently constrained
-     * to using a property list, we follow the convention of suffixing each
-     * provider property with a number. For example, if there are two
-     * providers, P_NUMPROVIDERS=2, and there would be P_NODENAME0,
-     * P_NODENAME1, etc.
+     * RestoreRequired log entry. The properties named P_* describe a log
+     * provider. An ILE may have one or more log providers, and a more
+     * structured format like Json would make it easier to describe an array of
+     * items. Since we're currently constrained to using a property list, we
+     * follow the convention of suffixing each provider property with a number.
+     * For example, if there are two providers, P_NUMPROVIDERS=2, and there
+     * would be P_NODENAME0, P_NODENAME1, etc.
      */
-    private static final String P_NUMPROVIDERS = "P_NUMPROVIDERS";
-    private static final String P_NODENAME = "P_NODENAME";
-    private static final String P_NODETYPE = "P_NODETYPE";
-    private static final String P_HOSTNAME = "P_HOSTNAME";
-    private static final String P_PORT = "P_PORT";
+    private static final String        P_NUMPROVIDERS   = "P_NUMPROVIDERS";
+    private static final String        P_NODENAME       = "P_NODENAME";
+    private static final String        P_NODETYPE       = "P_NODETYPE";
+    private static final String        P_HOSTNAME       = "P_HOSTNAME";
+    private static final String        P_PORT           = "P_PORT";
 
     /*
      * Properties needed to create an environment handle for the node which
      * needs new logs, and is the target for a backup.
      */
-    private static final String GROUP_NAME = "GROUP_NAME";
-    private static final String NODE_NAME = "NODE_NAME";
-    private static final String HOSTNAME = "HOSTNAME";
-    private static final String PORT = "PORT";
-    private static final String ENV_DIR = "ENV_DIR";
-    private static final String REFRESH_VLSN = "REFRESH_VLSN";
+    private static final String        GROUP_NAME       = "GROUP_NAME";
+    private static final String        NODE_NAME        = "NODE_NAME";
+    private static final String        HOSTNAME         = "HOSTNAME";
+    private static final String        PORT             = "PORT";
+    private static final String        ENV_DIR          = "ENV_DIR";
+    private static final String        REFRESH_VLSN     = "REFRESH_VLSN";
 
     /*
      * A handle to the replication environment which is the target for the
      * network restore. May be null. If repImpl was created by the ILE, the
-     * caller has the responsibility for closing the environment.  Note that a
+     * caller has the responsibility for closing the environment. Note that a
      * RepImpl rather than RepNode is used as the environment handle. RepNodes
      * are only available for nodes which are a member of a group. In some
      * cases, an ILE is used by a node which is detached, and is not currently
      * connected to its group.
      */
-    private transient RepImpl repImpl;
-    private boolean openedByILE;
+    private transient RepImpl          repImpl;
+    private boolean                    openedByILE;
 
     /* Attributes used by the network restore, in serialized format */
     private final transient Properties props;
@@ -102,26 +99,22 @@ public class InsufficientLogException extends RestartRequiredException {
      * The refreshed log files must cover at least this VLSN, so that a syncup
      * is guaranteed to succeed. Note that this field is only used by a thread
      * that is synchronously processing the caught exception, which is safely
-     * after the instance has been initialized.  .
+     * after the instance has been initialized. .
      */
-    private final VLSN refreshVLSN;
+    private final VLSN                 refreshVLSN;
 
     /*
-     * Candidate nodes for a log file refresh. Note that this field is only
-     * used by a thread that is synchronously processing the caught exception,
-     * which is safely after the instance has been initialized.
+     * Candidate nodes for a log file refresh. Note that this field is only used
+     * by a thread that is synchronously processing the caught exception, which
+     * is safely after the instance has been initialized.
      */
     private final Set<ReplicationNode> logProviders;
 
     /**
-     * @hidden
-     *
-     * Creates an instance of the exception and packages up the information
-     * needed by NetworkRestore.
+     * @hidden Creates an instance of the exception and packages up the
+     *         information needed by NetworkRestore.
      */
-    public InsufficientLogException(RepNode repNode,
-                                    VLSN refreshVLSN,
-                                    Set<ReplicationNode> logProviders) {
+    public InsufficientLogException(RepNode repNode, VLSN refreshVLSN, Set<ReplicationNode> logProviders) {
         super(repNode.getRepImpl(), EnvironmentFailureReason.INSUFFICIENT_LOG);
         this.repImpl = repNode.getRepImpl();
         this.refreshVLSN = refreshVLSN;
@@ -144,13 +137,13 @@ public class InsufficientLogException extends RestartRequiredException {
         p.setProperty(REFRESH_VLSN, Long.toString(refreshVLSN.getSequence()));
 
         /*
-         * There is a set of nodes which might act as the source for the
-         * network restore. Since we can't store arrays, append an index
-         * to the property name for each log provider.
+         * There is a set of nodes which might act as the source for the network
+         * restore. Since we can't store arrays, append an index to the property
+         * name for each log provider.
          */
         p.setProperty(P_NUMPROVIDERS, Integer.toString(logProviders.size()));
         int i = 0;
-        for (ReplicationNode rn: logProviders) {
+        for (ReplicationNode rn : logProviders) {
             p.setProperty(P_NODENAME + i, rn.getName());
             p.setProperty(P_HOSTNAME + i, rn.getHostName());
             p.setProperty(P_PORT + i, Integer.toString(rn.getPort()));
@@ -161,11 +154,10 @@ public class InsufficientLogException extends RestartRequiredException {
     }
 
     /**
-     * @hidden
-     *
-     * Creates an instance of the exception and packages up the information
-     * needed by Subscription API. The target is not a replication node, so the
-     * repImpl field is a shell which represents the subscription target.
+     * @hidden Creates an instance of the exception and packages up the
+     *         information needed by Subscription API. The target is not a
+     *         replication node, so the repImpl field is a shell which
+     *         represents the subscription target.
      */
     public InsufficientLogException(RepImpl repImpl, VLSN refreshVLSN) {
         super(repImpl, EnvironmentFailureReason.INSUFFICIENT_LOG);
@@ -180,41 +172,37 @@ public class InsufficientLogException extends RestartRequiredException {
     }
 
     /**
-     * @hidden
-     *
-     * Creates an instance of the exception when a LOG_RESTORE_REQUIRED was
-     * found at recovery, and network restore must be initiated before the
-     * recovery can succeed. The flow is:
-     * 0. A network restore is underway. It writes a marker file, essentially
-     *    serializing this ILE as a property list, and writing it into the log.
-     *    Something then interrupts this network restore. The process dies,
-     *    so all knowledge of the interrupted network restore is lost in
-     *    memory but the the marker file acts as a persistent breadcrumb.
-     * 1. Since knowledge of the network restore was lost, the application tries
-     *    to open and recover the target node. The LOG_RESTORE_REQUIRED entry
-     *    is seen, which means that recovery can't continue.
-     * 2. Within recovery, a new ILE is created using information from the
-     *    LOG_RESTORE_REQUIRED. It's thrown, which ends recovery.
-     * 3. The caller realizes that a network restore has to be carried out
-     *    before this environment can be recovered. It uses the ILE instance
-     *    created in step 2 to start a new invocation of network restore.
-     * 4. Network restore starts. Since network restore needs a RepImpl, one
-     *    is instantiated using info from the ILE
-     * 5. When Network restore succeeds, it removes the marker file.
-     *
-     * @param helperHosts extra helper hosts are derived from those used
-     * to open the environment.
+     * @hidden Creates an instance of the exception when a LOG_RESTORE_REQUIRED
+     *         was found at recovery, and network restore must be initiated
+     *         before the recovery can succeed. The flow is: 0. A network
+     *         restore is underway. It writes a marker file, essentially
+     *         serializing this ILE as a property list, and writing it into the
+     *         log. Something then interrupts this network restore. The process
+     *         dies, so all knowledge of the interrupted network restore is lost
+     *         in memory but the the marker file acts as a persistent
+     *         breadcrumb. 1. Since knowledge of the network restore was lost,
+     *         the application tries to open and recover the target node. The
+     *         LOG_RESTORE_REQUIRED entry is seen, which means that recovery
+     *         can't continue. 2. Within recovery, a new ILE is created using
+     *         information from the LOG_RESTORE_REQUIRED. It's thrown, which
+     *         ends recovery. 3. The caller realizes that a network restore has
+     *         to be carried out before this environment can be recovered. It
+     *         uses the ILE instance created in step 2 to start a new invocation
+     *         of network restore. 4. Network restore starts. Since network
+     *         restore needs a RepImpl, one is instantiated using info from the
+     *         ILE 5. When Network restore succeeds, it removes the marker file.
+     * @param helperHosts extra helper hosts are derived from those used to open
+     *            the environment.
      */
-    public InsufficientLogException(Properties properties,
-                                    String helperHosts) {
+    public InsufficientLogException(Properties properties, String helperHosts) {
         super(null, EnvironmentFailureReason.INSUFFICIENT_LOG);
 
         /*
-         * Don't initialize the repImpl until it's needed. If we try to do
-         * so in step2, we'll be in a loop, trying to recover an environment
-         * from  within recovery.
+         * Don't initialize the repImpl until it's needed. If we try to do so in
+         * step2, we'll be in a loop, trying to recover an environment from
+         * within recovery.
          */
-        String vlsnVal =  properties.getProperty(REFRESH_VLSN);
+        String vlsnVal = properties.getProperty(REFRESH_VLSN);
         this.refreshVLSN = new VLSN(Integer.parseInt(vlsnVal));
         this.logProviders = new HashSet<>();
 
@@ -222,11 +210,8 @@ public class InsufficientLogException extends RestartRequiredException {
             for (String hostPortPair : helperHosts.split(",")) {
                 final String hpp = hostPortPair.trim();
                 if (hpp.length() > 0) {
-                    LogFileSource source = 
-                        new LogFileSource("NoName", // not important
-                                          NodeType.ELECTABLE.name(),
-                                          HostPortPair.getHostname(hpp),
-                                          HostPortPair.getPort(hpp));
+                    LogFileSource source = new LogFileSource("NoName", // not important
+                            NodeType.ELECTABLE.name(), HostPortPair.getHostname(hpp), HostPortPair.getPort(hpp));
                     logProviders.add(source);
                 }
             }
@@ -237,11 +222,10 @@ public class InsufficientLogException extends RestartRequiredException {
     private void initRepImpl() {
         /*
          * Setup log providers. Since can't use something that supports array
-         * types like JSON, and must use a property list, the provider flags
-         * are named NODE_NAME0, HOSTNAME0, etc.
+         * types like JSON, and must use a property list, the provider flags are
+         * named NODE_NAME0, HOSTNAME0, etc.
          */
-        int numLogProviders =
-            Integer.parseInt(props.getProperty(P_NUMPROVIDERS));
+        int numLogProviders = Integer.parseInt(props.getProperty(P_NUMPROVIDERS));
         for (int i = 0; i < numLogProviders; i++) {
             String name = props.getProperty(P_NODENAME + i);
             String nodeType = props.getProperty(P_NODETYPE + i);
@@ -251,38 +235,32 @@ public class InsufficientLogException extends RestartRequiredException {
         }
 
         /*
-         * Create new, read only, internal handle type environment for use
-         * by the network backup. 
+         * Create new, read only, internal handle type environment for use by
+         * the network backup.
          */
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setReadOnly(true);
-        envConfig.setConfigParam(EnvironmentParams.ENV_RECOVERY.getName(),
-                                 "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RECOVERY.getName(), "false");
         envConfig.setTransactional(true);
 
         String hostname = props.getProperty(HOSTNAME);
         int portVal = Integer.parseInt(props.getProperty(PORT));
-        ReplicationConfig repConfig =
-            new ReplicationConfig(props.getProperty(GROUP_NAME),
-                                  props.getProperty(NODE_NAME),
-                                  HostPortPair.getString(hostname, portVal));
+        ReplicationConfig repConfig = new ReplicationConfig(props.getProperty(GROUP_NAME), props.getProperty(NODE_NAME),
+                HostPortPair.getString(hostname, portVal));
 
         repConfig.setConfigParam(RepParams.NETWORKBACKUP_USE.getName(), "true");
-        ReplicationNetworkConfig defaultNetConfig =
-            ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig defaultNetConfig = ReplicationNetworkConfig.createDefault();
         repConfig.setRepNetConfig(defaultNetConfig);
 
         File envDir = new File(props.getProperty(ENV_DIR));
-        ReplicatedEnvironment restoreEnv =
-            RepInternal.createInternalEnvHandle(envDir,
-                                                repConfig,
-                                                envConfig);
+        ReplicatedEnvironment restoreEnv = RepInternal.createInternalEnvHandle(envDir, repConfig, envConfig);
         this.repImpl = RepInternal.getRepImpl(restoreEnv);
         openedByILE = true;
     }
 
     /**
      * For test use only.
+     * 
      * @hidden
      */
     public InsufficientLogException(String message) {
@@ -295,10 +273,10 @@ public class InsufficientLogException extends RestartRequiredException {
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    private InsufficientLogException(String message,
-                                     InsufficientLogException cause) {
+    private InsufficientLogException(String message, InsufficientLogException cause) {
         super(message, cause);
         this.repImpl = cause.getRepImpl();
         this.refreshVLSN = cause.getRefreshVLSN();
@@ -308,6 +286,7 @@ public class InsufficientLogException extends RestartRequiredException {
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     @Override
@@ -316,13 +295,10 @@ public class InsufficientLogException extends RestartRequiredException {
     }
 
     /**
-     * @hidden
-     *
-     * Returns a VLSN identifying the amount of log information needed so that
-     * this node is sufficiently consistent and can join the replication group.
-     *
-     * @return the VLSN identifying the amount of log information
-     * required.
+     * @hidden Returns a VLSN identifying the amount of log information needed
+     *         so that this node is sufficiently consistent and can join the
+     *         replication group.
+     * @return the VLSN identifying the amount of log information required.
      */
     public VLSN getRefreshVLSN() {
         return refreshVLSN;
@@ -339,9 +315,8 @@ public class InsufficientLogException extends RestartRequiredException {
     }
 
     /**
-     * @hidden
-     *
-     * Returns the replication node whose log files need to be refreshed.
+     * @hidden Returns the replication node whose log files need to be
+     *         refreshed.
      */
     public RepImpl getRepImpl() {
         if (repImpl == null) {
@@ -372,21 +347,17 @@ public class InsufficientLogException extends RestartRequiredException {
      */
     private class LogFileSource implements ReplicationNode {
 
-        private final String name;
+        private final String   name;
         private final NodeType type;
-        private final String hostname;
-        private final int port;
+        private final String   hostname;
+        private final int      port;
 
-        LogFileSource(String name,
-                      String nodeTypeName,
-                      String hostname,
-                      int port) {
+        LogFileSource(String name, String nodeTypeName, String hostname, int port) {
             this.name = name;
             this.type = NodeType.valueOf(nodeTypeName);
             this.hostname = hostname;
             this.port = port;
         }
-
 
         @Override
         public String getName() {

@@ -25,26 +25,25 @@ import com.sleepycat.je.SecondaryKeyCreator;
  * A abstract key creator that uses a tuple key and a serial data entry. This
  * class takes care of serializing and deserializing the data entry, and
  * converting the key entry to/from {@link TupleInput} and {@link TupleOutput}
- * objects.
- * The following abstract method must be implemented by a concrete subclass
- * to create the index key using these objects
+ * objects. The following abstract method must be implemented by a concrete
+ * subclass to create the index key using these objects
  * <ul>
- * <li> {@link #createSecondaryKey(TupleInput,Object,TupleOutput)} </li>
+ * <li>{@link #createSecondaryKey(TupleInput,Object,TupleOutput)}</li>
  * </ul>
- * <p>If {@link com.sleepycat.je.ForeignKeyDeleteAction#NULLIFY} was
- * specified when opening the secondary database, the following method must be
- * overridden to nullify the foreign index key.  If NULLIFY was not specified,
- * this method need not be overridden.</p>
+ * <p>
+ * If {@link com.sleepycat.je.ForeignKeyDeleteAction#NULLIFY} was specified when
+ * opening the secondary database, the following method must be overridden to
+ * nullify the foreign index key. If NULLIFY was not specified, this method need
+ * not be overridden.
+ * </p>
  * <ul>
- * <li> {@link #nullifyForeignKey(Object)} </li>
+ * <li>{@link #nullifyForeignKey(Object)}</li>
  * </ul>
  *
  * @see <a href="SerialBinding.html#evolution">Class Evolution</a>
- *
  * @author Mark Hayes
  */
-public abstract class TupleSerialKeyCreator<D> extends TupleBase
-    implements SecondaryKeyCreator, ForeignKeyNullifier {
+public abstract class TupleSerialKeyCreator<D> extends TupleBase implements SecondaryKeyCreator, ForeignKeyNullifier {
 
     protected SerialBinding<D> dataBinding;
 
@@ -52,12 +51,10 @@ public abstract class TupleSerialKeyCreator<D> extends TupleBase
      * Creates a tuple-serial key creator.
      *
      * @param classCatalog is the catalog to hold shared class information and
-     * for a database should be a {@link StoredClassCatalog}.
-     *
+     *            for a database should be a {@link StoredClassCatalog}.
      * @param dataClass is the data base class.
      */
-    public TupleSerialKeyCreator(ClassCatalog classCatalog,
-                                 Class<D> dataClass) {
+    public TupleSerialKeyCreator(ClassCatalog classCatalog, Class<D> dataClass) {
 
         this(new SerialBinding<D>(classCatalog, dataClass));
     }
@@ -73,9 +70,7 @@ public abstract class TupleSerialKeyCreator<D> extends TupleBase
     }
 
     // javadoc is inherited
-    public boolean createSecondaryKey(SecondaryDatabase db,
-                                      DatabaseEntry primaryKeyEntry,
-                                      DatabaseEntry dataEntry,
+    public boolean createSecondaryKey(SecondaryDatabase db, DatabaseEntry primaryKeyEntry, DatabaseEntry dataEntry,
                                       DatabaseEntry indexKeyEntry) {
         TupleOutput output = getTupleOutput(null);
         TupleInput primaryKeyInput = entryToInput(primaryKeyEntry);
@@ -89,8 +84,7 @@ public abstract class TupleSerialKeyCreator<D> extends TupleBase
     }
 
     // javadoc is inherited
-    public boolean nullifyForeignKey(SecondaryDatabase db,
-                                     DatabaseEntry dataEntry) {
+    public boolean nullifyForeignKey(SecondaryDatabase db, DatabaseEntry dataEntry) {
         D data = dataBinding.entryToObject(dataEntry);
         data = nullifyForeignKey(data);
         if (data != null) {
@@ -102,42 +96,36 @@ public abstract class TupleSerialKeyCreator<D> extends TupleBase
     }
 
     /**
-     * Creates the index key entry from primary key tuple entry and
-     * deserialized data entry.
+     * Creates the index key entry from primary key tuple entry and deserialized
+     * data entry.
      *
      * @param primaryKeyInput is the {@link TupleInput} for the primary key
-     * entry, or null if no primary key entry is used to construct the index
-     * key.
-     *
-     * @param dataInput is the deserialized data entry, or null if no data
-     * entry is used to construct the index key.
-     *
-     * @param indexKeyOutput is the destination index key tuple.  For index
-     * keys which are optionally present, no tuple entry should be output to
-     * indicate that the key is not present or null.
-     *
+     *            entry, or null if no primary key entry is used to construct
+     *            the index key.
+     * @param dataInput is the deserialized data entry, or null if no data entry
+     *            is used to construct the index key.
+     * @param indexKeyOutput is the destination index key tuple. For index keys
+     *            which are optionally present, no tuple entry should be output
+     *            to indicate that the key is not present or null.
      * @return true if a key was created, or false to indicate that the key is
-     * not present.
+     *         not present.
      */
-    public abstract boolean createSecondaryKey(TupleInput primaryKeyInput,
-                                               D dataInput,
-                                               TupleOutput indexKeyOutput);
+    public abstract boolean createSecondaryKey(TupleInput primaryKeyInput, D dataInput, TupleOutput indexKeyOutput);
 
     /**
      * Clears the index key in the deserialized data entry.
-     *
-     * <p>On entry the data parameter contains the index key to be cleared.  It
+     * <p>
+     * On entry the data parameter contains the index key to be cleared. It
      * should be changed by this method such that {@link #createSecondaryKey}
-     * will return false.  Other fields in the data object should remain
-     * unchanged.</p>
+     * will return false. Other fields in the data object should remain
+     * unchanged.
+     * </p>
      *
-     * @param data is the source and destination deserialized data
-     * entry.
-     *
-     * @return the destination data object, or null to indicate that the
-     * key is not present and no change is necessary.  The data returned may
-     * be the same object passed as the data parameter or a newly created
-     * object.
+     * @param data is the source and destination deserialized data entry.
+     * @return the destination data object, or null to indicate that the key is
+     *         not present and no change is necessary. The data returned may be
+     *         the same object passed as the data parameter or a newly created
+     *         object.
      */
     public D nullifyForeignKey(D data) {
 

@@ -34,7 +34,7 @@ import com.sleepycat.je.utilint.StatGroup;
 public class NetworkBackupStats implements Serializable {
     private static final long serialVersionUID = 0;
 
-    private final StatGroup statGroup;
+    private final StatGroup   statGroup;
 
     NetworkBackupStats(StatGroup statGroup) {
         this.statGroup = statGroup;
@@ -65,8 +65,7 @@ public class NetworkBackupStats implements Serializable {
     }
 
     public long getTransferRate() {
-        final LongAvgRateStat stat =
-            (LongAvgRateStat) statGroup.getStat(TRANSFER_RATE);
+        final LongAvgRateStat stat = (LongAvgRateStat) statGroup.getStat(TRANSFER_RATE);
         return (stat == null) ? 0 : stat.get();
     }
 

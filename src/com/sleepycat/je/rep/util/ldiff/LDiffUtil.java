@@ -32,10 +32,10 @@ import com.sleepycat.je.utilint.Adler32;
 public class LDiffUtil {
 
     /* Convenient masking constant. */
-    final static long MASK_32BIT = 0xffffffffl;
+    final static long    MASK_32BIT = 0xffffffffl;
 
     /* To compute a MD5 hash for each block. */
-    static MessageDigest md = null;
+    static MessageDigest md         = null;
     static {
         try {
             md = MessageDigest.getInstance("MD5");
@@ -72,8 +72,7 @@ public class LDiffUtil {
         return (int) adler32.getValue();
     }
 
-    public static Block readBlock(int blockId, Cursor cursor, int numKeys)
-        throws DatabaseException {
+    public static Block readBlock(int blockId, Cursor cursor, int numKeys) throws DatabaseException {
 
         /* DatabaseEntry represents the key and data of each record. */
         DatabaseEntry key = new DatabaseEntry();
@@ -86,9 +85,7 @@ public class LDiffUtil {
         Block block = new Block(blockId);
 
         /* Please pay attention to the check order in while loop. */
-        while ((i < numKeys) &&
-               (cursor.getNext(key, data, LockMode.DEFAULT) ==
-                OperationStatus.SUCCESS)) {
+        while ((i < numKeys) && (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS)) {
             /* Indicates having a new block. */
             if (i == 0) {
                 block.setBeginKey(key.getData());

@@ -33,14 +33,13 @@ import com.sleepycat.je.Transaction;
 public class JEConnection implements Closeable {
 
     private JEManagedConnection mc;
-    private JELocalTransaction txn;
+    private JELocalTransaction  txn;
 
     public JEConnection(JEManagedConnection mc) {
         this.mc = mc;
     }
 
-    protected void setManagedConnection(JEManagedConnection mc,
-                                        JELocalTransaction lt) {
+    protected void setManagedConnection(JEManagedConnection mc, JELocalTransaction lt) {
         this.mc = mc;
         if (txn == null) {
             txn = lt;
@@ -59,34 +58,28 @@ public class JEConnection implements Closeable {
         return mc.getEnvironment();
     }
 
-    public Database openDatabase(String name, DatabaseConfig config)
-        throws DatabaseException {
+    public Database openDatabase(String name, DatabaseConfig config) throws DatabaseException {
 
         return mc.openDatabase(name, config);
     }
 
-    public SecondaryDatabase openSecondaryDatabase(String name,
-                                                   Database primaryDatabase,
-                                                   SecondaryConfig config)
-        throws DatabaseException {
+    public SecondaryDatabase openSecondaryDatabase(String name, Database primaryDatabase, SecondaryConfig config)
+            throws DatabaseException {
 
         return mc.openSecondaryDatabase(name, primaryDatabase, config);
     }
 
-    public void removeDatabase(String databaseName)
-        throws DatabaseException {
+    public void removeDatabase(String databaseName) throws DatabaseException {
 
         mc.removeDatabase(databaseName);
     }
 
-    public long truncateDatabase(String databaseName, boolean returnCount)
-        throws DatabaseException {
+    public long truncateDatabase(String databaseName, boolean returnCount) throws DatabaseException {
 
         return mc.truncateDatabase(databaseName, returnCount);
     }
 
-    public Transaction getTransaction()
-        throws ResourceException {
+    public Transaction getTransaction() throws ResourceException {
 
         if (txn == null) {
             return null;

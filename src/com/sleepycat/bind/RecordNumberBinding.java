@@ -18,14 +18,13 @@ import com.sleepycat.je.DatabaseEntry;
 
 /**
  * <!-- begin JE only -->
- * @hidden
- * <!-- end JE only -->
- * An <code>EntryBinding</code> that treats a record number key entry as a
- * <code>Long</code> key object.
- *
- * <p>Record numbers are returned as <code>Long</code> objects, although on
- * input any <code>Number</code> object may be used.</p>
- *
+ * 
+ * @hidden <!-- end JE only --> An <code>EntryBinding</code> that treats a
+ *         record number key entry as a <code>Long</code> key object.
+ *         <p>
+ *         Record numbers are returned as <code>Long</code> objects, although on
+ *         input any <code>Number</code> object may be used.
+ *         </p>
  * @author Mark Hayes
  */
 public class RecordNumberBinding implements EntryBinding {
@@ -53,7 +52,6 @@ public class RecordNumberBinding implements EntryBinding {
      * record number integer.
      *
      * @param entry the entry buffer.
-     *
      * @return the record number.
      */
     public static long entryToRecordNumber(DatabaseEntry entry) {
@@ -66,11 +64,9 @@ public class RecordNumberBinding implements EntryBinding {
      * to a entry buffer.
      *
      * @param recordNumber the record number.
-     *
      * @param entry the entry buffer to hold the record number.
      */
-    public static void recordNumberToEntry(long recordNumber,
-                                           DatabaseEntry entry) {
+    public static void recordNumberToEntry(long recordNumber, DatabaseEntry entry) {
         entry.setData(new byte[4], 0, 4);
         DbCompat.setRecordNumber(entry, (int) recordNumber);
     }

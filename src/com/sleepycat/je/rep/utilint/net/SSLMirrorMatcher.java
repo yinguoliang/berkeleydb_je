@@ -31,7 +31,7 @@ import com.sleepycat.je.rep.net.InstanceLogger;
 import com.sleepycat.je.rep.net.InstanceParams;
 
 /**
- * Common base class for mirror comparisons.  Supports both authenticator and
+ * Common base class for mirror comparisons. Supports both authenticator and
  * host verifier implementations.
  */
 
@@ -40,27 +40,26 @@ class SSLMirrorMatcher {
     /*
      * The Principal that represents us when in the expected peer's ssl mode.
      */
-    final private Principal ourPrincipal;
+    final private Principal      ourPrincipal;
     final private InstanceLogger logger;
 
     /**
      * Construct an SSLMirrorMatcher
      *
      * @param params The instantiation parameters.
-     * @param clientMode set to true if the matcher will be evaluated
-     * as a client that has a server as a peer, or false if it will be
-     * evaluated as a server that has received a connection from a client.
-     * @throws IllegalArgumentException if the instance cannot be created due
-     * to a problem related to the input parameters
+     * @param clientMode set to true if the matcher will be evaluated as a
+     *            client that has a server as a peer, or false if it will be
+     *            evaluated as a server that has received a connection from a
+     *            client.
+     * @throws IllegalArgumentException if the instance cannot be created due to
+     *             a problem related to the input parameters
      */
-    public SSLMirrorMatcher(InstanceParams params, boolean clientMode)
-        throws IllegalArgumentException {
+    public SSLMirrorMatcher(InstanceParams params, boolean clientMode) throws IllegalArgumentException {
 
         ourPrincipal = determinePrincipal(params.getContext(), clientMode);
         if (ourPrincipal == null) {
             throw new IllegalArgumentException(
-                "Unable to determine a local principal for comparison " +
-                "with peer principals");
+                    "Unable to determine a local principal for comparison " + "with peer principals");
         }
         logger = params.getContext().getLoggerFactory().getLogger(getClass());
     }
@@ -78,8 +77,8 @@ class SSLMirrorMatcher {
         }
 
         /*
-         * Get the peer principal, which should also be an X500Principal.
-         * We validate that here.
+         * Get the peer principal, which should also be an X500Principal. We
+         * validate that here.
          */
         Principal peerPrincipal = null;
         try {
@@ -88,12 +87,8 @@ class SSLMirrorMatcher {
             return false;
         }
 
-        if (peerPrincipal == null ||
-            ! (peerPrincipal instanceof X500Principal)) {
-            logger.log(
-                INFO,
-                "Unable to attempt peer validation - peer Principal is: " +
-                peerPrincipal);
+        if (peerPrincipal == null || !(peerPrincipal instanceof X500Principal)) {
+            logger.log(INFO, "Unable to attempt peer validation - peer Principal is: " + peerPrincipal);
             return false;
         }
 
@@ -101,44 +96,39 @@ class SSLMirrorMatcher {
     }
 
     /**
-     * Attempt to determine the Principal that we take on when connecting
-     * in client or server context based on the ReplicationNetworkConfig.
-     * If we are unable to determine that principal, return null.
+     * Attempt to determine the Principal that we take on when connecting in
+     * client or server context based on the ReplicationNetworkConfig. If we are
+     * unable to determine that principal, return null.
      */
-    private Principal determinePrincipal(
-        InstanceContext context, boolean clientMode)
-        throws IllegalArgumentException {
+    private Principal determinePrincipal(InstanceContext context, boolean clientMode) throws IllegalArgumentException {
 
-        final ReplicationSSLConfig config =
-            (ReplicationSSLConfig) context.getRepNetConfig();
+        final ReplicationSSLConfig config = (ReplicationSSLConfig) context.getRepNetConfig();
 
         /*
-         * Determine what alias would be used.  It is allowable for this to be
+         * Determine what alias would be used. It is allowable for this to be
          * null.
          */
-        String aliasProp = clientMode ?
-            config.getSSLClientKeyAlias() :
-            config.getSSLServerKeyAlias();
+        String aliasProp = clientMode ? config.getSSLClientKeyAlias() : config.getSSLServerKeyAlias();
 
         final KeyStore keyStore = SSLChannelFactory.readKeyStore(context);
 
         if (aliasProp == null || aliasProp.isEmpty()) {
-            /* Since we weren't told which one to use, there better be
-             * only one option, or this might behave unexpectedly. */
+            /*
+             * Since we weren't told which one to use, there better be only one
+             * option, or this might behave unexpectedly.
+             */
             try {
                 if (keyStore.size() < 1) {
                     logger.log(INFO, "KeyStore is empty");
                     return null;
                 } else if (keyStore.size() > 1) {
-                    logger.log(INFO, "KeyStore has multiple entries but no " +
-                               "alias was specified.  Using the first one " +
-                               "available.");
+                    logger.log(INFO, "KeyStore has multiple entries but no "
+                            + "alias was specified.  Using the first one " + "available.");
                 }
                 final Enumeration<String> e = keyStore.aliases();
                 aliasProp = e.nextElement();
             } catch (KeyStoreException kse) {
-                throw new IllegalArgumentException(
-                    "Error accessing aliases from the keystore", kse);
+                throw new IllegalArgumentException("Error accessing aliases from the keystore", kse);
             }
         }
 
@@ -148,22 +138,17 @@ class SSLMirrorMatcher {
         } catch (KeyStoreException kse) {
             /* Shouldn't be possible */
             throw new IllegalArgumentException(
-                "Error accessing certificate with alias " + aliasProp +
-                " from the keystore", kse);
+                    "Error accessing certificate with alias " + aliasProp + " from the keystore", kse);
         }
 
         if (cert == null) {
-            logger.log(INFO, "No certificate for alias " + aliasProp +
-                       " found in KeyStore");
-            throw new IllegalArgumentException(
-                "Unable to find a certificate in the keystore");
+            logger.log(INFO, "No certificate for alias " + aliasProp + " found in KeyStore");
+            throw new IllegalArgumentException("Unable to find a certificate in the keystore");
         }
 
         if (!(cert instanceof X509Certificate)) {
-            logger.log(INFO, "The certificate for alias " + aliasProp +
-                       " is not an X509Certificate.");
-            throw new IllegalArgumentException(
-                "Unable to find a valid certificate in the keystore");
+            logger.log(INFO, "The certificate for alias " + aliasProp + " is not an X509Certificate.");
+            throw new IllegalArgumentException("Unable to find a valid certificate in the keystore");
         }
 
         final X509Certificate x509Cert = (X509Certificate) cert;

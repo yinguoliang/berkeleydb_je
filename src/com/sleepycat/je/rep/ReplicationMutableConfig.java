@@ -26,55 +26,65 @@ import com.sleepycat.je.rep.impl.RepImpl;
 import com.sleepycat.je.rep.impl.RepParams;
 
 /**
- * Specifies the attributes that may be changed after a {@link
- * ReplicatedEnvironment} has been created. {@code ReplicationMutableConfig} is
- * a parameter to {@link ReplicatedEnvironment#setMutableConfig} and is
- * returned by {@link ReplicatedEnvironment#getMutableConfig}.
+ * Specifies the attributes that may be changed after a
+ * {@link ReplicatedEnvironment} has been created.
+ * {@code ReplicationMutableConfig} is a parameter to
+ * {@link ReplicatedEnvironment#setMutableConfig} and is returned by
+ * {@link ReplicatedEnvironment#getMutableConfig}.
  */
 public class ReplicationMutableConfig implements Cloneable, Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long  serialVersionUID              = 1L;
 
     /*
      * Note: all replicated parameters should start with
-     * EnvironmentParams.REP_PARAMS_PREFIX, which is "je.rep.",
-     * see SR [#19080].
+     * EnvironmentParams.REP_PARAMS_PREFIX, which is "je.rep.", see SR [#19080].
      */
 
     /**
      * Boolean flag if set to true, an Arbiter may acknowledge a transaction if
      * a replication node is not available.
-     *
-     * <p><table border="1">
-     * <tr><td>Name</td><td>Type</td><td>Mutable</td><td>Default</td></tr>
+     * <p>
+     * <table border="1">
+     * <tr>
+     * <td>Name</td>
+     * <td>Type</td>
+     * <td>Mutable</td>
+     * <td>Default</td>
+     * </tr>
      * <tr>
      * <td>{@value}</td>
      * <td>Boolean</td>
      * <td>Yes</td>
      * <td>True</td>
      * </tr>
-     * </table></p>
+     * </table>
+     * </p>
      */
-    public static final String ALLOW_ARBITER_ACK =
-            EnvironmentParams.REP_PARAM_PREFIX + "allowArbiterAck";
+    public static final String ALLOW_ARBITER_ACK             = EnvironmentParams.REP_PARAM_PREFIX + "allowArbiterAck";
 
     /**
      * Identifies the Primary node in a two node group. See the discussion of
      * issues when
      * {@link <a href= "{@docRoot}/../ReplicationGuide/lifecycle.html#twonode">
      * configuring two node groups</a>}
-     *
-     * <p><table border="1">
-     * <tr><td>Name</td><td>Type</td><td>Mutable</td><td>Default</td></tr>
+     * <p>
+     * <table border="1">
+     * <tr>
+     * <td>Name</td>
+     * <td>Type</td>
+     * <td>Mutable</td>
+     * <td>Default</td>
+     * </tr>
      * <tr>
      * <td>{@value}</td>
      * <td>Boolean</td>
      * <td>Yes</td>
      * <td>False</td>
      * </tr>
-     * </table></p>
+     * </table>
+     * </p>
      */
-    public static final String DESIGNATED_PRIMARY =
-        EnvironmentParams.REP_PARAM_PREFIX + "designatedPrimary";
+    public static final String DESIGNATED_PRIMARY            = EnvironmentParams.REP_PARAM_PREFIX + "designatedPrimary";
 
     /**
      * An escape mechanism to modify the way in which the number of electable
@@ -84,24 +94,22 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * <p>
      * When this parameter is set to a non-zero value at a member node, the
      * member will use this value as the electable group size, instead of using
-     * the metadata stored in the RepGroup database for its quorum
-     * calculations.  This parameter's value should be set to the number of
-     * electable nodes known to be available. The default value is zero, which
-     * indicates normal operation with the electable group size being
-     * calculated from the metadata.
-     *<p>
+     * the metadata stored in the RepGroup database for its quorum calculations.
+     * This parameter's value should be set to the number of electable nodes
+     * known to be available. The default value is zero, which indicates normal
+     * operation with the electable group size being calculated from the
+     * metadata.
+     * <p>
      * Please keep in mind that this is an escape mechanism, only for use in
-     * exceptional circumstances, to be used with care. Since JE HA is no
-     * longer maintaining quorum requirements automatically, there is the
-     * possibility that the simple majority of unavailable nodes could elect
-     * their own Master, which would result in a diverging set of changes to
-     * the same environment being made by multiple Masters. It is essential to
-     * ensure that the problematic nodes are in fact down before making this
-     * temporary configuration change.
-     *
-     * See the discussion in {@link <a href=
-     * "{@docRoot}/../ReplicationGuide/election-override.html">Appendix:
-     * Managing a Failure of the Majority</a>}.
+     * exceptional circumstances, to be used with care. Since JE HA is no longer
+     * maintaining quorum requirements automatically, there is the possibility
+     * that the simple majority of unavailable nodes could elect their own
+     * Master, which would result in a diverging set of changes to the same
+     * environment being made by multiple Masters. It is essential to ensure
+     * that the problematic nodes are in fact down before making this temporary
+     * configuration change. See the discussion in
+     * {@link <a href= "{@docRoot}/../ReplicationGuide/election-override.html">
+     * Appendix: Managing a Failure of the Majority</a>}.
      * <p>
      * <table border="1">
      * <tr>
@@ -122,14 +130,14 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * @see QuorumPolicy
      * @see com.sleepycat.je.Durability.ReplicaAckPolicy
      */
-    public static final String ELECTABLE_GROUP_SIZE_OVERRIDE =
-        EnvironmentParams.REP_PARAM_PREFIX + "electableGroupSizeOverride";
+    public static final String ELECTABLE_GROUP_SIZE_OVERRIDE = EnvironmentParams.REP_PARAM_PREFIX
+            + "electableGroupSizeOverride";
 
     /**
      * The election priority associated with this node. The election algorithm
      * for choosing a new master will pick the participating node that has the
-     * most current set of log files. When there is a tie, the election
-     * priority is used as a tie-breaker to select amongst these nodes.
+     * most current set of log files. When there is a tie, the election priority
+     * is used as a tie-breaker to select amongst these nodes.
      * <p>
      * A priority of zero is used to ensure that this node is never elected
      * master, even if it has the most up to date log files. Note that the node
@@ -138,7 +146,6 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * current log files could be elected master. As a result, this node would
      * be forced to rollback committed data and must be prepared to handle any
      * {@link RollbackException} exceptions that might be thrown.
-     *
      * <p>
      * <table border="1">
      * <tr>
@@ -162,14 +169,13 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      *
      * @see RollbackException
      */
-    public static final String NODE_PRIORITY =
-        EnvironmentParams.REP_PARAM_PREFIX + "node.priority";
+    public static final String NODE_PRIORITY                 = EnvironmentParams.REP_PARAM_PREFIX + "node.priority";
 
     /**
      * If true, JE HA (replication) will flush all committed transactions to
      * disk at the specified time interval. This is of interest because the
-     * default durability for replicated transactions of {@link
-     * Durability#COMMIT_NO_SYNC}. The default for this behavior is true.
+     * default durability for replicated transactions of
+     * {@link Durability#COMMIT_NO_SYNC}. The default for this behavior is true.
      * <p>
      * When using {@link Durability#COMMIT_NO_SYNC}, continued activity will
      * naturally cause the steady flush of committed transactions, but a pause
@@ -181,11 +187,11 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * unlikely scenario. This background flush task will reduce such a
      * possibility.
      * <p>
-     * Note that enabling this feature when using {@link
-     * Durability#COMMIT_NO_SYNC}, does not constitute a guarantee that
+     * Note that enabling this feature when using
+     * {@link Durability#COMMIT_NO_SYNC}, does not constitute a guarantee that
      * updates made by a transaction are persisted. For an explicit guarantee,
-     * transactions should use {@link Durability#COMMIT_SYNC} or {@link
-     * Durability#COMMIT_WRITE_NO_SYNC}. These more stringent, persistent
+     * transactions should use {@link Durability#COMMIT_SYNC} or
+     * {@link Durability#COMMIT_WRITE_NO_SYNC}. These more stringent, persistent
      * Durability options can be set at the environment or per-transaction
      * scope. Using one of these Durability settings for a given transaction
      * will also flush all commits that occurred earlier in time.
@@ -206,16 +212,16 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * </table>
      * </p>
      *
-     * @deprecated as of 7.2. Log flushing can be disabled by setting {@link
-     * EnvironmentConfig#LOG_FLUSH_SYNC_INTERVAL} and {@link
-     * EnvironmentConfig#LOG_FLUSH_NO_SYNC_INTERVAL} to zero. For compatibility
-     * with earlier releases, if this parameter is specified as false, no log
-     * flushing will be performed; in this case, {@link
-     * EnvironmentConfig#LOG_FLUSH_SYNC_INTERVAL} and {@link
-     * EnvironmentConfig#LOG_FLUSH_NO_SYNC_INTERVAL} may not also be specified.
+     * @deprecated as of 7.2. Log flushing can be disabled by setting
+     *             {@link EnvironmentConfig#LOG_FLUSH_SYNC_INTERVAL} and
+     *             {@link EnvironmentConfig#LOG_FLUSH_NO_SYNC_INTERVAL} to zero.
+     *             For compatibility with earlier releases, if this parameter is
+     *             specified as false, no log flushing will be performed; in
+     *             this case, {@link EnvironmentConfig#LOG_FLUSH_SYNC_INTERVAL}
+     *             and {@link EnvironmentConfig#LOG_FLUSH_NO_SYNC_INTERVAL} may
+     *             not also be specified.
      */
-    public static final String RUN_LOG_FLUSH_TASK =
-        EnvironmentParams.REP_PARAM_PREFIX + "runLogFlushTask";
+    public static final String RUN_LOG_FLUSH_TASK            = EnvironmentParams.REP_PARAM_PREFIX + "runLogFlushTask";
 
     /**
      * The interval that JE HA will do a log buffer flush.
@@ -231,8 +237,7 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * </tr>
      * <tr>
      * <td>{@value}</td>
-     * <td>
-     * {@link <a href="../EnvironmentConfig.html#timeDuration">Duration</a>}
+     * <td>{@link <a href="../EnvironmentConfig.html#timeDuration">Duration</a>}
      * </td>
      * <td>Yes</td>
      * <td>5 min</td>
@@ -243,101 +248,21 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * </p>
      *
      * @see <a href="../EnvironmentConfig.html#timeDuration">Time Duration
-     * Properties</a>
-     *
-     * @deprecated as of 7.2. Replaced by {@link
-     * EnvironmentConfig#LOG_FLUSH_SYNC_INTERVAL}. For compatibility with
-     * earlier releases, if this parameter is specified its value will be used
-     * as the flush sync interval; in this case, {@link
-     * EnvironmentConfig#LOG_FLUSH_SYNC_INTERVAL} may not also be specified.
+     *      Properties</a>
+     * @deprecated as of 7.2. Replaced by
+     *             {@link EnvironmentConfig#LOG_FLUSH_SYNC_INTERVAL}. For
+     *             compatibility with earlier releases, if this parameter is
+     *             specified its value will be used as the flush sync interval;
+     *             in this case,
+     *             {@link EnvironmentConfig#LOG_FLUSH_SYNC_INTERVAL} may not
+     *             also be specified.
      */
-    public static final String LOG_FLUSH_TASK_INTERVAL =
-        EnvironmentParams.REP_PARAM_PREFIX + "logFlushTaskInterval";
+    public static final String LOG_FLUSH_TASK_INTERVAL       = EnvironmentParams.REP_PARAM_PREFIX
+            + "logFlushTaskInterval";
 
     /**
-     * The maximum number of <i>most recently used</i> database handles that
-     * are kept open during the replay of the replication stream.
-     *
-     * <p><table border="1">
-     * <tr><td>Name</td><td>Type</td><td>Mutable</td>
-     * <td>Default</td><td>Minimum</td><td>Maximum</td></tr>
-     * <tr>
-     * <td>{@value}</td>
-     * <td>Int</td>
-     * <td>Yes</td>
-     * <td>10</td>
-     * <td>1</td>
-     * <td>-none-</td>
-     * </tr>
-     * </table></p>
-     *
-     * @since 5.0.38
-     */
-    public static final String REPLAY_MAX_OPEN_DB_HANDLES =
-        EnvironmentParams.REP_PARAM_PREFIX + "replayMaxOpenDbHandles";
-
-    /**
-     * The string identifying one or more helper host and port pairs in
-     * this format:
-     * <pre>
-     * hostname[:port][,hostname[:port]]*
-     * </pre>
-     * <p><table border="1">
-     * <tr><td>Name</td><td>Type</td><td>Mutable</td><td>Default</td></tr>
-     * <tr>
-     * <td>{@value}</td>
-     * <td>String</td>
-     * <td>Yes</td>
-     * <td>""</td>
-     * </tr>
-     * </table></p>
-     * @see ReplicationMutableConfig#setHelperHosts
-     * @see ReplicationMutableConfig#getHelperHosts
-     */
-    public static final String HELPER_HOSTS =
-        EnvironmentParams.REP_PARAM_PREFIX + "helperHosts";
-
-    /**
-     * The maximum amount of time that an inactive database handle is kept open
-     * during a replay of the replication stream. Handles that are inactive for
-     * more than this time period are automatically closed. Note that this does
-     * not impact any handles that may have been opened by the application.
-     *
-     * <p><table border="1">
-     * <tr><td>Name</td><td>Type</td><td>Mutable</td>
-     * <td>Default</td><td>Minimum</td><td>Maximum</td></tr>
-     * <tr>
-     * <td>{@value}</td>
-     * <td>{@link <a href="#timeDuration">Duration</a>}</td>
-     * <td>No</td>
-     * <td>30 sec</td>
-     * <td>1 sec</td>
-     * <td>-none-</td>
-     * </tr>
-     * </table></p>
-     *
-     * @see <a href="../EnvironmentConfig.html#timeDuration">Time Duration
-     * Properties</a>
-     *
-     * @since 5.0.38
-     */
-    public static final String REPLAY_DB_HANDLE_TIMEOUT =
-        EnvironmentParams.REP_PARAM_PREFIX + "replayOpenHandleTimeout";
-
-    /**
-     * @hidden
-     *
-     * For internal use only.
-     *
-     * The timeout specifies the amount of time that the
-     * {@link com.sleepycat.je.rep.util.ReplicationGroupAdmin#transferMaster
-     * ReplicationGroupAdmin.transferMastership} command can use to
-     * have the specified replica catch up with the original master.
-     * <p>
-     * If the replica has not successfully caught up with the original
-     * master, the call to {@link
-     * com.sleepycat.je.rep.util.ReplicationGroupAdmin#transferMaster
-     * ReplicationGroupAdmin.transferMastership} will throw an exception.
+     * The maximum number of <i>most recently used</i> database handles that are
+     * kept open during the replay of the replication stream.
      * <p>
      * <table border="1">
      * <tr>
@@ -350,46 +275,143 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * </tr>
      * <tr>
      * <td>{@value}</td>
-     * <td>
-     * {@link <a href="../EnvironmentConfig.html#timeDuration">Duration</a>}
-     * </td>
+     * <td>Int</td>
      * <td>Yes</td>
-     * <td>100 s</td>
-     * <td>1 s</td>
+     * <td>10</td>
+     * <td>1</td>
+     * <td>-none-</td>
+     * </tr>
+     * </table>
+     * </p>
+     *
+     * @since 5.0.38
+     */
+    public static final String REPLAY_MAX_OPEN_DB_HANDLES    = EnvironmentParams.REP_PARAM_PREFIX
+            + "replayMaxOpenDbHandles";
+
+    /**
+     * The string identifying one or more helper host and port pairs in this
+     * format:
+     * 
+     * <pre>
+     * hostname[:port][,hostname[:port]]*
+     * </pre>
+     * <p>
+     * <table border="1">
+     * <tr>
+     * <td>Name</td>
+     * <td>Type</td>
+     * <td>Mutable</td>
+     * <td>Default</td>
+     * </tr>
+     * <tr>
+     * <td>{@value}</td>
+     * <td>String</td>
+     * <td>Yes</td>
+     * <td>""</td>
+     * </tr>
+     * </table>
+     * </p>
+     * 
+     * @see ReplicationMutableConfig#setHelperHosts
+     * @see ReplicationMutableConfig#getHelperHosts
+     */
+    public static final String HELPER_HOSTS                  = EnvironmentParams.REP_PARAM_PREFIX + "helperHosts";
+
+    /**
+     * The maximum amount of time that an inactive database handle is kept open
+     * during a replay of the replication stream. Handles that are inactive for
+     * more than this time period are automatically closed. Note that this does
+     * not impact any handles that may have been opened by the application.
+     * <p>
+     * <table border="1">
+     * <tr>
+     * <td>Name</td>
+     * <td>Type</td>
+     * <td>Mutable</td>
+     * <td>Default</td>
+     * <td>Minimum</td>
+     * <td>Maximum</td>
+     * </tr>
+     * <tr>
+     * <td>{@value}</td>
+     * <td>{@link <a href="#timeDuration">Duration</a>}</td>
+     * <td>No</td>
+     * <td>30 sec</td>
+     * <td>1 sec</td>
      * <td>-none-</td>
      * </tr>
      * </table>
      * </p>
      *
      * @see <a href="../EnvironmentConfig.html#timeDuration">Time Duration
-     * Properties</a>
+     *      Properties</a>
+     * @since 5.0.38
      */
-    public static final String CATCHUP_MASTER_TIMEOUT =
-        EnvironmentParams.REP_PARAM_PREFIX + "catchupMasterTimeout";
+    public static final String REPLAY_DB_HANDLE_TIMEOUT      = EnvironmentParams.REP_PARAM_PREFIX
+            + "replayOpenHandleTimeout";
+
+    /**
+     * @hidden For internal use only. The timeout specifies the amount of time
+     *         that the
+     *         {@link com.sleepycat.je.rep.util.ReplicationGroupAdmin#transferMaster
+     *         ReplicationGroupAdmin.transferMastership} command can use to have
+     *         the specified replica catch up with the original master.
+     *         <p>
+     *         If the replica has not successfully caught up with the original
+     *         master, the call to
+     *         {@link com.sleepycat.je.rep.util.ReplicationGroupAdmin#transferMaster
+     *         ReplicationGroupAdmin.transferMastership} will throw an
+     *         exception.
+     *         <p>
+     *         <table border="1">
+     *         <tr>
+     *         <td>Name</td>
+     *         <td>Type</td>
+     *         <td>Mutable</td>
+     *         <td>Default</td>
+     *         <td>Minimum</td>
+     *         <td>Maximum</td>
+     *         </tr>
+     *         <tr>
+     *         <td>{@value}</td>
+     *         <td>{@link <a href="../EnvironmentConfig.html#timeDuration">
+     *         Duration</a>}</td>
+     *         <td>Yes</td>
+     *         <td>100 s</td>
+     *         <td>1 s</td>
+     *         <td>-none-</td>
+     *         </tr>
+     *         </table>
+     *         </p>
+     * @see <a href="../EnvironmentConfig.html#timeDuration">Time Duration
+     *      Properties</a>
+     */
+    public static final String CATCHUP_MASTER_TIMEOUT        = EnvironmentParams.REP_PARAM_PREFIX
+            + "catchupMasterTimeout";
 
     static {
 
         /*
-         * Force loading when a ReplicationConfig is used with strings and
-         * an environment has not been created.
+         * Force loading when a ReplicationConfig is used with strings and an
+         * environment has not been created.
          */
         @SuppressWarnings("unused")
         ConfigParam forceLoad = RepParams.GROUP_NAME;
     }
 
     /**
-     * @hidden
-     * Storage for replication related properties.
+     * @hidden Storage for replication related properties.
      */
     protected Properties props;
 
     /* For unit testing only: only ever set false when testing. */
-    transient boolean validateParams = true;
+    transient boolean    validateParams = true;
 
     /**
-     * Create a ReplicationMutableConfig initialized with the system
-     * default settings. Parameter defaults are documented with the string
-     * constants in this class.
+     * Create a ReplicationMutableConfig initialized with the system default
+     * settings. Parameter defaults are documented with the string constants in
+     * this class.
      */
     public ReplicationMutableConfig() {
         props = new Properties();
@@ -397,10 +419,10 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
 
     /**
      * Used by ReplicationConfig to support construction from a property file.
+     * 
      * @param properties Hold replication related properties
      */
-    ReplicationMutableConfig(Properties properties, boolean validateParams)
-        throws IllegalArgumentException {
+    ReplicationMutableConfig(Properties properties, boolean validateParams) throws IllegalArgumentException {
 
         this.validateParams = validateParams;
         validateProperties(properties);
@@ -410,19 +432,16 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Fills in the properties calculated by the environment to the given
-     * config object.
+     * Fills in the properties calculated by the environment to the given config
+     * object.
      */
     void fillInEnvironmentGeneratedProps(RepImpl repImpl) {
-        props.put(RepParams.DESIGNATED_PRIMARY.getName(),
-                  Boolean.toString(repImpl.isDesignatedPrimary()));
-        props.put(RepParams.NODE_PRIORITY.getName(),
-                  Integer.toString(getNodePriority()));
+        props.put(RepParams.DESIGNATED_PRIMARY.getName(), Boolean.toString(repImpl.isDesignatedPrimary()));
+        props.put(RepParams.NODE_PRIORITY.getName(), Integer.toString(getNodePriority()));
     }
 
     /**
-     * @hidden
-     * For internal use only
+     * @hidden For internal use only
      */
     public void copyMutablePropsTo(ReplicationMutableConfig toConfig) {
 
@@ -430,11 +449,9 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
         Enumeration<?> propNames = props.propertyNames();
         while (propNames.hasMoreElements()) {
             String paramName = (String) propNames.nextElement();
-            ConfigParam param =
-                EnvironmentParams.SUPPORTED_PARAMS.get(paramName);
+            ConfigParam param = EnvironmentParams.SUPPORTED_PARAMS.get(paramName);
             assert param != null;
-            if (param.isForReplication() &&
-                param.isMutable()) {
+            if (param.isForReplication() && param.isMutable()) {
                 String newVal = props.getProperty(paramName);
                 toProps.setProperty(paramName, newVal);
             }
@@ -446,13 +463,12 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * setting only takes effect for electable nodes. The application must
      * ensure that exactly one electable node is designated to be a Primary at
      * any given time. Primary node configuration is only a concern when the
-     * group has two electable nodes, and there cannot be a simple
-     * majority. See the overview on <a href=
+     * group has two electable nodes, and there cannot be a simple majority. See
+     * the overview on <a href=
      * "{@docRoot}/../ReplicationGuide/lifecycle.html#twonode">configuring two
      * node groups</a>.
      *
      * @param isPrimary true if this node is to be made the Primary
-     *
      * @return this
      */
     public ReplicationMutableConfig setDesignatedPrimary(boolean isPrimary) {
@@ -461,24 +477,22 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setDesignatedPrimaryVoid(boolean isPrimary) {
-        DbConfigManager.setBooleanVal(props, RepParams.DESIGNATED_PRIMARY,
-                                      isPrimary, validateParams);
+        DbConfigManager.setBooleanVal(props, RepParams.DESIGNATED_PRIMARY, isPrimary, validateParams);
     }
 
     /**
-     * Determines whether this node is the currently designated Primary.  See
-     * the overview on {@link <a href=
-     * "{@docRoot}/../ReplicationGuide/lifecycle.html#twonode"> issues around
-     * two node groups</a>}
+     * Determines whether this node is the currently designated Primary. See the
+     * overview on
+     * {@link <a href= "{@docRoot}/../ReplicationGuide/lifecycle.html#twonode">
+     * issues around two node groups</a>}
+     * 
      * @return true if this node is a Primary, false otherwise.
      */
     public boolean getDesignatedPrimary() {
-        return DbConfigManager.getBooleanVal(props,
-                                             RepParams.DESIGNATED_PRIMARY);
+        return DbConfigManager.getBooleanVal(props, RepParams.DESIGNATED_PRIMARY);
     }
 
     /**
@@ -487,48 +501,39 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * the contents of the group metadata.
      *
      * @return the number of electable nodes as specified by the override
-     *
      * @see #ELECTABLE_GROUP_SIZE_OVERRIDE
      */
     public int getElectableGroupSizeOverride() {
-        return DbConfigManager.
-            getIntVal(props, RepParams.ELECTABLE_GROUP_SIZE_OVERRIDE);
+        return DbConfigManager.getIntVal(props, RepParams.ELECTABLE_GROUP_SIZE_OVERRIDE);
     }
 
     /**
      * Sets the size used to determine the number of electable nodes.
      *
-     * @param override the number of electable nodes. A value of zero means
-     * that the number of electable nodes is determined as usual, that is, from
-     * the contents of the group metadata.
-     *
+     * @param override the number of electable nodes. A value of zero means that
+     *            the number of electable nodes is determined as usual, that is,
+     *            from the contents of the group metadata.
      * @return this
-     *
      * @see #ELECTABLE_GROUP_SIZE_OVERRIDE
      */
-    public ReplicationMutableConfig
-        setElectableGroupSizeOverride(int override) {
+    public ReplicationMutableConfig setElectableGroupSizeOverride(int override) {
 
         setElectableGroupSizeOverrideVoid(override);
         return this;
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setElectableGroupSizeOverrideVoid(int override) {
 
-        DbConfigManager.
-            setIntVal(props, RepParams.ELECTABLE_GROUP_SIZE_OVERRIDE, override,
-                      validateParams);
+        DbConfigManager.setIntVal(props, RepParams.ELECTABLE_GROUP_SIZE_OVERRIDE, override, validateParams);
     }
 
     /**
      * Returns the election priority associated with the node.
      *
      * @return the priority for this node
-     *
      * @see #NODE_PRIORITY
      */
     public int getNodePriority() {
@@ -536,46 +541,45 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Sets the election priority for the node. The algorithm for choosing a
-     * new master will pick the participating node that has the most current
-     * set of log files. When there is a tie, the priority is used as a
-     * tie-breaker to select amongst these nodes.
+     * Sets the election priority for the node. The algorithm for choosing a new
+     * master will pick the participating node that has the most current set of
+     * log files. When there is a tie, the priority is used as a tie-breaker to
+     * select amongst these nodes.
      * <p>
-     * A priority of zero is used to ensure that a node is never elected
-     * master, even if it has the most current set of files. Please use this
-     * option with caution, since it means that a node with less current log
-     * files could be elected master potentially forcing this node to rollback
-     * data that had been committed.
+     * A priority of zero is used to ensure that a node is never elected master,
+     * even if it has the most current set of files. Please use this option with
+     * caution, since it means that a node with less current log files could be
+     * elected master potentially forcing this node to rollback data that had
+     * been committed.
      *
      * @param priority the priority to be associated with the node. It must be
-     * zero, or a positive number.
-     *
+     *            zero, or a positive number.
      * @see #NODE_PRIORITY
      */
     public ReplicationMutableConfig setNodePriority(int priority) {
-        setNodePriorityVoid(priority);;
+        setNodePriorityVoid(priority);
+        ;
         return this;
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setNodePriorityVoid(int priority) {
-        DbConfigManager.setIntVal(props, RepParams.NODE_PRIORITY, priority,
-                                  validateParams);
+        DbConfigManager.setIntVal(props, RepParams.NODE_PRIORITY, priority, validateParams);
     }
 
     /**
      * Returns the string identifying one or more helper host and port pairs in
      * this format:
+     * 
      * <pre>
      * hostname[:port][,hostname[:port]]*
      * </pre>
+     * 
      * The port name may be omitted if it's the default port.
      *
      * @return the string representing the host port pairs
-     *
      */
     public String getHelperHosts() {
         return DbConfigManager.getVal(props, RepParams.HELPER_HOSTS);
@@ -584,13 +588,14 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
     /**
      * Identify one or more helpers nodes by their host and port pairs in this
      * format:
+     * 
      * <pre>
      * hostname[:port][,hostname[:port]]*
      * </pre>
+     * 
      * If the port is omitted, the default port defined by XXX is used.
      *
      * @param hostsAndPorts the string representing the host and port pairs.
-     *
      * @return this
      */
     public ReplicationMutableConfig setHelperHosts(String hostsAndPorts) {
@@ -599,12 +604,10 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setHelperHostsVoid(String hostsAndPorts) {
-        DbConfigManager.setVal
-            (props, RepParams.HELPER_HOSTS, hostsAndPorts, validateParams);
+        DbConfigManager.setVal(props, RepParams.HELPER_HOSTS, hostsAndPorts, validateParams);
     }
 
     /**
@@ -612,37 +615,29 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
      * before setting the parameter.
      *
      * @param paramName the configuration parameter name, one of the String
-     * constants in this class
+     *            constants in this class
      * @param value the configuration value.
-     *
      * @return this;
-     *
      * @throws IllegalArgumentException if the paramName or value is invalid.
      */
-    public ReplicationMutableConfig setConfigParam(String paramName,
-                                                   String value)
-        throws IllegalArgumentException {
+    public ReplicationMutableConfig setConfigParam(String paramName, String value) throws IllegalArgumentException {
 
-        DbConfigManager.setConfigParam(props,
-                                       paramName,
-                                       value,
-                                       true,   /* require mutability. */
-                                       validateParams,
-                                       true,   /* forReplication */
-                                       true);  /* verifyForReplication */
+        DbConfigManager.setConfigParam(props, paramName, value,
+                true, /* require mutability. */
+                validateParams, true, /* forReplication */
+                true); /* verifyForReplication */
         return this;
     }
 
     /**
      * Return the value for this parameter.
+     * 
      * @param paramName a valid configuration parameter, one of the String
-     * constants in this class.
+     *            constants in this class.
      * @return the configuration value.
-     *
      * @throws IllegalArgumentException if the paramName is invalid.
      */
-    public String getConfigParam(String paramName)
-        throws IllegalArgumentException {
+    public String getConfigParam(String paramName) throws IllegalArgumentException {
 
         return DbConfigManager.getConfigParam(props, paramName);
     }
@@ -650,19 +645,16 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
     /**
      * Validate a property bag passed in a construction time.
      */
-    void validateProperties(Properties checkProps)
-        throws IllegalArgumentException {
+    void validateProperties(Properties checkProps) throws IllegalArgumentException {
 
         /* Check that the properties have valid names and values */
         Enumeration<?> propNames = checkProps.propertyNames();
         while (propNames.hasMoreElements()) {
             String name = (String) propNames.nextElement();
             /* Is this a valid property name? */
-            ConfigParam param =
-                EnvironmentParams.SUPPORTED_PARAMS.get(name);
+            ConfigParam param = EnvironmentParams.SUPPORTED_PARAMS.get(name);
             if (param == null) {
-                throw new IllegalArgumentException
-                (name + " is not a valid JE environment configuration");
+                throw new IllegalArgumentException(name + " is not a valid JE environment configuration");
             }
             /* Is this a valid property value? */
             if (validateParams) {
@@ -672,17 +664,16 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
     }
 
     /**
-     * @hidden
-     * For internal use only.
-     * Access the internal property bag, used during startup.
+     * @hidden For internal use only. Access the internal property bag, used
+     *         during startup.
      */
     public Properties getProps() {
         return props;
     }
 
     /**
-     * List the configuration parameters and values that have been set
-     * in this configuration object.
+     * List the configuration parameters and values that have been set in this
+     * configuration object.
      */
     @Override
     public String toString() {
@@ -697,25 +688,20 @@ public class ReplicationMutableConfig implements Cloneable, Serializable {
     }
 
     /**
-     * @hidden
-     * For testing only
+     * @hidden For testing only
      */
     public boolean getValidateParams() {
         return validateParams;
     }
 
     /**
-     * @hidden
-     * For internal use only.
-     * Overrides Object.clone() to clone all properties, used by this class and
-     * ReplicationConfig.
+     * @hidden For internal use only. Overrides Object.clone() to clone all
+     *         properties, used by this class and ReplicationConfig.
      */
     @Override
-    protected Object clone()
-        throws CloneNotSupportedException {
+    protected Object clone() throws CloneNotSupportedException {
 
-        ReplicationMutableConfig copy =
-            (ReplicationMutableConfig) super.clone();
+        ReplicationMutableConfig copy = (ReplicationMutableConfig) super.clone();
         copy.props = (Properties) props.clone();
         return copy;
     }

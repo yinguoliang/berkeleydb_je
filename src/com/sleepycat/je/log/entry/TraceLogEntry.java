@@ -31,13 +31,13 @@ public class TraceLogEntry extends SingleItemReplicableEntry<Trace> {
      *
      * @see #getLastFormatChange
      */
-    private static final int LAST_FORMAT_CHANGE = 8;
+    private static final int         LAST_FORMAT_CHANGE = 8;
 
     /**
      * If non-null, write this object when asked to write in the log format
      * prior to the last changed version, for testing.
      */
-    private static volatile Loggable testPriorItem = null;
+    private static volatile Loggable testPriorItem      = null;
 
     /** Construct a log entry for reading a {@link Trace} object. */
     public TraceLogEntry() {
@@ -51,8 +51,8 @@ public class TraceLogEntry extends SingleItemReplicableEntry<Trace> {
 
     /**
      * Specify an object to write instead of the enclosed item when asked to
-     * write this entry in the log format prior to the last changed version,
-     * for testing.
+     * write this entry in the log format prior to the last changed version, for
+     * testing.
      */
     public static void setTestPriorItem(final Loggable priorItem) {
         testPriorItem = priorItem;
@@ -65,8 +65,8 @@ public class TraceLogEntry extends SingleItemReplicableEntry<Trace> {
 
     /**
      * {@inheritDoc}
-     *
-     * <p>This implementation provides additional behavior for testing.
+     * <p>
+     * This implementation provides additional behavior for testing.
      */
     @Override
     public int getSize(final int logVersion, final boolean forReplication) {
@@ -78,13 +78,11 @@ public class TraceLogEntry extends SingleItemReplicableEntry<Trace> {
 
     /**
      * {@inheritDoc}
-     *
-     * <p>This implementation provides additional behavior for testing.
+     * <p>
+     * This implementation provides additional behavior for testing.
      */
     @Override
-    public void writeEntry(final ByteBuffer destBuffer,
-                           final int logVersion,
-                           final boolean forReplication) {
+    public void writeEntry(final ByteBuffer destBuffer, final int logVersion, final boolean forReplication) {
         if (testPriorItem != null && logVersion == LAST_FORMAT_CHANGE - 1) {
             testPriorItem.writeToLog(destBuffer);
             return;

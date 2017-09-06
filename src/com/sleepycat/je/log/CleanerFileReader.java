@@ -40,27 +40,28 @@ import com.sleepycat.je.utilint.VLSN;
  * CleanerFileReader scans log files for INs and LNs.
  */
 public class CleanerFileReader extends FileReader {
-    private static final byte IS_LN = 0;
-    private static final byte IS_IN = 1;
-    private static final byte IS_BIN_DELTA = 2;
-    private static final byte IS_OLD_BIN_DELTA = 3;
-    private static final byte IS_DBTREE = 4;
-    private static final byte IS_FILEHEADER = 5;
+    private static final byte                  IS_LN            = 0;
+    private static final byte                  IS_IN            = 1;
+    private static final byte                  IS_BIN_DELTA     = 2;
+    private static final byte                  IS_OLD_BIN_DELTA = 3;
+    private static final byte                  IS_DBTREE        = 4;
+    private static final byte                  IS_FILEHEADER    = 5;
 
     private final Map<LogEntryType, EntryInfo> targetEntryMap;
-    private LogEntry targetLogEntry;
-    private byte targetCategory;
-    private final FileSummary fileSummary;
-    private final INSummary inSummary;
-    private final ExpirationTracker expTracker;
+    private LogEntry                           targetLogEntry;
+    private byte                               targetCategory;
+    private final FileSummary                  fileSummary;
+    private final INSummary                    inSummary;
+    private final ExpirationTracker            expTracker;
 
     /** The first VLSN, or null if none has been found */
-    private VLSN firstVLSN = null;
+    private VLSN                               firstVLSN        = null;
 
-    private VLSN lastVLSN = VLSN.NULL_VLSN;
+    private VLSN                               lastVLSN         = VLSN.NULL_VLSN;
 
     /**
      * Create this reader to start at a given LSN.
+     * 
      * @param env The relevant EnvironmentImpl.
      * @param readBufferSize buffer size in bytes for reading in log.
      * @param startLsn where to start in the log, or null for the beginning.
@@ -69,20 +70,12 @@ public class CleanerFileReader extends FileReader {
      * @param inSummary returns IN utilization.
      * @param expTracker returns expiration info, if non-null.
      */
-    public CleanerFileReader(EnvironmentImpl env,
-                             int readBufferSize,
-                             long startLsn,
-                             Long fileNum,
-                             FileSummary fileSummary,
-                             INSummary inSummary,
-                             ExpirationTracker expTracker) {
-        super(env,
-              readBufferSize,
-              true,                     // forward
-              startLsn,
-              fileNum,                  // single file number
-              DbLsn.NULL_LSN,           // endOfFileLsn
-              DbLsn.NULL_LSN);          // finishLsn
+    public CleanerFileReader(EnvironmentImpl env, int readBufferSize, long startLsn, Long fileNum,
+                             FileSummary fileSummary, INSummary inSummary, ExpirationTracker expTracker) {
+        super(env, readBufferSize, true, // forward
+                startLsn, fileNum, // single file number
+                DbLsn.NULL_LSN, // endOfFileLsn
+                DbLsn.NULL_LSN); // finishLsn
 
         this.fileSummary = fileSummary;
         this.inSummary = inSummary;
@@ -109,33 +102,26 @@ public class CleanerFileReader extends FileReader {
         addTargetType(IS_FILEHEADER, LogEntryType.LOG_FILE_HEADER);
     }
 
-    private void addTargetType(byte category, LogEntryType entryType)
-        throws DatabaseException {
+    private void addTargetType(byte category, LogEntryType entryType) throws DatabaseException {
 
-        targetEntryMap.put(entryType,
-                           new EntryInfo(entryType.getNewLogEntry(),
-                                         category));
+        targetEntryMap.put(entryType, new EntryInfo(entryType.getNewLogEntry(), category));
     }
 
     /**
      * Process the header to track the last VLSN and count true utilization.
      * Then read the entry and return true if the LogEntryType is of interest.
-     *
      * We don't override isTargetEntry so it always returns true and we can
-     * count utilization correctly here in processEntry.  We call getLastLsn to
+     * count utilization correctly here in processEntry. We call getLastLsn to
      * count utilization and this is not allowed from isTargetEntry.
      */
     @Override
-    protected boolean processEntry(ByteBuffer entryBuffer)
-        throws DatabaseException {
+    protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
-        final LogEntryType type =
-            LogEntryType.findType(currentEntryHeader.getType());
+        final LogEntryType type = LogEntryType.findType(currentEntryHeader.getType());
         final int size = getLastEntrySize();
 
         /* Count true utilization for new log entries. */
-        if (currentEntryHeader.getType() !=
-            LogEntryType.LOG_FILE_HEADER.getTypeNum()) {
+        if (currentEntryHeader.getType() != LogEntryType.LOG_FILE_HEADER.getTypeNum()) {
             fileSummary.totalCount += 1;
             fileSummary.totalSize += size;
             if (BaseUtilizationTracker.trackObsoleteInfo(type)) {
@@ -149,8 +135,7 @@ public class CleanerFileReader extends FileReader {
                         inSummary.totalINCount += 1;
                         inSummary.totalINSize += size;
                     }
-                    if (type.equals(LogEntryType.LOG_BIN_DELTA) ||
-                        type.equals(LogEntryType.LOG_OLD_BIN_DELTA)) {
+                    if (type.equals(LogEntryType.LOG_BIN_DELTA) || type.equals(LogEntryType.LOG_OLD_BIN_DELTA)) {
                         inSummary.totalBINDeltaCount += 1;
                         inSummary.totalBINDeltaSize += size;
                     }
@@ -174,16 +159,13 @@ public class CleanerFileReader extends FileReader {
                 if (firstVLSN == null) {
                     firstVLSN = vlsn;
                 }
-                assert (vlsn.compareTo(lastVLSN) > 0) :
-                    "vlsns out of order, last=" + lastVLSN +
-                     " current=" + vlsn;
+                assert (vlsn.compareTo(lastVLSN) > 0) : "vlsns out of order, last=" + lastVLSN + " current=" + vlsn;
                 lastVLSN = vlsn;
             }
         }
 
         /*
-         * Call readEntry and return true if this is a LogEntryType of
-         * interest.
+         * Call readEntry and return true if this is a LogEntryType of interest.
          */
         final EntryInfo info = targetEntryMap.get(type);
         if (info == null) {
@@ -202,8 +184,7 @@ public class CleanerFileReader extends FileReader {
      * count true utilization.
      */
     public void countObsolete() {
-        final LogEntryType type =
-            LogEntryType.findType(currentEntryHeader.getType());
+        final LogEntryType type = LogEntryType.findType(currentEntryHeader.getType());
         if (!BaseUtilizationTracker.trackObsoleteInfo(type)) {
             return;
         }
@@ -218,8 +199,7 @@ public class CleanerFileReader extends FileReader {
                 inSummary.obsoleteINCount += 1;
                 inSummary.obsoleteINSize += size;
             }
-            if (type.equals(LogEntryType.LOG_BIN_DELTA) ||
-                type.equals(LogEntryType.LOG_OLD_BIN_DELTA)) {
+            if (type.equals(LogEntryType.LOG_BIN_DELTA) || type.equals(LogEntryType.LOG_OLD_BIN_DELTA)) {
                 inSummary.obsoleteBINDeltaCount += 1;
                 inSummary.obsoleteBINDeltaSize += size;
             }
@@ -272,9 +252,9 @@ public class CleanerFileReader extends FileReader {
     }
 
     /**
-     * Get the last LN log entry seen by the reader.  Note that
-     * LNLogEntry.postFetchInit must be called before calling certain
-     * LNLogEntry methods.
+     * Get the last LN log entry seen by the reader. Note that
+     * LNLogEntry.postFetchInit must be called before calling certain LNLogEntry
+     * methods.
      */
     public LNLogEntry<?> getLNLogEntry() {
         return (LNLogEntry<?>) targetLogEntry;
@@ -305,8 +285,7 @@ public class CleanerFileReader extends FileReader {
     public DatabaseId getDatabaseId() {
         if (targetCategory == IS_LN) {
             return ((LNLogEntry<?>) targetLogEntry).getDbId();
-        } else if ((targetCategory == IS_IN) ||
-            (targetCategory == IS_BIN_DELTA)) {
+        } else if ((targetCategory == IS_IN) || (targetCategory == IS_BIN_DELTA)) {
             return ((INLogEntry<?>) targetLogEntry).getDbId();
         } else if (targetCategory == IS_OLD_BIN_DELTA) {
             return ((OldBINDeltaLogEntry) targetLogEntry).getDbId();
@@ -333,7 +312,7 @@ public class CleanerFileReader extends FileReader {
 
     private static class EntryInfo {
         public LogEntry targetLogEntry;
-        public byte targetCategory;
+        public byte     targetCategory;
 
         EntryInfo(LogEntry targetLogEntry, byte targetCategory) {
             this.targetLogEntry = targetLogEntry;

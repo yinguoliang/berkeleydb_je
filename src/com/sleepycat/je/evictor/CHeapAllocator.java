@@ -19,15 +19,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import sun.misc.Unsafe;
 
 /**
- * The default implementation of the off-heap allocator.
- *
- * Uses the sun.misc.Unsafe class to call the native 'malloc' and 'free'
- * functions to allocate memory from the 'C' runtime heap.
- *
- * This class should not be referenced symbolically by any other other class.
- * This is necessary to avoid a linkage error if JE is run on a JVM without the
- * Unsafe class. The {@link OffHeapAllocatorFactory} loads this class by name,
- * using reflection.
+ * The default implementation of the off-heap allocator. Uses the
+ * sun.misc.Unsafe class to call the native 'malloc' and 'free' functions to
+ * allocate memory from the 'C' runtime heap. This class should not be
+ * referenced symbolically by any other other class. This is necessary to avoid
+ * a linkage error if JE is run on a JVM without the Unsafe class. The
+ * {@link OffHeapAllocatorFactory} loads this class by name, using reflection.
  */
 class CHeapAllocator implements OffHeapAllocator {
 
@@ -38,32 +35,30 @@ class CHeapAllocator implements OffHeapAllocator {
     private static final boolean CHECK_BOUNDS = true;
 
     /* Number of bytes for storing the int block size. */
-    private static final int SIZE_BYTES = 4;
+    private static final int     SIZE_BYTES   = 4;
 
-    private final Unsafe unsafe;
-    private final AtomicLong usedBytes = new AtomicLong(0);
+    private final Unsafe         unsafe;
+    private final AtomicLong     usedBytes    = new AtomicLong(0);
 
     public CHeapAllocator() {
 
         /*
-         * We cannot call Unsafe.getUnsafe because it throws
-         * SecurityException when called from a non-bootstrap class. Getting
-         * the static field (that would be returned by Unsafe.getUnsafe) is
-         * better than calling the Unsafe private constructor, since Unsafe
-         * is intended to have a singleton instance.
+         * We cannot call Unsafe.getUnsafe because it throws SecurityException
+         * when called from a non-bootstrap class. Getting the static field
+         * (that would be returned by Unsafe.getUnsafe) is better than calling
+         * the Unsafe private constructor, since Unsafe is intended to have a
+         * singleton instance.
          */
         try {
             final Field field = Unsafe.class.getDeclaredField("theUnsafe");
             field.setAccessible(true);
             unsafe = (Unsafe) field.get(null);
         } catch (Throwable e) {
-            throw new UnsupportedOperationException(
-                "Unable to get Unsafe object", e);
+            throw new UnsupportedOperationException("Unable to get Unsafe object", e);
         }
 
         if (unsafe == null) {
-            throw new UnsupportedOperationException(
-                "Unsafe singleton is null");
+            throw new UnsupportedOperationException("Unsafe singleton is null");
         }
 
         /*
@@ -72,13 +67,11 @@ class CHeapAllocator implements OffHeapAllocator {
          */
         if (Unsafe.ARRAY_BYTE_INDEX_SCALE != 1) {
             throw new UnsupportedOperationException(
-                "Unexpected Unsafe.ARRAY_BYTE_INDEX_SCALE: " +
-                Unsafe.ARRAY_BYTE_INDEX_SCALE);
+                    "Unexpected Unsafe.ARRAY_BYTE_INDEX_SCALE: " + Unsafe.ARRAY_BYTE_INDEX_SCALE);
         }
         if (Unsafe.ARRAY_INT_INDEX_SCALE != SIZE_BYTES) {
             throw new UnsupportedOperationException(
-                "Unexpected Unsafe.ARRAY_INT_INDEX_SCALE: " +
-                    Unsafe.ARRAY_INT_INDEX_SCALE);
+                    "Unexpected Unsafe.ARRAY_INT_INDEX_SCALE: " + Unsafe.ARRAY_INT_INDEX_SCALE);
         }
     }
 
@@ -148,23 +141,14 @@ class CHeapAllocator implements OffHeapAllocator {
                 throw new NullPointerException("buf is null");
             }
             if (memOff < 0 || memOff + len > size(memId)) {
-                throw new IndexOutOfBoundsException(
-                    "memOff=" + memOff +
-                    " memSize=" + size(memId) +
-                    " copyLen=" + len);
+                throw new IndexOutOfBoundsException("memOff=" + memOff + " memSize=" + size(memId) + " copyLen=" + len);
             }
             if (bufOff < 0 || bufOff + len > buf.length) {
-                throw new IndexOutOfBoundsException(
-                    "bufOff=" + bufOff +
-                    " bufSize=" + buf.length +
-                    " copyLen=" + len);
+                throw new IndexOutOfBoundsException("bufOff=" + bufOff + " bufSize=" + buf.length + " copyLen=" + len);
             }
         }
 
-        unsafe.copyMemory(
-            null, memId + SIZE_BYTES + memOff,
-            buf, Unsafe.ARRAY_BYTE_BASE_OFFSET + bufOff,
-            len);
+        unsafe.copyMemory(null, memId + SIZE_BYTES + memOff, buf, Unsafe.ARRAY_BYTE_BASE_OFFSET + bufOff, len);
     }
 
     @Override
@@ -178,31 +162,18 @@ class CHeapAllocator implements OffHeapAllocator {
                 throw new NullPointerException("buf is null");
             }
             if (memOff < 0 || memOff + len > size(memId)) {
-                throw new IndexOutOfBoundsException(
-                    "memOff=" + memOff +
-                    " memSize=" + size(memId) +
-                    " copyLen=" + len);
+                throw new IndexOutOfBoundsException("memOff=" + memOff + " memSize=" + size(memId) + " copyLen=" + len);
             }
             if (bufOff < 0 || bufOff + len > buf.length) {
-                throw new IndexOutOfBoundsException(
-                    "bufOff=" + bufOff +
-                    " bufSize=" + buf.length +
-                    " copyLen=" + len);
+                throw new IndexOutOfBoundsException("bufOff=" + bufOff + " bufSize=" + buf.length + " copyLen=" + len);
             }
         }
 
-        unsafe.copyMemory(
-            buf, Unsafe.ARRAY_BYTE_BASE_OFFSET + bufOff,
-            null, memId + SIZE_BYTES + memOff,
-            len);
+        unsafe.copyMemory(buf, Unsafe.ARRAY_BYTE_BASE_OFFSET + bufOff, null, memId + SIZE_BYTES + memOff, len);
     }
 
     @Override
-    public void copy(long fromMemId,
-                     int fromMemOff,
-                     long toMemId,
-                     int toMemOff,
-                     int len) {
+    public void copy(long fromMemId, int fromMemOff, long toMemId, int toMemOff, int len) {
 
         if (CHECK_BOUNDS) {
             if (fromMemId == 0 || toMemId == 0) {
@@ -210,21 +181,14 @@ class CHeapAllocator implements OffHeapAllocator {
             }
             if (fromMemOff < 0 || fromMemOff + len > size(fromMemId)) {
                 throw new IndexOutOfBoundsException(
-                    "memOff=" + fromMemOff +
-                    " memSize=" + size(fromMemId) +
-                    " copyLen=" + len);
+                        "memOff=" + fromMemOff + " memSize=" + size(fromMemId) + " copyLen=" + len);
             }
             if (toMemOff < 0 || toMemOff + len > size(toMemId)) {
                 throw new IndexOutOfBoundsException(
-                    "memOff=" + toMemOff +
-                    " memSize=" + size(toMemId) +
-                    " copyLen=" + len);
+                        "memOff=" + toMemOff + " memSize=" + size(toMemId) + " copyLen=" + len);
             }
         }
 
-        unsafe.copyMemory(
-            null, fromMemId + SIZE_BYTES + fromMemOff,
-            null, toMemId + SIZE_BYTES + toMemOff,
-            len);
+        unsafe.copyMemory(null, fromMemId + SIZE_BYTES + fromMemOff, null, toMemId + SIZE_BYTES + toMemOff, len);
     }
 }

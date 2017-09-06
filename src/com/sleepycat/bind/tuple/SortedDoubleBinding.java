@@ -18,8 +18,9 @@ import com.sleepycat.je.DatabaseEntry;
 /**
  * A concrete <code>TupleBinding</code> for a sorted <code>Double</code>
  * primitive wrapper or a sorted <code>double</code> primitive.
- *
- * <p>There are two ways to use this class:</p>
+ * <p>
+ * There are two ways to use this class:
+ * </p>
  * <ol>
  * <li>When using the {@link com.sleepycat.je} package directly, the static
  * methods in this class can be used to convert between primitive values and
@@ -54,7 +55,6 @@ public class SortedDoubleBinding extends TupleBinding<Double> {
      * Converts an entry buffer into a simple <code>double</code> value.
      *
      * @param entry is the source entry buffer.
-     *
      * @return the resulting value.
      */
     public static double entryToDouble(DatabaseEntry entry) {
@@ -66,12 +66,10 @@ public class SortedDoubleBinding extends TupleBinding<Double> {
      * Converts a simple <code>double</code> value into an entry buffer.
      *
      * @param val is the source value.
-     *
      * @param entry is the destination entry buffer.
      */
     public static void doubleToEntry(double val, DatabaseEntry entry) {
 
-        outputToEntry(DoubleBinding.sizedOutput().writeSortedDouble(val),
-                      entry);
+        outputToEntry(DoubleBinding.sizedOutput().writeSortedDouble(val), entry);
     }
 }

@@ -23,13 +23,13 @@ import java.beans.PropertyDescriptor;
  */
 public class CheckpointConfigBeanInfo extends ConfigBeanInfoBase {
 
-	@Override
-	public BeanDescriptor getBeanDescriptor() {
-		return getBdescriptor(CheckpointConfig.class);
-	}
+    @Override
+    public BeanDescriptor getBeanDescriptor() {
+        return getBdescriptor(CheckpointConfig.class);
+    }
 
-	@Override
-	public PropertyDescriptor[] getPropertyDescriptors() {
-		return getPdescriptor(CheckpointConfig.class);
-	}
+    @Override
+    public PropertyDescriptor[] getPropertyDescriptors() {
+        return getPdescriptor(CheckpointConfig.class);
+    }
 }

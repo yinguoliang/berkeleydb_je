@@ -20,15 +20,17 @@ import com.sleepycat.bind.tuple.TupleOutput;
 
 /**
  * Used for writing object fields.
- *
- * <p>Unlike TupleOutput, Strings should be passed to {@link #writeObject} when
- * using this class.</p>
- *
- * <p>Note that currently there is only one implementation of EntityOutput:
- * RecordOutput.  There is no RawObjectOutput implemention because we currently
- * have no need to convert from persistent objects to RawObject instances.
- * The EntityOutput interface is only for symmetry with EntityInput and in case
- * we need RawObjectOutput in the future.</p>
+ * <p>
+ * Unlike TupleOutput, Strings should be passed to {@link #writeObject} when
+ * using this class.
+ * </p>
+ * <p>
+ * Note that currently there is only one implementation of EntityOutput:
+ * RecordOutput. There is no RawObjectOutput implemention because we currently
+ * have no need to convert from persistent objects to RawObject instances. The
+ * EntityOutput interface is only for symmetry with EntityInput and in case we
+ * need RawObjectOutput in the future.
+ * </p>
  *
  * @author Mark Hayes
  */
@@ -39,19 +41,17 @@ public interface EntityOutput {
      * the primary key field and composite key fields (see writeKeyObject
      * below).
      */
-    void writeObject(Object o, Format fieldFormat)
-        throws RefreshException;
+    void writeObject(Object o, Format fieldFormat) throws RefreshException;
 
     /**
      * Called for a primary key field or composite key field with a reference
      * type.
      */
-    void writeKeyObject(Object o, Format fieldFormat)
-        throws RefreshException;
+    void writeKeyObject(Object o, Format fieldFormat) throws RefreshException;
 
     /**
      * Called via Accessor.writeSecKeyFields for a primary key field with a
-     * reference type.  This method must be called before writing any other
+     * reference type. This method must be called before writing any other
      * fields.
      */
     void registerPriKeyObject(Object o);
@@ -70,14 +70,24 @@ public interface EntityOutput {
     /* The following methods are a subset of the methods in TupleOutput. */
 
     TupleOutput writeString(String val);
+
     TupleOutput writeChar(int val);
+
     TupleOutput writeBoolean(boolean val);
+
     TupleOutput writeByte(int val);
+
     TupleOutput writeShort(int val);
+
     TupleOutput writeInt(int val);
+
     TupleOutput writeLong(long val);
+
     TupleOutput writeSortedFloat(float val);
+
     TupleOutput writeSortedDouble(double val);
+
     TupleOutput writeBigInteger(BigInteger val);
+
     TupleOutput writeSortedBigDecimal(BigDecimal val);
 }

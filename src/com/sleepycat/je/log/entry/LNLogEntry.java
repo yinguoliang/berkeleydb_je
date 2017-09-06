@@ -39,105 +39,52 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * An LNLogEntry is the in-memory image of an LN logrec describing a write op
- * (insertion, update, or deletion) performed by a locker T on a record R.
- * T always locks R in exclusive (WRITE or WRITE_RANGE) mode before performing
- * any write ops on it, and it retains its exclusive lock on R until it
- * terminates (commits or aborts). (Non-transactional lockers can be viewed as
- * "simple" transactions that perform at most one write op, and then
- * immediately commit).
- *
- * On disk, an LN logrec contains :
- *
- * 1 <= version <= 5
- *
- *   LN data
- *   databaseid
- *   key
- *   abortLsn             -- if transactional
- *   abortKnownDeleted    -- if transactional
- *   txn id               -- if transactional
- *   prev LSN of same txn -- if transactional
- *
- * 6 <= versions <= 10 :
- *
- *   databaseid
- *   abortLsn             -- if transactional
- *   abortKnownDeleted    -- if transactional
- *   txn id               -- if transactional
- *   prev LSN of same txn -- if transactional
- *   data
- *   key
- *
- * 11 == version :
- *
- *   databaseid
- *   abortLsn               -- if transactional
- *   1-byte flags
- *     abortKnownDeleted
- *     embeddedLN
- *     haveAbortKey
- *     haveAbortData
- *     haveAbortVLSN
- *   txn id                 -- if transactional
- *   prev LSN of same txn   -- if transactional
- *   abort key              -- if haveAbortKey
- *   abort data             -- if haveAbortData
- *   abort vlsn             -- if haveAbortVLSN
- *   data
- *   key
- *
- *   In forReplication mode, these flags and fields are omitted:
- *     embeddedLN, haveAbortKey, haveAbortData, haveAbortVLSN,
- *     abort key, abort data, abort vlsn
- *
- * 12 <= version :
- *
- *   1-byte flags
- *     abortKnownDeleted
- *     embeddedLN
- *     haveAbortKey
- *     haveAbortData
- *     haveAbortVLSN
- *     haveAbortLSN
- *     haveAbortExpiration
- *     haveExpiration
- *   databaseid
- *   abortLsn                -- if transactional and haveAbortLSN
- *   txn id                  -- if transactional
- *   prev LSN of same txn    -- if transactional
- *   abort key               -- if haveAbortKey
- *   abort data              -- if haveAbortData
- *   abort vlsn              -- if haveAbortVLSN
- *   abort expiration        -- if haveAbortExpiration
- *   expiration              -- if haveExpiration
- *   data
- *   key
- *
- *   In forReplication mode, these flags and fields are omitted:
- *     abortKnownDeleted, embeddedLN, haveAbortKey, haveAbortData,
- *     haveAbortVLSN, abort key, abort data, abort vlsn
- *
- * NOTE: LNLogEntry is sub-classed by NameLNLogEntry, which adds some extra
- * fields after the record key.
+ * (insertion, update, or deletion) performed by a locker T on a record R. T
+ * always locks R in exclusive (WRITE or WRITE_RANGE) mode before performing any
+ * write ops on it, and it retains its exclusive lock on R until it terminates
+ * (commits or aborts). (Non-transactional lockers can be viewed as "simple"
+ * transactions that perform at most one write op, and then immediately commit).
+ * On disk, an LN logrec contains : 1 <= version <= 5 LN data databaseid key
+ * abortLsn -- if transactional abortKnownDeleted -- if transactional txn id --
+ * if transactional prev LSN of same txn -- if transactional 6 <= versions <= 10
+ * : databaseid abortLsn -- if transactional abortKnownDeleted -- if
+ * transactional txn id -- if transactional prev LSN of same txn -- if
+ * transactional data key 11 == version : databaseid abortLsn -- if
+ * transactional 1-byte flags abortKnownDeleted embeddedLN haveAbortKey
+ * haveAbortData haveAbortVLSN txn id -- if transactional prev LSN of same txn
+ * -- if transactional abort key -- if haveAbortKey abort data -- if
+ * haveAbortData abort vlsn -- if haveAbortVLSN data key In forReplication mode,
+ * these flags and fields are omitted: embeddedLN, haveAbortKey, haveAbortData,
+ * haveAbortVLSN, abort key, abort data, abort vlsn 12 <= version : 1-byte flags
+ * abortKnownDeleted embeddedLN haveAbortKey haveAbortData haveAbortVLSN
+ * haveAbortLSN haveAbortExpiration haveExpiration databaseid abortLsn -- if
+ * transactional and haveAbortLSN txn id -- if transactional prev LSN of same
+ * txn -- if transactional abort key -- if haveAbortKey abort data -- if
+ * haveAbortData abort vlsn -- if haveAbortVLSN abort expiration -- if
+ * haveAbortExpiration expiration -- if haveExpiration data key In
+ * forReplication mode, these flags and fields are omitted: abortKnownDeleted,
+ * embeddedLN, haveAbortKey, haveAbortData, haveAbortVLSN, abort key, abort
+ * data, abort vlsn NOTE: LNLogEntry is sub-classed by NameLNLogEntry, which
+ * adds some extra fields after the record key.
  */
 public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
 
-    private static final byte ABORT_KD_MASK = 0x1;
-    private static final byte EMBEDDED_LN_MASK = 0x2;
-    private static final byte HAVE_ABORT_KEY_MASK = 0x4;
-    private static final byte HAVE_ABORT_DATA_MASK = 0x8;
-    private static final byte HAVE_ABORT_VLSN_MASK = 0x10;
-    private static final byte HAVE_ABORT_LSN_MASK = 0x20;
+    private static final byte ABORT_KD_MASK              = 0x1;
+    private static final byte EMBEDDED_LN_MASK           = 0x2;
+    private static final byte HAVE_ABORT_KEY_MASK        = 0x4;
+    private static final byte HAVE_ABORT_DATA_MASK       = 0x8;
+    private static final byte HAVE_ABORT_VLSN_MASK       = 0x10;
+    private static final byte HAVE_ABORT_LSN_MASK        = 0x20;
     private static final byte HAVE_ABORT_EXPIRATION_MASK = 0x40;
-    private static final byte HAVE_EXPIRATION_MASK = (byte) 0x80;
+    private static final byte HAVE_EXPIRATION_MASK       = (byte) 0x80;
 
     /**
      * Used for computing the minimum log space used by an LNLogEntry.
      */
-    public static final int MIN_LOG_SIZE = 1 + // Flags
-                                           1 + // DatabaseId
-                                           1 + // LN with zero-length data
-                                           LogEntryHeader.MIN_HEADER_SIZE;
+    public static final int   MIN_LOG_SIZE               = 1 +                     // Flags
+            1 +                                                                    // DatabaseId
+            1 +                                                                    // LN with zero-length data
+            LogEntryHeader.MIN_HEADER_SIZE;
 
     /**
      * The log version when the most recent format change for this entry was
@@ -146,7 +93,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
      *
      * @see #getLastFormatChange
      */
-    private static final int LAST_FORMAT_CHANGE = 12;
+    private static final int  LAST_FORMAT_CHANGE         = 12;
 
     /*
      * Persistent fields.
@@ -155,123 +102,127 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
     /*
      * The id of the DB containing the record.
      */
-    private DatabaseId dbId;
+    private DatabaseId        dbId;
 
     /*
-     * The Txn performing the write op. It is null for non-transactional DBs.
-     * On disk we store only the txn id and the LSN of the previous logrec
-     * (if any) generated by this txn.
+     * The Txn performing the write op. It is null for non-transactional DBs. On
+     * disk we store only the txn id and the LSN of the previous logrec (if any)
+     * generated by this txn.
      */
-    private Txn txn;
+    private Txn               txn;
 
     /*
      * The LSN of the record's "abort" version, i.e., the version to revert to
      * if this logrec must be undone as a result of a txn abort. It is set to
      * the most recent version before the record was locked by the locker T
      * associated with this logrec. Because T locks R before it writes it, the
-     * abort version is always a committed version.
-     *
-     * It is null for non-transactional lockers, because such lockers never
-     * abort.
+     * abort version is always a committed version. It is null for
+     * non-transactional lockers, because such lockers never abort.
      */
-    private long abortLsn = DbLsn.NULL_LSN;
+    private long              abortLsn                   = DbLsn.NULL_LSN;
 
     /*
      * Whether the record's abort version was a deleted version or not.
      */
-    private boolean abortKnownDeleted;
+    private boolean           abortKnownDeleted;
 
     /*
-     * The key of the record's abort version, if haveAbortKey is true;
+     * The key of the record's abort version, if haveAbortKey is true; null
+     * otherwise.
+     */
+    private byte[]            abortKey                   = null;
+
+    /*
+     * The data portion of the record's abort version, if haveAbortData is true;
      * null otherwise.
      */
-    private byte[] abortKey = null;
-
-    /*
-     * The data portion of the record's abort version, if haveAbortData is
-     * true; null otherwise.
-     */
-    private byte[] abortData = null;
+    private byte[]            abortData                  = null;
 
     /*
      * The VLSN of the record's abort version, if haveAbortVLSN is true;
      * NULL_VLSN otherwise.
      */
-    private long abortVLSN = VLSN.NULL_VLSN_SEQUENCE;
+    private long              abortVLSN                  = VLSN.NULL_VLSN_SEQUENCE;
 
     /* Abort expiration time in days or hours. */
-    private int abortExpiration = 0;
-    private boolean abortExpirationInHours = false;
+    private int               abortExpiration            = 0;
+    private boolean           abortExpirationInHours     = false;
 
     /*
-     * True if the logrec stores an abort LSN, which is the case only if
-     * (a) this is a transactional logrec (b) the abort LSN is non-null.
+     * True if the logrec stores an abort LSN, which is the case only if (a)
+     * this is a transactional logrec (b) the abort LSN is non-null.
      */
-    private boolean haveAbortLSN;
+    private boolean           haveAbortLSN;
 
     /*
-     * True if the logrec stores an abort key, which is the case only if
-     * (a) this is a transactional logrec, (b) the record's abort version
-     * was embedded in the BIN, and (c) the DB allows key updates.
+     * True if the logrec stores an abort key, which is the case only if (a)
+     * this is a transactional logrec, (b) the record's abort version was
+     * embedded in the BIN, and (c) the DB allows key updates.
      */
-    private boolean haveAbortKey;
+    private boolean           haveAbortKey;
 
     /*
-     * True if the logrec stores abort data, which is the case only if
-     * (a) this is a transactional logrec and (b) the record's abort
-     * version was embedded in the BIN.
+     * True if the logrec stores abort data, which is the case only if (a) this
+     * is a transactional logrec and (b) the record's abort version was embedded
+     * in the BIN.
      */
-    private boolean haveAbortData;
+    private boolean           haveAbortData;
 
     /*
-     * True if the logrec stores an abort VLSN, which is the case only if
-     * (a) this is a transactional logrec (b) the record's abort version
-     * was embedded in the BIN, and (c) VLSN caching is enabled.
+     * True if the logrec stores an abort VLSN, which is the case only if (a)
+     * this is a transactional logrec (b) the record's abort version was
+     * embedded in the BIN, and (c) VLSN caching is enabled.
      */
-    private boolean haveAbortVLSN;
+    private boolean           haveAbortVLSN;
 
     /*
      * True if the logrec stores an abort expiration, which is the case only if
      * (a) this is a transactional logrec (b) the record's abort version has a
      * non-zero expiration.
      */
-    private boolean haveAbortExpiration;
+    private boolean           haveAbortExpiration;
 
     /*
      * True if the logrec stores a non-zero expiration.
      */
-    private boolean haveExpiration;
+    private boolean           haveExpiration;
 
     /*
      * Whether, after the write op described by this logrec, the record is
      * embedded in the BIN or not.
      */
-    private boolean embeddedLN;
+    private boolean           embeddedLN;
 
     /*
      * The LN storing the record's data, after the write op described by this
      * logrec. The ln has a null data value if the write op is a deletion. For
      * replicated DBs, the ln contains the record's VLSN as well.
      */
-    private LN ln;
+    private LN                ln;
 
     /*
      * The value of the record's key, after the write op described by this
      * logrec.
      */
-    private byte[] key;
+    private byte[]            key;
 
     /* Expiration time in days or hours. */
-    private int expiration;
-    private boolean expirationInHours;
+    private int               expiration;
+    private boolean           expirationInHours;
 
     /*
      * Transient fields.
      */
 
     /* Transient field for duplicates conversion and user key/data methods. */
-    enum DupStatus { UNKNOWN, NEED_CONVERSION, DUP_DB, NOT_DUP_DB }
-    private DupStatus dupStatus;
+    enum DupStatus {
+        UNKNOWN,
+        NEED_CONVERSION,
+        DUP_DB,
+        NOT_DUP_DB
+    }
+
+    private DupStatus                      dupStatus;
 
     /* For construction of VersionedLN, when VLSN is preserved. */
     private final Constructor<VersionedLN> versionedLNConstructor;
@@ -298,22 +249,9 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
     }
 
     /* Constructor to write an entry. */
-    public LNLogEntry(
-        LogEntryType entryType,
-        DatabaseId dbId,
-        Txn txn,
-        long abortLsn,
-        boolean abortKD,
-        byte[] abortKey,
-        byte[] abortData,
-        long abortVLSN,
-        int abortExpiration,
-        boolean abortExpirationInHours,
-        byte[] key,
-        T ln,
-        boolean embeddedLN,
-        int expiration,
-        boolean expirationInHours) {
+    public LNLogEntry(LogEntryType entryType, DatabaseId dbId, Txn txn, long abortLsn, boolean abortKD, byte[] abortKey,
+                      byte[] abortData, long abortVLSN, int abortExpiration, boolean abortExpirationInHours, byte[] key,
+                      T ln, boolean embeddedLN, int expiration, boolean expirationInHours) {
 
         setLogType(entryType);
         this.dbId = dbId;
@@ -342,7 +280,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
         versionedLNConstructor = null;
 
         /* A txn should only be provided for transactional entry types. */
-        assert(entryType.isTransactional() == (txn != null));
+        assert (entryType.isTransactional() == (txn != null));
     }
 
     private void reset() {
@@ -373,40 +311,33 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
     }
 
     @Override
-    public void readEntry(
-        EnvironmentImpl envImpl,
-        LogEntryHeader header,
-        ByteBuffer entryBuffer) {
+    public void readEntry(EnvironmentImpl envImpl, LogEntryHeader header, ByteBuffer entryBuffer) {
 
         /* Subclasses must call readBaseLNEntry. */
         assert getClass() == LNLogEntry.class;
 
         /*
          * Prior to version 8, the optimization to omit the key size was
-         * mistakenly not applied to internal LN types such as FileSummaryLN
-         * and MapLN, and was only applied to user LN types.  The optimization
-         * should be applicable whenever LNLogEntry is not subclassed to add
-         * additional fields. [#18055]
+         * mistakenly not applied to internal LN types such as FileSummaryLN and
+         * MapLN, and was only applied to user LN types. The optimization should
+         * be applicable whenever LNLogEntry is not subclassed to add additional
+         * fields. [#18055]
          */
-        final boolean keyIsLastSerializedField =
-            header.getVersion() >= 8 || entryType.isUserLNType();
+        final boolean keyIsLastSerializedField = header.getVersion() >= 8 || entryType.isUserLNType();
 
-        readBaseLNEntry(envImpl, header, entryBuffer,
-                        keyIsLastSerializedField);
+        readBaseLNEntry(envImpl, header, entryBuffer, keyIsLastSerializedField);
     }
 
     /**
      * Method shared by LNLogEntry subclasses.
      *
      * @param keyIsLastSerializedField specifies whether the key length can be
-     * omitted because the key is the last field.  This should be false when
-     * an LNLogEntry subclass adds fields to the serialized format.
+     *            omitted because the key is the last field. This should be
+     *            false when an LNLogEntry subclass adds fields to the
+     *            serialized format.
      */
-    final void readBaseLNEntry(
-        EnvironmentImpl envImpl,
-        LogEntryHeader header,
-        ByteBuffer entryBuffer,
-        boolean keyIsLastSerializedField) {
+    final void readBaseLNEntry(EnvironmentImpl envImpl, LogEntryHeader header, ByteBuffer entryBuffer,
+                               boolean keyIsLastSerializedField) {
 
         reset();
 
@@ -435,7 +366,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
 
         /* Key. */
         if (logVersion < 6) {
-            key = LogUtils.readByteArray(entryBuffer, true/*unpacked*/);
+            key = LogUtils.readByteArray(entryBuffer, true/* unpacked */);
         }
 
         if (entryType.isTransactional()) {
@@ -446,8 +377,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
              */
             if (haveAbortLSN || logVersion < 12) {
                 abortLsn = LogUtils.readLong(entryBuffer, unpacked);
-                if (DbLsn.getFileNumber(abortLsn) ==
-                    DbLsn.getFileNumber(DbLsn.NULL_LSN)) {
+                if (DbLsn.getFileNumber(abortLsn) == DbLsn.getFileNumber(DbLsn.NULL_LSN)) {
                     abortLsn = DbLsn.NULL_LSN;
                 }
             }
@@ -481,14 +411,14 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
             if (haveAbortExpiration) {
                 abortExpiration = LogUtils.readPackedInt(entryBuffer);
                 if (abortExpiration < 0) {
-                    abortExpiration = (- abortExpiration);
+                    abortExpiration = (-abortExpiration);
                     abortExpirationInHours = true;
                 }
             }
             if (haveExpiration) {
                 expiration = LogUtils.readPackedInt(entryBuffer);
                 if (expiration < 0) {
-                    expiration = (- expiration);
+                    expiration = (-expiration);
                     expirationInHours = true;
                 }
             }
@@ -516,8 +446,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
         }
 
         /* Dup conversion will be done by postFetchInit. */
-        dupStatus =
-            (logVersion < 8) ? DupStatus.NEED_CONVERSION : DupStatus.UNKNOWN;
+        dupStatus = (logVersion < 8) ? DupStatus.NEED_CONVERSION : DupStatus.UNKNOWN;
     }
 
     private void setFlags(final byte flags) {
@@ -537,8 +466,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
     }
 
     @Override
-    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer,
-                                                 final int srcVersion,
+    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer, final int srcVersion,
                                                  final int destVersion) {
 
         /* The replication format is optimized only in versions >= 11. */
@@ -558,27 +486,23 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
 
         /*
          * If we have an abort key or data, assume that the savings is
-         * substantial enough to be worthwhile.
-         *
-         * The abort key is unusual and implies that data is hidden in the key
-         * using a partial comparator, so we assume it is probably large,
-         * relative to the total size.
-         *
-         * If there is abort data, it may be small, however, because the
-         * presence of abort data implies that this is an update or deletion,
-         * there will also be an abort LSN and an abort VLSN (with HA). Plus,
-         * abort data is likely to be around the same size as the non-abort
-         * data, and keys are normally smallish, meaning that the abort data is
-         * largish relative to the total record size. So we assume the savings
-         * are substantial enough.
+         * substantial enough to be worthwhile. The abort key is unusual and
+         * implies that data is hidden in the key using a partial comparator, so
+         * we assume it is probably large, relative to the total size. If there
+         * is abort data, it may be small, however, because the presence of
+         * abort data implies that this is an update or deletion, there will
+         * also be an abort LSN and an abort VLSN (with HA). Plus, abort data is
+         * likely to be around the same size as the non-abort data, and keys are
+         * normally smallish, meaning that the abort data is largish relative to
+         * the total record size. So we assume the savings are substantial
+         * enough.
          */
-        return (flags &
-            (HAVE_ABORT_KEY_MASK | HAVE_ABORT_DATA_MASK)) != 0;
+        return (flags & (HAVE_ABORT_KEY_MASK | HAVE_ABORT_DATA_MASK)) != 0;
     }
 
     /**
-     * newLNInstance usually returns exactly the type of LN of the type that
-     * was contained in in the log. For example, if a LNLogEntry holds a MapLN,
+     * newLNInstance usually returns exactly the type of LN of the type that was
+     * contained in in the log. For example, if a LNLogEntry holds a MapLN,
      * newLNInstance will return that MapLN. There is one extra possibility for
      * vanilla (data record) LNs. In that case, this method may either return a
      * LN or a generated type, the VersionedLN, which adds the vlsn information
@@ -634,8 +558,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
             }
             if (haveAbortExpiration) {
                 sb.append("<abortExpires val=\"");
-                sb.append(TTL.formatExpiration(
-                    abortExpiration, abortExpirationInHours));
+                sb.append(TTL.formatExpiration(abortExpiration, abortExpirationInHours));
                 sb.append("\"/>");
             }
         }
@@ -682,32 +605,28 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
 
         assert getClass() == LNLogEntry.class;
 
-        return getBaseLNEntrySize(
-            logVersion, true /*keyIsLastSerializedField*/, forReplication);
+        return getBaseLNEntrySize(logVersion, true /* keyIsLastSerializedField */, forReplication);
     }
 
     /**
      * Method shared by LNLogEntry subclasses.
      *
      * @param keyIsLastSerializedField specifies whether the key length can be
-     * omitted because the key is the last field.  This should be false when
-     * an LNLogEntry subclass adds fields to the serialized format.
+     *            omitted because the key is the last field. This should be
+     *            false when an LNLogEntry subclass adds fields to the
+     *            serialized format.
      */
-    final int getBaseLNEntrySize(
-        final int logVersion,
-        final boolean keyIsLastSerializedField,
-        final boolean forReplication) {
+    final int getBaseLNEntrySize(final int logVersion, final boolean keyIsLastSerializedField,
+                                 final boolean forReplication) {
 
-        int size = ln.getLogSize(logVersion, forReplication) +
-            dbId.getLogSize(logVersion, forReplication) +
-            key.length;
+        int size = ln.getLogSize(logVersion, forReplication) + dbId.getLogSize(logVersion, forReplication) + key.length;
 
         if (!keyIsLastSerializedField) {
             size += LogUtils.getPackedIntLogSize(key.length);
         }
 
         if (entryType.isTransactional() || logVersion >= 11) {
-            size += 1;   // flags
+            size += 1; // flags
         }
 
         if (entryType.isTransactional()) {
@@ -718,7 +637,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
         }
 
         if (!forReplication) {
-            if (logVersion >= 11 ) {
+            if (logVersion >= 11) {
                 if (haveAbortKey) {
                     size += LogUtils.getByteArrayLogSize(abortKey);
                 }
@@ -730,16 +649,13 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
                 }
             }
             if (haveAbortExpiration) {
-                size += LogUtils.getPackedIntLogSize(
-                    abortExpirationInHours ?
-                        (- abortExpiration) : abortExpiration);
+                size += LogUtils.getPackedIntLogSize(abortExpirationInHours ? (-abortExpiration) : abortExpiration);
             }
         }
 
         if (logVersion >= 12) {
             if (haveExpiration) {
-                size += LogUtils.getPackedIntLogSize(
-                    expirationInHours ? (- expiration) : expiration);
+                size += LogUtils.getPackedIntLogSize(expirationInHours ? (-expiration) : expiration);
             }
         }
 
@@ -747,35 +663,28 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
     }
 
     @Override
-    public void writeEntry(final ByteBuffer destBuffer,
-                           final int logVersion,
-                           final boolean forReplication) {
+    public void writeEntry(final ByteBuffer destBuffer, final int logVersion, final boolean forReplication) {
 
         /* Subclasses must call writeBaseLNEntry. */
         assert getClass() == LNLogEntry.class;
 
-        writeBaseLNEntry(
-            destBuffer, logVersion, true /*keyIsLastSerializedField*/,
-            forReplication);
+        writeBaseLNEntry(destBuffer, logVersion, true /* keyIsLastSerializedField */, forReplication);
     }
 
     /**
      * Method shared by LNLogEntry subclasses.
      *
      * @param keyIsLastSerializedField specifies whether the key length can be
-     * omitted because the key is the last field.  This should be false when
-     * an LNLogEntry subclass adds fields to the serialized format.
+     *            omitted because the key is the last field. This should be
+     *            false when an LNLogEntry subclass adds fields to the
+     *            serialized format.
      */
-    final void writeBaseLNEntry(
-        final ByteBuffer destBuffer,
-        final int logVersion,
-        final boolean keyIsLastSerializedField,
-        final boolean forReplication) {
+    final void writeBaseLNEntry(final ByteBuffer destBuffer, final int logVersion,
+                                final boolean keyIsLastSerializedField, final boolean forReplication) {
 
         byte flags = 0;
 
-        if (entryType.isTransactional() &&
-            (logVersion < 12 || !forReplication)) {
+        if (entryType.isTransactional() && (logVersion < 12 || !forReplication)) {
 
             if (abortKnownDeleted) {
                 flags |= ABORT_KD_MASK;
@@ -846,19 +755,14 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
             }
             if (logVersion >= 12) {
                 if (haveAbortExpiration) {
-                    LogUtils.writePackedInt(
-                        destBuffer,
-                        abortExpirationInHours ?
-                            (-abortExpiration) : abortExpiration);
+                    LogUtils.writePackedInt(destBuffer, abortExpirationInHours ? (-abortExpiration) : abortExpiration);
                 }
             }
         }
 
         if (logVersion >= 12) {
             if (haveExpiration) {
-                LogUtils.writePackedInt(
-                    destBuffer,
-                    expirationInHours ? (-expiration) : expiration);
+                LogUtils.writePackedInt(destBuffer, expirationInHours ? (-expiration) : expiration);
             }
         }
 
@@ -872,9 +776,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
 
     @Override
     public boolean isImmediatelyObsolete(DatabaseImpl dbImpl) {
-        return (ln.isDeleted() ||
-                embeddedLN ||
-                dbImpl.isLNImmediatelyObsolete());
+        return (ln.isDeleted() || embeddedLN || dbImpl.isLNImmediatelyObsolete());
     }
 
     @Override
@@ -888,10 +790,7 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
      * callback for the log manager to do that recording.
      */
     @Override
-    public void postLogWork(
-        LogEntryHeader header,
-        long justLoggedLsn,
-        VLSN vlsn) {
+    public void postLogWork(LogEntryHeader header, long justLoggedLsn, VLSN vlsn) {
 
         if (entryType.isTransactional()) {
             txn.addLogInfo(justLoggedLsn);
@@ -909,23 +808,17 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
     }
 
     /**
-     * Converts the key/data for old format LNs in a duplicates DB.
-     *
-     * This method MUST be called before calling any of the following methods:
-     *  getLN
-     *  getKey
-     *  getUserKeyData
-     *
-     * TODO:
-     * This method is not called by the HA feeder when materializing entries.
-     * This is OK because entries with log version 7 and below are never
-     * materialized. But we may want to rename this method to make it clear
-     * that it only is, and only must be, called for the log versions < 8.
+     * Converts the key/data for old format LNs in a duplicates DB. This method
+     * MUST be called before calling any of the following methods: getLN getKey
+     * getUserKeyData TODO: This method is not called by the HA feeder when
+     * materializing entries. This is OK because entries with log version 7 and
+     * below are never materialized. But we may want to rename this method to
+     * make it clear that it only is, and only must be, called for the log
+     * versions < 8.
      */
     public void postFetchInit(boolean isDupDb) {
 
-        final boolean needConversion =
-            (dupStatus == DupStatus.NEED_CONVERSION);
+        final boolean needConversion = (dupStatus == DupStatus.NEED_CONVERSION);
 
         dupStatus = isDupDb ? DupStatus.DUP_DB : DupStatus.NOT_DUP_DB;
 
@@ -953,12 +846,10 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
 
     /**
      * Translates two-part keys in duplicate DBs back to the original user
-     * operation params.  postFetchInit must be called before calling this
+     * operation params. postFetchInit must be called before calling this
      * method.
      */
-    public void getUserKeyData(
-        DatabaseEntry keyParam,
-        DatabaseEntry dataParam) {
+    public void getUserKeyData(DatabaseEntry keyParam, DatabaseEntry dataParam) {
 
         requireKnownDupStatus();
 
@@ -1017,10 +908,8 @@ public class LNLogEntry<T extends LN> extends BaseReplicableEntry<T> {
     }
 
     private void requireKnownDupStatus() {
-        if (dupStatus != DupStatus.DUP_DB &&
-            dupStatus != DupStatus.NOT_DUP_DB) {
-            throw unexpectedState(
-                "postFetchInit was not called");
+        if (dupStatus != DupStatus.DUP_DB && dupStatus != DupStatus.NOT_DUP_DB) {
+            throw unexpectedState("postFetchInit was not called");
         }
     }
 

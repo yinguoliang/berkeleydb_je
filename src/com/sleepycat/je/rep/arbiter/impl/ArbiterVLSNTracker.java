@@ -34,28 +34,27 @@ import com.sleepycat.je.utilint.VLSN;
  * represents the highest commit record VLSN the Arbiter has acknowledged.
  */
 class ArbiterVLSNTracker {
-    private static final int VERSION = 1;
+    private static final int VERSION        = 1;
 
     private RandomAccessFile raf;
-    private final File dataFile;
-    private VLSN currentVLSN = VLSN.NULL_VLSN;
-    private volatile VLSN dtvlsn = VLSN.NULL_VLSN;
-    private final int VERSION_OFFSET = 0;
-    private final int NODEID_OFFSET = Integer.SIZE + VERSION_OFFSET;
-    private final int DATA_OFFSET = Integer.SIZE + NODEID_OFFSET;
-    private int nodeId = NameIdPair.NULL_NODE_ID;
-    private final StatGroup stats;
-    private final LongStat nWrites;
-    private final LongStat nFSyncs;
-    private final LongStat vlsnStat;
-    private final LongStat dtVlsnStat;
+    private final File       dataFile;
+    private VLSN             currentVLSN    = VLSN.NULL_VLSN;
+    private volatile VLSN    dtvlsn         = VLSN.NULL_VLSN;
+    private final int        VERSION_OFFSET = 0;
+    private final int        NODEID_OFFSET  = Integer.SIZE + VERSION_OFFSET;
+    private final int        DATA_OFFSET    = Integer.SIZE + NODEID_OFFSET;
+    private int              nodeId         = NameIdPair.NULL_NODE_ID;
+    private final StatGroup  stats;
+    private final LongStat   nWrites;
+    private final LongStat   nFSyncs;
+    private final LongStat   vlsnStat;
+    private final LongStat   dtVlsnStat;
 
     ArbiterVLSNTracker(File file) {
         dataFile = file;
         boolean fileExists = dataFile.exists();
 
-        stats = new StatGroup(ArbiterStatDefinition.ARBIO_GROUP_NAME,
-                              ArbiterStatDefinition.ARBIO_GROUP_DESC);
+        stats = new StatGroup(ArbiterStatDefinition.ARBIO_GROUP_NAME, ArbiterStatDefinition.ARBIO_GROUP_DESC);
         nFSyncs = new LongStat(stats, ARB_N_FSYNCS);
         nWrites = new LongStat(stats, ARB_N_WRITES);
         vlsnStat = new LongStat(stats, ARB_VLSN);
@@ -65,30 +64,24 @@ class ArbiterVLSNTracker {
             if (fileExists) {
                 final int readVersion = readVersion();
                 if (readVersion > VERSION) {
-                    throw new RuntimeException(
-                        "Arbiter data file does not have a supported " +
-                        "version field " +
-                        dataFile.getAbsolutePath());
+                    throw new RuntimeException("Arbiter data file does not have a supported " + "version field "
+                            + dataFile.getAbsolutePath());
                 }
                 nodeId = readNodeId();
                 if (raf.length() > DATA_OFFSET) {
                     raf.seek(DATA_OFFSET);
                     currentVLSN = new VLSN(raf.readLong());
-                    dtvlsn =  new VLSN(raf.readLong());
+                    dtvlsn = new VLSN(raf.readLong());
                 }
             } else {
                 writeVersion(VERSION);
                 writeNodeIdInternal(nodeId);
             }
         } catch (IOException e) {
-            throw new RuntimeException(
-                "Unable to read the Arbiter data file " +
-                dataFile.getAbsolutePath());
-        }
-        catch (Exception e) {
-            throw new RuntimeException(
-                "Unable to open the Arbiter data file " +
-                dataFile.getAbsolutePath() + " exception " + e.getMessage());
+            throw new RuntimeException("Unable to read the Arbiter data file " + dataFile.getAbsolutePath());
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to open the Arbiter data file " + dataFile.getAbsolutePath()
+                    + " exception " + e.getMessage());
         }
     }
 
@@ -111,10 +104,8 @@ class ArbiterVLSNTracker {
 
     private void writeNodeIdInternal(int id) {
         if (raf == null) {
-            throw new RuntimeException(
-                "Internal error: Unable to write the Arbiter data file " +
-                " because the file is not open." +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Internal error: Unable to write the Arbiter data file "
+                    + " because the file is not open." + dataFile.getAbsolutePath());
         }
         try {
             raf.seek(NODEID_OFFSET);
@@ -122,35 +113,27 @@ class ArbiterVLSNTracker {
             nWrites.increment();
             doFSync();
         } catch (IOException e) {
-            throw new RuntimeException(
-                "Unable to write the Arbiter data file " +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Unable to write the Arbiter data file " + dataFile.getAbsolutePath());
         }
     }
 
     private int readNodeId() {
         if (raf == null) {
-            throw new RuntimeException(
-                "Internal error: Unable to read the Arbiter data file " +
-                " because the file is not open." +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Internal error: Unable to read the Arbiter data file "
+                    + " because the file is not open." + dataFile.getAbsolutePath());
         }
         try {
             raf.seek(NODEID_OFFSET);
             return raf.readInt();
         } catch (IOException e) {
-            throw new RuntimeException(
-                "Unable to read the Arbiter data file " +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Unable to read the Arbiter data file " + dataFile.getAbsolutePath());
         }
     }
 
     public synchronized void writeVersion(int id) {
         if (raf == null) {
-            throw new RuntimeException(
-                "Internal error: Unable to write the Arbiter data file " +
-                " because the file is not open." +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Internal error: Unable to write the Arbiter data file "
+                    + " because the file is not open." + dataFile.getAbsolutePath());
         }
 
         if (nodeId == id) {
@@ -162,37 +145,27 @@ class ArbiterVLSNTracker {
             nWrites.increment();
             doFSync();
         } catch (IOException e) {
-            throw new RuntimeException(
-                "Unable to write the Arbiter data file " +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Unable to write the Arbiter data file " + dataFile.getAbsolutePath());
         }
     }
 
     private int readVersion() {
         if (raf == null) {
-            throw new RuntimeException(
-                "Internal error: Unable to read the Arbiter data file " +
-                " because the file is not open." +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Internal error: Unable to read the Arbiter data file "
+                    + " because the file is not open." + dataFile.getAbsolutePath());
         }
         try {
             raf.seek(VERSION_OFFSET);
             return raf.readInt();
         } catch (IOException e) {
-            throw new RuntimeException(
-                "Unable to write the Arbiter data file " +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Unable to write the Arbiter data file " + dataFile.getAbsolutePath());
         }
     }
 
-    public synchronized void write(VLSN nextCurrentVLSN,
-                                   VLSN nextDTVLSN,
-                                   boolean doFSync) {
+    public synchronized void write(VLSN nextCurrentVLSN, VLSN nextDTVLSN, boolean doFSync) {
         if (raf == null) {
-            throw new RuntimeException(
-                "Internal error: Unable to write the Arbiter data file " +
-                " because the file is not open." +
-                dataFile.getAbsolutePath());
+            throw new RuntimeException("Internal error: Unable to write the Arbiter data file "
+                    + " because the file is not open." + dataFile.getAbsolutePath());
         }
         if (nextCurrentVLSN.compareTo(currentVLSN) > 0) {
             this.currentVLSN = nextCurrentVLSN;
@@ -206,9 +179,7 @@ class ArbiterVLSNTracker {
                     doFSync();
                 }
             } catch (IOException e) {
-                throw new RuntimeException(
-                    "Unable to write the Arbiter data file " +
-                    dataFile.getAbsolutePath());
+                throw new RuntimeException("Unable to write the Arbiter data file " + dataFile.getAbsolutePath());
             }
         }
     }
@@ -234,9 +205,8 @@ class ArbiterVLSNTracker {
     }
 
     public static StatGroup loadEmptyStats() {
-        StatGroup tmpStats =
-            new StatGroup(ArbiterStatDefinition.ARBIO_GROUP_NAME,
-                          ArbiterStatDefinition.ARBIO_GROUP_DESC);
+        StatGroup tmpStats = new StatGroup(ArbiterStatDefinition.ARBIO_GROUP_NAME,
+                ArbiterStatDefinition.ARBIO_GROUP_DESC);
         new LongStat(tmpStats, ARB_N_FSYNCS);
         new LongStat(tmpStats, ARB_N_WRITES);
         new LongStat(tmpStats, ARB_VLSN);

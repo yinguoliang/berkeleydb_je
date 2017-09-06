@@ -34,12 +34,12 @@ import com.sleepycat.persist.raw.RawObject;
  * @author Mark Hayes
  */
 @Persistent
-abstract class CollectionProxy<E>
-    implements PersistentProxy<Collection<E>> {
+abstract class CollectionProxy<E> implements PersistentProxy<Collection<E>> {
 
     private E[] elements;
 
-    protected CollectionProxy() {}
+    protected CollectionProxy() {
+    }
 
     public final void initializeProxy(Collection<E> collection) {
         elements = (E[]) new Object[collection.size()];
@@ -60,40 +60,44 @@ abstract class CollectionProxy<E>
 
     protected abstract Collection<E> newInstance(int size);
 
-    @Persistent(proxyFor=ArrayList.class)
+    @Persistent(proxyFor = ArrayList.class)
     static class ArrayListProxy<E> extends CollectionProxy<E> {
 
-        protected ArrayListProxy() {}
+        protected ArrayListProxy() {
+        }
 
         protected Collection<E> newInstance(int size) {
             return new ArrayList<E>(size);
         }
     }
 
-    @Persistent(proxyFor=LinkedList.class)
+    @Persistent(proxyFor = LinkedList.class)
     static class LinkedListProxy<E> extends CollectionProxy<E> {
 
-        protected LinkedListProxy() {}
+        protected LinkedListProxy() {
+        }
 
         protected Collection<E> newInstance(int size) {
             return new LinkedList<E>();
         }
     }
 
-    @Persistent(proxyFor=HashSet.class)
+    @Persistent(proxyFor = HashSet.class)
     static class HashSetProxy<E> extends CollectionProxy<E> {
 
-        protected HashSetProxy() {}
+        protected HashSetProxy() {
+        }
 
         protected Collection<E> newInstance(int size) {
             return new HashSet<E>(size);
         }
     }
 
-    @Persistent(proxyFor=TreeSet.class)
+    @Persistent(proxyFor = TreeSet.class)
     static class TreeSetProxy<E> extends CollectionProxy<E> {
 
-        protected TreeSetProxy() {}
+        protected TreeSetProxy() {
+        }
 
         protected Collection<E> newInstance(int size) {
             return new TreeSet<E>();
@@ -112,16 +116,13 @@ abstract class CollectionProxy<E>
             }
         }
         if (value == null || !(value instanceof RawObject)) {
-            throw new IllegalStateException
-                ("Collection proxy for a secondary key field must " +
-                 "contain a field named 'elements'");
+            throw new IllegalStateException(
+                    "Collection proxy for a secondary key field must " + "contain a field named 'elements'");
         }
         RawObject rawObj = (RawObject) value;
         Format format = (Format) rawObj.getType();
-        if (!format.isArray() ||
-            format.getComponentType().getId() != Format.ID_OBJECT) {
-            throw new IllegalStateException
-                ("Collection proxy 'elements' field must be an Object array");
+        if (!format.isArray() || format.getComponentType().getId() != Format.ID_OBJECT) {
+            throw new IllegalStateException("Collection proxy 'elements' field must be an Object array");
         }
         return rawObj.getElements();
     }
@@ -133,8 +134,7 @@ abstract class CollectionProxy<E>
             if (values != null) {
                 value = (RawObject) values.get("elements");
                 if (value != null) {
-                    values.put("elements",
-                               new RawObject(value.getType(), elements));
+                    values.put("elements", new RawObject(value.getType(), elements));
                 } else {
                     collection = collection.getSuper();
                 }
@@ -145,11 +145,7 @@ abstract class CollectionProxy<E>
         }
     }
 
-    static void copyElements(RecordInput input,
-                             Format format,
-                             Format keyFormat,
-                             Set results)
-        throws RefreshException {
+    static void copyElements(RecordInput input, Format format, Format keyFormat, Set results) throws RefreshException {
 
         /*
          * This could be optimized by traversing the byte format of the
@@ -160,8 +156,7 @@ abstract class CollectionProxy<E>
         Object[] elements = getElements(collection);
         if (elements != null) {
             for (Object elem : elements) {
-                RecordOutput output =
-                    new RecordOutput(input.getCatalog(), true);
+                RecordOutput output = new RecordOutput(input.getCatalog(), true);
                 output.writeKeyObject(elem, keyFormat);
                 DatabaseEntry entry = new DatabaseEntry();
                 TupleBase.outputToEntry(output, entry);

@@ -16,8 +16,8 @@ package com.sleepycat.je.rep;
 import java.util.List;
 
 /**
- * NetworkRestoreConfig defines the configuration parameters used to configure
- * a NetworkRestore operation.
+ * NetworkRestoreConfig defines the configuration parameters used to configure a
+ * NetworkRestore operation.
  *
  * @see NetworkRestore
  */
@@ -25,16 +25,16 @@ public class NetworkRestoreConfig {
     /**
      * Determines whether obsolete log files must be renamed or deleted.
      */
-    private boolean retainLogFiles = true;
+    private boolean               retainLogFiles    = true;
 
     /**
      * The size of the network restore client socket's receive buffer.
      */
-    private int receiveBufferSize = 0x200000; /* 2 MB */
+    private int                   receiveBufferSize = 0x200000; /* 2 MB */
 
     /**
-     * List (in priority order) of the data nodes, either ELECTABLE or
-     * SECONDARY members, that should be contacted for the the log files.
+     * List (in priority order) of the data nodes, either ELECTABLE or SECONDARY
+     * members, that should be contacted for the the log files.
      */
     private List<ReplicationNode> logProviders;
 
@@ -63,7 +63,6 @@ public class NetworkRestoreConfig {
      * 00000001.bup.5 and 00000002.bup.5.
      *
      * @param retainLogFiles if true retains obsolete log files
-     *
      * @return this
      */
     public NetworkRestoreConfig setRetainLogFiles(boolean retainLogFiles) {
@@ -72,16 +71,15 @@ public class NetworkRestoreConfig {
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setRetainLogFilesVoid(boolean retainLogFiles) {
         this.retainLogFiles = retainLogFiles;
     }
 
     /**
-     * Returns the size of the receive buffer associated with the socket used
-     * to transfer files during the NetworkRestore operation.
+     * Returns the size of the receive buffer associated with the socket used to
+     * transfer files during the NetworkRestore operation.
      */
     public int getReceiveBufferSize() {
         return receiveBufferSize;
@@ -98,22 +96,20 @@ public class NetworkRestoreConfig {
      * net.core.rmem_max=1048576</i> to increase the operating system imposed
      * limit.
      * <p>
+     * 
      * @param receiveBufferSize the size of the receive buffer. If it's zero,
-     * the operating system default value is used.
+     *            the operating system default value is used.
      */
     public NetworkRestoreConfig setReceiveBufferSize(int receiveBufferSize) {
         if (receiveBufferSize < 0) {
-            throw new IllegalArgumentException("receiveBufferSize:" +
-                                                receiveBufferSize +
-                                                " is negative.");
+            throw new IllegalArgumentException("receiveBufferSize:" + receiveBufferSize + " is negative.");
         }
         this.receiveBufferSize = receiveBufferSize;
         return this;
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setReceiveBufferSizeVoid(int receiveBufferSize) {
         setReceiveBufferSize(receiveBufferSize);
@@ -132,27 +128,24 @@ public class NetworkRestoreConfig {
     /**
      * Sets the prioritized list of data nodes, either ELECTABLE or SECONDARY
      * members, used to select a node from which to obtain log files for the
-     * NetworkRestore operation. If a list is supplied, NetworkRestore will
-     * only use nodes from this list, trying each one in order.
-     *
-     * <p> The default value is null. If a null value is configured for
+     * NetworkRestore operation. If a list is supplied, NetworkRestore will only
+     * use nodes from this list, trying each one in order.
+     * <p>
+     * The default value is null. If a null value is configured for
      * NetworkRestore, it will choose the least busy data node with a current
      * set of logs, as the provider of log files.
      *
      * @param providers the list of data nodes in priority order, or null
-     *
      * @return this
      */
-    public NetworkRestoreConfig
-        setLogProviders(List<ReplicationNode> providers) {
+    public NetworkRestoreConfig setLogProviders(List<ReplicationNode> providers) {
 
         setLogProvidersVoid(providers);
         return this;
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setLogProvidersVoid(List<ReplicationNode> providers) {
         logProviders = providers;

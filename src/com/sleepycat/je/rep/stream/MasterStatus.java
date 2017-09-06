@@ -17,11 +17,11 @@ import java.net.InetSocketAddress;
 import com.sleepycat.je.rep.impl.node.NameIdPair;
 
 /**
- * Class used by a node to track changes in Master Status. It's updated by
- * the Listener. It represents the abstract notion that the notion of the
- * current Replica Group is definitive and is always in advance of the notion
- * of a master at each node. A node is typically playing catch up as it tries
- * to bring its view in line with that of the group.
+ * Class used by a node to track changes in Master Status. It's updated by the
+ * Listener. It represents the abstract notion that the notion of the current
+ * Replica Group is definitive and is always in advance of the notion of a
+ * master at each node. A node is typically playing catch up as it tries to
+ * bring its view in line with that of the group.
  */
 public class MasterStatus implements Cloneable {
 
@@ -29,18 +29,18 @@ public class MasterStatus implements Cloneable {
     private final NameIdPair nameIdPair;
 
     /* The current master resulting from election notifications */
-    private String groupMasterHostName = null;
-    private int groupMasterPort = 0;
+    private String           groupMasterHostName = null;
+    private int              groupMasterPort     = 0;
     /* The node ID used to identify the master. */
-    private NameIdPair groupMasterNameId = NameIdPair.NULL;
+    private NameIdPair       groupMasterNameId   = NameIdPair.NULL;
 
     /*
-     * The Master as implemented by the Node. It can lag the groupMaster
-     * as the node tries to catch up.
+     * The Master as implemented by the Node. It can lag the groupMaster as the
+     * node tries to catch up.
      */
-    private String nodeMasterHostName = null;
-    private int nodeMasterPort = 0;
-    private NameIdPair nodeMasterNameId = NameIdPair.NULL;
+    private String           nodeMasterHostName  = null;
+    private int              nodeMasterPort      = 0;
+    private NameIdPair       nodeMasterNameId    = NameIdPair.NULL;
 
     public MasterStatus(NameIdPair nameIdPair) {
         this.nameIdPair = nameIdPair;
@@ -54,7 +54,7 @@ public class MasterStatus implements Cloneable {
         try {
             return super.clone();
         } catch (CloneNotSupportedException e) {
-            assert(false);
+            assert (false);
         }
         return null;
     }
@@ -64,8 +64,7 @@ public class MasterStatus implements Cloneable {
      */
     public synchronized boolean isGroupMaster() {
         final int id = nameIdPair.getId();
-        return (id != NameIdPair.NULL_NODE_ID) &&
-            (id == groupMasterNameId.getId());
+        return (id != NameIdPair.NULL_NODE_ID) && (id == groupMasterNameId.getId());
     }
 
     /**
@@ -73,13 +72,10 @@ public class MasterStatus implements Cloneable {
      */
     public synchronized boolean isNodeMaster() {
         final int id = nameIdPair.getId();
-        return (id != NameIdPair.NULL_NODE_ID) &&
-            (id == nodeMasterNameId.getId());
+        return (id != NameIdPair.NULL_NODE_ID) && (id == nodeMasterNameId.getId());
     }
 
-    public synchronized void setGroupMaster(String hostname,
-                                            int port,
-                                            NameIdPair newGroupMasterNameId) {
+    public synchronized void setGroupMaster(String hostname, int port, NameIdPair newGroupMasterNameId) {
         groupMasterHostName = hostname;
         groupMasterPort = port;
         groupMasterNameId = newGroupMasterNameId;
@@ -90,12 +86,11 @@ public class MasterStatus implements Cloneable {
      * notion of the Master.
      *
      * @return false if the node does not know of a Master, or the group Master
-     * is different from the node's notion the master.
+     *         is different from the node's notion the master.
      */
 
     public synchronized boolean inSync() {
-        return !nodeMasterNameId.hasNullId() &&
-               (groupMasterNameId.getId() == nodeMasterNameId.getId());
+        return !nodeMasterNameId.hasNullId() && (groupMasterNameId.getId() == nodeMasterNameId.getId());
     }
 
     public synchronized void unSync() {
@@ -111,8 +106,7 @@ public class MasterStatus implements Cloneable {
      *
      * @throws MasterSyncException
      */
-    public synchronized void assertSync()
-        throws MasterSyncException {
+    public synchronized void assertSync() throws MasterSyncException {
 
         if (!inSync()) {
             throw new MasterSyncException();
@@ -150,7 +144,7 @@ public class MasterStatus implements Cloneable {
      */
     public synchronized InetSocketAddress getGroupMaster() {
         if (groupMasterHostName == null) {
-             return null;
+            return null;
         }
         return new InetSocketAddress(groupMasterHostName, groupMasterPort);
     }
@@ -164,15 +158,14 @@ public class MasterStatus implements Cloneable {
         private final NameIdPair savedGroupMasterId;
         private final NameIdPair savedNodeMasterId;
 
-        MasterSyncException () {
+        MasterSyncException() {
             savedGroupMasterId = MasterStatus.this.getGroupMasterNameId();
             savedNodeMasterId = MasterStatus.this.getNodeMasterNameId();
         }
 
         @Override
         public String getMessage() {
-            return "Master change. Node master id: " + savedNodeMasterId +
-            " Group master id: " + savedGroupMasterId;
+            return "Master change. Node master id: " + savedNodeMasterId + " Group master id: " + savedGroupMasterId;
         }
     }
 }

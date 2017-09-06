@@ -52,11 +52,11 @@ import com.sleepycat.je.utilint.StoppableThread;
 import com.sleepycat.je.utilint.StoppableThreadFactory;
 
 /**
- * The Learner agent.  It runs in its own dedicated thread, listening for
- * messages announcing the results of elections and, in turn, invoking
- * Listeners within the process to propagate the result.  It also listens for
- * requests asking for elections results, and provides static methods for
- * requesting those results.
+ * The Learner agent. It runs in its own dedicated thread, listening for
+ * messages announcing the results of elections and, in turn, invoking Listeners
+ * within the process to propagate the result. It also listens for requests
+ * asking for elections results, and provides static methods for requesting
+ * those results.
  */
 public class Learner extends ElectionAgentThread {
 
@@ -64,47 +64,42 @@ public class Learner extends ElectionAgentThread {
     private final ServiceDispatcher serviceDispatcher;
 
     /* The listeners interested in Election outcomes. */
-    private final List<Listener> listeners = new LinkedList<>();
+    private final List<Listener>    listeners       = new LinkedList<>();
 
     /* The latest winning proposal and value propagated to Listeners. */
-    private Proposal currentProposal = null;
-    private Value currentValue = null;
+    private Proposal                currentProposal = null;
+    private Value                   currentValue    = null;
 
     /* Identifies the Learner Service. */
-    public static final String SERVICE_NAME = "Learner";
+    public static final String      SERVICE_NAME    = "Learner";
 
     /**
      * Creates an instance of a Learner which will listen for election results
      * to propagate to local listeners, and for requests asking for election
      * results.
-     *
-     * <p>Note that this constructor does not take a repNode as an argument, so
+     * <p>
+     * Note that this constructor does not take a repNode as an argument, so
      * that it can be used as the basis for the standalone Monitor.
      *
      * @param protocol the protocol used for message exchange
      * @param serviceDispatcher the service dispatcher used by the agent
      */
-    public Learner(Protocol protocol,
-                   ServiceDispatcher serviceDispatcher) {
-       this(null, protocol, serviceDispatcher);
+    public Learner(Protocol protocol, ServiceDispatcher serviceDispatcher) {
+        this(null, protocol, serviceDispatcher);
     }
 
-    public Learner(RepImpl repImpl,
-                    Protocol protocol,
-                    ServiceDispatcher serviceDispatcher) {
-        super(repImpl, protocol,
-              "Learner Thread " + protocol.getNameIdPair().getName());
+    public Learner(RepImpl repImpl, Protocol protocol, ServiceDispatcher serviceDispatcher) {
+        super(repImpl, protocol, "Learner Thread " + protocol.getNameIdPair().getName());
         this.serviceDispatcher = serviceDispatcher;
 
         /* Add a listener for logging. */
         addListener(new Listener() {
-                @Override
-                public void notify(Proposal proposal, Value value) {
-                    LoggerUtils.logMsg(logger, envImpl, formatter, Level.FINE,
-                                       "Learner notified. Proposal:" +
-                                       proposal + " Value: " + value);
-                }
-            });
+            @Override
+            public void notify(Proposal proposal, Value value) {
+                LoggerUtils.logMsg(logger, envImpl, formatter, Level.FINE,
+                        "Learner notified. Proposal:" + proposal + " Value: " + value);
+            }
+        });
     }
 
     /**
@@ -139,10 +134,8 @@ public class Learner extends ElectionAgentThread {
      * @param value the winning value
      */
     synchronized public void processResult(Proposal proposal, Value value) {
-        if ((currentProposal != null) &&
-            (proposal.compareTo(currentProposal) < 0)) {
-            LoggerUtils.logMsg(logger, envImpl, formatter, Level.FINE,
-                               "Ignoring obsolete winner: " + proposal);
+        if ((currentProposal != null) && (proposal.compareTo(currentProposal) < 0)) {
+            LoggerUtils.logMsg(logger, envImpl, formatter, Level.FINE, "Ignoring obsolete winner: " + proposal);
             return;
         }
         currentProposal = proposal;
@@ -156,9 +149,8 @@ public class Learner extends ElectionAgentThread {
                 } catch (Exception e) {
                     e.printStackTrace();
                     /* Report the exception and keep going. */
-                    LoggerUtils.logMsg
-                        (logger, envImpl, formatter, Level.SEVERE,
-                         "Exception in Learner Listener: " + e.getMessage());
+                    LoggerUtils.logMsg(logger, envImpl, formatter, Level.SEVERE,
+                            "Exception in Learner Listener: " + e.getMessage());
                     continue;
                 }
             }
@@ -172,27 +164,22 @@ public class Learner extends ElectionAgentThread {
     @Override
     public void run() {
         serviceDispatcher.register(SERVICE_NAME, channelQueue);
-        LoggerUtils.logMsg
-            (logger, envImpl, formatter, Level.FINE, "Learner started");
+        LoggerUtils.logMsg(logger, envImpl, formatter, Level.FINE, "Learner started");
         DataChannel channel = null;
         try {
             while (true) {
-                channel = serviceDispatcher.takeChannel
-                    (SERVICE_NAME,
-                     true /* blocking socket */,
-                     protocol.getReadTimeout());
+                channel = serviceDispatcher.takeChannel(SERVICE_NAME,
+                        true /* blocking socket */, protocol.getReadTimeout());
 
                 if (channel == null) {
                     /* A soft shutdown. */
-                   return;
+                    return;
                 }
 
                 BufferedReader in = null;
                 PrintWriter out = null;
                 try {
-                    in = new BufferedReader
-                        (new InputStreamReader(
-                            Channels.newInputStream(channel)));
+                    in = new BufferedReader(new InputStreamReader(Channels.newInputStream(channel)));
                     final String requestLine = in.readLine();
                     if (requestLine == null) {
                         continue;
@@ -206,35 +193,25 @@ public class Learner extends ElectionAgentThread {
                     }
 
                     final MessageOp op = requestMessage.getOp();
-                    LoggerUtils.logMsg(logger, envImpl, formatter,
-                                       Level.FINEST,
-                                       "learner request: " + op +
-                                       " sender: " +
-                                       requestMessage.getSenderId());
+                    LoggerUtils.logMsg(logger, envImpl, formatter, Level.FINEST,
+                            "learner request: " + op + " sender: " + requestMessage.getSenderId());
                     if (op == protocol.RESULT) {
                         Result result = (Result) requestMessage;
                         processResult(result.getProposal(), result.getValue());
                     } else if (op == protocol.MASTER_QUERY) {
                         processMasterQuery(channel, requestMessage);
                     } else if (op == protocol.SHUTDOWN) {
-                        LoggerUtils.logMsg
-                            (logger, envImpl, formatter, Level.FINE,
-                             "Learner thread exiting");
+                        LoggerUtils.logMsg(logger, envImpl, formatter, Level.FINE, "Learner thread exiting");
                         break;
                     } else {
-                        final String message =
-                            "Malformed request: '" + requestLine + "'" +
-                            " Unexpected op:" + op;
-                        final InvalidMessageException ime =
-                            new InvalidMessageException(MessageError.BAD_FORMAT,
-                                                        message);
+                        final String message = "Malformed request: '" + requestLine + "'" + " Unexpected op:" + op;
+                        final InvalidMessageException ime = new InvalidMessageException(MessageError.BAD_FORMAT,
+                                message);
                         protocol.processIME(channel, ime);
                         continue;
                     }
                 } catch (IOException e) {
-                    LoggerUtils.logMsg
-                        (logger, envImpl, formatter, Level.INFO,
-                         "IO exception: " + e.getMessage());
+                    LoggerUtils.logMsg(logger, envImpl, formatter, Level.INFO, "IO exception: " + e.getMessage());
                 } catch (Exception e) {
                     throw EnvironmentFailureException.unexpectedException(e);
                 } finally {
@@ -246,23 +223,20 @@ public class Learner extends ElectionAgentThread {
                 /* Treat it like a shutdown, exit the thread. */
                 return;
             }
-            LoggerUtils.logMsg(logger, envImpl, formatter, Level.WARNING,
-                               "Learner unexpected interrupted");
+            LoggerUtils.logMsg(logger, envImpl, formatter, Level.WARNING, "Learner unexpected interrupted");
             throw EnvironmentFailureException.unexpectedException(e);
-       } finally {
+        } finally {
             serviceDispatcher.cancel(SERVICE_NAME);
             cleanup();
-       }
+        }
     }
 
     /**
-     * Responds to a query for the current master. A response is only
-     * generated if the node is currently in the Master or Replica state to
-     * ensure that the information is reasonably current.
+     * Responds to a query for the current master. A response is only generated
+     * if the node is currently in the Master or Replica state to ensure that
+     * the information is reasonably current.
      */
-    synchronized private void processMasterQuery(DataChannel channel,
-                                                 RequestMessage requestMessage)
-    {
+    synchronized private void processMasterQuery(DataChannel channel, RequestMessage requestMessage) {
         if ((currentProposal == null) || (currentValue == null)) {
             /* Don't have any election results to share. */
             return;
@@ -276,8 +250,7 @@ public class Learner extends ElectionAgentThread {
         PrintWriter out = null;
         try {
             out = new PrintWriter(Channels.newOutputStream(channel), true);
-            final MasterQueryResponse responseMessage = protocol.new
-                MasterQueryResponse(currentProposal, currentValue);
+            final MasterQueryResponse responseMessage = protocol.new MasterQueryResponse(currentProposal, currentValue);
 
             /*
              * The request message may be of an earlier version. If so, this
@@ -297,59 +270,48 @@ public class Learner extends ElectionAgentThread {
     }
 
     /**
-     * Queries other learners, in parallel, to determine whether they know of
-     * an existing master in the group. If one is found, the result is
-     * processed via {@link #processResult} as though it were an election
-     * result that was sent to the Learner, resulting in the node transitioning
-     * to the master or replica state as appropriate.
+     * Queries other learners, in parallel, to determine whether they know of an
+     * existing master in the group. If one is found, the result is processed
+     * via {@link #processResult} as though it were an election result that was
+     * sent to the Learner, resulting in the node transitioning to the master or
+     * replica state as appropriate.
      * <p>
      * Note that this node itself is not allowed to become a master as a result
      * of such a query. It must only do so via an election.
      *
      * @param learnerSockets the sockets associated with learners at other
-     * nodes. The nodes are queried on these sockets.
+     *            nodes. The nodes are queried on these sockets.
      */
     public void queryForMaster(Set<InetSocketAddress> learnerSockets) {
         if (learnerSockets.size() <= 0) {
-                return;
+            return;
         }
         int threadPoolSize = Math.min(learnerSockets.size(), 10);
-        final ExecutorService pool =
-            Executors.newFixedThreadPool
-               (threadPoolSize, new StoppableThreadFactory("JE Learner",
-                                                           logger));
+        final ExecutorService pool = Executors.newFixedThreadPool(threadPoolSize,
+                new StoppableThreadFactory("JE Learner", logger));
         try {
             RequestMessage masterQuery = protocol.new MasterQuery();
-            FutureTrackingCompService<MessageExchange> compService =
-                Utils.broadcastMessage(learnerSockets,
-                                       Learner.SERVICE_NAME,
-                                       masterQuery,
-                                       pool);
+            FutureTrackingCompService<MessageExchange> compService = Utils.broadcastMessage(learnerSockets,
+                    Learner.SERVICE_NAME, masterQuery, pool);
             /*
              * 2 * read timeout below to roughly cover the max time for a
              * message exchange.
              */
-            new Utils.WithFutureExceptionHandler<MessageExchange>
-            (compService, 2 * protocol.getReadTimeout(), TimeUnit.MILLISECONDS,
-                logger, (RepImpl)envImpl, formatter) {
+            new Utils.WithFutureExceptionHandler<MessageExchange>(compService, 2 * protocol.getReadTimeout(),
+                    TimeUnit.MILLISECONDS, logger, (RepImpl) envImpl, formatter) {
 
                 @Override
                 protected void processResponse(MessageExchange me) {
 
-                    if (me.getResponseMessage().getOp() ==
-                        protocol.MASTER_QUERY_RESPONSE){
-                        MasterQueryResponse accept =
-                            (MasterQueryResponse) me.getResponseMessage();
-                        MasterValue masterValue =
-                            (MasterValue) accept.getValue();
-                        if ((masterValue != null) &&
-                            masterValue.getNameId().
-                            equals(protocol.getNameIdPair())) {
+                    if (me.getResponseMessage().getOp() == protocol.MASTER_QUERY_RESPONSE) {
+                        MasterQueryResponse accept = (MasterQueryResponse) me.getResponseMessage();
+                        MasterValue masterValue = (MasterValue) accept.getValue();
+                        if ((masterValue != null) && masterValue.getNameId().equals(protocol.getNameIdPair())) {
 
                             /*
-                             * Should not transition to master as a result
-                             * of a query it risks imposing a hard recovery
-                             * on the replicas.
+                             * Should not transition to master as a result of a
+                             * query it risks imposing a hard recovery on the
+                             * replicas.
                              */
                             return;
                         }
@@ -368,59 +330,46 @@ public class Learner extends ElectionAgentThread {
     }
 
     /**
-     * Returns the socket address for the current master, or null if one
-     * could not be determined from the available set of learners. This API
-     * is suitable for tools which need to contact the master for a specific
+     * Returns the socket address for the current master, or null if one could
+     * not be determined from the available set of learners. This API is
+     * suitable for tools which need to contact the master for a specific
      * service, e.g. to delete a replication node, or to add a monitor. This
      * method could be used in principle to establish other types of nodes as
      * well via a tool, but that is currently done by the handshake process.
      *
      * @param protocol the protocol to be used when determining the master
-     *
      * @param learnerSockets the learner to be queried for the master
      * @param logger for log messages
      * @return the MasterValue identifying the master
      * @throws UnknownMasterException if no master could be established
      */
-    static public MasterValue findMaster
-        (final Protocol protocol,
-         Set<InetSocketAddress> learnerSockets,
-         final Logger logger,
-         final RepImpl repImpl,
-         final Formatter formatter )
-        throws UnknownMasterException {
+    static public MasterValue findMaster(final Protocol protocol, Set<InetSocketAddress> learnerSockets,
+                                         final Logger logger, final RepImpl repImpl, final Formatter formatter)
+            throws UnknownMasterException {
 
         if (learnerSockets.size() <= 0) {
-                return null;
+            return null;
         }
         int threadPoolSize = Math.min(learnerSockets.size(), 10);
-        final ExecutorService pool =
-            Executors.newFixedThreadPool(threadPoolSize);
+        final ExecutorService pool = Executors.newFixedThreadPool(threadPoolSize);
         try {
-            FutureTrackingCompService<MessageExchange> compService =
-                Utils.broadcastMessage(learnerSockets,
-                                       Learner.SERVICE_NAME,
-                                       protocol.new MasterQuery(),
-                                       pool);
+            FutureTrackingCompService<MessageExchange> compService = Utils.broadcastMessage(learnerSockets,
+                    Learner.SERVICE_NAME, protocol.new MasterQuery(), pool);
 
             final List<MasterQueryResponse> results = new LinkedList<>();
-            new Utils.WithFutureExceptionHandler<MessageExchange>
-            (compService, 2 * protocol.getReadTimeout(), TimeUnit.MILLISECONDS,
-             logger, repImpl, formatter) {
+            new Utils.WithFutureExceptionHandler<MessageExchange>(compService, 2 * protocol.getReadTimeout(),
+                    TimeUnit.MILLISECONDS, logger, repImpl, formatter) {
 
                 @Override
                 protected void processResponse(MessageExchange me) {
 
                     final ResponseMessage response = me.getResponseMessage();
 
-                    if (response.getOp() ==
-                        protocol.MASTER_QUERY_RESPONSE){
-                        results.add((MasterQueryResponse)response);
+                    if (response.getOp() == protocol.MASTER_QUERY_RESPONSE) {
+                        results.add((MasterQueryResponse) response);
                     } else {
-                        LoggerUtils.logMsg(logger, repImpl, formatter,
-                                           Level.WARNING,
-                                           "Unexpected MasterQuery response:" +
-                                           response.wireFormat());
+                        LoggerUtils.logMsg(logger, repImpl, formatter, Level.WARNING,
+                                "Unexpected MasterQuery response:" + response.wireFormat());
                     }
                 }
 
@@ -433,18 +382,15 @@ public class Learner extends ElectionAgentThread {
 
             MasterQueryResponse bestResponse = null;
             for (MasterQueryResponse result : results) {
-                if ((bestResponse == null) ||
-                    (result.getProposal().
-                        compareTo(bestResponse.getProposal()) > 0)) {
+                if ((bestResponse == null) || (result.getProposal().compareTo(bestResponse.getProposal()) > 0)) {
                     bestResponse = result;
                 }
             }
             if (bestResponse == null) {
-                throw new UnknownMasterException
-                ("Could not determine master from helpers at:" +
-                    learnerSockets.toString());
+                throw new UnknownMasterException(
+                        "Could not determine master from helpers at:" + learnerSockets.toString());
             }
-            return(MasterValue) bestResponse.getValue();
+            return (MasterValue) bestResponse.getValue();
         } finally {
             pool.shutdownNow();
         }
@@ -454,34 +400,31 @@ public class Learner extends ElectionAgentThread {
      * A method to re-broadcast this Learner's notion of the master. This
      * re-broadcast is done primarily to inform an obsolete master that it's no
      * longer the current master. Obsolete master situations arise in network
-     * partition scenarios, where a current master is not able to participate
-     * in an election, nor is it informed about the results. The re-broadcast
-     * is the mechanism for rectifying such a situation. When the obsolete
-     * master receives the new results after the network partition has been
-     * fixed, it will revert to being a replica.
+     * partition scenarios, where a current master is not able to participate in
+     * an election, nor is it informed about the results. The re-broadcast is
+     * the mechanism for rectifying such a situation. When the obsolete master
+     * receives the new results after the network partition has been fixed, it
+     * will revert to being a replica.
      *
      * @param learners the learners that must be informed
-     * @param threadPool the pool used to dispatch broadcast requests in
-     * in parallel
+     * @param threadPool the pool used to dispatch broadcast requests in in
+     *            parallel
      */
-    public void reinformLearners(Set<InetSocketAddress> learners,
-                                 ExecutorService threadPool) {
+    public void reinformLearners(Set<InetSocketAddress> learners, ExecutorService threadPool) {
 
         Proposer.WinningProposal winningProposal;
         synchronized (this) {
             if ((currentProposal == null) || (currentValue == null)) {
                 return;
             }
-            winningProposal =
-                new WinningProposal(currentProposal, currentValue, null);
+            winningProposal = new WinningProposal(currentProposal, currentValue, null);
         }
 
-        final RepImpl repImpl = (RepImpl)envImpl;
+        final RepImpl repImpl = (RepImpl) envImpl;
         if (repImpl == null) {
             return;
         }
-        informLearners(learners, winningProposal, protocol, threadPool,
-                       logger, repImpl, formatter);
+        informLearners(learners, winningProposal, protocol, threadPool, logger, repImpl, formatter);
     }
 
     /**
@@ -493,37 +436,25 @@ public class Learner extends ElectionAgentThread {
      * @param protocol to be used for communication
      * @param threadPool used to supply threads for the broadcast
      */
-    public static void informLearners(Set<InetSocketAddress> learners,
-                                      Proposer.WinningProposal winningProposal,
-                                      Protocol protocol,
-                                      ExecutorService threadPool,
-                                      final Logger logger,
-                                      final RepImpl repImpl,
-                                      final Formatter formatter) {
+    public static void informLearners(Set<InetSocketAddress> learners, Proposer.WinningProposal winningProposal,
+                                      Protocol protocol, ExecutorService threadPool, final Logger logger,
+                                      final RepImpl repImpl, final Formatter formatter) {
 
         if ((learners == null) || (learners.size() == 0)) {
-            throw EnvironmentFailureException.unexpectedState
-                ("There must be at least one learner");
+            throw EnvironmentFailureException.unexpectedState("There must be at least one learner");
         }
 
-        LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE,
-                           "Informing " + learners.size() + " learners.");
-        FutureTrackingCompService<MessageExchange> compService =
-            Utils.broadcastMessage(learners,
-                                   Learner.SERVICE_NAME,
-                                   protocol.new Result
-                                   (winningProposal.proposal,
-                                    winningProposal.chosenValue),
-                                   threadPool);
+        LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE, "Informing " + learners.size() + " learners.");
+        FutureTrackingCompService<MessageExchange> compService = Utils.broadcastMessage(learners, Learner.SERVICE_NAME,
+                protocol.new Result(winningProposal.proposal, winningProposal.chosenValue), threadPool);
 
         /* Consume the futures. */
 
         /* Atomic to provide incrementable "final" to nested method. */
         final AtomicInteger count = new AtomicInteger(0);
 
-        new Utils.WithFutureExceptionHandler<MessageExchange>
-        (compService, 2 * protocol.getReadTimeout(), TimeUnit.MILLISECONDS,
-         logger, repImpl, formatter) {
+        new Utils.WithFutureExceptionHandler<MessageExchange>(compService, 2 * protocol.getReadTimeout(),
+                TimeUnit.MILLISECONDS, logger, repImpl, formatter) {
 
             @Override
             protected void processResponse(MessageExchange me) {
@@ -544,9 +475,7 @@ public class Learner extends ElectionAgentThread {
             }
 
         }.execute();
-        LoggerUtils.logMsg
-            (logger, repImpl, formatter, Level.FINE,
-             "Informed learners: " + count.get());
+        LoggerUtils.logMsg(logger, repImpl, formatter, Level.FINE, "Informed learners: " + count.get());
     }
 
     /**
@@ -559,8 +488,8 @@ public class Learner extends ElectionAgentThread {
 
     /*
      * Notifies the listener that a new proposal has been accepted. Note that
-     * the value may be unchanged. The proposals may be out of sequence, it's
-     * up to the listener to deal with it appropriately.
+     * the value may be unchanged. The proposals may be out of sequence, it's up
+     * to the listener to deal with it appropriately.
      */
     public static interface Listener {
         void notify(Proposal proposal, Value value);

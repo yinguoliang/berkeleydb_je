@@ -19,9 +19,9 @@ import java.util.Date;
 import com.sleepycat.je.utilint.TracerFormatter;
 
 class StatUtils {
-    private static final DateFormat formatter =
-        TracerFormatter.makeDateFormat();
-    private static final Date date = new Date();
+    private static final DateFormat formatter = TracerFormatter.makeDateFormat();
+    private static final Date       date      = new Date();
+
     /** Returns a string representation of the specified time. */
     public static synchronized String getDate(final long millis) {
         /* The date and formatter are not thread safe */

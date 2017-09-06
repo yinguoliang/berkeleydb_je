@@ -20,7 +20,7 @@ import com.sleepycat.bind.tuple.TupleInput;
 import com.sleepycat.je.DatabaseEntry;
 
 /**
- * Implements EntityInput to read record key-data pairs.  Extends TupleInput to
+ * Implements EntityInput to read record key-data pairs. Extends TupleInput to
  * implement the subset of TupleInput methods that are defined in the
  * EntityInput interface.
  *
@@ -29,42 +29,35 @@ import com.sleepycat.je.DatabaseEntry;
 class RecordInput extends TupleInput implements EntityInput {
 
     /* Initial size of visited map. */
-    static final int VISITED_INIT_SIZE = 50;
+    static final int             VISITED_INIT_SIZE       = 50;
 
     /*
      * Offset to indicate that the visited object is stored in the primary key
      * byte array.
      */
-    static final int PRI_KEY_VISITED_OFFSET = Integer.MAX_VALUE - 1;
+    static final int             PRI_KEY_VISITED_OFFSET  = Integer.MAX_VALUE - 1;
 
     /* Used by RecordOutput to prevent illegal nested references. */
-    static final int PROHIBIT_REF_OFFSET = Integer.MAX_VALUE - 2;
+    static final int             PROHIBIT_REF_OFFSET     = Integer.MAX_VALUE - 2;
 
     /* Used by RecordInput to prevent illegal nested references. */
-    static final Object PROHIBIT_REF_OBJECT = new Object();
+    static final Object          PROHIBIT_REF_OBJECT     = new Object();
 
-    static final String PROHIBIT_NESTED_REF_MSG =
-        "Cannot embed a reference to a proxied object in the proxy; for " +
-        "example, a collection may not be an element of the collection " +
-        "because collections are proxied";
+    static final String          PROHIBIT_NESTED_REF_MSG = "Cannot embed a reference to a proxied object in the proxy; for "
+            + "example, a collection may not be an element of the collection " + "because collections are proxied";
 
-    private Catalog catalog;
-    private boolean rawAccess;
+    private Catalog              catalog;
+    private boolean              rawAccess;
     private Map<Integer, Object> visited;
-    private DatabaseEntry priKeyEntry;
-    private int priKeyFormatId;
-    private boolean newStringFormat;
+    private DatabaseEntry        priKeyEntry;
+    private int                  priKeyFormatId;
+    private boolean              newStringFormat;
 
     /**
      * Creates a new input with a empty/null visited map.
      */
-    RecordInput(Catalog catalog,
-                boolean rawAccess,
-                DatabaseEntry priKeyEntry,
-                int priKeyFormatId,
-                byte[] buffer,
-                int offset,
-                int length) {
+    RecordInput(Catalog catalog, boolean rawAccess, DatabaseEntry priKeyEntry, int priKeyFormatId, byte[] buffer,
+                int offset, int length) {
         super(buffer, offset, length);
         this.catalog = catalog;
         this.rawAccess = rawAccess;
@@ -77,8 +70,7 @@ class RecordInput extends TupleInput implements EntityInput {
      * Copy contructor where a new offset can be specified.
      */
     private RecordInput(RecordInput other, int offset) {
-        this(other.catalog, other.rawAccess, other.priKeyEntry,
-             other.priKeyFormatId, other.buf, offset, other.len);
+        this(other.catalog, other.rawAccess, other.priKeyEntry, other.priKeyFormatId, other.buf, offset, other.len);
         visited = other.visited;
     }
 
@@ -86,9 +78,8 @@ class RecordInput extends TupleInput implements EntityInput {
      * Copy contructor where a DatabaseEntry can be specified.
      */
     private RecordInput(RecordInput other, DatabaseEntry entry) {
-        this(other.catalog, other.rawAccess, other.priKeyEntry,
-             other.priKeyFormatId, entry.getData(), entry.getOffset(),
-             entry.getSize());
+        this(other.catalog, other.rawAccess, other.priKeyEntry, other.priKeyFormatId, entry.getData(),
+                entry.getOffset(), entry.getSize());
         visited = other.visited;
     }
 
@@ -118,8 +109,7 @@ class RecordInput extends TupleInput implements EntityInput {
     /**
      * @see EntityInput#readObject
      */
-    public Object readObject()
-        throws RefreshException {
+    public Object readObject() throws RefreshException {
 
         /* Save the current offset before reading the format ID. */
         Integer visitedOffset = off;
@@ -137,8 +127,7 @@ class RecordInput extends TupleInput implements EntityInput {
             int offset = (-(formatId + 1));
             o = visited.get(offset);
             if (o == RecordInput.PROHIBIT_REF_OBJECT) {
-                throw new IllegalArgumentException
-                    (RecordInput.PROHIBIT_NESTED_REF_MSG);
+                throw new IllegalArgumentException(RecordInput.PROHIBIT_NESTED_REF_MSG);
             }
             if (o != null) {
                 /* Return a previously visited object. */
@@ -146,8 +135,8 @@ class RecordInput extends TupleInput implements EntityInput {
             } else {
 
                 /*
-                 * When reading starts from a non-zero offset, we may have to
-                 * go back in the stream and read the referenced object.  This
+                 * When reading starts from a non-zero offset, we may have to go
+                 * back in the stream and read the referenced object. This
                  * happens when reading secondary key fields.
                  */
                 visitedOffset = offset;
@@ -164,7 +153,7 @@ class RecordInput extends TupleInput implements EntityInput {
 
         /*
          * Add a visted object slot that prohibits nested references to this
-         * object during the call to Reader.newInstance below.  The newInstance
+         * object during the call to Reader.newInstance below. The newInstance
          * method is allowed to read nested fields (in which case
          * Reader.readObject further below does nothing) under certain
          * conditions, but under these conditions we do not support nested
@@ -173,20 +162,20 @@ class RecordInput extends TupleInput implements EntityInput {
         visited.put(visitedOffset, RecordInput.PROHIBIT_REF_OBJECT);
 
         /* Create the object using the format indicated. */
-        Format format = catalog.getFormat(formatId, true /*expectStored*/);
+        Format format = catalog.getFormat(formatId, true /* expectStored */);
         Reader reader = format.getReader();
         o = reader.newInstance(useInput, rawAccess);
 
         /*
-         * Set the newly created object in the map of visited objects.  This
-         * must be done before calling Reader.readObject, which allows the
-         * object to contain a reference to itself.
+         * Set the newly created object in the map of visited objects. This must
+         * be done before calling Reader.readObject, which allows the object to
+         * contain a reference to itself.
          */
         visited.put(visitedOffset, o);
 
         /*
-         * Finish reading the object.  Then replace it in the visited map in
-         * case a converted object is returned by readObject.
+         * Finish reading the object. Then replace it in the visited map in case
+         * a converted object is returned by readObject.
          */
         Object o2 = reader.readObject(o, useInput, rawAccess);
         if (o != o2) {
@@ -198,8 +187,7 @@ class RecordInput extends TupleInput implements EntityInput {
     /**
      * @see EntityInput#readKeyObject
      */
-    public Object readKeyObject(Format format)
-        throws RefreshException {
+    public Object readKeyObject(Format format) throws RefreshException {
 
         /* Create and read the object using the given key format. */
         Reader reader = format.getReader();
@@ -210,8 +198,7 @@ class RecordInput extends TupleInput implements EntityInput {
     /**
      * @see EntityInput#readStringObject
      */
-    public Object readStringObject()
-        throws RefreshException {
+    public Object readStringObject() throws RefreshException {
 
         if (!newStringFormat) {
             return readObject();
@@ -221,24 +208,23 @@ class RecordInput extends TupleInput implements EntityInput {
 
     /**
      * Called when copying secondary keys, for an input that is positioned on
-     * the secondary key field.  Handles references to previously occurring
+     * the secondary key field. Handles references to previously occurring
      * objects, returning a different RecordInput than this one if appropriate.
      */
-    KeyLocation getKeyLocation(Format fieldFormat)
-        throws RefreshException {
+    KeyLocation getKeyLocation(Format fieldFormat) throws RefreshException {
 
         RecordInput input = this;
         if (fieldFormat.getId() == Format.ID_STRING && newStringFormat) {
-            
+
             /*
-             * In new JE version, we do not store format ID for String data,
-             * So we have to read the real String data to see if the String
-             * data is null or not. [#19247]
+             * In new JE version, we do not store format ID for String data, So
+             * we have to read the real String data to see if the String data is
+             * null or not. [#19247]
              */
             int len = input.getStringByteLength();
             String strKey = input.readString();
             input.skipFast(0 - len);
-            if(strKey == null) {
+            if (strKey == null) {
                 /* String key field is null. */
                 return null;
             }
@@ -259,7 +245,7 @@ class RecordInput extends TupleInput implements EntityInput {
                     formatId = input.readPackedInt();
                 }
             }
-            fieldFormat = catalog.getFormat(formatId, true /*expectStored*/);
+            fieldFormat = catalog.getFormat(formatId, true /* expectStored */);
         }
         /* Key field is non-null. */
         return new KeyLocation(input, fieldFormat);
@@ -271,8 +257,8 @@ class RecordInput extends TupleInput implements EntityInput {
     public void registerPriKeyObject(Object o) {
 
         /*
-         * PRI_KEY_VISITED_OFFSET is used as the visited offset to indicate
-         * that the visited object is stored in the primary key byte array.
+         * PRI_KEY_VISITED_OFFSET is used as the visited offset to indicate that
+         * the visited object is stored in the primary key byte array.
          */
         visited.put(RecordInput.PRI_KEY_VISITED_OFFSET, o);
     }
@@ -312,25 +298,21 @@ class RecordInput extends TupleInput implements EntityInput {
     /**
      * @see EntityInput#skipField
      */
-    public void skipField(Format declaredFormat)
-        throws RefreshException {
+    public void skipField(Format declaredFormat) throws RefreshException {
 
         if (declaredFormat != null && declaredFormat.isPrimitive()) {
             declaredFormat.skipContents(this);
-        } else if (declaredFormat != null &&
-                   declaredFormat.getId() == Format.ID_STRING && 
-                   newStringFormat) {
-            
-            /* 
-             * In the new JE version, we treat String as primitive, and will 
-             * not store format ID for String data. [#19247]
+        } else if (declaredFormat != null && declaredFormat.getId() == Format.ID_STRING && newStringFormat) {
+
+            /*
+             * In the new JE version, we treat String as primitive, and will not
+             * store format ID for String data. [#19247]
              */
             declaredFormat.skipContents(this);
         } else {
             int formatId = readPackedInt();
             if (formatId > 0) {
-                Format format =
-                    catalog.getFormat(formatId, true /*expectStored*/);
+                Format format = catalog.getFormat(formatId, true /* expectStored */);
                 format.skipContents(this);
             }
         }

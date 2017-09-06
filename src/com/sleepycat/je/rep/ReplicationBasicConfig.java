@@ -19,13 +19,13 @@ import java.util.Properties;
 import java.util.Set;
 
 /**
- * @hidden SSL deferred
- * Specifies the parameters for unencrypted communication within a
- * replicated environment. The parameters contained here are immutable.
+ * @hidden SSL deferred Specifies the parameters for unencrypted communication
+ *         within a replicated environment. The parameters contained here are
+ *         immutable.
  */
 public class ReplicationBasicConfig extends ReplicationNetworkConfig {
 
-    private static final long serialVersionUID = 1L;
+    private static final long  serialVersionUID = 1L;
 
     /* The set of Replication properties specific to this class */
     private static Set<String> repBasicProperties;
@@ -36,25 +36,26 @@ public class ReplicationBasicConfig extends ReplicationNetworkConfig {
     }
 
     /**
-     * Constructs a ReplicationBasicConfig initialized with the system
-     * default settings.
+     * Constructs a ReplicationBasicConfig initialized with the system default
+     * settings.
      */
     public ReplicationBasicConfig() {
     }
 
     /**
-     * Constructs a ReplicationBasicConfig initialized with the
-     * provided propeties.
+     * Constructs a ReplicationBasicConfig initialized with the provided
+     * propeties.
+     * 
      * @param properties a set of properties which which to initialize the
-     * instance properties
+     *            instance properties
      */
     public ReplicationBasicConfig(Properties properties) {
         super(properties);
     }
 
     /**
-     * Get the channel type setting for the replication service.
-     * This configuration specifies a "basic" channel type.
+     * Get the channel type setting for the replication service. This
+     * configuration specifies a "basic" channel type.
      *
      * @return the channel type
      */
@@ -72,9 +73,8 @@ public class ReplicationBasicConfig extends ReplicationNetworkConfig {
     }
 
     /**
-     * @hidden
-     * Enumerate the subset of configuration properties that are intended to
-     * control network access.
+     * @hidden Enumerate the subset of configuration properties that are
+     *         intended to control network access.
      */
     static Set<String> getRepBasicPropertySet() {
 

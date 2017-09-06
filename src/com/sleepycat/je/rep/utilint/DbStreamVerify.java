@@ -46,29 +46,21 @@ import com.sleepycat.je.utilint.DbLsn;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * For internal use only.
- * Utility to verify the replication stream and VLSN index. Used file readers
- * to traverse the log and check that VLSNs are sequential and that the VLSN
- * index is consistent.
+ * For internal use only. Utility to verify the replication stream and VLSN
+ * index. Used file readers to traverse the log and check that VLSNs are
+ * sequential and that the VLSN index is consistent.
  */
 public class DbStreamVerify {
 
-    private static final String USAGE =
-        "usage: " + CmdUtil.getJavaCommand(DbStreamVerify.class) + "\n" +
-        " -h <dir>      # environment home directory\n" +
-        " -s <hex>      # start file\n" +
-        " -e <hex>      # end file\n" +
-        " -verifyStream # check that replication stream is ascending\n" +
-        " -dumpVLSN     # scan log file for log entries that make up the" +
-                        " VLSN index, don't run verify.\n" +
-        " -dumpRepGroup # scan log file for log entries that make up the" +
-                        " rep group db, don't run verify.\n" +
-        " -i            # show invisible. If true, print invisible entries"+
-                        " when running verify mode.\n" +
-        " -v            # verbose\n";
+    private static final String USAGE = "usage: " + CmdUtil.getJavaCommand(DbStreamVerify.class) + "\n"
+            + " -h <dir>      # environment home directory\n" + " -s <hex>      # start file\n"
+            + " -e <hex>      # end file\n" + " -verifyStream # check that replication stream is ascending\n"
+            + " -dumpVLSN     # scan log file for log entries that make up the" + " VLSN index, don't run verify.\n"
+            + " -dumpRepGroup # scan log file for log entries that make up the" + " rep group db, don't run verify.\n"
+            + " -i            # show invisible. If true, print invisible entries" + " when running verify mode.\n"
+            + " -v            # verbose\n";
 
-    public static void main(String argv[])
-        throws Exception {
+    public static void main(String argv[]) throws Exception {
 
         DbStreamVerify verify = new DbStreamVerify(System.out);
         verify.parseArgs(argv);
@@ -82,14 +74,14 @@ public class DbStreamVerify {
         }
     }
 
-    private File envHome = null;
-    private boolean showInvisible = false;
-    private boolean verbose = false;
-    private boolean vlsnDump = false;
-    private boolean repGroupDump = false;
-    private boolean verifyStream = false;
-    private long startLsn = DbLsn.NULL_LSN;
-    private long endLsn = DbLsn.NULL_LSN;
+    private File              envHome       = null;
+    private boolean           showInvisible = false;
+    private boolean           verbose       = false;
+    private boolean           vlsnDump      = false;
+    private boolean           repGroupDump  = false;
+    private boolean           verifyStream  = false;
+    private long              startLsn      = DbLsn.NULL_LSN;
+    private long              endLsn        = DbLsn.NULL_LSN;
 
     private final PrintStream out;
 
@@ -147,8 +139,7 @@ public class DbStreamVerify {
         }
 
         if (!(vlsnDump || repGroupDump || verifyStream)) {
-            printUsage("Must specify -dumpVLSN, -dumpRepGroup or " +
-                       "-verifyStream");
+            printUsage("Must specify -dumpVLSN, -dumpRepGroup or " + "-verifyStream");
         }
     }
 
@@ -197,19 +188,14 @@ public class DbStreamVerify {
     }
 
     private class VerifyReader extends FileReader {
-        private VLSN lastVLSN = VLSN.NULL_VLSN;
-        private long lastLSN = DbLsn.NULL_LSN;
+        private VLSN              lastVLSN = VLSN.NULL_VLSN;
+        private long              lastLSN  = DbLsn.NULL_LSN;
         private final PrintStream out1;
 
-        VerifyReader(EnvironmentImpl envImpl, PrintStream out, long startLsn,
-                     long endLsn) {
-            super(envImpl,
-                  10000,
-                  true,              // forward
-                  startLsn,
-                  null,              // singleFileNumber,
-                  DbLsn.NULL_LSN,
-                  endLsn);
+        VerifyReader(EnvironmentImpl envImpl, PrintStream out, long startLsn, long endLsn) {
+            super(envImpl, 10000, true, // forward
+                    startLsn, null, // singleFileNumber,
+                    DbLsn.NULL_LSN, endLsn);
             this.out1 = out;
         }
 
@@ -224,55 +210,42 @@ public class DbStreamVerify {
             long currentLSN = getLastLsn();
 
             if (currentVLSN == null) {
-                throw new RuntimeException
-                     (DbLsn.getNoFormatString(currentLSN) +
-                      "Should be a replicated entry");
+                throw new RuntimeException(DbLsn.getNoFormatString(currentLSN) + "Should be a replicated entry");
             }
 
             if (currentVLSN.isNull()) {
-                out1.println("unexpected LSN " +
-                            DbLsn.getNoFormatString(getLastLsn()) +
-                            " has vlsn " + currentVLSN);
+                out1.println("unexpected LSN " + DbLsn.getNoFormatString(getLastLsn()) + " has vlsn " + currentVLSN);
             }
 
             if ((lastVLSN != null) && lastVLSN.isNull()) {
 
                 /* First entry seen */
-                out1.println("first VLSN = " + currentVLSN + " at lsn " +
-                            DbLsn.getNoFormatString(getLastLsn()));
-            } else if (!currentEntryHeader.isInvisible() &&
-                       !currentVLSN.follows(lastVLSN)) {
+                out1.println("first VLSN = " + currentVLSN + " at lsn " + DbLsn.getNoFormatString(getLastLsn()));
+            } else if (!currentEntryHeader.isInvisible() && !currentVLSN.follows(lastVLSN)) {
 
                 /* Note the first entry, check for a gap. */
-                out1.println("gap of " +
-                            (currentVLSN.getSequence() -
-                            lastVLSN.getSequence()) +
-                            " Last=" + lastVLSN + " at lsn " +
-                            DbLsn.getNoFormatString(lastLSN) +
-                            " next=" + currentVLSN + " at lsn " +
-                            DbLsn.getNoFormatString(currentLSN));
+                out1.println("gap of " + (currentVLSN.getSequence() - lastVLSN.getSequence()) + " Last=" + lastVLSN
+                        + " at lsn " + DbLsn.getNoFormatString(lastLSN) + " next=" + currentVLSN + " at lsn "
+                        + DbLsn.getNoFormatString(currentLSN));
 
             }
 
             /* Note the invisible log entries. */
             if (showInvisible && currentEntryHeader.isInvisible()) {
-                out1.println("VLSN " + currentVLSN + " at lsn " +
-                            DbLsn.getNoFormatString(currentLSN) +
-                            " is invisible.");
+                out1.println(
+                        "VLSN " + currentVLSN + " at lsn " + DbLsn.getNoFormatString(currentLSN) + " is invisible.");
             }
 
             if (!currentEntryHeader.isInvisible()) {
                 lastVLSN = currentVLSN;
                 lastLSN = currentLSN;
             }
-            entryBuffer.position(entryBuffer.position() +
-                                 currentEntryHeader.getItemSize());
+            entryBuffer.position(entryBuffer.position() + currentEntryHeader.getItemSize());
             return true;
         }
 
         void displayLast() {
-            out1.println("LastVLSN = " + lastVLSN + " at " +
-                         DbLsn.getNoFormatString(lastLSN));
+            out1.println("LastVLSN = " + lastVLSN + " at " + DbLsn.getNoFormatString(lastLSN));
         }
     }
 
@@ -283,31 +256,22 @@ public class DbStreamVerify {
      * add FileSummaryLNs later.
      */
     private abstract class DecoderReader extends FileReader {
-        protected final PrintStream outStream;
+        protected final PrintStream            outStream;
         private final Map<Byte, LNLogEntry<?>> targetMap;
-        protected LNLogEntry<?> targetEntry;
-        private final DatabaseId targetDbId;
+        protected LNLogEntry<?>                targetEntry;
+        private final DatabaseId               targetDbId;
 
-        DecoderReader(Environment env,
-                      PrintStream out,
-                      long startLsn,
-                      long endLsn,
-                      String dbName) {
-            super(DbInternal.getNonNullEnvImpl(env),
-                  10000,
-                  true,              // forward
-                  startLsn,
-                  null,              // singleFileNumber,
-                  DbLsn.NULL_LSN,
-                  endLsn);
+        DecoderReader(Environment env, PrintStream out, long startLsn, long endLsn, String dbName) {
+            super(DbInternal.getNonNullEnvImpl(env), 10000, true, // forward
+                    startLsn, null, // singleFileNumber,
+                    DbLsn.NULL_LSN, endLsn);
             this.outStream = out;
 
             targetMap = new HashMap<Byte, LNLogEntry<?>>();
 
             for (LogEntryType entryType : LogEntryType.getAllTypes()) {
                 if (entryType.isUserLNType()) {
-                    targetMap.put(entryType.getTypeNum(),
-                                  (LNLogEntry<?>) entryType.getNewLogEntry());
+                    targetMap.put(entryType.getTypeNum(), (LNLogEntry<?>) entryType.getNewLogEntry());
                 }
             }
 
@@ -329,7 +293,7 @@ public class DbStreamVerify {
         @Override
         protected boolean processEntry(ByteBuffer entryBuffer) {
             targetEntry.readEntry(envImpl, currentEntryHeader, entryBuffer);
-            targetEntry.postFetchInit(false /*isDupDb*/);
+            targetEntry.postFetchInit(false /* isDupDb */);
 
             if (!targetEntry.getDbId().equals(targetDbId)) {
                 return false;
@@ -345,17 +309,13 @@ public class DbStreamVerify {
     }
 
     /*
-     * Read the LNs that compose the VLSNIndex. Displays the contents of each
-     * LN in VLSNBucket form.
+     * Read the LNs that compose the VLSNIndex. Displays the contents of each LN
+     * in VLSNBucket form.
      */
     private class VLSNIndexReader extends DecoderReader {
 
-        VLSNIndexReader(Environment env,
-                        PrintStream out,
-                        long startLsn,
-                        long endLsn) {
-            super(env, out, startLsn, endLsn,
-                  DbType.VLSN_MAP.getInternalName());
+        VLSNIndexReader(Environment env, PrintStream out, long startLsn, long endLsn) {
+            super(env, out, startLsn, endLsn, DbType.VLSN_MAP.getInternalName());
         }
 
         @Override
@@ -392,10 +352,8 @@ public class DbStreamVerify {
     private class RepGroupReader extends DecoderReader {
         private NodeBinding nodeBinding;
 
-        RepGroupReader(Environment env, PrintStream out,
-                       long startLsn, long endLsn) {
-            super(env, out, startLsn, endLsn,
-                  DbType.REP_GROUP.getInternalName());
+        RepGroupReader(Environment env, PrintStream out, long startLsn, long endLsn) {
+            super(env, out, startLsn, endLsn, DbType.REP_GROUP.getInternalName());
         }
 
         @Override
@@ -411,16 +369,14 @@ public class DbStreamVerify {
                 DatabaseEntry data = new DatabaseEntry(ln.getData());
                 String keyVal = StringBinding.entryToString(key);
                 if (keyVal.equals(RepGroupDB.GROUP_KEY)) {
-                    final RepGroupImpl group =
-                        new GroupBinding().entryToObject(data);
+                    final RepGroupImpl group = new GroupBinding().entryToObject(data);
                     nodeBinding = new NodeBinding(group.getFormatVersion());
                     outStream.print(" GroupInfo: ");
                     outStream.println(group);
                 } else {
                     outStream.print(" NodeInfo: " + keyVal);
                     if (nodeBinding == null) {
-                        throw new IllegalStateException(
-                            "Node entry before group entry");
+                        throw new IllegalStateException("Node entry before group entry");
                     }
                     outStream.print(nodeBinding.entryToObject(data));
                 }

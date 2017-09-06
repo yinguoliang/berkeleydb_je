@@ -20,26 +20,28 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
 
 /**
  * Extends BasicLocker to share locks with another specific locker.
- *
- * <p>In general, a BuddyLocker can be used whenever the primary (API) locker
- * is in use, and we need to lock a node and release that lock before the
- * primary locker transaction ends.  In other words, for this particular lock
- * we don't want to use two-phase locking.  To accomplish that we use a
- * separate BuddyLocker instance to hold the lock, while sharing locks with the
- * primary locker.  The BuddyLocker can be closed to release this particular
- * lock, without releasing the other locks held by the primary locker.</p>
- *
- * <p>In particular, a ReadCommittedLocker extends BuddyLocker. The
+ * <p>
+ * In general, a BuddyLocker can be used whenever the primary (API) locker is in
+ * use, and we need to lock a node and release that lock before the primary
+ * locker transaction ends. In other words, for this particular lock we don't
+ * want to use two-phase locking. To accomplish that we use a separate
+ * BuddyLocker instance to hold the lock, while sharing locks with the primary
+ * locker. The BuddyLocker can be closed to release this particular lock,
+ * without releasing the other locks held by the primary locker.
+ * </p>
+ * <p>
+ * In particular, a ReadCommittedLocker extends BuddyLocker. The
  * ReadCommittedLocker keeps track of read locks, while its buddy Txn keeps
- * track of write locks. The two lockers must share locks to prevent
- * conflicts.</p>
- *
- * <p>In addition, a BuddyLocker is used when acquiring a RANGE_INSERT lock.
+ * track of write locks. The two lockers must share locks to prevent conflicts.
+ * </p>
+ * <p>
+ * In addition, a BuddyLocker is used when acquiring a RANGE_INSERT lock.
  * RANGE_INSERT only needs to be held until the point we have inserted the new
- * node into the BIN.  A separate locker is therefore used so we can release
- * that lock separately when the insertion into the BIN is complete.  But the
- * RANGE_INSERT lock must not conflict with locks held by the primary locker.
- * So a BuddyLocker is used that shares locks with the primary locker.</p>
+ * node into the BIN. A separate locker is therefore used so we can release that
+ * lock separately when the insertion into the BIN is complete. But the
+ * RANGE_INSERT lock must not conflict with locks held by the primary locker. So
+ * a BuddyLocker is used that shares locks with the primary locker.
+ * </p>
  */
 public class BuddyLocker extends BasicLocker {
 
@@ -54,9 +56,7 @@ public class BuddyLocker extends BasicLocker {
         buddy.addBuddy(this);
     }
 
-    public static BuddyLocker createBuddyLocker(EnvironmentImpl env,
-                                                Locker buddy)
-        throws DatabaseException {
+    public static BuddyLocker createBuddyLocker(EnvironmentImpl env, Locker buddy) throws DatabaseException {
 
         return new BuddyLocker(env, buddy);
     }
@@ -76,7 +76,7 @@ public class BuddyLocker extends BasicLocker {
     }
 
     /**
-     * Forwards this call to the buddy locker.  This object itself is never
+     * Forwards this call to the buddy locker. This object itself is never
      * transactional but the buddy may be.
      */
     @Override
@@ -85,7 +85,7 @@ public class BuddyLocker extends BasicLocker {
     }
 
     /**
-     * Forwards this call to the buddy locker.  This object itself is never
+     * Forwards this call to the buddy locker. This object itself is never
      * transactional but the buddy may be.
      */
     @Override
@@ -97,8 +97,7 @@ public class BuddyLocker extends BasicLocker {
      * Forwards this call to the base class and to the buddy locker.
      */
     @Override
-    public void releaseNonTxnLocks()
-        throws DatabaseException {
+    public void releaseNonTxnLocks() throws DatabaseException {
 
         super.releaseNonTxnLocks();
         buddy.releaseNonTxnLocks();
@@ -113,9 +112,7 @@ public class BuddyLocker extends BasicLocker {
         if (super.sharesLocksWith(other)) {
             return true;
         } else {
-            return (buddy == other ||
-                    other.getBuddy() == this ||
-                    buddy == other.getBuddy());
+            return (buddy == other || other.getBuddy() == this || buddy == other.getBuddy());
         }
     }
 
@@ -186,8 +183,7 @@ public class BuddyLocker extends BasicLocker {
      * all of its child buddies.
      */
     @Override
-    public void checkPreempted(final Locker allowPreemptedLocker) 
-        throws OperationFailureException {
+    public void checkPreempted(final Locker allowPreemptedLocker) throws OperationFailureException {
 
         buddy.checkPreempted(allowPreemptedLocker);
     }

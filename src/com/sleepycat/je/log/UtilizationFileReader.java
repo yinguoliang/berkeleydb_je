@@ -39,55 +39,42 @@ import com.sleepycat.je.utilint.DbLsn;
 
 /**
  * Summarizes the utilized and unutilized portion of each log file by examining
- * each log entry.  Does not use the Cleaner UtilizationProfile information in
+ * each log entry. Does not use the Cleaner UtilizationProfile information in
  * order to provide a second measure against which to evaluation the
- * UtilizationProfile accuracy.
- *
- * Limitations
- * ===========
- * BIN-deltas are all considered obsolete, as an implementation short cut and
- * for efficiency. 90% (by default) of deltas are obsolete anyway, and it
- * would be expensive to fetch the parent BIN to find the lookup key.
- *
- * Assumes that any currently open transactions will be committed.  For
- * example, if a deletion or update has been performed but not yet committed,
- * the old record will be considered obsolete.  Perhaps this behavior could be
- * changed in the future by attempting to lock a record (non-blocking) and
- * considering a locked record to be non-obsolete; this might make it match
- * live utilization counting more closely.
- *
- * Accesses the Btree, using JE cache memory if necessary and contending with
- * other accessors, to check whether an entry is active.
- *
- * Historical note: This implementation, which uses the Btree to determine
- * whether a node is active, replaced an earlier implementation that attempted
- * to duplicate the Btree in memory and read the entire log.  This older
- * implementation had inaccuracies and was less efficient.  With the new
- * implementation it is also possible to calculation utilization for a range of
- * LSNs, reading only that portion of the log.  [#22208]
+ * UtilizationProfile accuracy. Limitations =========== BIN-deltas are all
+ * considered obsolete, as an implementation short cut and for efficiency. 90%
+ * (by default) of deltas are obsolete anyway, and it would be expensive to
+ * fetch the parent BIN to find the lookup key. Assumes that any currently open
+ * transactions will be committed. For example, if a deletion or update has been
+ * performed but not yet committed, the old record will be considered obsolete.
+ * Perhaps this behavior could be changed in the future by attempting to lock a
+ * record (non-blocking) and considering a locked record to be non-obsolete;
+ * this might make it match live utilization counting more closely. Accesses the
+ * Btree, using JE cache memory if necessary and contending with other
+ * accessors, to check whether an entry is active. Historical note: This
+ * implementation, which uses the Btree to determine whether a node is active,
+ * replaced an earlier implementation that attempted to duplicate the Btree in
+ * memory and read the entire log. This older implementation had inaccuracies
+ * and was less efficient. With the new implementation it is also possible to
+ * calculation utilization for a range of LSNs, reading only that portion of the
+ * log. [#22208]
  */
 public class UtilizationFileReader extends FileReader {
 
     /* Long file -> FileSummary */
-    private final Map<Long, FileSummary> summaries;
+    private final Map<Long, FileSummary>        summaries;
 
     /* Cache of DB ID -> DatabaseImpl for reading live databases. */
     private final Map<DatabaseId, DatabaseImpl> dbCache;
-    private final DbTree dbTree;
+    private final DbTree                        dbTree;
 
-    private UtilizationFileReader(EnvironmentImpl envImpl,
-                                  int readBufferSize,
-                                  long startLsn,
-                                  long finishLsn)
-        throws DatabaseException {
+    private UtilizationFileReader(EnvironmentImpl envImpl, int readBufferSize, long startLsn, long finishLsn)
+            throws DatabaseException {
 
-        super(envImpl,
-              readBufferSize,
-              true,            // read forward
-              startLsn,
-              null,            // single file number
-              DbLsn.NULL_LSN,  // end of file LSN
-              finishLsn);
+        super(envImpl, readBufferSize, true, // read forward
+                startLsn, null, // single file number
+                DbLsn.NULL_LSN, // end of file LSN
+                finishLsn);
 
         summaries = new HashMap<Long, FileSummary>();
         dbCache = new HashMap<DatabaseId, DatabaseImpl>();
@@ -97,26 +84,22 @@ public class UtilizationFileReader extends FileReader {
     @Override
     protected boolean isTargetEntry() {
 
-        /* 
-         * UtilizationTracker is supposed to mimic the UtilizationProfile. 
-         * Accordingly it does not count the file header or invisible log 
+        /*
+         * UtilizationTracker is supposed to mimic the UtilizationProfile.
+         * Accordingly it does not count the file header or invisible log
          * entries because those entries are not covered by the U.P.
          */
-        return ((currentEntryHeader.getType() !=
-                 LogEntryType.LOG_FILE_HEADER.getTypeNum()) &&
-                !currentEntryHeader.isInvisible());
+        return ((currentEntryHeader.getType() != LogEntryType.LOG_FILE_HEADER.getTypeNum())
+                && !currentEntryHeader.isInvisible());
     }
 
-    protected boolean processEntry(ByteBuffer entryBuffer)
-        throws DatabaseException {
+    protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
-        final LogEntryType lastEntryType =
-            LogEntryType.findType(currentEntryHeader.getType());
+        final LogEntryType lastEntryType = LogEntryType.findType(currentEntryHeader.getType());
         final LogEntry entry = lastEntryType.getNewLogEntry();
         entry.readEntry(envImpl, currentEntryHeader, entryBuffer);
 
-        ExtendedFileSummary summary = 
-                (ExtendedFileSummary) summaries.get(window.currentFileNum());
+        ExtendedFileSummary summary = (ExtendedFileSummary) summaries.get(window.currentFileNum());
         if (summary == null) {
             summary = new ExtendedFileSummary();
             summaries.put(window.currentFileNum(), summary);
@@ -130,12 +113,10 @@ public class UtilizationFileReader extends FileReader {
         if (entry instanceof LNLogEntry) {
             final LNLogEntry<?> lnEntry = (LNLogEntry<?>) entry;
             final DatabaseImpl dbImpl = getActiveDb(lnEntry.getDbId());
-            final boolean isActive = (dbImpl != null) &&
-                                     !lnEntry.isImmediatelyObsolete(dbImpl) &&
-                                     isLNActive(lnEntry, dbImpl);
+            final boolean isActive = (dbImpl != null) && !lnEntry.isImmediatelyObsolete(dbImpl)
+                    && isLNActive(lnEntry, dbImpl);
             applyLN(summary, size, isActive);
-        } else if (entry instanceof BINDeltaLogEntry ||
-                   entry instanceof OldBINDeltaLogEntry) {
+        } else if (entry instanceof BINDeltaLogEntry || entry instanceof OldBINDeltaLogEntry) {
             /* Count Delta as IN. */
             summary.totalINCount += 1;
             summary.totalINSize += size;
@@ -145,8 +126,7 @@ public class UtilizationFileReader extends FileReader {
         } else if (entry instanceof INLogEntry) {
             final INLogEntry<?> inEntry = (INLogEntry<?>) entry;
             final DatabaseImpl dbImpl = getActiveDb(inEntry.getDbId());
-            final boolean isActive = dbImpl != null &&
-                                     isINActive(inEntry, dbImpl);
+            final boolean isActive = dbImpl != null && isINActive(inEntry, dbImpl);
             applyIN(summary, size, isActive);
         }
 
@@ -154,8 +134,7 @@ public class UtilizationFileReader extends FileReader {
     }
 
     private DatabaseImpl getActiveDb(DatabaseId dbId) {
-        final DatabaseImpl dbImpl =
-            dbTree.getDb(dbId, -1 /*timeout*/, dbCache);
+        final DatabaseImpl dbImpl = dbTree.getDb(dbId, -1 /* timeout */, dbCache);
         if (dbImpl == null) {
             return null;
         }
@@ -174,9 +153,8 @@ public class UtilizationFileReader extends FileReader {
         final Tree tree = dbImpl.getTree();
         final TreeLocation location = new TreeLocation();
 
-        final boolean parentFound = tree.getParentBINForChildLN(
-            location, key, false /*splitsAllowed*/,
-            false /*blindDeltaOps*/, CacheMode.DEFAULT);
+        final boolean parentFound = tree.getParentBINForChildLN(location, key, false /* splitsAllowed */,
+                false /* blindDeltaOps */, CacheMode.DEFAULT);
 
         final BIN bin = location.bin;
 
@@ -214,9 +192,8 @@ public class UtilizationFileReader extends FileReader {
 
         logIn.latch(CacheMode.DEFAULT);
 
-        final SearchResult result = tree.getParentINForChildIN(
-            logIn, true, /*useTargetLevel*/
-            true, /*doFetch*/ CacheMode.DEFAULT);
+        final SearchResult result = tree.getParentINForChildIN(logIn, true, /* useTargetLevel */
+                true, /* doFetch */ CacheMode.DEFAULT);
 
         if (!result.exactParentFound) {
             return false;
@@ -237,8 +214,7 @@ public class UtilizationFileReader extends FileReader {
             }
 
             /* The treeLsn may refer to a BIN-delta. */
-            final IN treeIn =
-                result.parent.fetchIN(result.index, CacheMode.DEFAULT);
+            final IN treeIn = result.parent.fetchIN(result.index, CacheMode.DEFAULT);
 
             treeLsn = treeIn.getLastFullLsn();
 
@@ -248,9 +224,7 @@ public class UtilizationFileReader extends FileReader {
         }
     }
 
-    private void applyLN(ExtendedFileSummary summary,
-                         int size,
-                         boolean isActive) {
+    private void applyLN(ExtendedFileSummary summary, int size, boolean isActive) {
         summary.totalLNCount += 1;
         summary.totalLNSize += size;
         if (!isActive) {
@@ -259,9 +233,7 @@ public class UtilizationFileReader extends FileReader {
         }
     }
 
-    private void applyIN(ExtendedFileSummary summary,
-                         int size,
-                         boolean isActive) {
+    private void applyIN(ExtendedFileSummary summary, int size, boolean isActive) {
         summary.totalINCount += 1;
         summary.totalINSize += size;
         if (!isActive) {
@@ -275,24 +247,18 @@ public class UtilizationFileReader extends FileReader {
     }
 
     /**
-     * Creates a UtilizationReader, reads the log, and returns the resulting
-     * Map of Long file number to FileSummary.
+     * Creates a UtilizationReader, reads the log, and returns the resulting Map
+     * of Long file number to FileSummary.
      */
-    public static Map<Long, FileSummary>
-        calcFileSummaryMap(EnvironmentImpl envImpl) {
+    public static Map<Long, FileSummary> calcFileSummaryMap(EnvironmentImpl envImpl) {
         return calcFileSummaryMap(envImpl, DbLsn.NULL_LSN, DbLsn.NULL_LSN);
     }
 
-    public static Map<Long, FileSummary>
-        calcFileSummaryMap(EnvironmentImpl envImpl,
-                           long startLsn,
-                           long finishLsn) {
+    public static Map<Long, FileSummary> calcFileSummaryMap(EnvironmentImpl envImpl, long startLsn, long finishLsn) {
 
-        final int readBufferSize = envImpl.getConfigManager().getInt
-            (EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+        final int readBufferSize = envImpl.getConfigManager().getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
 
-        final UtilizationFileReader reader = new UtilizationFileReader
-            (envImpl, readBufferSize, startLsn, finishLsn);
+        final UtilizationFileReader reader = new UtilizationFileReader(envImpl, readBufferSize, startLsn, finishLsn);
         try {
             while (reader.readNextEntry()) {
                 /* All the work is done in processEntry. */
@@ -343,7 +309,7 @@ public class UtilizationFileReader extends FileReader {
 
     private static class NodeInfo {
         ExtendedFileSummary summary;
-        int size;
-        long dbId;
+        int                 size;
+        long                dbId;
     }
 }

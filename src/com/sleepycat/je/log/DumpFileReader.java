@@ -40,31 +40,19 @@ public abstract class DumpFileReader extends FileReader {
     protected final boolean verbose;
 
     /* If true, only dump entries that have a VLSN */
-    private final boolean repEntriesOnly;
+    private final boolean   repEntriesOnly;
 
     /**
      * Create this reader to start at a given LSN.
      */
-    public DumpFileReader(EnvironmentImpl env,
-                          int readBufferSize,
-                          long startLsn,
-                          long finishLsn,
-                          long endOfFileLsn,
-                          String entryTypes,
-                          String dbIds,
-                          String txnIds,
-                          boolean verbose,
-                          boolean repEntriesOnly,
+    public DumpFileReader(EnvironmentImpl env, int readBufferSize, long startLsn, long finishLsn, long endOfFileLsn,
+                          String entryTypes, String dbIds, String txnIds, boolean verbose, boolean repEntriesOnly,
                           boolean forwards)
-        throws DatabaseException {
+            throws DatabaseException {
 
-        super(env,
-              readBufferSize,
-              forwards, 
-              startLsn,
-              null, // single file number
-              endOfFileLsn, // end of file lsn
-              finishLsn); // finish lsn
+        super(env, readBufferSize, forwards, startLsn, null, // single file number
+                endOfFileLsn, // end of file lsn
+                finishLsn); // finish lsn
 
         /* If entry types is not null, record the set of target entry types. */
         targetEntryTypes = new HashSet<>();
@@ -130,15 +118,15 @@ public abstract class DumpFileReader extends FileReader {
 
     /**
      * @return true if this reader should process this entry, or just skip over
-     * it.
+     *         it.
      */
     @Override
     protected boolean isTargetEntry() {
         if (repEntriesOnly && !currentEntryHeader.getReplicated()) {
 
-            /* 
-             * Skip this entry; we only want replicated entries, and this
-             * one is not replicated.
+            /*
+             * Skip this entry; we only want replicated entries, and this one is
+             * not replicated.
              */
             return false;
         }
@@ -147,13 +135,12 @@ public abstract class DumpFileReader extends FileReader {
             /* We want to dump all entry types. */
             return true;
         }
-        return targetEntryTypes.contains
-            (Byte.valueOf(currentEntryHeader.getType()));
+        return targetEntryTypes.contains(Byte.valueOf(currentEntryHeader.getType()));
     }
 
     /**
-     * @param ignore  
+     * @param ignore
      */
-    public void summarize(boolean ignore /*csvFile*/) {
+    public void summarize(boolean ignore /* csvFile */) {
     }
 }

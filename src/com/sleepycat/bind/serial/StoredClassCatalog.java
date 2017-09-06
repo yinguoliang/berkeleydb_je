@@ -39,69 +39,60 @@ import com.sleepycat.util.UtfOps;
 
 /**
  * A <code>ClassCatalog</code> that is stored in a <code>Database</code>.
- *
- * <p>A single <code>StoredClassCatalog</code> object is normally used along
- * with a set of databases that stored serialized objects.</p>
+ * <p>
+ * A single <code>StoredClassCatalog</code> object is normally used along with a
+ * set of databases that stored serialized objects.
+ * </p>
  *
  * @author Mark Hayes
- *
  * @see <a href="SerialBinding.html#evolution">Class Evolution</a>
  */
 public class StoredClassCatalog implements ClassCatalog {
 
     /*
-     * Record types ([key] [data]):
-     *
-     * [0] [next class ID]
-     * [1 / class ID] [ObjectStreamClass (class format)]
-     * [2 / class name] [ClassInfo (has 8 byte class ID)]
+     * Record types ([key] [data]): [0] [next class ID] [1 / class ID]
+     * [ObjectStreamClass (class format)] [2 / class name] [ClassInfo (has 8
+     * byte class ID)]
      */
-    private static final byte REC_LAST_CLASS_ID = (byte) 0;
-    private static final byte REC_CLASS_FORMAT = (byte) 1;
-    private static final byte REC_CLASS_INFO = (byte) 2;
+    private static final byte                      REC_LAST_CLASS_ID = (byte) 0;
+    private static final byte                      REC_CLASS_FORMAT  = (byte) 1;
+    private static final byte                      REC_CLASS_INFO    = (byte) 2;
 
-    private static final byte[] LAST_CLASS_ID_KEY = {REC_LAST_CLASS_ID};
+    private static final byte[]                    LAST_CLASS_ID_KEY = { REC_LAST_CLASS_ID };
 
-    private Database db;
-    private HashMap<String, ClassInfo> classMap;
+    private Database                               db;
+    private HashMap<String, ClassInfo>             classMap;
     private HashMap<BigInteger, ObjectStreamClass> formatMap;
-    private LockMode writeLockMode;
-    private boolean cdbMode;
-    private boolean txnMode;
+    private LockMode                               writeLockMode;
+    private boolean                                cdbMode;
+    private boolean                                txnMode;
 
     /**
      * Creates a catalog based on a given database. To save resources, only a
      * single catalog object should be used for each unique catalog database.
      *
-     * @param database an open database to use as the class catalog.  It must
-     * be a BTREE database and must not allow duplicates.
-     *
+     * @param database an open database to use as the class catalog. It must be
+     *            a BTREE database and must not allow duplicates.
      * @throws DatabaseException if an error occurs accessing the database.
-     *
      * @throws IllegalArgumentException if the database is not a BTREE database
-     * or if it configured to allow duplicates.
+     *             or if it configured to allow duplicates.
      */
-    public StoredClassCatalog(Database database)
-        throws DatabaseException, IllegalArgumentException {
+    public StoredClassCatalog(Database database) throws DatabaseException, IllegalArgumentException {
 
         db = database;
         DatabaseConfig dbConfig = db.getConfig();
         EnvironmentConfig envConfig = db.getEnvironment().getConfig();
 
-        writeLockMode = (DbCompat.getInitializeLocking(envConfig) ||
-                         envConfig.getTransactional()) ? LockMode.RMW
-                                                       : LockMode.DEFAULT;
+        writeLockMode = (DbCompat.getInitializeLocking(envConfig) || envConfig.getTransactional()) ? LockMode.RMW
+                : LockMode.DEFAULT;
         cdbMode = DbCompat.getInitializeCDB(envConfig);
         txnMode = dbConfig.getTransactional();
 
         if (!DbCompat.isTypeBtree(dbConfig)) {
-            throw new IllegalArgumentException
-                ("The class catalog must be a BTREE database.");
+            throw new IllegalArgumentException("The class catalog must be a BTREE database.");
         }
-        if (DbCompat.getSortedDuplicates(dbConfig) ||
-            DbCompat.getUnsortedDuplicates(dbConfig)) {
-            throw new IllegalArgumentException
-                ("The class catalog database must not allow duplicates.");
+        if (DbCompat.getSortedDuplicates(dbConfig) || DbCompat.getUnsortedDuplicates(dbConfig)) {
+            throw new IllegalArgumentException("The class catalog database must not allow duplicates.");
         }
 
         /*
@@ -118,11 +109,10 @@ public class StoredClassCatalog implements ClassCatalog {
             /* Check that the class ID record exists. */
             OperationStatus status = db.get(null, key, data, null);
             if (status != OperationStatus.SUCCESS) {
-                throw DbCompat.unexpectedState
-                    ("A read-only catalog database may not be empty");
+                throw DbCompat.unexpectedState("A read-only catalog database may not be empty");
             }
         } else {
-            /* Add the initial class ID record if it doesn't exist.  */
+            /* Add the initial class ID record if it doesn't exist. */
             data.setData(new byte[1]); // zero ID
 
             /*
@@ -138,8 +128,7 @@ public class StoredClassCatalog implements ClassCatalog {
     }
 
     // javadoc is inherited
-    public synchronized void close()
-        throws DatabaseException {
+    public synchronized void close() throws DatabaseException {
 
         if (db != null) {
             db.close();
@@ -151,7 +140,7 @@ public class StoredClassCatalog implements ClassCatalog {
 
     // javadoc is inherited
     public synchronized byte[] getClassID(ObjectStreamClass classFormat)
-        throws DatabaseException, ClassNotFoundException {
+            throws DatabaseException, ClassNotFoundException {
 
         ClassInfo classInfo = getClassInfo(classFormat);
         return classInfo.getClassID();
@@ -159,19 +148,18 @@ public class StoredClassCatalog implements ClassCatalog {
 
     // javadoc is inherited
     public synchronized ObjectStreamClass getClassFormat(byte[] classID)
-        throws DatabaseException, ClassNotFoundException {
+            throws DatabaseException, ClassNotFoundException {
 
         return getClassFormat(classID, new DatabaseEntry());
     }
 
     /**
-     * Internal function for getting the class format.  Allows passing the
+     * Internal function for getting the class format. Allows passing the
      * DatabaseEntry object for the data, so the bytes of the class format can
      * be examined afterwards.
      */
-    private ObjectStreamClass getClassFormat(byte[] classID,
-                                             DatabaseEntry data)
-        throws DatabaseException, ClassNotFoundException {
+    private ObjectStreamClass getClassFormat(byte[] classID, DatabaseEntry data)
+            throws DatabaseException, ClassNotFoundException {
 
         /* First check the map and, if found, add class info to the map. */
 
@@ -193,11 +181,8 @@ public class StoredClassCatalog implements ClassCatalog {
                 throw new ClassNotFoundException("Catalog class ID not found");
             }
             try {
-                ObjectInputStream ois =
-                    new ObjectInputStream(
-                        new ByteArrayInputStream(data.getData(),
-                                                 data.getOffset(),
-                                                 data.getSize()));
+                ObjectInputStream ois = new ObjectInputStream(
+                        new ByteArrayInputStream(data.getData(), data.getOffset(), data.getSize()));
                 classFormat = (ObjectStreamClass) ois.readObject();
             } catch (IOException e) {
                 throw RuntimeExceptionWrapper.wrapIfNeeded(e);
@@ -213,42 +198,39 @@ public class StoredClassCatalog implements ClassCatalog {
     /**
      * Get the ClassInfo for a given class name, adding it and its
      * ObjectStreamClass to the database if they are not already present, and
-     * caching both of them using the class info and class format maps.  When a
+     * caching both of them using the class info and class format maps. When a
      * class is first loaded from the database, the stored ObjectStreamClass is
      * compared to the current ObjectStreamClass loaded by the Java class
-     * loader; if they are different, a new class ID is assigned for the
-     * current format.
+     * loader; if they are different, a new class ID is assigned for the current
+     * format.
      */
-    private ClassInfo getClassInfo(ObjectStreamClass classFormat)
-        throws DatabaseException, ClassNotFoundException {
+    private ClassInfo getClassInfo(ObjectStreamClass classFormat) throws DatabaseException, ClassNotFoundException {
 
         /*
-         * First check for a cached copy of the class info, which if
-         * present always contains the class format object.
+         * First check for a cached copy of the class info, which if present
+         * always contains the class format object.
          */
         String className = classFormat.getName();
         ClassInfo classInfo = classMap.get(className);
         if (classInfo != null) {
             return classInfo;
         } else {
-            /* Make class info key.  */
+            /* Make class info key. */
             char[] nameChars = className.toCharArray();
             byte[] keyBytes = new byte[1 + UtfOps.getByteLength(nameChars)];
             keyBytes[0] = REC_CLASS_INFO;
             UtfOps.charsToBytes(nameChars, 0, keyBytes, 1, nameChars.length);
             DatabaseEntry key = new DatabaseEntry(keyBytes);
 
-            /* Read class info.  */
+            /* Read class info. */
             DatabaseEntry data = new DatabaseEntry();
             OperationStatus status = db.get(null, key, data, LockMode.DEFAULT);
             if (status != OperationStatus.SUCCESS) {
-                
+
                 /*
-                 * Not found in the database, write class info and class
-                 * format.
+                 * Not found in the database, write class info and class format.
                  */
-                classInfo = putClassInfo(new ClassInfo(), className, key,
-                                         classFormat);
+                classInfo = putClassInfo(new ClassInfo(), className, key, classFormat);
             } else {
                 /*
                  * Read class info to get the class format key, then read class
@@ -256,21 +238,17 @@ public class StoredClassCatalog implements ClassCatalog {
                  */
                 classInfo = new ClassInfo(data);
                 DatabaseEntry formatData = new DatabaseEntry();
-                ObjectStreamClass storedClassFormat =
-                    getClassFormat(classInfo.getClassID(), formatData);
+                ObjectStreamClass storedClassFormat = getClassFormat(classInfo.getClassID(), formatData);
 
                 /*
                  * Compare the stored class format to the current class format,
                  * and if they are different then generate a new class ID.
                  */
-                if (!areClassFormatsEqual(storedClassFormat,
-                                          getBytes(formatData),
-                                          classFormat)) {
-                    classInfo = putClassInfo(classInfo, className, key,
-                                             classFormat);
+                if (!areClassFormatsEqual(storedClassFormat, getBytes(formatData), classFormat)) {
+                    classInfo = putClassInfo(classInfo, className, key, classFormat);
                 }
 
-                /* Update the class info map.  */
+                /* Update the class info map. */
                 classInfo.setClassFormat(classFormat);
                 classMap.put(className, classInfo);
             }
@@ -280,15 +258,13 @@ public class StoredClassCatalog implements ClassCatalog {
 
     /**
      * Assign a new class ID (increment the current ID record), write the
-     * ObjectStreamClass record for this new ID, and update the ClassInfo
-     * record with the new ID also.  The ClassInfo passed as an argument is the
-     * one to be updated.
+     * ObjectStreamClass record for this new ID, and update the ClassInfo record
+     * with the new ID also. The ClassInfo passed as an argument is the one to
+     * be updated.
      */
-    private ClassInfo putClassInfo(ClassInfo classInfo,
-                                   String className,
-                                   DatabaseEntry classKey,
+    private ClassInfo putClassInfo(ClassInfo classInfo, String className, DatabaseEntry classKey,
                                    ObjectStreamClass classFormat)
-        throws DatabaseException {
+            throws DatabaseException {
 
         /* An intent-to-write cursor is needed for CDB. */
         CursorConfig cursorConfig = null;
@@ -307,14 +283,13 @@ public class StoredClassCatalog implements ClassCatalog {
             /* Get the current class ID. */
             DatabaseEntry key = new DatabaseEntry(LAST_CLASS_ID_KEY);
             DatabaseEntry data = new DatabaseEntry();
-            OperationStatus status = cursor.getSearchKey(key, data,
-                                                         writeLockMode);
+            OperationStatus status = cursor.getSearchKey(key, data, writeLockMode);
             if (status != OperationStatus.SUCCESS) {
                 throw DbCompat.unexpectedState("Class ID not initialized");
             }
             byte[] idBytes = getBytes(data);
 
-            /* Increment the ID by one and write the updated record.  */
+            /* Increment the ID by one and write the updated record. */
             idBytes = incrementID(idBytes);
             data.setData(idBytes);
             cursor.put(key, data);
@@ -341,9 +316,9 @@ public class StoredClassCatalog implements ClassCatalog {
             cursor.put(key, data);
 
             /*
-             * Write the new class info record, using the key passed in; this
-             * is done last so that a reader who gets the class info record
-             * first will always find the corresponding class format record.
+             * Write the new class info record, using the key passed in; this is
+             * done last so that a reader who gets the class info record first
+             * will always find the corresponding class format record.
              */
             classInfo.setClassID(idBytes);
             classInfo.toDbt(data);
@@ -377,13 +352,13 @@ public class StoredClassCatalog implements ClassCatalog {
 
     /**
      * Holds the class format key for a class, maintains a reference to the
-     * ObjectStreamClass.  Other fields can be added when we need to store more
+     * ObjectStreamClass. Other fields can be added when we need to store more
      * information per class.
      */
     private static class ClassInfo implements Serializable {
-        static final long serialVersionUID = 3845446969989650562L;
+        static final long                   serialVersionUID = 3845446969989650562L;
 
-        private byte[] classID;
+        private byte[]                      classID;
         private transient ObjectStreamClass classFormat;
 
         ClassInfo() {
@@ -427,12 +402,11 @@ public class StoredClassCatalog implements ClassCatalog {
     }
 
     /**
-     * Return whether two class formats are equal.  This determines whether a
-     * new class format is needed for an object being serialized.  Formats must
-     * be identical in all respects, or a new format is needed.
+     * Return whether two class formats are equal. This determines whether a new
+     * class format is needed for an object being serialized. Formats must be
+     * identical in all respects, or a new format is needed.
      */
-    private static boolean areClassFormatsEqual(ObjectStreamClass format1,
-                                                byte[] format1Bytes,
+    private static boolean areClassFormatsEqual(ObjectStreamClass format1, byte[] format1Bytes,
                                                 ObjectStreamClass format2) {
         try {
             if (format1Bytes == null) { // using cached format1 object
@@ -440,7 +414,9 @@ public class StoredClassCatalog implements ClassCatalog {
             }
             byte[] format2Bytes = getObjectBytes(format2);
             return java.util.Arrays.equals(format2Bytes, format1Bytes);
-        } catch (IOException e) { return false; }
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     /*
@@ -466,8 +442,7 @@ public class StoredClassCatalog implements ClassCatalog {
         }
     }
 
-    private static byte[] getObjectBytes(Object o)
-        throws IOException {
+    private static byte[] getObjectBytes(Object o) throws IOException {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(baos);
@@ -477,12 +452,13 @@ public class StoredClassCatalog implements ClassCatalog {
 
     /**
      * For BDB JE, returns the ClassLoader property of the catalog database
-     * environment.  This ensures that the Environment's ClassLoader property
-     * is used for loading all user-supplied classes.
-     *
-     * <p>For BDB, this method returns null because no Environment ClassLoader
-     * property is available.  This method may be overridden to return a
-     * ClassLoader.</p>
+     * environment. This ensures that the Environment's ClassLoader property is
+     * used for loading all user-supplied classes.
+     * <p>
+     * For BDB, this method returns null because no Environment ClassLoader
+     * property is available. This method may be overridden to return a
+     * ClassLoader.
+     * </p>
      */
     public ClassLoader getClassLoader() {
         try {

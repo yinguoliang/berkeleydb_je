@@ -19,18 +19,18 @@ import com.sleepycat.je.log.LogEntryType;
 import com.sleepycat.je.log.VersionedWriteLoggable;
 
 /**
- * A basic implementation of a replicable log entry that provides for writing
- * in a single format by default.  Starting with log version 9, as specified by
+ * A basic implementation of a replicable log entry that provides for writing in
+ * a single format by default. Starting with log version 9, as specified by
  * {@link LogEntryType#LOG_VERSION_REPLICATE_OLDER}, entry classes whose log
  * format has changed since the previous log version will need to override the
- * {@link ReplicableLogEntry#getLastFormatChange}, {@link #getSize(int,
- * boolean)} and {@link #writeEntry(ByteBuffer, int, boolean)} methods to
- * support writing the entry in the previous log format.
+ * {@link ReplicableLogEntry#getLastFormatChange},
+ * {@link #getSize(int, boolean)} and
+ * {@link #writeEntry(ByteBuffer, int, boolean)} methods to support writing the
+ * entry in the previous log format.
  *
  * @param <T> the type of the loggable items in this entry
  */
-abstract class BaseReplicableEntry<T extends VersionedWriteLoggable>
-        extends BaseEntry<T>
+abstract class BaseReplicableEntry<T extends VersionedWriteLoggable> extends BaseEntry<T>
         implements ReplicableLogEntry {
 
     /**
@@ -51,13 +51,12 @@ abstract class BaseReplicableEntry<T extends VersionedWriteLoggable>
 
     @Override
     public void writeEntry(final ByteBuffer destBuffer) {
-        writeEntry(
-            destBuffer, LogEntryType.LOG_VERSION, false /*forReplication*/);
+        writeEntry(destBuffer, LogEntryType.LOG_VERSION, false /* forReplication */);
     }
 
     @Override
     public int getSize() {
-        return getSize(LogEntryType.LOG_VERSION, false /*forReplication*/);
+        return getSize(LogEntryType.LOG_VERSION, false /* forReplication */);
     }
 
     @Override
@@ -66,8 +65,7 @@ abstract class BaseReplicableEntry<T extends VersionedWriteLoggable>
     }
 
     @Override
-    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer,
-                                                 final int srcVersion,
+    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer, final int srcVersion,
                                                  final int destVersion) {
         return false;
     }

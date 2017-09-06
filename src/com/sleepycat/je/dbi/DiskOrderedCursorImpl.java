@@ -27,26 +27,22 @@ import com.sleepycat.je.config.EnvironmentParams;
 import com.sleepycat.je.tree.LN;
 
 /**
- * This class implements the DiskOrderedCursor. When an instance is
- * constructed, a Producer Thread is created which runs a DiskOrderedScanner
- * against the DiskOrderedCursor's Database.  The callback for the
- * DiskOrderedScanner takes key/data byte arrays that are passed to it, and
- * then place those entries on a BlockingQueue which is shared between the
- * Producer Thread and the application thread.  When the application calls
- * getNext(), it simply takes an entry off the queue and hands it to the
- * caller.  The entries on the queue are simple KeyAndData structs which hold
- * byte[]'s for the key (and optional) data.  A special instance of KeyAndData
- * is used to indicate that the cursor scan has finished.
- *
- * The consistency guarantees are documented in the public javadoc for
+ * This class implements the DiskOrderedCursor. When an instance is constructed,
+ * a Producer Thread is created which runs a DiskOrderedScanner against the
+ * DiskOrderedCursor's Database. The callback for the DiskOrderedScanner takes
+ * key/data byte arrays that are passed to it, and then place those entries on a
+ * BlockingQueue which is shared between the Producer Thread and the application
+ * thread. When the application calls getNext(), it simply takes an entry off
+ * the queue and hands it to the caller. The entries on the queue are simple
+ * KeyAndData structs which hold byte[]'s for the key (and optional) data. A
+ * special instance of KeyAndData is used to indicate that the cursor scan has
+ * finished. The consistency guarantees are documented in the public javadoc for
  * DiskOrderedCursor, and are based on the use of DiskOrderedScanner (see its
- * javadoc for details).
- *
- * If the cleaner is operating concurrently with the DiskOrderedScanner, then
- * it is possible for a file to be deleted and a not-yet-processed LSN (i.e.
- * one which has not yet been returned to the user) might be pointing to that
- * deleted file.  Therefore, we must disable file deletion (but not cleaner
- * operation) during the DOS.
+ * javadoc for details). If the cleaner is operating concurrently with the
+ * DiskOrderedScanner, then it is possible for a file to be deleted and a
+ * not-yet-processed LSN (i.e. one which has not yet been returned to the user)
+ * might be pointing to that deleted file. Therefore, we must disable file
+ * deletion (but not cleaner operation) during the DOS.
  */
 public class DiskOrderedCursorImpl {
 
@@ -56,12 +52,12 @@ public class DiskOrderedCursorImpl {
      */
     private static class KeyAndData {
 
-        final int dbIdx;
+        final int    dbIdx;
         final byte[] key;
         final byte[] data;
 
         /* Negative value means "in hours", to save queue space. */
-        final int expiration;
+        final int    expiration;
 
         /**
          * Creates a marker instance, for END_OF_QUEUE.
@@ -73,17 +69,12 @@ public class DiskOrderedCursorImpl {
             this.expiration = 0;
         }
 
-        private KeyAndData(
-            int dbIdx,
-            byte[] key,
-            byte[] data,
-            int expiration,
-            boolean expirationInHours) {
+        private KeyAndData(int dbIdx, byte[] key, byte[] data, int expiration, boolean expirationInHours) {
 
             this.dbIdx = dbIdx;
             this.key = key;
             this.data = data;
-            this.expiration = expirationInHours ? (- expiration) : expiration;
+            this.expiration = expirationInHours ? (-expiration) : expiration;
         }
 
         private int getDbIdx() {
@@ -103,7 +94,7 @@ public class DiskOrderedCursorImpl {
                 return 0;
             }
             if (expiration < 0) {
-                return TTL.expirationToSystemTime(- expiration, true);
+                return TTL.expirationToSystemTime(-expiration, true);
             }
             return TTL.expirationToSystemTime(expiration, false);
         }
@@ -113,44 +104,41 @@ public class DiskOrderedCursorImpl {
      * The maximum number of entries that the BlockingQueue will store before
      * blocking the producer thread.
      */
-    private int queueSize = 1000;
+    private int                             queueSize                    = 1000;
 
     /* Queue.offer() timeout in msec. */
-    private int offerTimeout;
+    private int                             offerTimeout;
 
-    private final boolean keysOnly;
+    private final boolean                   keysOnly;
 
-    private final EnvironmentImpl env;
+    private final EnvironmentImpl           env;
 
-    private final Processor processor;
+    private final Processor                 processor;
 
-    private final DiskOrderedScanner scanner;
+    private final DiskOrderedScanner        scanner;
 
-    private final Thread producer;
+    private final Thread                    producer;
 
     private final BlockingQueue<KeyAndData> queue;
 
     /* The special KeyAndData which marks the end of the operation. */
-    private final KeyAndData END_OF_QUEUE = new KeyAndData();
+    private final KeyAndData                END_OF_QUEUE                 = new KeyAndData();
 
-    private final RuntimeException SHUTDOWN_REQUESTED_EXCEPTION =
-        new RuntimeException("Producer Thread shutdown requested");
+    private final RuntimeException          SHUTDOWN_REQUESTED_EXCEPTION = new RuntimeException(
+            "Producer Thread shutdown requested");
 
     /* DiskOrderedCursors are initialized as soon as they are created. */
-    private boolean closed = false;
+    private boolean                         closed                       = false;
 
-    private KeyAndData currentNode = null;
+    private KeyAndData                      currentNode                  = null;
 
-    public DiskOrderedCursorImpl(
-        final DatabaseImpl[] dbImpls,
-        final DiskOrderedCursorConfig config) {
+    public DiskOrderedCursorImpl(final DatabaseImpl[] dbImpls, final DiskOrderedCursorConfig config) {
 
         this.env = dbImpls[0].getEnv();
 
         DbConfigManager configMgr = env.getConfigManager();
 
-        this.offerTimeout = configMgr.getDuration(
-            EnvironmentParams.DOS_PRODUCER_QUEUE_TIMEOUT);
+        this.offerTimeout = configMgr.getDuration(EnvironmentParams.DOS_PRODUCER_QUEUE_TIMEOUT);
 
         this.keysOnly = config.getKeysOnly();
         this.queueSize = config.getQueueSize();
@@ -165,48 +153,45 @@ public class DiskOrderedCursorImpl {
 
         this.processor = new Processor();
 
-        this.scanner = new DiskOrderedScanner(
-            dbImpls, processor,
-            config.getSerialDBScan(),
-            config.getBINsOnly(), keysOnly, config.getCountOnly(),
-            config.getLSNBatchSize(), config.getInternalMemoryLimit(),
-            config.getDebug());
+        this.scanner = new DiskOrderedScanner(dbImpls, processor, config.getSerialDBScan(), config.getBINsOnly(),
+                keysOnly, config.getCountOnly(), config.getLSNBatchSize(), config.getInternalMemoryLimit(),
+                config.getDebug());
 
         this.queue = new ArrayBlockingQueue<KeyAndData>(queueSize);
 
         this.producer = new Thread() {
 
-                public void run() {
-                    try {
-                        /* Prevent files from being deleted during scan. */
-                        env.getCleaner().addProtectedFileRange(0L);
+            public void run() {
+                try {
+                    /* Prevent files from being deleted during scan. */
+                    env.getCleaner().addProtectedFileRange(0L);
 
-                        scanner.scan();
+                    scanner.scan();
 
-                        processor.close();
+                    processor.close();
 
-                    } catch (Throwable T) {
-                        if (T == SHUTDOWN_REQUESTED_EXCEPTION) {
-                            /* Shutdown was requested.  Don't rethrow. */
-                            processor.isClosed = true;
-                            return;
-                        }
-
-                        /* The exception is check by the getNext() method of
-                           the consumer code.
-                         */
-                        processor.setException(T);
-
-                        queue.offer(END_OF_QUEUE);
-                    } finally {
-                        /* Allow files to be deleted again. */
-                        env.getCleaner().removeProtectedFileRange(0L);
+                } catch (Throwable T) {
+                    if (T == SHUTDOWN_REQUESTED_EXCEPTION) {
+                        /* Shutdown was requested. Don't rethrow. */
+                        processor.isClosed = true;
+                        return;
                     }
-                }
-            };
 
-        this.producer.setName("DiskOrderedCursor Producer Thread for " +
-                              Thread.currentThread());
+                    /*
+                     * The exception is check by the getNext() method of the
+                     * consumer code.
+                     */
+                    processor.setException(T);
+
+                    queue.offer(END_OF_QUEUE);
+                } finally {
+                    /* Allow files to be deleted again. */
+                    env.getCleaner().removeProtectedFileRange(0L);
+                }
+            }
+        };
+
+        this.producer.setName("DiskOrderedCursor Producer Thread for " + Thread.currentThread());
         this.producer.start();
     }
 
@@ -216,33 +201,26 @@ public class DiskOrderedCursorImpl {
          * A place to stash any exception caught by the producer thread so that
          * it can be returned to the application.
          */
-        private Throwable exception;
+        private Throwable        exception;
 
         private volatile boolean shutdownNow;
 
-        public boolean isClosed = false; // used for unit testing only
+        public boolean           isClosed = false; // used for unit testing only
 
         @Override
-        public void process(
-            int dbIdx,
-            byte[] key,
-            byte[] data,
-            int expiration,
-            boolean expirationInHours) {
+        public void process(int dbIdx, byte[] key, byte[] data, int expiration, boolean expirationInHours) {
 
             checkShutdown();
 
             try {
-                KeyAndData e = new KeyAndData(
-                    dbIdx, key, data, expiration, expirationInHours);
+                KeyAndData e = new KeyAndData(dbIdx, key, data, expiration, expirationInHours);
 
                 while (!queue.offer(e, offerTimeout, TimeUnit.MILLISECONDS)) {
                     checkShutdown();
                 }
 
             } catch (InterruptedException IE) {
-                setException(
-                    new ThreadInterruptedException(env, IE));
+                setException(new ThreadInterruptedException(env, IE));
                 setShutdown();
             }
         }
@@ -258,25 +236,22 @@ public class DiskOrderedCursorImpl {
         }
 
         /*
-         * Called from the produser thread's run() method after there are
-         * no more records to scan.
+         * Called from the produser thread's run() method after there are no
+         * more records to scan.
          */
         void close() {
 
             try {
-                if (!queue.offer(END_OF_QUEUE, offerTimeout,
-                                 TimeUnit.MILLISECONDS)) {
+                if (!queue.offer(END_OF_QUEUE, offerTimeout, TimeUnit.MILLISECONDS)) {
                     /* Cursor.close() called, but queue was not drained. */
-                    setException(SHUTDOWN_REQUESTED_EXCEPTION.
-                                 fillInStackTrace());
+                    setException(SHUTDOWN_REQUESTED_EXCEPTION.fillInStackTrace());
                     setShutdown();
                 }
 
                 isClosed = true;
 
             } catch (InterruptedException IE) {
-                setException(
-                    new ThreadInterruptedException(env, IE));
+                setException(new ThreadInterruptedException(env, IE));
                 setShutdown();
             }
         }
@@ -339,9 +314,7 @@ public class DiskOrderedCursorImpl {
         env.checkIfInvalid();
     }
 
-    private OperationResult setData(
-        final DatabaseEntry foundKey,
-        final DatabaseEntry foundData) {
+    private OperationResult setData(final DatabaseEntry foundKey, final DatabaseEntry foundData) {
 
         if (foundKey != null) {
             LN.setEntry(foundKey, currentNode.getKey());
@@ -352,9 +325,7 @@ public class DiskOrderedCursorImpl {
         return DbInternal.makeResult(currentNode.getExpirationTime());
     }
 
-    public synchronized OperationResult getCurrent(
-        final DatabaseEntry foundKey,
-        final DatabaseEntry foundData) {
+    public synchronized OperationResult getCurrent(final DatabaseEntry foundKey, final DatabaseEntry foundData) {
 
         if (closed) {
             throw new IllegalStateException("Not initialized");
@@ -380,9 +351,7 @@ public class DiskOrderedCursorImpl {
         return currentNode.getDbIdx();
     }
 
-    public synchronized OperationResult getNext(
-        final DatabaseEntry foundKey,
-        final DatabaseEntry foundData) {
+    public synchronized OperationResult getNext(final DatabaseEntry foundKey, final DatabaseEntry foundData) {
 
         if (closed) {
             throw new IllegalStateException("Not initialized");
@@ -401,7 +370,7 @@ public class DiskOrderedCursorImpl {
             /*
              * Poll in a loop in case the producer thread throws an exception
              * and can't put END_OF_QUEUE on the queue because of an
-             * InterruptedException.  The presence of an exception is the last
+             * InterruptedException. The presence of an exception is the last
              * resort to make sure that getNext actually returns to the user.
              */
             do {
@@ -417,8 +386,7 @@ public class DiskOrderedCursorImpl {
         }
 
         if (processor.getException() != null) {
-            throw new DiskOrderedCursorProducerException(
-                "Producer Thread Failure", processor.getException());
+            throw new DiskOrderedCursorProducerException("Producer Thread Failure", processor.getException());
         }
 
         if (currentNode == END_OF_QUEUE) {

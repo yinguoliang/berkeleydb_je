@@ -21,42 +21,42 @@ import com.sleepycat.je.utilint.LoggerUtils;
  */
 public class ExceptionEvent {
 
-	private Exception exception;
-	private String threadName;
+    private Exception exception;
+    private String    threadName;
 
-	public ExceptionEvent(Exception exception, String threadName) {
-		this.exception = exception;
-		this.threadName = threadName;
-	}
+    public ExceptionEvent(Exception exception, String threadName) {
+        this.exception = exception;
+        this.threadName = threadName;
+    }
 
-	public ExceptionEvent(Exception exception) {
-		this.exception = exception;
-		this.threadName = Thread.currentThread().toString();
-	}
+    public ExceptionEvent(Exception exception) {
+        this.exception = exception;
+        this.threadName = Thread.currentThread().toString();
+    }
 
-	/**
-	 * Returns the exception in the event.
-	 */
-	public Exception getException() {
-		return exception;
-	}
+    /**
+     * Returns the exception in the event.
+     */
+    public Exception getException() {
+        return exception;
+    }
 
-	/**
-	 * Returns the name of the daemon thread that threw the exception.
-	 */
-	public String getThreadName() {
-		return threadName;
-	}
+    /**
+     * Returns the name of the daemon thread that threw the exception.
+     */
+    public String getThreadName() {
+        return threadName;
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		sb.append("<ExceptionEvent exception=\"");
-		sb.append(exception);
-		sb.append("\" threadName=\"");
-		sb.append(threadName);
-		sb.append("\">");
-		sb.append(LoggerUtils.getStackTrace(exception));
-		return sb.toString();
-	}
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<ExceptionEvent exception=\"");
+        sb.append(exception);
+        sb.append("\" threadName=\"");
+        sb.append(threadName);
+        sb.append("\">");
+        sb.append(LoggerUtils.getStackTrace(exception));
+        return sb.toString();
+    }
 }

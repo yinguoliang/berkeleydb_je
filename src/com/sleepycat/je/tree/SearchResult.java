@@ -19,14 +19,14 @@ package com.sleepycat.je.tree;
 public class SearchResult {
 
     public boolean exactParentFound;
-    public IN parent;
-    public int index;
+    public IN      parent;
+    public int     index;
     /*
-     * Set to true if a search stopped because a child was not resident, and
-     * we are doing a do-not-fetch kind of search.
+     * Set to true if a search stopped because a child was not resident, and we
+     * are doing a do-not-fetch kind of search.
      */
     public boolean childNotResident;
-        
+
     public SearchResult() {
         reset();
     }
@@ -40,11 +40,8 @@ public class SearchResult {
 
     @Override
     public String toString() {
-        return
-            "exactParentFound="+ exactParentFound +
-            " parent=" + ((parent == null)? "null":
-                          Long.toString(parent.getNodeId())) +
-            " index=" + index +
-            " childNotResident=" + childNotResident;
+        return "exactParentFound=" + exactParentFound + " parent="
+                + ((parent == null) ? "null" : Long.toString(parent.getNodeId())) + " index=" + index
+                + " childNotResident=" + childNotResident;
     }
 }

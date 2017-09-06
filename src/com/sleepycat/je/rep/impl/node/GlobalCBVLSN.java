@@ -34,33 +34,26 @@ import com.sleepycat.je.utilint.VLSN;
  * Represents this node's view of the global CBVLSN. Each node has its own view
  * of the global CBVLSN, based upon its local replicated copy of the rep group
  * db. There is a single instance of the GlobalCBVLSN and it exists for the
- * lifetime of the RepNode.
- *
- * A global CBVLSN is a per-environment value, and is safeguarded from
- * decreasing during the lifetime of a single RepImpl. Because nodes crash and
- * re-sync, and new nodes join, it's possible that the persisted local cbvlsns
- * can decrease, and drag the global cbvlsn value down, but those decreases
- * are ignored during the lifetime of the global CBVLSN instance.
- *
- * The global CBVLSN is used by:
- *
- * 1. The Cleaner
- * 2. The Feeder which only serves log records in the interval:
- *    [GlobalCBVLSN .. VLSNRange.last]
- * 3. The Replica which uses the interval [GlobalCBVLSN .. VLSNRange.last] at
- *    syncup time.
+ * lifetime of the RepNode. A global CBVLSN is a per-environment value, and is
+ * safeguarded from decreasing during the lifetime of a single RepImpl. Because
+ * nodes crash and re-sync, and new nodes join, it's possible that the persisted
+ * local cbvlsns can decrease, and drag the global cbvlsn value down, but those
+ * decreases are ignored during the lifetime of the global CBVLSN instance. The
+ * global CBVLSN is used by: 1. The Cleaner 2. The Feeder which only serves log
+ * records in the interval: [GlobalCBVLSN .. VLSNRange.last] 3. The Replica
+ * which uses the interval [GlobalCBVLSN .. VLSNRange.last] at syncup time.
  */
 class GlobalCBVLSN {
 
     /**
      * Used to format dates associated with a global CBVLSN value
      */
-    public static final TracerFormatter DATE_FORMAT = new TracerFormatter();
+    public static final TracerFormatter DATE_FORMAT   = new TracerFormatter();
 
-    private final RepImpl repImpl;
-    private final Logger logger;
-    private final long streamTimeoutMs;
-    private final int minRetainedVLSNs;
+    private final RepImpl               repImpl;
+    private final Logger                logger;
+    private final long                  streamTimeoutMs;
+    private final int                   minRetainedVLSNs;
 
     /*
      * ActiveSyncups serves to stop updates to the group CBVLSN when
@@ -68,30 +61,28 @@ class GlobalCBVLSN {
      * if activeSyncups > 0. ActiveSyncups and groupCBVLSN can only be updated
      * when synchronized.
      */
-    private volatile VLSN groupCBVLSN = VLSN.NULL_VLSN;
-    private int activeSyncups = 0;
+    private volatile VLSN               groupCBVLSN   = VLSN.NULL_VLSN;
+    private int                         activeSyncups = 0;
 
     /*
      * The next three fields store information about the node whose VLSN pinned
-     * the group CBVLSN.  Synchronize on the containing GlobalCBVLSN instance
+     * the group CBVLSN. Synchronize on the containing GlobalCBVLSN instance
      * when accessing them.
      */
 
     /** The name of the node whose VLSN pinned the CBVLSN, or null */
-    private String groupCBVLSNNodeName;
+    private String                      groupCBVLSNNodeName;
 
     /** The barrier time for the node that pinned the CBVLSN, or 0 */
-    private long groupCBVLSNNodeBarrierTime;
+    private long                        groupCBVLSNNodeBarrierTime;
 
     /** The latest barrier time at the time that the CBVLSN was set, or 0 */
-    private long groupCBVLSNLatestBarrierTime;
+    private long                        groupCBVLSNLatestBarrierTime;
 
     GlobalCBVLSN(RepNode repNode) {
         this.repImpl = repNode.getRepImpl();
-        streamTimeoutMs =
-            repImpl.getConfigManager().getDuration(REP_STREAM_TIMEOUT);
-        minRetainedVLSNs =
-            repImpl.getConfigManager().getInt(MIN_RETAINED_VLSNS);
+        streamTimeoutMs = repImpl.getConfigManager().getDuration(REP_STREAM_TIMEOUT);
+        minRetainedVLSNs = repImpl.getConfigManager().getInt(MIN_RETAINED_VLSNS);
         logger = LoggerUtils.getLogger(getClass());
     }
 
@@ -100,15 +91,12 @@ class GlobalCBVLSN {
     }
 
     static class CBVLSNInfo {
-        final VLSN cbvlsn;
+        final VLSN   cbvlsn;
         final String groupCBVLSNNodeName;
-        final long groupCBVLSNNodeBarrierTime;
+        final long   groupCBVLSNNodeBarrierTime;
         final String message;
 
-        CBVLSNInfo(VLSN cbvlsn,
-                   String groupCBVLSNNodeName,
-                   long groupCBVLSNNodeBarrierTime,
-                   String message) {
+        CBVLSNInfo(VLSN cbvlsn, String groupCBVLSNNodeName, long groupCBVLSNNodeBarrierTime, String message) {
             this.cbvlsn = cbvlsn;
             this.groupCBVLSNNodeName = groupCBVLSNNodeName;
             this.groupCBVLSNNodeBarrierTime = groupCBVLSNNodeBarrierTime;
@@ -117,55 +105,38 @@ class GlobalCBVLSN {
     }
 
     /**
-     * Returns the group CBVLSN and a message that describes the node whose
-     * VLSN pinned the group CBVLSN value.
+     * Returns the group CBVLSN and a message that describes the node whose VLSN
+     * pinned the group CBVLSN value.
      */
     synchronized CBVLSNInfo getCBVLSNInfo() {
         if (VLSN.NULL_VLSN.equals(groupCBVLSN)) {
-            return new CBVLSNInfo(groupCBVLSN,
-                                  groupCBVLSNNodeName,
-                                  groupCBVLSNNodeBarrierTime,
-                                  "to support initial replication");
+            return new CBVLSNInfo(groupCBVLSN, groupCBVLSNNodeName, groupCBVLSNNodeBarrierTime,
+                    "to support initial replication");
         }
         if (groupCBVLSNNodeBarrierTime == 0) {
-            return new CBVLSNInfo(groupCBVLSN,
-                                  groupCBVLSNNodeName,
-                                  groupCBVLSNNodeBarrierTime,
-                                  "to support active replication by node " +
-                                  groupCBVLSNNodeName);
+            return new CBVLSNInfo(groupCBVLSN, groupCBVLSNNodeName, groupCBVLSNNodeBarrierTime,
+                    "to support active replication by node " + groupCBVLSNNodeName);
         }
         final StringBuilder sb = new StringBuilder();
-        final long nodeLagSecs =
-            (groupCBVLSNLatestBarrierTime - groupCBVLSNNodeBarrierTime) / 1000;
-        sb.append("to support replication by node ")
-            .append(groupCBVLSNNodeName)
-            .append(", last updated ")
-            .append(DATE_FORMAT.getDate(groupCBVLSNNodeBarrierTime))
-            .append(", ")
-            .append(nodeLagSecs)
-            .append(" seconds before the most recently updated node")
-            .append(", and less than the ")
-            .append(streamTimeoutMs / 1000)
-            .append(" seconds timeout specified by the")
-            .append(" ReplicationConfig.REP_STREAM_TIMEOUT parameter");
-        return new CBVLSNInfo(groupCBVLSN,
-                              groupCBVLSNNodeName,
-                              groupCBVLSNNodeBarrierTime,
-                              sb.toString());
+        final long nodeLagSecs = (groupCBVLSNLatestBarrierTime - groupCBVLSNNodeBarrierTime) / 1000;
+        sb.append("to support replication by node ").append(groupCBVLSNNodeName).append(", last updated ")
+                .append(DATE_FORMAT.getDate(groupCBVLSNNodeBarrierTime)).append(", ").append(nodeLagSecs)
+                .append(" seconds before the most recently updated node").append(", and less than the ")
+                .append(streamTimeoutMs / 1000).append(" seconds timeout specified by the")
+                .append(" ReplicationConfig.REP_STREAM_TIMEOUT parameter");
+        return new CBVLSNInfo(groupCBVLSN, groupCBVLSNNodeName, groupCBVLSNNodeBarrierTime, sb.toString());
     }
 
     /* ActiveSyncups gates the update of the global CBVLSN */
     synchronized void syncupStarted() {
         activeSyncups++;
-        LoggerUtils.finest
-            (logger, repImpl, "activeSyncups = " + activeSyncups);
+        LoggerUtils.finest(logger, repImpl, "activeSyncups = " + activeSyncups);
     }
 
     /* ActiveSyncups gates the update of the global CBVLSN */
     synchronized void syncupEnded() {
         activeSyncups--;
-        LoggerUtils.finest
-            (logger, repImpl, "activeSyncups = " + activeSyncups);
+        LoggerUtils.finest(logger, repImpl, "activeSyncups = " + activeSyncups);
     }
 
     /**
@@ -182,27 +153,23 @@ class GlobalCBVLSN {
      * the minimum of CBVLSNs after discarding CBVLSNs that are obsolete. A
      * CBVLSN is considered obsolete, if it has not been updated within a
      * configurable time interval relative to the time that the most recent
-     * CBVLSN was updated.
-     *
-     * Note that the read of GroupInfo is not protected, and that groupInfo
-     * could be changing. That's okay, because we guarantee that none of the
-     * local CBVLSNs can be set to be LT globalCBVLSN. If a local CBVLSN is
-     * written, and we miss it, it only means that this recalcuation of global
-     * CBVLSN is too pessimistic -- it's too low.
-     *
-     * The low range of the VLSNIndex may be LTE the GlobalCBVLSN. The
-     * VLSNIndex is only truncated when a log file is actually deleted. This
-     * separates the cost of the Global CBVLSN recalculation from the cost of
-     * the VLSNIndex truncation, since the latter may require I/O. This also
-     * makes it easier and cheaper to obey the rule that the VLSNIndex
-     * truncation only occur on bucket boundaries.
-     *
-     * Secondary nodes do not appear in the RepGroupDB, but the feeder has
-     * local CBVLSN values for them which are part of this calculation.
-     * Secondary nodes and new nodes have their VLSN ranges protected by the
-     * mechanism which tries to ensure that files which may be needed by active
-     * feeders, as determined by {@link FeederManager#getMinFeederVLSN()}, are
-     * not candidates for deletion.
+     * CBVLSN was updated. Note that the read of GroupInfo is not protected, and
+     * that groupInfo could be changing. That's okay, because we guarantee that
+     * none of the local CBVLSNs can be set to be LT globalCBVLSN. If a local
+     * CBVLSN is written, and we miss it, it only means that this recalcuation
+     * of global CBVLSN is too pessimistic -- it's too low. The low range of the
+     * VLSNIndex may be LTE the GlobalCBVLSN. The VLSNIndex is only truncated
+     * when a log file is actually deleted. This separates the cost of the
+     * Global CBVLSN recalculation from the cost of the VLSNIndex truncation,
+     * since the latter may require I/O. This also makes it easier and cheaper
+     * to obey the rule that the VLSNIndex truncation only occur on bucket
+     * boundaries. Secondary nodes do not appear in the RepGroupDB, but the
+     * feeder has local CBVLSN values for them which are part of this
+     * calculation. Secondary nodes and new nodes have their VLSN ranges
+     * protected by the mechanism which tries to ensure that files which may be
+     * needed by active feeders, as determined by
+     * {@link FeederManager#getMinFeederVLSN()}, are not candidates for
+     * deletion.
      */
     void recalculate(RepGroupImpl groupInfo) {
 
@@ -220,9 +187,9 @@ class GlobalCBVLSN {
             }
 
             /*
-             * Count all nodes, including those that are in the middle of
-             * syncup and have not established their low point when finding the
-             * max time.
+             * Count all nodes, including those that are in the middle of syncup
+             * and have not established their low point when finding the max
+             * time.
              */
             final long nodeBarrierTime = nodeBarrier.getBarrierTime();
 
@@ -232,9 +199,8 @@ class GlobalCBVLSN {
                  * Use min, since it represents the real change when they are
                  * equal.
                  */
-                latestBarrierTime = cbvlsn.equals(maxCBVLSN) ?
-                    Math.min(nodeBarrierTime, latestBarrierTime) :
-                    nodeBarrierTime;
+                latestBarrierTime = cbvlsn.equals(maxCBVLSN) ? Math.min(nodeBarrierTime, latestBarrierTime)
+                        : nodeBarrierTime;
                 maxCBVLSN = cbvlsn;
 
                 /*
@@ -279,9 +245,8 @@ class GlobalCBVLSN {
                 continue;
             }
 
-            if (((latestBarrierTime - nodeBarrier.getBarrierTime()) <=
-                 streamTimeoutMs) &&
-                (newGroupCBVLSN.compareTo(nodeCBVLSN) > 0)) {
+            if (((latestBarrierTime - nodeBarrier.getBarrierTime()) <= streamTimeoutMs)
+                    && (newGroupCBVLSN.compareTo(nodeCBVLSN) > 0)) {
                 newGroupCBVLSN = nodeCBVLSN;
 
                 /*
@@ -297,12 +262,10 @@ class GlobalCBVLSN {
          * Adjust to retain min number of VLSNs, while ensuring we stay within
          * the current VLSN range.
          */
-        newGroupCBVLSN =
-            new VLSN(newGroupCBVLSN.getSequence() - minRetainedVLSNs);
+        newGroupCBVLSN = new VLSN(newGroupCBVLSN.getSequence() - minRetainedVLSNs);
 
         final VLSNIndex vlsnIndex = repImpl.getVLSNIndex();
-        final VLSN rangeFirst = (vlsnIndex != null) ?
-            vlsnIndex.getRange().getFirst() : VLSN.FIRST_VLSN;
+        final VLSN rangeFirst = (vlsnIndex != null) ? vlsnIndex.getRange().getFirst() : VLSN.FIRST_VLSN;
 
         /*
          * Environments where the minRetainedVLSNs was expanded need to ensure
@@ -312,8 +275,7 @@ class GlobalCBVLSN {
             newGroupCBVLSN = rangeFirst;
         }
 
-        updateGroupCBVLSN(groupInfo, newGroupCBVLSN, nodeName,
-                          nodeBarrierTime, latestBarrierTime);
+        updateGroupCBVLSN(groupInfo, newGroupCBVLSN, nodeName, nodeBarrierTime, latestBarrierTime);
     }
 
     /*
@@ -321,17 +283,14 @@ class GlobalCBVLSN {
      * This is to ensure that the group CBVLSN can only advance during the
      * lifetime of this instance.
      */
-    private void updateGroupCBVLSN(RepGroupImpl groupInfo,
-                                   VLSN newGroupCBVLSN,
-                                   String nodeName,
-                                   long nodeBarrierTime,
+    private void updateGroupCBVLSN(RepGroupImpl groupInfo, VLSN newGroupCBVLSN, String nodeName, long nodeBarrierTime,
                                    long latestBarrierTime) {
         boolean changed = false;
         int numGatingSyncups = 0;
         String cbvlsnLoweredMessage = null;
         VLSN oldCBVLSN = VLSN.NULL_VLSN;
 
-        synchronized(this) {
+        synchronized (this) {
 
             /*
              * Be sure not to do anything expensive in this synchronized
@@ -340,12 +299,9 @@ class GlobalCBVLSN {
             if (newGroupCBVLSN.compareTo(groupCBVLSN) > 0) {
                 if (activeSyncups == 0) {
                     VLSNRange currentRange = repImpl.getVLSNIndex().getRange();
-                    if (!currentRange.contains(newGroupCBVLSN) &&
-                        logger.isLoggable(Level.FINE)) {
-                        cbvlsnLoweredMessage =
-                            "GroupCBVLSN: " + newGroupCBVLSN +
-                            " is outside VLSN range: " + currentRange +
-                            " Current group:" + groupInfo;
+                    if (!currentRange.contains(newGroupCBVLSN) && logger.isLoggable(Level.FINE)) {
+                        cbvlsnLoweredMessage = "GroupCBVLSN: " + newGroupCBVLSN + " is outside VLSN range: "
+                                + currentRange + " Current group:" + groupInfo;
                     } else {
                         oldCBVLSN = groupCBVLSN;
                         groupCBVLSN = newGroupCBVLSN;
@@ -380,15 +336,11 @@ class GlobalCBVLSN {
             }
 
             if (changed) {
-                LoggerUtils.fine(logger, repImpl,
-                                 "Global CBVLSN changed from " + oldCBVLSN +
-                                 " to " + newGroupCBVLSN);
+                LoggerUtils.fine(logger, repImpl, "Global CBVLSN changed from " + oldCBVLSN + " to " + newGroupCBVLSN);
             }
 
             if (numGatingSyncups > 0) {
-                LoggerUtils.fine(logger, repImpl,
-                                 "Global CBVLSN update gated by " +
-                                 numGatingSyncups + " syncups");
+                LoggerUtils.fine(logger, repImpl, "Global CBVLSN update gated by " + numGatingSyncups + " syncups");
             }
         }
     }

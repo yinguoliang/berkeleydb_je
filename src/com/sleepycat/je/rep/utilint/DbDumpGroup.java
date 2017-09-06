@@ -28,19 +28,18 @@ import com.sleepycat.je.rep.impl.RepGroupImpl;
 
 /**
  * @hidden Dumps the contents of the replication group database. Reads the
- * database directly, using a read only Environment.
+ *         database directly, using a read only Environment. For internal use
+ *         only. JE users should now use com.sleepycat.je.rep.DbGroupAdmin to
+ *         display group information.
  *
- * For internal use only. JE users should now use
- * com.sleepycat.je.rep.DbGroupAdmin to display group information.
- *
- * <pre>
+ *         <pre>
  *   DbDumpGroup -h &lt;envHome&gt;
- * </pre>
+ *         </pre>
  */
 public class DbDumpGroup {
     private final PrintStream out;
-    private File envHome = null;
-    private boolean dumpCount = false;
+    private File              envHome   = null;
+    private boolean           dumpCount = false;
 
     private DbDumpGroup(PrintStream out) {
         this.out = out;
@@ -58,10 +57,9 @@ public class DbDumpGroup {
     }
 
     public void run() {
-        out.println("For internal use only. Consider using the public " +
-                    "utility com.sleepycat.je.rep.DbGroupAdmin when " +
-                    "displaying group information.");
-                    
+        out.println("For internal use only. Consider using the public "
+                + "utility com.sleepycat.je.rep.DbGroupAdmin when " + "displaying group information.");
+
         out.println("Environment: " + envHome);
         if (dumpCount) {
             dumpCount();
@@ -154,8 +152,7 @@ public class DbDumpGroup {
 
         out.println("Usage: " + DbDumpGroup.class.getName());
         out.println("       -h <dir>   # environment home directory");
-        out.println("       -dumpCount # dump all databases' count in\n" +
-                    "                    this Environment");
+        out.println("       -dumpCount # dump all databases' count in\n" + "                    this Environment");
         System.exit(-1);
     }
 }

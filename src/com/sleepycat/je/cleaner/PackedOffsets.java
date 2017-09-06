@@ -21,17 +21,16 @@ import com.sleepycat.je.log.LogUtils;
 import com.sleepycat.je.log.Loggable;
 
 /**
- * Stores a sorted list of LSN offsets in a packed short representation.  Each
- * stored value is the difference between two consecutive offsets.  The stored
- * values are stored as one or more shorts where each short holds 0x7fff
- * values.  Shorts are in LSB order.  The value is negated if more shorts for
- * the same offset follow; this works because offsets are always positive
- * values.
+ * Stores a sorted list of LSN offsets in a packed short representation. Each
+ * stored value is the difference between two consecutive offsets. The stored
+ * values are stored as one or more shorts where each short holds 0x7fff values.
+ * Shorts are in LSB order. The value is negated if more shorts for the same
+ * offset follow; this works because offsets are always positive values.
  */
 public class PackedOffsets implements Loggable {
 
     private short[] data;
-    private int size;
+    private int     size;
 
     /**
      * Creates an empty object.
@@ -92,7 +91,7 @@ public class PackedOffsets implements Loggable {
 
     /**
      * Copies the given value as a packed long to the array starting at the
-     * given index.  Returns the index of the next position in the array.
+     * given index. Returns the index of the next position in the array.
      */
     private int append(short[] to, int index, long val) {
 
@@ -116,7 +115,7 @@ public class PackedOffsets implements Loggable {
      */
     class Iterator {
 
-        private int index;
+        private int  index;
         private long priorVal;
 
         private Iterator() {
@@ -160,9 +159,7 @@ public class PackedOffsets implements Loggable {
     public int getLogSize() {
 
         int len = (data != null) ? data.length : 0;
-        return  (LogUtils.getPackedIntLogSize(size) +
-                 LogUtils.getPackedIntLogSize(len) +
-                 (len * LogUtils.SHORT_BYTES));
+        return (LogUtils.getPackedIntLogSize(size) + LogUtils.getPackedIntLogSize(len) + (len * LogUtils.SHORT_BYTES));
     }
 
     /**
@@ -220,6 +217,7 @@ public class PackedOffsets implements Loggable {
 
     /**
      * Never called.
+     * 
      * @see Loggable#getTransactionId
      */
     public long getTransactionId() {
@@ -227,8 +225,8 @@ public class PackedOffsets implements Loggable {
     }
 
     /**
-     * @see Loggable#logicalEquals
-     * Always return false, this item should never be compared.
+     * @see Loggable#logicalEquals Always return false, this item should never
+     *      be compared.
      */
     public boolean logicalEquals(Loggable other) {
         return false;

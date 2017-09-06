@@ -22,155 +22,122 @@ import com.sleepycat.je.utilint.DbLsn;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * A LogEntryHeader embodies the header information at the beginning of each
- * log entry file.
+ * A LogEntryHeader embodies the header information at the beginning of each log
+ * entry file.
  */
 public class LogEntryHeader {
 
     /**
-     * Persistent fields. Layout on disk is
-     * (invariant) checksum - 4 bytes
-     * (invariant) entry type - 1 byte
-     * (invariant) entry flags - 1 byte
-     * (invariant) offset of previous log entry - 4 bytes
-     * (invariant) item size (not counting header size) - 4 bytes
-     * (optional) vlsn - 8 bytes
-     *
-     * Flags:
-     * The provisional bit can be set for any log type in the log. It's an
+     * Persistent fields. Layout on disk is (invariant) checksum - 4 bytes
+     * (invariant) entry type - 1 byte (invariant) entry flags - 1 byte
+     * (invariant) offset of previous log entry - 4 bytes (invariant) item size
+     * (not counting header size) - 4 bytes (optional) vlsn - 8 bytes Flags: The
+     * provisional bit can be set for any log type in the log. It's an
      * indication to recovery that the entry shouldn't be processed when
-     * rebuilding the tree. See com.sleepycat.je.log.Provisional.java for
-     * the reasons why it's set.
-     *
-     * The replicated bit is set when this particular log entry is
-     * part of the replication stream and contains a VLSN in the header.
-     *
-     * The invisible bit is set when this log entry has been rolled back as
-     * part of replication syncup. The ensuing log entry has not been
+     * rebuilding the tree. See com.sleepycat.je.log.Provisional.java for the
+     * reasons why it's set. The replicated bit is set when this particular log
+     * entry is part of the replication stream and contains a VLSN in the
+     * header. The invisible bit is set when this log entry has been rolled back
+     * as part of replication syncup. The ensuing log entry has not been
      * checksum-corrected, and to read it, the invisible bit must be cloaked.
-     *
      * The VLSN_PRESENT bit is set when a VLSN is present for log version 8+,
      * and is set when the replicated bit is *not* set in the case of a cleaner
-     * migrated LN.  Prior to version 8, the replicated bit alone indicates
-     * that a VLSN is present.  For all versions, if the replicated bit is set
-     * then a VLSN is always present. [#19476]
-     *
-     *                    first version of        migrated LN
-     *                    a replicated LN
-     *                    ---------------         -----------
-     * log version 7-     replicated = true       replicated = false
-     * (JE 4.1 and        vlsn present = false    vlsn present = false
-     *  earlier)          vlsn exists in header   no vlsn in header
-     *
-     * log version 8+     replicated = true       replicated = false
-     * preserve record    vlsn present = true     vlsn present = false
-     * version = false    vlsn exists in header   no vlsn in header
-     *
-     * log version 8+     replicated = true       replicated = false
-     * preserve record    vlsn present = true     vlsn present = true
-     * version = true     vlsn exists in header   vlsn exists in header
+     * migrated LN. Prior to version 8, the replicated bit alone indicates that
+     * a VLSN is present. For all versions, if the replicated bit is set then a
+     * VLSN is always present. [#19476] first version of migrated LN a
+     * replicated LN --------------- ----------- log version 7- replicated =
+     * true replicated = false (JE 4.1 and vlsn present = false vlsn present =
+     * false earlier) vlsn exists in header no vlsn in header log version 8+
+     * replicated = true replicated = false preserve record vlsn present = true
+     * vlsn present = false version = false vlsn exists in header no vlsn in
+     * header log version 8+ replicated = true replicated = false preserve
+     * record vlsn present = true vlsn present = true version = true vlsn exists
+     * in header vlsn exists in header
      */
 
     /* The invariant size of the log entry header. */
-    public static final int MIN_HEADER_SIZE = 14;
+    public static final int   MIN_HEADER_SIZE                  = 14;
 
     /* Only used for tests and asserts. */
-    public static final int MAX_HEADER_SIZE = MIN_HEADER_SIZE + VLSN.LOG_SIZE;
+    public static final int   MAX_HEADER_SIZE                  = MIN_HEADER_SIZE + VLSN.LOG_SIZE;
 
-    public static final int CHECKSUM_BYTES = 4;
+    public static final int   CHECKSUM_BYTES                   = 4;
 
-    static final int ENTRYTYPE_OFFSET = 4;
-    static final int FLAGS_OFFSET = 5;
-    private static final int PREV_OFFSET = 6;
-    private static final int ITEMSIZE_OFFSET = 10;
-    public static final int VLSN_OFFSET = MIN_HEADER_SIZE;
+    static final int          ENTRYTYPE_OFFSET                 = 4;
+    static final int          FLAGS_OFFSET                     = 5;
+    private static final int  PREV_OFFSET                      = 6;
+    private static final int  ITEMSIZE_OFFSET                  = 10;
+    public static final int   VLSN_OFFSET                      = MIN_HEADER_SIZE;
 
     /*
-     * Flags defined in the entry header.
-     *
-     * WARNING: Flags may not be defined or used in the entry header of the
-     * FileHeader.  All flags defined here may only be used in log entries
-     * other then the FileHeader. [#16939]
+     * Flags defined in the entry header. WARNING: Flags may not be defined or
+     * used in the entry header of the FileHeader. All flags defined here may
+     * only be used in log entries other then the FileHeader. [#16939]
      */
-    private static final byte PROVISIONAL_ALWAYS_MASK = (byte) 0x80;
+    private static final byte PROVISIONAL_ALWAYS_MASK          = (byte) 0x80;
     private static final byte PROVISIONAL_BEFORE_CKPT_END_MASK = (byte) 0x40;
-    private static final byte REPLICATED_MASK = (byte) 0x20;
-    private static final byte INVISIBLE = (byte) 0x10;
-    private static final byte IGNORE_INVISIBLE = ~INVISIBLE;
-    private static final byte VLSN_PRESENT = (byte) 0x08;
-    /* Flags stored in version byte for logVersion 6 and below.*/
-    private static final byte VERSION_6_FLAGS =
-        PROVISIONAL_ALWAYS_MASK |
-        PROVISIONAL_BEFORE_CKPT_END_MASK |
-        REPLICATED_MASK;
-    private static final byte IGNORE_VERSION_6_FLAGS = ~VERSION_6_FLAGS;
+    private static final byte REPLICATED_MASK                  = (byte) 0x20;
+    private static final byte INVISIBLE                        = (byte) 0x10;
+    private static final byte IGNORE_INVISIBLE                 = ~INVISIBLE;
+    private static final byte VLSN_PRESENT                     = (byte) 0x08;
+    /* Flags stored in version byte for logVersion 6 and below. */
+    private static final byte VERSION_6_FLAGS                  = PROVISIONAL_ALWAYS_MASK
+            | PROVISIONAL_BEFORE_CKPT_END_MASK | REPLICATED_MASK;
+    private static final byte IGNORE_VERSION_6_FLAGS           = ~VERSION_6_FLAGS;
 
-    private static final byte FILE_HEADER_TYPE_NUM =
-        LogEntryType.LOG_FILE_HEADER.getTypeNum();
+    private static final byte FILE_HEADER_TYPE_NUM             = LogEntryType.LOG_FILE_HEADER.getTypeNum();
 
-    private long checksumVal;   // stored in 4 bytes as an unsigned int
-    private final byte entryType;
-    private long prevOffset;
-    private final int itemSize;
-    private VLSN vlsn;
+    private long              checksumVal;                                                                 // stored in 4 bytes as an unsigned int
+    private final byte        entryType;
+    private long              prevOffset;
+    private final int         itemSize;
+    private VLSN              vlsn;
 
     /*
-     * Prior to log version 6, a type-specific version was stored in each
-     * entry, and was packed together with the flags in a single byte.
-     *
-     * For version 6, we changed to use a global version (not type specific),
-     * but it was stored in each entry, packed with the flags as in earlier
-     * versions, as well as being stored redundantly in the FileHeader.  The
-     * entry header and file header versions are always the same for all
-     * entries in a file.  We flip the log file to guarantee this, when running
-     * for the first time with an upgraded JE with a new log version.
-     *
-     * For version 7 and above, the version is stored only in the FileHeader,
-     * freeing the space formerly taken by the version in each entry for use
-     * by flag bits.  The version is not stored in each entry; however, the
-     * version is still maintained in this in-memory object for two reasons:
-     *
-     * 1. When reading log files prior to version 6, each entry potentially has
-     *    a different version.
-     * 2. Convenience of access to the version when processing log entries.
-     *
-     * [#16939]
+     * Prior to log version 6, a type-specific version was stored in each entry,
+     * and was packed together with the flags in a single byte. For version 6,
+     * we changed to use a global version (not type specific), but it was stored
+     * in each entry, packed with the flags as in earlier versions, as well as
+     * being stored redundantly in the FileHeader. The entry header and file
+     * header versions are always the same for all entries in a file. We flip
+     * the log file to guarantee this, when running for the first time with an
+     * upgraded JE with a new log version. For version 7 and above, the version
+     * is stored only in the FileHeader, freeing the space formerly taken by the
+     * version in each entry for use by flag bits. The version is not stored in
+     * each entry; however, the version is still maintained in this in-memory
+     * object for two reasons: 1. When reading log files prior to version 6,
+     * each entry potentially has a different version. 2. Convenience of access
+     * to the version when processing log entries. [#16939]
      */
-    private int entryVersion;
+    private int               entryVersion;
 
     /* Version flag fields */
-    private Provisional provisional;
-    private boolean replicated;
-    private boolean invisible;
-    private boolean vlsnPresent;
+    private Provisional       provisional;
+    private boolean           replicated;
+    private boolean           invisible;
+    private boolean           vlsnPresent;
 
     /**
      * For reading a log entry.
      *
      * @param entryBuffer the buffer containing at least the first
-     * MIN_HEADER_SIZE bytes of the entry header.
-     *
+     *            MIN_HEADER_SIZE bytes of the entry header.
      * @param logVersion is the log version of the file that contains the given
-     * buffer, and is obtained from the file header.  Note that for the file
-     * header entry itself, UNKNOWN_FILE_HEADER_VERSION may be passed.
-     *
+     *            buffer, and is obtained from the file header. Note that for
+     *            the file header entry itself, UNKNOWN_FILE_HEADER_VERSION may
+     *            be passed.
      * @param lsn is the LSN of the entry, for exception reporting.
      */
-    public LogEntryHeader(ByteBuffer entryBuffer, int logVersion, long lsn)
-        throws ChecksumException {
+    public LogEntryHeader(ByteBuffer entryBuffer, int logVersion, long lsn) throws ChecksumException {
 
-        assert logVersion == LogEntryType.UNKNOWN_FILE_HEADER_VERSION ||
-            (logVersion >= LogEntryType.FIRST_LOG_VERSION &&
-             logVersion <= LogEntryType.LOG_VERSION) : logVersion;
+        assert logVersion == LogEntryType.UNKNOWN_FILE_HEADER_VERSION || (logVersion >= LogEntryType.FIRST_LOG_VERSION
+                && logVersion <= LogEntryType.LOG_VERSION) : logVersion;
 
         checksumVal = LogUtils.readUnsignedInt(entryBuffer);
         entryType = entryBuffer.get();
         if (!LogEntryType.isValidType(entryType)) {
-            throw new ChecksumException(
-                "Invalid log entry type: " + entryType +
-                " lsn=" + DbLsn.getNoFormatString(lsn) +
-                " bufPosition=" + entryBuffer.position() +
-                " bufRemaining=" + entryBuffer.remaining());
+            throw new ChecksumException("Invalid log entry type: " + entryType + " lsn=" + DbLsn.getNoFormatString(lsn)
+                    + " bufPosition=" + entryBuffer.position() + " bufRemaining=" + entryBuffer.remaining());
         }
 
         if (entryType == FILE_HEADER_TYPE_NUM) {
@@ -180,16 +147,14 @@ public class LogEntryHeader {
             entryBuffer.get();
             initFlags(0);
         } else {
-            if (logVersion == LogEntryType.UNKNOWN_FILE_HEADER_VERSION ) {
+            if (logVersion == LogEntryType.UNKNOWN_FILE_HEADER_VERSION) {
                 /*
                  * If we are reading a log header the type should be
                  * FILE_HEADER_TYPE_NUM.
                  */
-                throw new ChecksumException(
-                    "Wrong entry type for header: " + entryType +
-                    " lsn=" + DbLsn.getNoFormatString(lsn) +
-                    " bufPosition=" + entryBuffer.position() +
-                    " bufRemaining=" + entryBuffer.remaining());
+                throw new ChecksumException("Wrong entry type for header: " + entryType + " lsn="
+                        + DbLsn.getNoFormatString(lsn) + " bufPosition=" + entryBuffer.position() + " bufRemaining="
+                        + entryBuffer.remaining());
             } else if (logVersion <= 6) {
                 /* Before version 7, flags and version were packed together. */
                 entryVersion = entryBuffer.get();
@@ -206,20 +171,15 @@ public class LogEntryHeader {
         prevOffset = LogUtils.readUnsignedInt(entryBuffer);
         itemSize = LogUtils.readInt(entryBuffer);
         if (itemSize < 0) {
-            throw new ChecksumException(
-                "Invalid log entry size: " + itemSize +
-                " lsn=" + DbLsn.getNoFormatString(lsn) +
-                " bufPosition=" + entryBuffer.position() +
-                " bufRemaining=" + entryBuffer.remaining());
+            throw new ChecksumException("Invalid log entry size: " + itemSize + " lsn=" + DbLsn.getNoFormatString(lsn)
+                    + " bufPosition=" + entryBuffer.position() + " bufRemaining=" + entryBuffer.remaining());
         }
     }
 
     /**
      * For writing a log header. public for unit tests.
      */
-    public LogEntryHeader(LogEntry entry,
-                          Provisional provisional,
-                          ReplicationContext repContext) {
+    public LogEntryHeader(LogEntry entry, Provisional provisional, ReplicationContext repContext) {
 
         LogEntryType logEntryType = entry.getLogType();
         entryType = logEntryType.getTypeNum();
@@ -227,9 +187,8 @@ public class LogEntryHeader {
         this.itemSize = entry.getSize();
         this.provisional = provisional;
 
-        assert (!((!logEntryType.isReplicationPossible()) &&
-                  repContext.inReplicationStream())) :
-               logEntryType + " should never be replicated.";
+        assert (!((!logEntryType.isReplicationPossible()) && repContext.inReplicationStream())) : logEntryType
+                + " should never be replicated.";
 
         if (logEntryType.isReplicationPossible()) {
             this.replicated = repContext.inReplicationStream();
@@ -240,25 +199,20 @@ public class LogEntryHeader {
 
         /*
          * If we about to write a new replicated entry, the VLSN will be null
-         * and mustGenerateVLSN will return true.  For a cleaner migrated LN
-         * that was replicated, the VLSN will be non-null and mustGenerateVLSN
-         * will return false.  [#19476]
+         * and mustGenerateVLSN will return true. For a cleaner migrated LN that
+         * was replicated, the VLSN will be non-null and mustGenerateVLSN will
+         * return false. [#19476]
          */
-        vlsnPresent = repContext.getClientVLSN() != null ||
-            repContext.mustGenerateVLSN();
+        vlsnPresent = repContext.getClientVLSN() != null || repContext.mustGenerateVLSN();
     }
 
     /**
      * For reading a replication message. The node-specific parts of the header
      * are not needed.
      */
-    public LogEntryHeader(byte entryType,
-                          int entryVersion,
-                          int itemSize,
-                          VLSN vlsn) {
+    public LogEntryHeader(byte entryType, int entryVersion, int itemSize, VLSN vlsn) {
 
-        assert ((vlsn != null) && !vlsn.isNull()) :
-               "vlsn = " + vlsn;
+        assert ((vlsn != null) && !vlsn.isNull()) : "vlsn = " + vlsn;
 
         this.entryType = entryType;
         this.entryVersion = entryVersion;
@@ -284,7 +238,7 @@ public class LogEntryHeader {
 
     /**
      * Called to set the version for a file header entry after reading the
-     * version from the item data.  See FileHeaderEntry.readEntry.  [#16939]
+     * version from the item data. See FileHeaderEntry.readEntry. [#16939]
      */
     public void setFileHeaderVersion(final int logVersion) {
         entryVersion = logVersion;
@@ -345,16 +299,16 @@ public class LogEntryHeader {
     }
 
     /**
-     * @return the number of bytes used to store the header, excepting
-     * the checksum field.
+     * @return the number of bytes used to store the header, excepting the
+     *         checksum field.
      */
     int getSizeMinusChecksum() {
-        return getSize()- CHECKSUM_BYTES;
+        return getSize() - CHECKSUM_BYTES;
     }
 
     /**
-     * @return the number of bytes used to store the header, excepting
-     * the checksum field.
+     * @return the number of bytes used to store the header, excepting the
+     *         checksum field.
      */
     int getInvariantSizeMinusChecksum() {
         return MIN_HEADER_SIZE - CHECKSUM_BYTES;
@@ -373,10 +327,8 @@ public class LogEntryHeader {
 
     /**
      * Serialize this object into the buffer and leave the buffer positioned in
-     * the right place to write the following item.  The checksum, prevEntry,
-     * and vlsn values will filled in later on.
-     *
-     * public for unit tests.
+     * the right place to write the following item. The checksum, prevEntry, and
+     * vlsn values will filled in later on. public for unit tests.
      */
     public void writeToLog(ByteBuffer entryBuffer) {
 
@@ -400,15 +352,15 @@ public class LogEntryHeader {
         entryBuffer.put(flags);
 
         /*
-         * Leave room for the prev offset, which must be added under
-         * the log write latch. Proceed to write the item size.
+         * Leave room for the prev offset, which must be added under the log
+         * write latch. Proceed to write the item size.
          */
         entryBuffer.position(ITEMSIZE_OFFSET);
         LogUtils.writeInt(entryBuffer, itemSize);
 
         /*
-         * Leave room for a VLSN if needed, must also be generated
-         * under the log write latch.
+         * Leave room for a VLSN if needed, must also be generated under the log
+         * write latch.
          */
         if (vlsnPresent) {
             entryBuffer.position(entryBuffer.position() + VLSN.LOG_SIZE);
@@ -417,18 +369,13 @@ public class LogEntryHeader {
 
     /**
      * Add those parts of the header that must be calculated later to the
-     * entryBuffer, and also assign the fields in this class.
-     * That's
-     * - the prev offset, which must be done within the log write latch to
-     *   be sure what that lsn is
-     * - the VLSN, for the same reason
-     * - the checksumVal, which must be added last, after all other
-     *   fields are marshalled.
-     * (public for unit tests)
+     * entryBuffer, and also assign the fields in this class. That's - the prev
+     * offset, which must be done within the log write latch to be sure what
+     * that lsn is - the VLSN, for the same reason - the checksumVal, which must
+     * be added last, after all other fields are marshalled. (public for unit
+     * tests)
      */
-    public ByteBuffer addPostMarshallingInfo(ByteBuffer entryBuffer,
-                                             long lastOffset,
-                                             VLSN vlsn) {
+    public ByteBuffer addPostMarshallingInfo(ByteBuffer entryBuffer, long lastOffset, VLSN vlsn) {
 
         /* Add the prev pointer */
         prevOffset = lastOffset;
@@ -443,14 +390,13 @@ public class LogEntryHeader {
         }
 
         /*
-         * Now calculate the checksumVal and write it into the buffer.  Be sure
+         * Now calculate the checksumVal and write it into the buffer. Be sure
          * to set the field in this instance, for use later when printing or
          * debugging the header.
          */
         Checksum checksum = Adler32.makeChecksum();
-        checksum.update(entryBuffer.array(),
-                        entryBuffer.arrayOffset() + CHECKSUM_BYTES,
-                        entryBuffer.limit() - CHECKSUM_BYTES);
+        checksum.update(entryBuffer.array(), entryBuffer.arrayOffset() + CHECKSUM_BYTES,
+                entryBuffer.limit() - CHECKSUM_BYTES);
         entryBuffer.position(0);
         checksumVal = checksum.getValue();
         LogUtils.writeUnsignedInt(entryBuffer, checksumVal);
@@ -472,17 +418,17 @@ public class LogEntryHeader {
     }
 
     /**
-     * Dump the header without enclosing <header> tags. Used for
-     * DbPrintLog, to make the header attributes in the <entry> tag, for
-     * a more compact rendering.
+     * Dump the header without enclosing <header> tags. Used for DbPrintLog, to
+     * make the header attributes in the <entry> tag, for a more compact
+     * rendering.
+     * 
      * @param sb destination string buffer
      * @param verbose if true, dump the full, verbose version
      */
     void dumpLogNoTag(StringBuilder sb, boolean verbose) {
         LogEntryType lastEntryType = LogEntryType.findType(entryType);
 
-        sb.append("type=\"").append(lastEntryType.toStringNoVersion()).
-            append("/").append(entryVersion);
+        sb.append("type=\"").append(lastEntryType.toStringNoVersion()).append("/").append(entryVersion);
         if (provisional != Provisional.NO) {
             sb.append("\" prov=\"");
             sb.append(provisional);
@@ -512,9 +458,9 @@ public class LogEntryHeader {
 
     /**
      * For use in special case where commits are transformed to aborts because
-     * of i/o errors during a logBuffer flush. See [11271].
-     * Assumes that the entryBuffer is positioned at the start of the item.
-     * Return with the entryBuffer positioned to the end of the log entry.
+     * of i/o errors during a logBuffer flush. See [11271]. Assumes that the
+     * entryBuffer is positioned at the start of the item. Return with the
+     * entryBuffer positioned to the end of the log entry.
      */
     void convertCommitToAbort(ByteBuffer entryBuffer) {
         assert (entryType == LogEntryType.LOG_TXN_COMMIT.getTypeNum());
@@ -523,21 +469,18 @@ public class LogEntryHeader {
         int itemStart = entryBuffer.position();
 
         /* Back up to where the type is stored and change the type. */
-        int entryTypePosition =
-            itemStart - (getSize() - ENTRYTYPE_OFFSET);
+        int entryTypePosition = itemStart - (getSize() - ENTRYTYPE_OFFSET);
         entryBuffer.position(entryTypePosition);
         entryBuffer.put(LogEntryType.LOG_TXN_ABORT.getTypeNum());
 
         /*
-         * Recalculate the checksum. This byte buffer could be large,
-         * so don't just turn the whole buffer into an array to pass
-         * into the checksum object.
+         * Recalculate the checksum. This byte buffer could be large, so don't
+         * just turn the whole buffer into an array to pass into the checksum
+         * object.
          */
         Checksum checksum = Adler32.makeChecksum();
         int checksumSize = itemSize + (getSize() - CHECKSUM_BYTES);
-        checksum.update(entryBuffer.array(),
-                        entryTypePosition + entryBuffer.arrayOffset(),
-                        checksumSize);
+        checksum.update(entryBuffer.array(), entryTypePosition + entryBuffer.arrayOffset(), checksumSize);
         entryBuffer.position(itemStart - getSize());
         checksumVal = checksum.getValue();
         LogUtils.writeUnsignedInt(entryBuffer, checksumVal);
@@ -557,11 +500,10 @@ public class LogEntryHeader {
 
         LogEntryType lastEntryType = LogEntryType.findType(entryType);
 
-        sb.append(lastEntryType.toStringNoVersion()).
-            append("/").append(entryVersion);
+        sb.append(lastEntryType.toStringNoVersion()).append("/").append(entryVersion);
 
         if (vlsn != null) {
-            sb.append(" vlsn=" ).append(vlsn);
+            sb.append(" vlsn=").append(vlsn);
         } else {
             sb.append("\"");
         }
@@ -577,9 +519,7 @@ public class LogEntryHeader {
 
     /**
      * @return true if two log headers are logically the same. This check will
-     * ignore the log version.
-     *
-     * Used by replication.
+     *         ignore the log version. Used by replication.
      */
     public boolean logicalEqualsIgnoreVersion(LogEntryHeader other) {
 
@@ -588,17 +528,14 @@ public class LogEntryHeader {
          * on-disk compression can make itemSize vary if the entry has VLSNs
          * that were packed differently.
          */
-        return ((getVLSN().equals(other.getVLSN())) &&
-                (getReplicated() == other.getReplicated()) &&
-                (isInvisible() == other.isInvisible()) &&
-                (LogEntryType.compareTypeAndVersion(getVersion(), getType(),
-                                                    other.getVersion(),
-                                                    other.getType())));
+        return ((getVLSN().equals(other.getVLSN())) && (getReplicated() == other.getReplicated())
+                && (isInvisible() == other.isInvisible())
+                && (LogEntryType.compareTypeAndVersion(getVersion(), getType(), other.getVersion(), other.getType())));
     }
 
     /**
-     * May be called after reading MIN_HEADER_SIZE bytes to determine
-     * whether more bytes (getVariablePortionSize) should be read.
+     * May be called after reading MIN_HEADER_SIZE bytes to determine whether
+     * more bytes (getVariablePortionSize) should be read.
      */
     public boolean isVariableLength() {
         /* Currently only entries with VLSNs are variable length. */
@@ -615,11 +552,11 @@ public class LogEntryHeader {
     /**
      * Turn off the invisible bit in the byte buffer which backs this log entry
      * header.
+     * 
      * @param logHeaderStartPosition the byte position of the start of the log
-     * entry header.
+     *            entry header.
      */
-    public static void turnOffInvisible(ByteBuffer buffer,
-                                        int logHeaderStartPosition) {
+    public static void turnOffInvisible(ByteBuffer buffer, int logHeaderStartPosition) {
 
         int flagsPosition = logHeaderStartPosition + FLAGS_OFFSET;
         byte flags = buffer.get(flagsPosition);

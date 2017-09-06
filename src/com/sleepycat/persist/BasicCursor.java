@@ -46,16 +46,14 @@ import com.sleepycat.util.keyrange.RangeCursor;
  */
 class BasicCursor<V> implements EntityCursor<V> {
 
-    RangeCursor cursor;
+    RangeCursor     cursor;
     ValueAdapter<V> adapter;
-    boolean updateAllowed;
-    DatabaseEntry key;
-    DatabaseEntry pkey;
-    DatabaseEntry data;
+    boolean         updateAllowed;
+    DatabaseEntry   key;
+    DatabaseEntry   pkey;
+    DatabaseEntry   data;
 
-    BasicCursor(RangeCursor cursor,
-                ValueAdapter<V> adapter,
-                boolean updateAllowed) {
+    BasicCursor(RangeCursor cursor, ValueAdapter<V> adapter, boolean updateAllowed) {
         this.cursor = cursor;
         this.adapter = adapter;
         this.updateAllowed = updateAllowed;
@@ -64,179 +62,137 @@ class BasicCursor<V> implements EntityCursor<V> {
         data = adapter.initData();
     }
 
-    public V first()
-        throws DatabaseException {
+    public V first() throws DatabaseException {
 
         return first(null);
     }
 
-    public V first(LockMode lockMode)
-        throws DatabaseException {
+    public V first(LockMode lockMode) throws DatabaseException {
 
-        return returnValue(
-            cursor.getFirst(key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getFirst(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
-    public V last()
-        throws DatabaseException {
+    public V last() throws DatabaseException {
 
         return last(null);
     }
 
-    public V last(LockMode lockMode)
-        throws DatabaseException {
+    public V last(LockMode lockMode) throws DatabaseException {
 
-        return returnValue(
-            cursor.getLast(key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getLast(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
-    public V next()
-        throws DatabaseException {
+    public V next() throws DatabaseException {
 
         return next(null);
     }
 
-    public V next(LockMode lockMode)
-        throws DatabaseException {
+    public V next(LockMode lockMode) throws DatabaseException {
 
-        return returnValue(
-            cursor.getNext(key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getNext(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
-    public V nextDup()
-        throws DatabaseException {
+    public V nextDup() throws DatabaseException {
 
         return nextDup(null);
     }
 
-    public V nextDup(LockMode lockMode)
-        throws DatabaseException {
+    public V nextDup(LockMode lockMode) throws DatabaseException {
 
         checkInitialized();
-        return returnValue(
-            cursor.getNextDup(key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getNextDup(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
-    public V nextNoDup()
-        throws DatabaseException {
+    public V nextNoDup() throws DatabaseException {
 
         return nextNoDup(null);
     }
 
-    public V nextNoDup(LockMode lockMode)
-        throws DatabaseException {
+    public V nextNoDup(LockMode lockMode) throws DatabaseException {
 
-        return returnValue(
-            cursor.getNextNoDup(
-                key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getNextNoDup(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
-    public V prev()
-        throws DatabaseException {
+    public V prev() throws DatabaseException {
 
         return prev(null);
     }
 
-    public V prev(LockMode lockMode)
-        throws DatabaseException {
+    public V prev(LockMode lockMode) throws DatabaseException {
 
-        return returnValue(
-            cursor.getPrev(key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getPrev(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
-    public V prevDup()
-        throws DatabaseException {
+    public V prevDup() throws DatabaseException {
 
         return prevDup(null);
     }
 
-    public V prevDup(LockMode lockMode)
-        throws DatabaseException {
+    public V prevDup(LockMode lockMode) throws DatabaseException {
 
         checkInitialized();
-        return returnValue(
-            cursor.getPrevDup(key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getPrevDup(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
-    public V prevNoDup()
-        throws DatabaseException {
+    public V prevNoDup() throws DatabaseException {
 
         return prevNoDup(null);
     }
 
-    public V prevNoDup(LockMode lockMode)
-        throws DatabaseException {
+    public V prevNoDup(LockMode lockMode) throws DatabaseException {
 
-        return returnValue(
-            cursor.getPrevNoDup(
-                key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getPrevNoDup(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
-    public V current()
-        throws DatabaseException {
+    public V current() throws DatabaseException {
 
         return current(null);
     }
 
-    public V current(LockMode lockMode)
-        throws DatabaseException {
+    public V current(LockMode lockMode) throws DatabaseException {
 
         checkInitialized();
-        return returnValue(
-            cursor.getCurrent(key, pkey, data, OpReadOptions.make(lockMode)));
+        return returnValue(cursor.getCurrent(key, pkey, data, OpReadOptions.make(lockMode)));
     }
 
     /* <!-- begin JE only --> */
-    public EntityResult<V> get(Get getType, ReadOptions options)
-        throws DatabaseException {
+    public EntityResult<V> get(Get getType, ReadOptions options) throws DatabaseException {
 
         OpReadOptions opOptions = OpReadOptions.make(options);
 
         switch (getType) {
-        case CURRENT:
-            return returnResult(
-                cursor.getCurrent(key, pkey, data, opOptions));
-        case FIRST:
-            return returnResult(
-                cursor.getFirst(key, pkey, data, opOptions));
-        case LAST:
-            return returnResult(
-                cursor.getLast(key, pkey, data, opOptions));
-        case NEXT:
-            return returnResult(
-                cursor.getNext(key, pkey, data, opOptions));
-        case NEXT_DUP:
-            return returnResult(
-                cursor.getNextDup(key, pkey, data, opOptions));
-        case NEXT_NO_DUP:
-            return returnResult(
-                cursor.getNextNoDup(key, pkey, data, opOptions));
-        case PREV:
-            return returnResult(
-                cursor.getPrev(key, pkey, data, opOptions));
-        case PREV_DUP:
-            return returnResult(
-                cursor.getPrevDup(key, pkey, data, opOptions));
-        case PREV_NO_DUP:
-            return returnResult(
-                cursor.getPrevNoDup(key, pkey, data, opOptions));
-        default:
-            throw new IllegalArgumentException(
-                "getType not allowed: " + getType);
+            case CURRENT:
+                return returnResult(cursor.getCurrent(key, pkey, data, opOptions));
+            case FIRST:
+                return returnResult(cursor.getFirst(key, pkey, data, opOptions));
+            case LAST:
+                return returnResult(cursor.getLast(key, pkey, data, opOptions));
+            case NEXT:
+                return returnResult(cursor.getNext(key, pkey, data, opOptions));
+            case NEXT_DUP:
+                return returnResult(cursor.getNextDup(key, pkey, data, opOptions));
+            case NEXT_NO_DUP:
+                return returnResult(cursor.getNextNoDup(key, pkey, data, opOptions));
+            case PREV:
+                return returnResult(cursor.getPrev(key, pkey, data, opOptions));
+            case PREV_DUP:
+                return returnResult(cursor.getPrevDup(key, pkey, data, opOptions));
+            case PREV_NO_DUP:
+                return returnResult(cursor.getPrevNoDup(key, pkey, data, opOptions));
+            default:
+                throw new IllegalArgumentException("getType not allowed: " + getType);
         }
     }
     /* <!-- end JE only --> */
 
-    public int count()
-        throws DatabaseException {
+    public int count() throws DatabaseException {
 
         checkInitialized();
         return cursor.count();
     }
 
     /* <!-- begin JE only --> */
-    public long countEstimate()
-        throws DatabaseException {
+    public long countEstimate() throws DatabaseException {
 
         checkInitialized();
         return cursor.getCursor().countEstimate();
@@ -244,29 +200,17 @@ class BasicCursor<V> implements EntityCursor<V> {
     /* <!-- end JE only --> */
 
     /* <!-- begin JE only --> */
-    /* for FUTURE use
-    public long skipNext(long maxCount) {
-        return skipNext(maxCount, null);
-    }
-
-    public long skipNext(long maxCount, LockMode lockMode) {
-        checkInitialized();
-        return cursor.getCursor().skipNext
-            (maxCount, BasicIndex.NO_RETURN_ENTRY, BasicIndex.NO_RETURN_ENTRY,
-             lockMode);
-    }
-
-    public long skipPrev(long maxCount) {
-        return skipPrev(maxCount, null);
-    }
-
-    public long skipPrev(long maxCount, LockMode lockMode) {
-        checkInitialized();
-        return cursor.getCursor().skipPrev
-            (maxCount, BasicIndex.NO_RETURN_ENTRY, BasicIndex.NO_RETURN_ENTRY,
-             lockMode);
-    }
-    */
+    /*
+     * for FUTURE use public long skipNext(long maxCount) { return
+     * skipNext(maxCount, null); } public long skipNext(long maxCount, LockMode
+     * lockMode) { checkInitialized(); return cursor.getCursor().skipNext
+     * (maxCount, BasicIndex.NO_RETURN_ENTRY, BasicIndex.NO_RETURN_ENTRY,
+     * lockMode); } public long skipPrev(long maxCount) { return
+     * skipPrev(maxCount, null); } public long skipPrev(long maxCount, LockMode
+     * lockMode) { checkInitialized(); return cursor.getCursor().skipPrev
+     * (maxCount, BasicIndex.NO_RETURN_ENTRY, BasicIndex.NO_RETURN_ENTRY,
+     * lockMode); }
+     */
     /* <!-- end JE only --> */
 
     public Iterator<V> iterator() {
@@ -277,8 +221,7 @@ class BasicCursor<V> implements EntityCursor<V> {
         return new BasicIterator(this, lockMode);
     }
 
-    public boolean update(V entity)
-        throws DatabaseException {
+    public boolean update(V entity) throws DatabaseException {
 
         /* <!-- begin JE only --> */
         if (DbCompat.IS_JE) {
@@ -287,8 +230,7 @@ class BasicCursor<V> implements EntityCursor<V> {
         /* <!-- end JE only --> */
 
         if (!updateAllowed) {
-            throw new UnsupportedOperationException(
-                "Update not allowed on a secondary index");
+            throw new UnsupportedOperationException("Update not allowed on a secondary index");
         }
         checkInitialized();
         adapter.valueToData(entity, data);
@@ -297,12 +239,10 @@ class BasicCursor<V> implements EntityCursor<V> {
     }
 
     /* <!-- begin JE only --> */
-    public OperationResult update(V entity, WriteOptions options)
-        throws DatabaseException {
+    public OperationResult update(V entity, WriteOptions options) throws DatabaseException {
 
         if (!updateAllowed) {
-            throw new UnsupportedOperationException(
-                "Update not allowed on a secondary index");
+            throw new UnsupportedOperationException("Update not allowed on a secondary index");
         }
         checkInitialized();
         adapter.valueToData(entity, data);
@@ -311,8 +251,7 @@ class BasicCursor<V> implements EntityCursor<V> {
     }
     /* <!-- end JE only --> */
 
-    public boolean delete()
-        throws DatabaseException {
+    public boolean delete() throws DatabaseException {
 
         /* <!-- begin JE only --> */
         if (DbCompat.IS_JE) {
@@ -325,22 +264,19 @@ class BasicCursor<V> implements EntityCursor<V> {
     }
 
     /* <!-- begin JE only --> */
-    public OperationResult delete(WriteOptions options)
-        throws DatabaseException {
+    public OperationResult delete(WriteOptions options) throws DatabaseException {
 
         checkInitialized();
         return cursor.getCursor().delete(options);
     }
     /* <!-- end JE only --> */
 
-    public EntityCursor<V> dup()
-        throws DatabaseException {
+    public EntityCursor<V> dup() throws DatabaseException {
 
         return new BasicCursor<V>(cursor.dup(true), adapter, updateAllowed);
     }
 
-    public void close()
-        throws DatabaseException {
+    public void close() throws DatabaseException {
 
         cursor.close();
     }
@@ -357,12 +293,10 @@ class BasicCursor<V> implements EntityCursor<V> {
     }
     /* <!-- end JE only --> */
 
-    void checkInitialized()
-        throws IllegalStateException {
+    void checkInitialized() throws IllegalStateException {
 
         if (!cursor.isInitialized()) {
-            throw new IllegalStateException
-                ("Cursor is not initialized at a valid position");
+            throw new IllegalStateException("Cursor is not initialized at a valid position");
         }
     }
 
@@ -381,9 +315,7 @@ class BasicCursor<V> implements EntityCursor<V> {
     /* <!-- begin JE only --> */
     EntityResult<V> returnResult(OpResult opResult) {
         V value = returnValue(opResult);
-        return (value != null) ?
-            new EntityResult<>(value, opResult.jeResult) :
-            null;
+        return (value != null) ? new EntityResult<>(value, opResult.jeResult) : null;
     }
     /* <!-- end JE only --> */
 }

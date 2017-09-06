@@ -24,44 +24,33 @@ import com.sleepycat.je.rep.ReplicatedEnvironment;
 import com.sleepycat.je.rep.RepInternal;
 
 /**
- * A concrete MBean for monitoring a replicated open JE Environment.
- *
- * It not only has the same attributes and operations as the standalone 
- * JEMonitor, but also has some special replicated related operations.
+ * A concrete MBean for monitoring a replicated open JE Environment. It not only
+ * has the same attributes and operations as the standalone JEMonitor, but also
+ * has some special replicated related operations.
  */
 public class RepJEMonitor extends JEMonitor {
 
     /**
-     * @hidden
-     *
-     *  Name for dumping rep stats operation. 
+     * @hidden Name for dumping rep stats operation.
      */
-    public static final String OP_DUMP_REPSTATS = "getReplicationStats";
+    public static final String              OP_DUMP_REPSTATS      = "getReplicationStats";
 
-    /** 
-     * @hidden
-     *
-     * Name for getting rep stats tips. 
+    /**
+     * @hidden Name for getting rep stats tips.
      */
-    public static final String OP_GET_REP_TIPS = "getRepTips";
+    public static final String              OP_GET_REP_TIPS       = "getRepTips";
 
     /* Name for getting RepImpl state. */
-    static final String OP_DUMP_STATE = "dumpReplicationState";
+    static final String                     OP_DUMP_STATE         = "dumpReplicationState";
 
     /* Define the dumping rep stats operation. */
-    private static final MBeanOperationInfo OP_DUMP_REPSTATS_INFO =
-        new MBeanOperationInfo
-        (OP_DUMP_REPSTATS,
-         "Dump environment's replicated stats.",
-         statParams, "java.lang.String", MBeanOperationInfo.INFO);
+    private static final MBeanOperationInfo OP_DUMP_REPSTATS_INFO = new MBeanOperationInfo(OP_DUMP_REPSTATS,
+            "Dump environment's replicated stats.", statParams, "java.lang.String", MBeanOperationInfo.INFO);
 
-    private static final MBeanOperationInfo OP_DUMP_STATE_INFO =
-        new MBeanOperationInfo
-        (OP_DUMP_STATE,
-         "Dump replicated environment state, including current position in " +
-         "replication stream and replication group database.", 
-         new MBeanParameterInfo[0],
-         "java.lang.String", MBeanOperationInfo.INFO);
+    private static final MBeanOperationInfo OP_DUMP_STATE_INFO    = new MBeanOperationInfo(OP_DUMP_STATE,
+            "Dump replicated environment state, including current position in "
+                    + "replication stream and replication group database.",
+            new MBeanParameterInfo[0], "java.lang.String", MBeanOperationInfo.INFO);
 
     protected RepJEMonitor(Environment env) {
         super(env);
@@ -75,15 +64,11 @@ public class RepJEMonitor extends JEMonitor {
     protected void initClassFields() {
         currentClass = RepJEMonitor.class;
         className = "RepJEMonitor";
-        DESCRIPTION = "Monitor an open replicated Berkeley DB, " +
-                      "Java Edition environment.";
+        DESCRIPTION = "Monitor an open replicated Berkeley DB, " + "Java Edition environment.";
     }
 
     @Override
-    public Object invoke(String actionName,
-                         Object[] params,
-                         String[] signature)
-        throws MBeanException {
+    public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException {
 
         if (actionName == null) {
             throw new IllegalArgumentException("ActionName can't be null.");
@@ -91,14 +76,12 @@ public class RepJEMonitor extends JEMonitor {
 
         try {
             if (actionName.equals(OP_DUMP_REPSTATS)) {
-                return ((ReplicatedEnvironment) env).
-                    getRepStats(getStatsConfig(params)).toString();
+                return ((ReplicatedEnvironment) env).getRepStats(getStatsConfig(params)).toString();
             } else if (actionName.equals(OP_GET_REP_TIPS)) {
-                return ((ReplicatedEnvironment) env).getRepStats
-                    (getStatsConfig(new Object[] {false, true})).getTips();
+                return ((ReplicatedEnvironment) env).getRepStats(getStatsConfig(new Object[] { false, true }))
+                        .getTips();
             } else if (actionName.equals(OP_DUMP_STATE)) {
-                return RepInternal.getNonNullRepImpl
-                    ((ReplicatedEnvironment) env).dumpState();
+                return RepInternal.getNonNullRepImpl((ReplicatedEnvironment) env).dumpState();
             }
         } catch (DatabaseException e) {
             throw new MBeanException(new RuntimeException(e.getMessage()));
@@ -108,8 +91,7 @@ public class RepJEMonitor extends JEMonitor {
     }
 
     @Override
-    protected void doRegisterMBean(Environment useEnv) 
-        throws Exception {
+    protected void doRegisterMBean(Environment useEnv) throws Exception {
 
         server.registerMBean(new RepJEMonitor(useEnv), jeName);
     }

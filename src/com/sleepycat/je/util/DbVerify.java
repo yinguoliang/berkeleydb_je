@@ -41,64 +41,61 @@ import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
  * Verifies the internal structures of a database.
- *
- * <p>When using this utility as a command line program, and the
- * application uses custom key comparators, be sure to add the jars or
- * classes to the classpath that contain the application's comparator
- * classes.</p>
- *
- * <p>To verify a database and write the errors to stream:</p>
+ * <p>
+ * When using this utility as a command line program, and the application uses
+ * custom key comparators, be sure to add the jars or classes to the classpath
+ * that contain the application's comparator classes.
+ * </p>
+ * <p>
+ * To verify a database and write the errors to stream:
+ * </p>
  *
  * <pre>
- *    DbVerify verifier = new DbVerify(env, dbName, quiet);
- *    verifier.verify();
+ * DbVerify verifier = new DbVerify(env, dbName, quiet);
+ * verifier.verify();
  * </pre>
  */
 public class DbVerify {
 
-    private static final String usageString =
-        "usage: " + CmdUtil.getJavaCommand(DbVerify.class) + "\n" +
-        "       -h <dir>             # environment home directory\n" +
-        "       [-c ]                # check cleaner metadata\n" +
-        "       [-q ]                # quiet, exit with success or failure\n" +
-        "       [-s <databaseName> ] # database to verify\n" +
-        "       [-v <interval>]      # progress notification interval\n" +
-        "       [-V]                 # print JE version number";
+    private static final String usageString      = "usage: " + CmdUtil.getJavaCommand(DbVerify.class) + "\n"
+            + "       -h <dir>             # environment home directory\n"
+            + "       [-c ]                # check cleaner metadata\n"
+            + "       [-q ]                # quiet, exit with success or failure\n"
+            + "       [-s <databaseName> ] # database to verify\n"
+            + "       [-v <interval>]      # progress notification interval\n"
+            + "       [-V]                 # print JE version number";
 
-    File envHome = null;
-    Environment env;
-    String dbName = null;
-    boolean quiet = false;
-    boolean checkLsns = false;
-    boolean openReadOnly = true;
+    File                        envHome          = null;
+    Environment                 env;
+    String                      dbName           = null;
+    boolean                     quiet            = false;
+    boolean                     checkLsns        = false;
+    boolean                     openReadOnly     = true;
 
-    private int progressInterval = 0;
+    private int                 progressInterval = 0;
 
     /**
      * The main used by the DbVerify utility.
      *
      * @param argv The arguments accepted by the DbVerify utility.
      *
-     * <pre>
+     *            <pre>
      * usage: java { com.sleepycat.je.util.DbVerify | -jar
      * je-&lt;version&gt;.jar DbVerify }
      *             [-q] [-V] -s database -h dbEnvHome [-v progressInterval]
-     * </pre>
-     *
-     * <p>
-     * -V - show the version of the JE library.<br>
-     * -s - specify the database to verify<br>
-     * -h - specify the environment directory<br>
-     * -q - work quietly and don't display errors<br>
-     * -v - report intermediate statistics every progressInterval Leaf
-     *  Nodes
-     * </p>
-     *
+     *            </pre>
+     *            <p>
+     *            -V - show the version of the JE library.<br>
+     *            -s - specify the database to verify<br>
+     *            -h - specify the environment directory<br>
+     *            -q - work quietly and don't display errors<br>
+     *            -v - report intermediate statistics every progressInterval
+     *            Leaf Nodes
+     *            </p>
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
+     *             environment-wide failure occurs.
      */
-    public static void main(String argv[])
-        throws DatabaseException {
+    public static void main(String argv[]) throws DatabaseException {
 
         DbVerify verifier = new DbVerify();
         verifier.parseArgs(argv);
@@ -118,10 +115,9 @@ public class DbVerify {
             /*
              * Show the status, only omit if the user asked for a quiet run and
              * didn't specify a progress interval, in which case we can assume
-             * that they really don't want any status output.
-             *
-             * If the user runs this from the command line, presumably they'd
-             * like to see the status.
+             * that they really don't want any status output. If the user runs
+             * this from the command line, presumably they'd like to see the
+             * status.
              */
             if ((!verifier.quiet) || (verifier.progressInterval > 0)) {
                 System.err.println("Exit status = " + ret);
@@ -138,15 +134,11 @@ public class DbVerify {
      * Creates a DbVerify object for a specific environment and database.
      *
      * @param env The Environment containing the database to verify.
-     *
      * @param dbName The name of the database to verify.
-     *
      * @param quiet true if the verification should not produce errors to the
-     * output stream
+     *            output stream
      */
-    public DbVerify(Environment env,
-                    String dbName,
-                    boolean quiet) {
+    public DbVerify(Environment env, String dbName, boolean quiet) {
         this.env = env;
         this.dbName = dbName;
         this.quiet = quiet;
@@ -197,7 +189,7 @@ public class DbVerify {
                 /*
                  * Unadvertised option. Open the environment read/write so that
                  * a checkLsns pass gets an accurate root LSN to start from in
-                 * the event that a recovery split the root.  A read/only
+                 * the event that a recovery split the root. A read/only
                  * environment open will keep any logging in the log buffers,
                  * and the LSNs stored in the INs will be converted to
                  * DbLsn.NULL_LSN.
@@ -211,8 +203,7 @@ public class DbVerify {
         }
     }
 
-    void openEnv()
-        throws Exception {
+    void openEnv() throws Exception {
 
         if (env == null) {
             EnvironmentConfig envConfig = new EnvironmentConfig();
@@ -235,11 +226,9 @@ public class DbVerify {
      * Verifies a database and write errors found to a stream.
      *
      * @param out The stream to write errors to.
-     *
      * @return true if the verification found no errors.
      */
-    public boolean verify(PrintStream out)
-        throws DatabaseException {
+    public boolean verify(PrintStream out) throws DatabaseException {
 
         boolean ret = true;
         VerifyConfig verifyConfig = new VerifyConfig();
@@ -279,9 +268,7 @@ public class DbVerify {
         Iterator<String> iter = dbNameList.iterator();
         while (iter.hasNext()) {
             String targetDb = iter.next();
-            LoggerUtils.envLogMsg(Level.INFO, envImpl,
-                                  "DbVerify.verify of " + targetDb +
-                                  " starting");
+            LoggerUtils.envLogMsg(Level.INFO, envImpl, "DbVerify.verify of " + targetDb + " starting");
 
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setReadOnly(true);
@@ -299,10 +286,7 @@ public class DbVerify {
             }
 
             try {
-                if (!verifyOneDbImpl(DbInternal.getDbImpl(db),
-                                     targetDb,
-                                     verifyConfig,
-                                     out)) {
+                if (!verifyOneDbImpl(DbInternal.getDbImpl(db), targetDb, verifyConfig, out)) {
                     ret = false;
                 }
             } finally {
@@ -310,48 +294,38 @@ public class DbVerify {
                     db.close();
                 }
 
-                LoggerUtils.envLogMsg(Level.INFO, envImpl,
-                                   "DbVerify.verify of " + targetDb +
-                                   " ending");
+                LoggerUtils.envLogMsg(Level.INFO, envImpl, "DbVerify.verify of " + targetDb + " ending");
             }
         }
 
         /*
-         * Check internal databases, which don't have to be opened
-         * through a Database handle.
+         * Check internal databases, which don't have to be opened through a
+         * Database handle.
          */
         iter = internalDbs.iterator();
         while (iter.hasNext()) {
             String targetDb = iter.next();
-            LoggerUtils.envLogMsg(Level.INFO, envImpl,
-                               "DbVerify.verify of " + targetDb + " starting");
+            LoggerUtils.envLogMsg(Level.INFO, envImpl, "DbVerify.verify of " + targetDb + " starting");
 
             try {
-                DatabaseImpl dbImpl = dbMapTree.getDb(null, targetDb,
-                                                      null, false);
+                DatabaseImpl dbImpl = dbMapTree.getDb(null, targetDb, null, false);
                 try {
-                    if (!verifyOneDbImpl(dbImpl,  targetDb,
-                                         verifyConfig, out)) {
+                    if (!verifyOneDbImpl(dbImpl, targetDb, verifyConfig, out)) {
                         ret = false;
                     }
                 } finally {
                     dbMapTree.releaseDb(dbImpl);
                 }
             } finally {
-                LoggerUtils.envLogMsg(Level.INFO, envImpl,
-                                   "DbVerify.verify of " + targetDb +
-                                   " ending");
+                LoggerUtils.envLogMsg(Level.INFO, envImpl, "DbVerify.verify of " + targetDb + " ending");
             }
         }
 
         return ret;
     }
 
-    private boolean verifyOneDbImpl(DatabaseImpl dbImpl,
-                                    String name,
-                                    VerifyConfig verifyConfig,
-                                    PrintStream out)
-        throws DatabaseException {
+    private boolean verifyOneDbImpl(DatabaseImpl dbImpl, String name, VerifyConfig verifyConfig, PrintStream out)
+            throws DatabaseException {
 
         boolean status = true;
 

@@ -17,10 +17,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-
 /**
- * A basic concrete extension of DataChannel.
- * This simply delegates operations directly to the underlying SocketChannel
+ * A basic concrete extension of DataChannel. This simply delegates operations
+ * directly to the underlying SocketChannel
  */
 public class SimpleDataChannel extends AbstractDataChannel {
 
@@ -49,8 +48,7 @@ public class SimpleDataChannel extends AbstractDataChannel {
     }
 
     @Override
-    public long read(ByteBuffer[] dsts, int offset, int length)
-        throws IOException {
+    public long read(ByteBuffer[] dsts, int offset, int length) throws IOException {
 
         return socketChannel.read(dsts, offset, length);
     }
@@ -76,8 +74,7 @@ public class SimpleDataChannel extends AbstractDataChannel {
     }
 
     @Override
-    public long write(ByteBuffer[] srcs, int offset, int length)
-        throws IOException {
+    public long write(ByteBuffer[] srcs, int offset, int length) throws IOException {
 
         return socketChannel.write(srcs, offset, length);
     }
@@ -114,4 +111,3 @@ public class SimpleDataChannel extends AbstractDataChannel {
         return FlushStatus.DISABLED;
     }
 }
-

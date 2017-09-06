@@ -23,13 +23,13 @@ import java.beans.PropertyDescriptor;
  */
 public class PreloadConfigBeanInfo extends ConfigBeanInfoBase {
 
-	@Override
-	public BeanDescriptor getBeanDescriptor() {
-		return getBdescriptor(PreloadConfig.class);
-	}
+    @Override
+    public BeanDescriptor getBeanDescriptor() {
+        return getBdescriptor(PreloadConfig.class);
+    }
 
-	@Override
-	public PropertyDescriptor[] getPropertyDescriptors() {
-		return getPdescriptor(PreloadConfig.class);
-	}
+    @Override
+    public PropertyDescriptor[] getPropertyDescriptors() {
+        return getPdescriptor(PreloadConfig.class);
+    }
 }

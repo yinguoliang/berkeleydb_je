@@ -24,17 +24,16 @@ import com.sleepycat.je.tree.LN;
 import com.sleepycat.je.tree.TreeUtils;
 
 /**
- * A DupCountLN represents the transactional part of the root of a
- * duplicate tree, specifically the count of dupes in the tree.
- *
- * Obsolete in log version 8, only used by DupConvert and some log readers.
+ * A DupCountLN represents the transactional part of the root of a duplicate
+ * tree, specifically the count of dupes in the tree. Obsolete in log version 8,
+ * only used by DupConvert and some log readers.
  */
 public final class DupCountLN extends LN {
 
     private static final String BEGIN_TAG = "<dupCountLN>";
-    private static final String END_TAG = "</dupCountLN>";
+    private static final String END_TAG   = "</dupCountLN>";
 
-    private int dupCount;
+    private int                 dupCount;
 
     /**
      * Create an empty DupCountLN, to be filled in from the log.
@@ -49,8 +48,8 @@ public final class DupCountLN extends LN {
     }
 
     /**
-     * @return true if this node is a duplicate-bearing node type, false
-     * if otherwise.
+     * @return true if this node is a duplicate-bearing node type, false if
+     *         otherwise.
      */
     @Override
     public boolean containsDuplicates() {
@@ -98,7 +97,7 @@ public final class DupCountLN extends LN {
             sb.append(beginTag());
             sb.append('\n');
         }
-        sb.append(TreeUtils.indent(nSpaces+2));
+        sb.append(TreeUtils.indent(nSpaces + 2));
         sb.append("<count v=\"").append(dupCount).append("\"/>").append('\n');
         sb.append(super.dumpString(nSpaces, false));
         if (dumpTags) {
@@ -113,14 +112,12 @@ public final class DupCountLN extends LN {
      */
 
     /**
-     * Return the correct log entry type for a DupCountLN depends on whether 
+     * Return the correct log entry type for a DupCountLN depends on whether
      * it's transactional.
      */
     @Override
-    protected LogEntryType getLogType(boolean isInsert,
-                                      boolean isTransactional) {
-        return isTransactional ? LogEntryType.LOG_DUPCOUNTLN_TRANSACTIONAL :
-                                 LogEntryType.LOG_DUPCOUNTLN;
+    protected LogEntryType getLogType(boolean isInsert, boolean isTransactional) {
+        return isTransactional ? LogEntryType.LOG_DUPCOUNTLN_TRANSACTIONAL : LogEntryType.LOG_DUPCOUNTLN;
     }
 
     /**
@@ -150,8 +147,7 @@ public final class DupCountLN extends LN {
     }
 
     /**
-     * @see Loggable#logicalEquals
-     * DupCountLNs are never replicated.
+     * @see Loggable#logicalEquals DupCountLNs are never replicated.
      */
     @Override
     public boolean logicalEquals(Loggable other) {

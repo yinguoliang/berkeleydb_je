@@ -24,34 +24,30 @@ import com.sleepycat.je.utilint.DbLsn;
  */
 public class NodeSequence {
 
-    public static final int FIRST_LOCAL_NODE_ID = 1;
-    public static final int FIRST_REPLICATED_NODE_ID = -10;
+    public static final int      FIRST_LOCAL_NODE_ID             = 1;
+    public static final int      FIRST_REPLICATED_NODE_ID        = -10;
 
     /*
-     * Node IDs: We need to ensure that local and replicated nodes use
-     * different number spaces for their ids, so there can't be any possible
-     * conflicts.  Local, non replicated nodes use positive values starting
-     * with 1, replicated nodes use negative values starting with -10.
-     *
-     * Node ID values from 0 to -9 are reserved.  0 is not used and should be
-     * avoided.  -1 is used to mean null or none, and should be used via the
-     * Node.NULL_NODE_ID constant.  -2 through -9 are reserved for future use.
-     *
-     * The local and replicated node ID sequences are initialized by the first
-     * pass of recovery, after the log has been scanned for the latest used
-     * node ID.
+     * Node IDs: We need to ensure that local and replicated nodes use different
+     * number spaces for their ids, so there can't be any possible conflicts.
+     * Local, non replicated nodes use positive values starting with 1,
+     * replicated nodes use negative values starting with -10. Node ID values
+     * from 0 to -9 are reserved. 0 is not used and should be avoided. -1 is
+     * used to mean null or none, and should be used via the Node.NULL_NODE_ID
+     * constant. -2 through -9 are reserved for future use. The local and
+     * replicated node ID sequences are initialized by the first pass of
+     * recovery, after the log has been scanned for the latest used node ID.
      */
-    private AtomicLong lastAllocatedLocalNodeId = null;
-    private AtomicLong lastAllocatedReplicatedNodeId = null;
+    private AtomicLong           lastAllocatedLocalNodeId        = null;
+    private AtomicLong           lastAllocatedReplicatedNodeId   = null;
 
     /*
-     * Transient LSNs are used for not-yet-logged DeferredWrite records and
-     * for the EOF record used for Serializable isolation. Transient LSNs are
-     * used to provide unique locks, and are only used during the life of an
+     * Transient LSNs are used for not-yet-logged DeferredWrite records and for
+     * the EOF record used for Serializable isolation. Transient LSNs are used
+     * to provide unique locks, and are only used during the life of an
      * environment, for non-persistent objects.
      */
-    private final AtomicLong lastAllocatedTransientLsnOffset =
-        new AtomicLong(0L);
+    private final AtomicLong     lastAllocatedTransientLsnOffset = new AtomicLong(0L);
 
     public final EnvironmentImpl envImpl;
 
@@ -60,13 +56,12 @@ public class NodeSequence {
     }
 
     /**
-     * Initialize the counters in these methods rather than a constructor
-     * so we can control the initialization more precisely.
+     * Initialize the counters in these methods rather than a constructor so we
+     * can control the initialization more precisely.
      */
     void initRealNodeId() {
         lastAllocatedLocalNodeId = new AtomicLong(FIRST_LOCAL_NODE_ID - 1);
-        lastAllocatedReplicatedNodeId =
-            new AtomicLong(FIRST_REPLICATED_NODE_ID + 1);
+        lastAllocatedReplicatedNodeId = new AtomicLong(FIRST_REPLICATED_NODE_ID + 1);
     }
 
     /**
@@ -88,16 +83,14 @@ public class NodeSequence {
     }
 
     /*
-    public long getNextReplicatedNodeId() {
-        return lastAllocatedReplicatedNodeId.decrementAndGet();
-    }
-    */
+     * public long getNextReplicatedNodeId() { return
+     * lastAllocatedReplicatedNodeId.decrementAndGet(); }
+     */
 
     /**
      * Initialize the node IDs, from recovery.
      */
-    public void setLastNodeId(long lastReplicatedNodeId,
-                              long lastLocalNodeId) {
+    public void setLastNodeId(long lastReplicatedNodeId, long lastLocalNodeId) {
         lastAllocatedReplicatedNodeId.set(lastReplicatedNodeId);
         lastAllocatedLocalNodeId.set(lastLocalNodeId);
     }
@@ -110,8 +103,8 @@ public class NodeSequence {
     public void updateFromReplay(long replayNodeId) {
         assert !envImpl.isMaster();
         if (replayNodeId > 0 && !envImpl.isRepConverted()) {
-           throw EnvironmentFailureException.unexpectedState
-               ("replay node id is unexpectedly positive " + replayNodeId);
+            throw EnvironmentFailureException
+                    .unexpectedState("replay node id is unexpectedly positive " + replayNodeId);
         }
 
         if (replayNodeId < lastAllocatedReplicatedNodeId.get()) {
@@ -123,7 +116,6 @@ public class NodeSequence {
      * Assign the next available transient LSN.
      */
     public long getNextTransientLsn() {
-        return DbLsn.makeTransientLsn
-            (lastAllocatedTransientLsnOffset.getAndIncrement());
+        return DbLsn.makeTransientLsn(lastAllocatedTransientLsnOffset.getAndIncrement());
     }
 }

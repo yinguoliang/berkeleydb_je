@@ -29,37 +29,26 @@ import com.sleepycat.je.rep.vlsn.VLSNIndex.BackwardVLSNScanner;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * The FeederSyncupReader scans the log backwards for requested log entries.
- * It uses the vlsnIndex to optimize its search, repositioning when a concrete
- * vlsn->lsn mapping is available.
- *
- * The FeederSyncupReader is not thread safe, and can only be used serially. It
- * will stop at the finishLsn, which should be set using the GlobalCBVLSN.
+ * The FeederSyncupReader scans the log backwards for requested log entries. It
+ * uses the vlsnIndex to optimize its search, repositioning when a concrete
+ * vlsn->lsn mapping is available. The FeederSyncupReader is not thread safe,
+ * and can only be used serially. It will stop at the finishLsn, which should be
+ * set using the GlobalCBVLSN.
  */
 public class FeederSyncupReader extends VLSNReader {
     /* The scanner is a cursor over the VLSNIndex. */
     private final BackwardVLSNScanner scanner;
 
-    public FeederSyncupReader(EnvironmentImpl envImpl,
-                              VLSNIndex vlsnIndex,
-                              long endOfLogLsn,
-                              int readBufferSize,
-                              NameIdPair nameIdPair,
-                              VLSN startVLSN,
-                              long finishLsn)
-        throws IOException, DatabaseException {
+    public FeederSyncupReader(EnvironmentImpl envImpl, VLSNIndex vlsnIndex, long endOfLogLsn, int readBufferSize,
+                              NameIdPair nameIdPair, VLSN startVLSN, long finishLsn)
+            throws IOException, DatabaseException {
 
         /*
-         * If we go backwards, endOfFileLsn and startLsn must not be null.
-         * Make them the same, so we always start at the same very end.
+         * If we go backwards, endOfFileLsn and startLsn must not be null. Make
+         * them the same, so we always start at the same very end.
          */
-        super(envImpl,
-              vlsnIndex,
-              false,           // forward
-              endOfLogLsn,
-              readBufferSize,
-              nameIdPair,
-              finishLsn);
+        super(envImpl, vlsnIndex, false, // forward
+                endOfLogLsn, readBufferSize, nameIdPair, finishLsn);
         scanner = new BackwardVLSNScanner(vlsnIndex);
         initScan(startVLSN);
     }
@@ -73,12 +62,10 @@ public class FeederSyncupReader extends VLSNReader {
      * @throws IOException
      * @throws DatabaseException
      */
-    private void initScan(VLSN startVLSN)
-        throws DatabaseException, IOException {
+    private void initScan(VLSN startVLSN) throws DatabaseException, IOException {
 
         if (startVLSN.equals(VLSN.NULL_VLSN)) {
-            throw EnvironmentFailureException.unexpectedState
-                ("FeederSyncupReader start can't be NULL_VLSN");
+            throw EnvironmentFailureException.unexpectedState("FeederSyncupReader start can't be NULL_VLSN");
         }
 
         VLSN startPoint = startVLSN;
@@ -86,10 +73,10 @@ public class FeederSyncupReader extends VLSNReader {
         assert startLsn != NULL_LSN;
 
         /*
-         * Flush the log so that syncup can assume that all log entries that
-         * are represented in the VLSNIndex  are safely out of the log buffers
-         * and on disk. Simplifies this reader, so it can use the regular
-         * ReadWindow, which only works on a file.
+         * Flush the log so that syncup can assume that all log entries that are
+         * represented in the VLSNIndex are safely out of the log buffers and on
+         * disk. Simplifies this reader, so it can use the regular ReadWindow,
+         * which only works on a file.
          */
         envImpl.getLogManager().flushNoSync();
 
@@ -101,11 +88,11 @@ public class FeederSyncupReader extends VLSNReader {
 
     /**
      * Backward scanning for records for the feeder's part in syncup.
-     * @throws ChecksumException 
-     * @throws FileNotFoundException 
+     * 
+     * @throws ChecksumException
+     * @throws FileNotFoundException
      */
-    public OutputWireRecord scanBackwards(VLSN vlsn)
-        throws FileNotFoundException, ChecksumException {
+    public OutputWireRecord scanBackwards(VLSN vlsn) throws FileNotFoundException, ChecksumException {
 
         VLSNRange range = vlsnIndex.getRange();
         if (vlsn.compareTo(range.getFirst()) < 0) {
@@ -135,21 +122,19 @@ public class FeederSyncupReader extends VLSNReader {
 
     /**
      * @throw an EnvironmentFailureException if we were scanning for a
-     * particular VLSN and we have passed it by.
+     *        particular VLSN and we have passed it by.
      */
     private void checkForPassingTarget(int compareResult) {
 
         if (compareResult < 0) {
             /* Hey, we passed the VLSN we wanted. */
-            throw EnvironmentFailureException.unexpectedState
-                ("want to read " + currentVLSN + " but reader at " +
-                 currentEntryHeader.getVLSN());
+            throw EnvironmentFailureException
+                    .unexpectedState("want to read " + currentVLSN + " but reader at " + currentEntryHeader.getVLSN());
         }
     }
 
     @Override
-    protected boolean isTargetEntry()
-        throws DatabaseException {
+    protected boolean isTargetEntry() throws DatabaseException {
 
         nScanned++;
 
@@ -158,7 +143,7 @@ public class FeederSyncupReader extends VLSNReader {
             return false;
         }
 
-        /* 
+        /*
          * Return true if this entry is replicated and its VLSN is currentVLSN.
          */
         if (entryIsReplicated()) {
@@ -181,11 +166,9 @@ public class FeederSyncupReader extends VLSNReader {
 
         ByteBuffer buffer = entryBuffer.slice();
         buffer.limit(currentEntryHeader.getItemSize());
-        currentFeedRecord =
-            new OutputWireRecord(envImpl, currentEntryHeader, buffer);
+        currentFeedRecord = new OutputWireRecord(envImpl, currentEntryHeader, buffer);
 
-        entryBuffer.position(entryBuffer.position() +
-                             currentEntryHeader.getItemSize());
+        entryBuffer.position(entryBuffer.position() + currentEntryHeader.getItemSize());
         return true;
     }
 }

@@ -14,8 +14,8 @@
 package com.sleepycat.je.utilint;
 
 /**
- *  Special marker interface used by Sizeof when performing memory overhead
- *  calculations.
+ * Special marker interface used by Sizeof when performing memory overhead
+ * calculations.
  */
 public interface SizeofMarker {
 

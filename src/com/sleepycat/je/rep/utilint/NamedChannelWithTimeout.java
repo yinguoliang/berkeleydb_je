@@ -29,8 +29,7 @@ import com.sleepycat.je.utilint.LoggerUtils;
  * timeouts with sockets using Socket.setSoTimeout is not supported by nio
  * SocketChannels.
  */
-public class NamedChannelWithTimeout
-    extends NamedChannel {
+public class NamedChannelWithTimeout extends NamedChannel {
 
     /*
      * Denotes read activity associated with the channel. It's set each time a
@@ -38,36 +37,27 @@ public class NamedChannelWithTimeout
      * is typically used to guarantee some minimum level of activity over the
      * channel.
      */
-    private volatile boolean readActivity;
+    private volatile boolean      readActivity;
 
     /*
      * The timeout associated with the channel. A value of zero indicates no
      * timeout.
      */
-    private volatile int timeoutMs;
+    private volatile int          timeoutMs;
 
     /* Values to help with logging. */
     private final EnvironmentImpl envImpl;
-    private final Logger logger;
+    private final Logger          logger;
 
     /* The "time" of the last check for read activity on the channel. */
-    private long lastCheckMs = 0l;
+    private long                  lastCheckMs = 0l;
 
-    public NamedChannelWithTimeout(RepNode repNode,
-                                   DataChannel channel,
-                                   int timeoutMs) {
-        this(repNode.getRepImpl(),
-             repNode.getLogger(),
-             repNode.getChannelTimeoutTask(),
-             channel,
-             timeoutMs);
+    public NamedChannelWithTimeout(RepNode repNode, DataChannel channel, int timeoutMs) {
+        this(repNode.getRepImpl(), repNode.getLogger(), repNode.getChannelTimeoutTask(), channel, timeoutMs);
     }
 
-    public NamedChannelWithTimeout(RepImpl repImpl,
-                                   Logger logger,
-                                   ChannelTimeoutTask channelTimeoutTask,
-                                   DataChannel channel,
-                                   int timeoutMs) {
+    public NamedChannelWithTimeout(RepImpl repImpl, Logger logger, ChannelTimeoutTask channelTimeoutTask,
+                                   DataChannel channel, int timeoutMs) {
         super(channel);
         this.timeoutMs = timeoutMs;
         this.envImpl = repImpl;
@@ -97,8 +87,7 @@ public class NamedChannelWithTimeout
      * activity since an earlier call to the method.
      */
     @Override
-    public int read(ByteBuffer dst)
-        throws IOException {
+    public int read(ByteBuffer dst) throws IOException {
 
         final int bytes = channel.read(dst);
         if (bytes > 0) {
@@ -108,8 +97,7 @@ public class NamedChannelWithTimeout
     }
 
     @Override
-    public void close()
-        throws IOException {
+    public void close() throws IOException {
 
         channel.close();
         readActivity = false;
@@ -126,9 +114,8 @@ public class NamedChannelWithTimeout
      * only meaningful for calculating time differences.
      *
      * @param timeMs the pseudo time
-     *
      * @return true if the channel is active, false if it isn't and has been
-     * closed
+     *         closed
      */
     public boolean isActive(long timeMs) {
 
@@ -156,8 +143,7 @@ public class NamedChannelWithTimeout
          * AsynchronousCloseException in the read/write threads.
          */
         LoggerUtils.info(logger, envImpl,
-                         "Inactive channel: " + getNameIdPair() +
-                         " forced close. Timeout: " + timeoutMs + "ms.");
+                "Inactive channel: " + getNameIdPair() + " forced close. Timeout: " + timeoutMs + "ms.");
         try {
             channel.close();
         } catch (IOException e) {

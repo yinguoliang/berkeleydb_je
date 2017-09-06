@@ -23,21 +23,18 @@ import com.sleepycat.je.log.Loggable;
 import com.sleepycat.je.log.VersionedWriteLoggable;
 
 /**
- * This class writes out a log entry that can be used for replication syncup.
- * It can be issued arbitrarily by the master at any point, in order to bound
- * the syncup interval in much the way that a checkpoint bounds the recovery
- * interval. The entry will a replicated one, which means that it will be
- * tagged with a VLSN.
- *
- * Although this is a replication class, it resides in the utilint package
- * because it is referenced in LogEntryType.java.
- *
- * TODO: This is currently not used. When it is used, it will be the first
- * replicated log entry that does not have a real txn id. All replicated
- * entries are expected to have negative ids, and the matchpoint should be
- * exempt from Replay.updateSequences, or it should pass in a special reserved
- * negative id, so as not to incur the assertion in Replay.updateSequences,
- * that the txn id is <0.
+ * This class writes out a log entry that can be used for replication syncup. It
+ * can be issued arbitrarily by the master at any point, in order to bound the
+ * syncup interval in much the way that a checkpoint bounds the recovery
+ * interval. The entry will a replicated one, which means that it will be tagged
+ * with a VLSN. Although this is a replication class, it resides in the utilint
+ * package because it is referenced in LogEntryType.java. TODO: This is
+ * currently not used. When it is used, it will be the first replicated log
+ * entry that does not have a real txn id. All replicated entries are expected
+ * to have negative ids, and the matchpoint should be exempt from
+ * Replay.updateSequences, or it should pass in a special reserved negative id,
+ * so as not to incur the assertion in Replay.updateSequences, that the txn id
+ * is <0.
  */
 public class Matchpoint extends BasicVersionedWriteLoggable {
 
@@ -49,10 +46,10 @@ public class Matchpoint extends BasicVersionedWriteLoggable {
     private static final int LAST_FORMAT_CHANGE = 8;
 
     /* Time of issue. */
-    private Timestamp time;
+    private Timestamp        time;
 
     /* For replication - master node which wrote this record. */
-    private int repMasterNodeId;
+    private int              repMasterNodeId;
 
     public Matchpoint(int repMasterNodeId) {
         this.repMasterNodeId = repMasterNodeId;
@@ -81,14 +78,11 @@ public class Matchpoint extends BasicVersionedWriteLoggable {
 
     @Override
     public int getLogSize(final int logVersion, final boolean forReplication) {
-        return LogUtils.getTimestampLogSize(time) +
-            LogUtils.getPackedIntLogSize(repMasterNodeId);
+        return LogUtils.getTimestampLogSize(time) + LogUtils.getPackedIntLogSize(repMasterNodeId);
     }
 
     @Override
-    public void writeToLog(final ByteBuffer logBuffer,
-                           final int logVersion,
-                           final boolean forReplication) {
+    public void writeToLog(final ByteBuffer logBuffer, final int logVersion, final boolean forReplication) {
         LogUtils.writeTimestamp(logBuffer, time);
         LogUtils.writePackedInt(logBuffer, repMasterNodeId);
     }
@@ -119,7 +113,6 @@ public class Matchpoint extends BasicVersionedWriteLoggable {
         }
 
         Matchpoint otherMatchpoint = (Matchpoint) other;
-        return (otherMatchpoint.time.equals(time) &&
-                (otherMatchpoint.repMasterNodeId == repMasterNodeId));
+        return (otherMatchpoint.time.equals(time) && (otherMatchpoint.repMasterNodeId == repMasterNodeId));
     }
 }

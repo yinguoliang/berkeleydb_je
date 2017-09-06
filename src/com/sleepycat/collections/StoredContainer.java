@@ -27,14 +27,15 @@ import com.sleepycat.je.OperationStatus;
 import com.sleepycat.util.RuntimeExceptionWrapper;
 
 /**
- * A abstract base class for all stored collections and maps.  This class
- * provides implementations of methods that are common to the {@link
- * java.util.Collection} and the {@link java.util.Map} interfaces, namely
+ * A abstract base class for all stored collections and maps. This class
+ * provides implementations of methods that are common to the
+ * {@link java.util.Collection} and the {@link java.util.Map} interfaces, namely
  * {@link #clear}, {@link #isEmpty} and {@link #size}.
- *
- * <p>In addition, this class provides the following methods for stored
- * collections only.  Note that the use of these methods is not compatible with
- * the standard Java collections interface.</p>
+ * <p>
+ * In addition, this class provides the following methods for stored collections
+ * only. Note that the use of these methods is not compatible with the standard
+ * Java collections interface.
+ * </p>
  * <ul>
  * <li>{@link #isWriteAllowed()}</li>
  * <li>{@link #isSecondary()}</li>
@@ -60,9 +61,8 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Returns true if this is a read-write container or false if this is a
-     * read-only container.
-     * This method does not exist in the standard {@link java.util.Map} or
-     * {@link java.util.Collection} interfaces.
+     * read-only container. This method does not exist in the standard
+     * {@link java.util.Map} or {@link java.util.Collection} interfaces.
      *
      * @return whether write is allowed.
      */
@@ -73,14 +73,14 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Returns the cursor configuration that is used for all operations
-     * performed via this container.
-     * For example, if <code>CursorConfig.getReadUncommitted</code> returns
-     * true, data will be read that is modified but not committed.
-     * This method does not exist in the standard {@link java.util.Map} or
-     * {@link java.util.Collection} interfaces.
+     * performed via this container. For example, if
+     * <code>CursorConfig.getReadUncommitted</code> returns true, data will be
+     * read that is modified but not committed. This method does not exist in
+     * the standard {@link java.util.Map} or {@link java.util.Collection}
+     * interfaces.
      *
      * @return the cursor configuration, or null if no configuration has been
-     * specified.
+     *         specified.
      */
     public final CursorConfig getCursorConfig() {
 
@@ -89,11 +89,10 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Returns whether the databases underlying this container are
-     * transactional.
-     * Even in a transactional environment, a database will be transactional
-     * only if it was opened within a transaction or if the auto-commit option
-     * was specified when it was opened.
-     * This method does not exist in the standard {@link java.util.Map} or
+     * transactional. Even in a transactional environment, a database will be
+     * transactional only if it was opened within a transaction or if the
+     * auto-commit option was specified when it was opened. This method does not
+     * exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
      *
      * @return whether the database is transactional.
@@ -113,7 +112,9 @@ public abstract class StoredContainer implements Cloneable {
             cont.view = cont.view.configuredView(config);
             cont.initAfterClone();
             return cont;
-        } catch (CloneNotSupportedException willNeverOccur) { return null; }
+        } catch (CloneNotSupportedException willNeverOccur) {
+            return null;
+        }
     }
 
     /**
@@ -123,12 +124,13 @@ public abstract class StoredContainer implements Cloneable {
     }
 
     /**
-     * Returns whether duplicate keys are allowed in this container.
-     * Duplicates are optionally allowed for HASH and BTREE databases.
-     * This method does not exist in the standard {@link java.util.Map} or
+     * Returns whether duplicate keys are allowed in this container. Duplicates
+     * are optionally allowed for HASH and BTREE databases. This method does not
+     * exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
-     *
-     * <p>Note that the JE product only supports BTREE databases.</p>
+     * <p>
+     * Note that the JE product only supports BTREE databases.
+     * </p>
      *
      * @return whether duplicates are allowed.
      */
@@ -139,12 +141,13 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Returns whether duplicate keys are allowed and sorted by element value.
-     * Duplicates are optionally sorted for HASH and BTREE databases.
-     * This method does not exist in the standard {@link java.util.Map} or
+     * Duplicates are optionally sorted for HASH and BTREE databases. This
+     * method does not exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
-     *
-     * <p>Note that the JE product only supports BTREE databases, and
-     * duplicates are always sorted.</p>
+     * <p>
+     * Note that the JE product only supports BTREE databases, and duplicates
+     * are always sorted.
+     * </p>
      *
      * @return whether duplicates are ordered.
      */
@@ -155,12 +158,13 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Returns whether keys are renumbered when insertions and deletions occur.
-     * Keys are optionally renumbered for RECNO databases.
-     * This method does not exist in the standard {@link java.util.Map} or
+     * Keys are optionally renumbered for RECNO databases. This method does not
+     * exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
-     *
-     * <p>Note that the JE product does not support RECNO databases, and
-     * therefore keys are never renumbered.</p>
+     * <p>
+     * Note that the JE product does not support RECNO databases, and therefore
+     * keys are never renumbered.
+     * </p>
      *
      * @return whether keys are renumbered.
      */
@@ -170,13 +174,14 @@ public abstract class StoredContainer implements Cloneable {
     }
 
     /**
-     * Returns whether keys are ordered in this container.
-     * Keys are ordered for BTREE, RECNO and QUEUE databases.
-     * This method does not exist in the standard {@link java.util.Map} or
-     * {@link java.util.Collection} interfaces.
-     *
-     * <p>Note that the JE product only support BTREE databases, and
-     * therefore keys are always ordered.</p>
+     * Returns whether keys are ordered in this container. Keys are ordered for
+     * BTREE, RECNO and QUEUE databases. This method does not exist in the
+     * standard {@link java.util.Map} or {@link java.util.Collection}
+     * interfaces.
+     * <p>
+     * Note that the JE product only support BTREE databases, and therefore keys
+     * are always ordered.
+     * </p>
      *
      * @return whether keys are ordered.
      */
@@ -186,13 +191,14 @@ public abstract class StoredContainer implements Cloneable {
     }
 
     /**
-     * Returns whether key ranges are allowed in this container.
-     * Key ranges are allowed only for BTREE databases.
-     * This method does not exist in the standard {@link java.util.Map} or
-     * {@link java.util.Collection} interfaces.
-     *
-     * <p>Note that the JE product only supports BTREE databases, and
-     * therefore key ranges are always allowed.</p>
+     * Returns whether key ranges are allowed in this container. Key ranges are
+     * allowed only for BTREE databases. This method does not exist in the
+     * standard {@link java.util.Map} or {@link java.util.Collection}
+     * interfaces.
+     * <p>
+     * Note that the JE product only supports BTREE databases, and therefore key
+     * ranges are always allowed.
+     * </p>
      *
      * @return whether keys are ordered.
      */
@@ -203,9 +209,9 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Returns whether this container is a view on a secondary database rather
-     * than directly on a primary database.
-     * This method does not exist in the standard {@link java.util.Map} or
-     * {@link java.util.Collection} interfaces.
+     * than directly on a primary database. This method does not exist in the
+     * standard {@link java.util.Map} or {@link java.util.Collection}
+     * interfaces.
      *
      * @return whether the view is for a secondary database.
      */
@@ -216,29 +222,24 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Returns a non-transactional count of the records in the collection or
-     * map.  This method conforms to the {@link java.util.Collection#size} and
-     * {@link java.util.Map#size} interfaces.
-     *
-     * <!-- begin JE only -->
-     * <p>This operation is faster than obtaining a count by scanning the
+     * map. This method conforms to the {@link java.util.Collection#size} and
+     * {@link java.util.Map#size} interfaces. <!-- begin JE only -->
+     * <p>
+     * This operation is faster than obtaining a count by scanning the
      * collection manually, and will not perturb the current contents of the
-     * cache.  However, the count is not guaranteed to be accurate if there are
-     * concurrent updates.</p>
+     * cache. However, the count is not guaranteed to be accurate if there are
+     * concurrent updates.
+     * </p>
      * <!-- end JE only -->
      *
-     * @return the number of records.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * @return the number of records. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
     public abstract int size();
 
@@ -247,19 +248,14 @@ public abstract class StoredContainer implements Cloneable {
      * This method conforms to the {@link java.util.Collection#isEmpty} and
      * {@link java.util.Map#isEmpty} interfaces.
      *
-     * @return whether the container is empty.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * @return whether the container is empty. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
     public boolean isEmpty() {
 
@@ -272,23 +268,18 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Removes all mappings or elements from this map or collection (optional
-     * operation).
-     * This method conforms to the {@link java.util.Collection#clear} and
-     * {@link java.util.Map#clear} interfaces.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * operation). This method conforms to the
+     * {@link java.util.Collection#clear} and {@link java.util.Map#clear}
+     * interfaces. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the container is read-only.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
     public void clear() {
 
@@ -306,8 +297,7 @@ public abstract class StoredContainer implements Cloneable {
         DataCursor cursor = null;
         try {
             cursor = new DataCursor(view, false);
-            if (OperationStatus.SUCCESS ==
-                cursor.getSearchKey(key, null, false)) {
+            if (OperationStatus.SUCCESS == cursor.getSearchKey(key, null, false)) {
                 return cursor.getCurrentValue();
             } else {
                 return null;
@@ -350,8 +340,7 @@ public abstract class StoredContainer implements Cloneable {
                 if (oldVal != null && oldVal[0] == null) {
                     oldVal[0] = cursor.getCurrentValue();
                 }
-                status = areDuplicatesAllowed() ?
-                    cursor.getNextDup(true): OperationStatus.NOTFOUND;
+                status = areDuplicatesAllowed() ? cursor.getNextDup(true) : OperationStatus.NOTFOUND;
             }
             closeCursor(cursor);
             commitAutoCommit(doAutoCommit);
@@ -367,8 +356,7 @@ public abstract class StoredContainer implements Cloneable {
         DataCursor cursor = null;
         try {
             cursor = new DataCursor(view, false);
-            return (OperationStatus.SUCCESS ==
-                    cursor.getSearchKey(key, null, false));
+            return (OperationStatus.SUCCESS == cursor.getSearchKey(key, null, false));
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         } finally {
@@ -411,8 +399,8 @@ public abstract class StoredContainer implements Cloneable {
 
     /**
      * Returns a StoredIterator if the given collection is a StoredCollection,
-     * else returns a regular/external Iterator.  The iterator returned should
-     * be closed with the static method StoredIterator.close(Iterator).
+     * else returns a regular/external Iterator. The iterator returned should be
+     * closed with the static method StoredIterator.close(Iterator).
      */
     final Iterator storedOrExternalIterator(Collection coll) {
 
@@ -449,8 +437,7 @@ public abstract class StoredContainer implements Cloneable {
         return false;
     }
 
-    final void commitAutoCommit(boolean doAutoCommit)
-        throws DatabaseException {
+    final void commitAutoCommit(boolean doAutoCommit) throws DatabaseException {
 
         if (doAutoCommit) {
             view.getCurrentTxn().commitTransaction();

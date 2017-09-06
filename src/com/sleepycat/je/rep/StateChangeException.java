@@ -22,25 +22,24 @@ import com.sleepycat.je.txn.Locker;
  * in the state of the replication node. StateChangeException is an abstract
  * class, with subtypes for each type of Transition.
  * <p>
- * A single state change can result in multiple state change exceptions (one
- * per thread operating against the environment). Each exception is associated
- * with the event that provoked the exception. The application can use this
+ * A single state change can result in multiple state change exceptions (one per
+ * thread operating against the environment). Each exception is associated with
+ * the event that provoked the exception. The application can use this
  * association to ensure that each such event is processed just once.
  */
 public abstract class StateChangeException extends OperationFailureException {
-    private static final long serialVersionUID = 1;
+    private static final long      serialVersionUID = 1;
 
     /* Null if the event is not available. */
     private final StateChangeEvent stateChangeEvent;
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    protected StateChangeException(Locker locker,
-                                   StateChangeEvent stateChangeEvent) {
-        super(locker, (locker != null),
-              makeMessage(locker, stateChangeEvent), null);
+    protected StateChangeException(Locker locker, StateChangeEvent stateChangeEvent) {
+        super(locker, (locker != null), makeMessage(locker, stateChangeEvent), null);
         this.stateChangeEvent = stateChangeEvent;
     }
 
@@ -63,23 +62,19 @@ public abstract class StateChangeException extends OperationFailureException {
 
     private static String makeMessage(Locker locker, StateChangeEvent event) {
         long lockerId = (locker == null) ? 0 : locker.getId();
-        return (event != null) ?
-              ("Problem closing transaction " + lockerId +
-               ". The current state is:" + event.getState() + "." +
-                " The node transitioned to this state at:" +
-                 new Date(event.getEventTime())) :
-               "Node state inconsistent with operation";
+        return (event != null)
+                ? ("Problem closing transaction " + lockerId + ". The current state is:" + event.getState() + "."
+                        + " The node transitioned to this state at:" + new Date(event.getEventTime()))
+                : "Node state inconsistent with operation";
     }
 
     /**
      * For internal use only.
-     * @hidden
-     * Only for use by wrapSelf methods.
+     * 
+     * @hidden Only for use by wrapSelf methods.
      */
-    protected StateChangeException(String message,
-                                   StateChangeException cause) {
+    protected StateChangeException(String message, StateChangeException cause) {
         super(message, cause);
-        stateChangeEvent =
-            (cause != null) ? cause.stateChangeEvent : null;
+        stateChangeEvent = (cause != null) ? cause.stateChangeEvent : null;
     }
 }

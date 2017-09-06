@@ -24,8 +24,8 @@ import com.sleepycat.je.utilint.VLSN;
 public class Record {
     private final byte[] key;
     private final byte[] data;
-    private final VLSN vlsn;
-    byte[] mix;
+    private final VLSN   vlsn;
+    byte[]               mix;
 
     public Record(byte[] key, byte[] data, VLSN vlsn) {
         this.key = key;
@@ -34,8 +34,8 @@ public class Record {
     }
 
     /*
-     * Get the byte and data array together so that we can generate
-     * an unique hash code for this object.
+     * Get the byte and data array together so that we can generate an unique
+     * hash code for this object.
      */
     private void generateMix() {
         mix = new byte[key.length + data.length];
@@ -66,8 +66,7 @@ public class Record {
 
         final Record record = (Record) o;
 
-        return Arrays.equals(record.getKey(), getKey()) &&
-               Arrays.equals(record.getData(), getData());
+        return Arrays.equals(record.getKey(), getKey()) && Arrays.equals(record.getData(), getData());
     }
 
     @Override

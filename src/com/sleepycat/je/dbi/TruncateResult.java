@@ -19,7 +19,7 @@ package com.sleepycat.je.dbi;
 public class TruncateResult {
 
     private DatabaseImpl db;
-    private int count;
+    private int          count;
 
     TruncateResult(DatabaseImpl db, int count) {
         this.db = db;

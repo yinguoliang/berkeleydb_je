@@ -25,55 +25,47 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
  * application, a JE configurations change, discarding cached state, etc. The
  * error message details the nature of the problem.
  */
-public abstract class RestartRequiredException 
-    extends EnvironmentFailureException {
+public abstract class RestartRequiredException extends EnvironmentFailureException {
 
     /*
      * Classes that extend RestartRequiredException should be aware that their
-     * constructors should not be seen as atomic. If the failure reason
-     * mandates it, the environment may be invalidated by the super class
-     * constructor, EnvironmentFailureException. At invalidation time, the
-     * exception is saved within the environment as the precipitating failure,
-     * and may be seen and used by other threads, and the sub class instance
-     * may be seen before construction is complete. The subclass should take
-     * care if it has any fields that are initialized in the constructor, after
-     * the call to super().
-     *
-     * Any overloadings of getMessage() should also assume that they may be
-     * called asynchronously before the subclass is fully initialized.
+     * constructors should not be seen as atomic. If the failure reason mandates
+     * it, the environment may be invalidated by the super class constructor,
+     * EnvironmentFailureException. At invalidation time, the exception is saved
+     * within the environment as the precipitating failure, and may be seen and
+     * used by other threads, and the sub class instance may be seen before
+     * construction is complete. The subclass should take care if it has any
+     * fields that are initialized in the constructor, after the call to
+     * super(). Any overloadings of getMessage() should also assume that they
+     * may be called asynchronously before the subclass is fully initialized.
      */
 
     private static final long serialVersionUID = 1;
 
-    public RestartRequiredException(EnvironmentImpl envImpl,
-                                    EnvironmentFailureReason reason) {
+    public RestartRequiredException(EnvironmentImpl envImpl, EnvironmentFailureReason reason) {
         super(envImpl, reason);
     }
 
-    public RestartRequiredException(EnvironmentImpl envImpl,
-                                    EnvironmentFailureReason reason,
-                                    Exception cause) {
+    public RestartRequiredException(EnvironmentImpl envImpl, EnvironmentFailureReason reason, Exception cause) {
         super(envImpl, reason, cause);
     }
 
-    public RestartRequiredException(EnvironmentImpl envImpl,
-                                    EnvironmentFailureReason reason,
-                                    String msg) {
+    public RestartRequiredException(EnvironmentImpl envImpl, EnvironmentFailureReason reason, String msg) {
         super(envImpl, reason, msg);
     }
-    
+
     /**
      * For internal use only.
      */
-    protected RestartRequiredException(String message,
-                                       RestartRequiredException cause) {
+    protected RestartRequiredException(String message, RestartRequiredException cause) {
         super(message, cause);
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     @Override
-    public abstract EnvironmentFailureException wrapSelf(String msg) ;
+    public abstract EnvironmentFailureException wrapSelf(String msg);
 }

@@ -20,9 +20,7 @@ import com.sleepycat.je.rep.impl.RepParams;
 
 /**
  * Encapsulates the functionality around dealing with HostPort string pairs
- * having the format:
- *
- *  host[:port]
+ * having the format: host[:port]
  */
 
 public class HostPortPair {
@@ -31,16 +29,15 @@ public class HostPortPair {
 
     /**
      * Parses a hostPort pair into the socket it represents.
+     * 
      * @param hostPortPair
      * @return socket address for this host pair
-     *
      * @throws IllegalArgumentException via ReplicatedEnvironment and Monitor
-     * ctors.
+     *             ctors.
      */
     public static InetSocketAddress getSocket(String hostPortPair) {
         if ("".equals(hostPortPair)) {
-            throw new IllegalArgumentException
-                ("Host and port pair was missing");
+            throw new IllegalArgumentException("Host and port pair was missing");
         }
         int portStartIndex = hostPortPair.indexOf(SEPARATOR);
         String hostName = hostPortPair;
@@ -49,8 +46,7 @@ public class HostPortPair {
             port = Integer.parseInt(RepParams.DEFAULT_PORT.getDefault());
         } else {
             hostName = hostPortPair.substring(0, portStartIndex);
-            port =
-                Integer.parseInt(hostPortPair.substring(portStartIndex+1));
+            port = Integer.parseInt(hostPortPair.substring(portStartIndex + 1));
         }
         return new InetSocketAddress(hostName, port);
     }
@@ -59,7 +55,6 @@ public class HostPortPair {
      * Parses hostPort pairs into sockets it represents.
      *
      * @param hostPortPairs
-     *
      * @return a set of socket addresses for these host pairs
      */
     public static Set<InetSocketAddress> getSockets(String hostPortPairs) {
@@ -85,9 +80,7 @@ public class HostPortPair {
      */
     public static String getHostname(String hostPortPair) {
         int portStartIndex = hostPortPair.indexOf(SEPARATOR);
-        return (portStartIndex < 0) ?
-                hostPortPair :
-                hostPortPair.substring(0, portStartIndex);
+        return (portStartIndex < 0) ? hostPortPair : hostPortPair.substring(0, portStartIndex);
     }
 
     /**
@@ -95,8 +88,7 @@ public class HostPortPair {
      */
     public static int getPort(String hostPortPair) {
         int portStartIndex = hostPortPair.indexOf(SEPARATOR);
-        return Integer.parseInt((portStartIndex < 0) ?
-                                RepParams.DEFAULT_PORT.getDefault() :
-                                hostPortPair.substring(portStartIndex+1));
+        return Integer.parseInt((portStartIndex < 0) ? RepParams.DEFAULT_PORT.getDefault()
+                : hostPortPair.substring(portStartIndex + 1));
     }
 }

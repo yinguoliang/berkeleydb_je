@@ -32,15 +32,14 @@ import com.sleepycat.je.utilint.LoggerUtils;
 
 public class DbStat extends DbVerify {
     /*
-    private String usageString =
-        "usage: " + CmdUtil.getJavaCommand(DbStat.class) + "\n" +
-        "               [-V] -s database -h dbEnvHome [-v progressInterval]\n";
-    */
+     * private String usageString = "usage: " +
+     * CmdUtil.getJavaCommand(DbStat.class) + "\n" +
+     * "               [-V] -s database -h dbEnvHome [-v progressInterval]\n";
+     */
 
     private int progressInterval = 0;
 
-    public static void main(String argv[])
-        throws DatabaseException {
+    public static void main(String argv[]) throws DatabaseException {
 
         DbStat stat = new DbStat();
         stat.parseArgs(argv);
@@ -61,8 +60,7 @@ public class DbStat extends DbVerify {
         } catch (Throwable ignored) {
 
             /*
-             * Klockwork - ok
-             * Don't say anything about exceptions here.
+             * Klockwork - ok Don't say anything about exceptions here.
              */
         }
         System.exit(ret);
@@ -118,12 +116,11 @@ public class DbStat extends DbVerify {
         }
     }
 
-    public boolean stats(PrintStream out)
-        throws DatabaseNotFoundException {
+    public boolean stats(PrintStream out) throws DatabaseNotFoundException {
 
         try {
             LoggerUtils.envLogMsg(Level.INFO, DbInternal.getNonNullEnvImpl(env),
-                                  "DbStat.stats of " + dbName + " starting");
+                    "DbStat.stats of " + dbName + " starting");
 
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setReadOnly(true);
@@ -148,7 +145,7 @@ public class DbStat extends DbVerify {
 
             db.close();
             LoggerUtils.envLogMsg(Level.INFO, DbInternal.getNonNullEnvImpl(env),
-                               "DbStat.stats of " + dbName + " ending");
+                    "DbStat.stats of " + dbName + " ending");
         } catch (DatabaseException DE) {
             return false;
         }

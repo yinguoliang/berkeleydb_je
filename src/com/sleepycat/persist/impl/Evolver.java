@@ -39,32 +39,28 @@ import com.sleepycat.persist.model.SecondaryKeyMetadata;
  */
 class Evolver {
 
-    static final int EVOLVE_NONE = 0;
-    static final int EVOLVE_NEEDED = 1;
-    static final int EVOLVE_FAILURE = 2;
+    static final int                 EVOLVE_NONE    = 0;
+    static final int                 EVOLVE_NEEDED  = 1;
+    static final int                 EVOLVE_FAILURE = 2;
 
-    private PersistCatalog catalog;
-    private String storePrefix;
-    private Mutations mutations;
-    private Map<String, Format> newFormats;
-    private boolean forceEvolution;
-    private boolean disallowClassChanges;
-    private boolean nestedFormatsChanged;
-    private Map<Format, Format> changedFormats;
-    private StringBuilder errors;
-    private Set<String> deleteDbs;
-    private Map<String, String> renameDbs;
-    private Map<Format, Format> renameFormats;
-    private Map<Integer, Boolean> evolvedFormats;
-    private List<Format> unprocessedFormats;
+    private PersistCatalog           catalog;
+    private String                   storePrefix;
+    private Mutations                mutations;
+    private Map<String, Format>      newFormats;
+    private boolean                  forceEvolution;
+    private boolean                  disallowClassChanges;
+    private boolean                  nestedFormatsChanged;
+    private Map<Format, Format>      changedFormats;
+    private StringBuilder            errors;
+    private Set<String>              deleteDbs;
+    private Map<String, String>      renameDbs;
+    private Map<Format, Format>      renameFormats;
+    private Map<Integer, Boolean>    evolvedFormats;
+    private List<Format>             unprocessedFormats;
     private Map<Format, Set<Format>> subclassMap;
 
-    Evolver(PersistCatalog catalog,
-            String storePrefix,
-            Mutations mutations,
-            Map<String, Format> newFormats,
-            boolean forceEvolution,
-            boolean disallowClassChanges) {
+    Evolver(PersistCatalog catalog, String storePrefix, Mutations mutations, Map<String, Format> newFormats,
+            boolean forceEvolution, boolean disallowClassChanges) {
         this.catalog = catalog;
         this.storePrefix = storePrefix;
         this.mutations = mutations;
@@ -112,9 +108,8 @@ class Evolver {
 
     private void checkClassChangesAllowed(Format oldFormat) {
         if (disallowClassChanges) {
-            throw new IllegalStateException
-                ("When performing an upgrade changes are not allowed " +
-                 "but were made to: " + oldFormat.getClassName());
+            throw new IllegalStateException("When performing an upgrade changes are not allowed " + "but were made to: "
+                    + oldFormat.getClassName());
         }
     }
 
@@ -128,16 +123,15 @@ class Evolver {
 
     /**
      * Returns an error string if any mutations are invalid or missing, or
-     * returns null otherwise.  If non-null is returned, the store may not be
+     * returns null otherwise. If non-null is returned, the store may not be
      * opened.
      */
     String getErrors() {
         if (errors.length() > 0) {
-            return errors.toString() + "\n---\n" +
-               "(Note that when upgrading an application in a replicated " +
-               "environment, this exception may indicate that the Master " +
-               "was mistakenly upgraded before this Replica could be " +
-               "upgraded, and the solution is to upgrade this Replica.)";
+            return errors.toString() + "\n---\n" + "(Note that when upgrading an application in a replicated "
+                    + "environment, this exception may indicate that the Master "
+                    + "was mistakenly upgraded before this Replica could be "
+                    + "upgraded, and the solution is to upgrade this Replica.)";
         } else {
             return null;
         }
@@ -155,9 +149,7 @@ class Evolver {
 
     private String getClassVersionLabel(Format format, String prefix) {
         if (format != null) {
-            return prefix +
-                   " class: " + format.getClassName() +
-                   " version: " + format.getVersion();
+            return prefix + " class: " + format.getClassName() + " version: " + format.getVersion();
         } else {
             return "";
         }
@@ -166,45 +158,31 @@ class Evolver {
     /**
      * Adds a specified error when no specific mutation is involved.
      */
-    void addEvolveError(Format oldFormat,
-                        Format newFormat,
-                        String scenario,
-                        String error) {
+    void addEvolveError(Format oldFormat, Format newFormat, String scenario, String error) {
         checkClassChangesAllowed(oldFormat);
         if (scenario == null) {
             scenario = "Error";
         }
-        addError(scenario + " when evolving" +
-                 getClassVersionLabel(oldFormat, "") +
-                 getClassVersionLabel(newFormat, " to") +
-                 " Error: " + error);
+        addError(scenario + " when evolving" + getClassVersionLabel(oldFormat, "")
+                + getClassVersionLabel(newFormat, " to") + " Error: " + error);
     }
 
     /**
      * Adds an error for an invalid mutation.
      */
-    void addInvalidMutation(Format oldFormat,
-                            Format newFormat,
-                            Mutation mutation,
-                            String error) {
+    void addInvalidMutation(Format oldFormat, Format newFormat, Mutation mutation, String error) {
         checkClassChangesAllowed(oldFormat);
-        addError("Invalid mutation: " + mutation +
-                 getClassVersionLabel(oldFormat, " For") +
-                 getClassVersionLabel(newFormat, " New") +
-                 " Error: " + error);
+        addError("Invalid mutation: " + mutation + getClassVersionLabel(oldFormat, " For")
+                + getClassVersionLabel(newFormat, " New") + " Error: " + error);
     }
 
     /**
      * Adds an error for a missing mutation.
      */
-    void addMissingMutation(Format oldFormat,
-                            Format newFormat,
-                            String error) {
+    void addMissingMutation(Format oldFormat, Format newFormat, String error) {
         checkClassChangesAllowed(oldFormat);
-        addError("Mutation is missing to evolve" +
-                 getClassVersionLabel(oldFormat, "") +
-                 getClassVersionLabel(newFormat, " to") +
-                 " Error: " + error);
+        addError("Mutation is missing to evolve" + getClassVersionLabel(oldFormat, "")
+                + getClassVersionLabel(newFormat, " to") + " Error: " + error);
     }
 
     /**
@@ -215,11 +193,9 @@ class Evolver {
     }
 
     /**
-     * Called by PersistCatalog after calling evolveFormat or
-     * addNonEntityFormat for all old formats.
-     *
-     * We do not require deletion of an unreferenced class for two
-     * reasons: 1) built-in proxy classes may not be referenced, 2) the
+     * Called by PersistCatalog after calling evolveFormat or addNonEntityFormat
+     * for all old formats. We do not require deletion of an unreferenced class
+     * for two reasons: 1) built-in proxy classes may not be referenced, 2) the
      * user may wish to declare persistent classes that are not yet used.
      */
     void finishEvolution() {
@@ -285,29 +261,23 @@ class Evolver {
         int oldVersion = oldFormat.getVersion();
         Renamer renamer = mutations.getRenamer(oldName, oldVersion, null);
         Deleter deleter = mutations.getDeleter(oldName, oldVersion, null);
-        Converter converter =
-            mutations.getConverter(oldName, oldVersion, null);
+        Converter converter = mutations.getConverter(oldName, oldVersion, null);
         if (deleter != null && (converter != null || renamer != null)) {
-            addInvalidMutation
-                (oldFormat, null, deleter,
-                 "Class Deleter not allowed along with a Renamer or " +
-                 "Converter for the same class");
+            addInvalidMutation(oldFormat, null, deleter,
+                    "Class Deleter not allowed along with a Renamer or " + "Converter for the same class");
             return false;
         }
 
         /*
-         * For determining the new name, arrays get special treatment.  The
+         * For determining the new name, arrays get special treatment. The
          * component format is evolved in the process, and we disallow muations
          * for arrays.
          */
         String newName;
         if (oldFormat.isArray()) {
             if (deleter != null || converter != null || renamer != null) {
-                Mutation mutation = (deleter != null) ? deleter :
-                    ((converter != null) ? converter : renamer);
-                addInvalidMutation
-                    (oldFormat, null, mutation,
-                     "Mutations not allowed for an array");
+                Mutation mutation = (deleter != null) ? deleter : ((converter != null) ? converter : renamer);
+                addInvalidMutation(oldFormat, null, mutation, "Mutations not allowed for an array");
                 return false;
             }
             Format compFormat = oldFormat.getComponentType();
@@ -316,8 +286,7 @@ class Evolver {
             }
             Format latest = compFormat.getLatestVersion();
             if (latest != compFormat) {
-                newName = (latest.isArray() ? "[" : "[L") +
-                           latest.getClassName() + ';';
+                newName = (latest.isArray() ? "[" : "[L") + latest.getClassName() + ';';
             } else {
                 newName = oldName;
             }
@@ -325,7 +294,7 @@ class Evolver {
             newName = (renamer != null) ? renamer.getNewName() : oldName;
         }
 
-        /* Try to get the new class format.  Save exception for later. */
+        /* Try to get the new class format. Save exception for later. */
         Format newFormat;
         String newFormatException;
         try {
@@ -348,13 +317,11 @@ class Evolver {
             /*
              * If the old format is not the existing latest version and the new
              * format is not an existing format, then we must evolve the latest
-             * old version to the new format first.  We cannot evolve old
-             * format to a new format that may be discarded because it is equal
-             * to the latest existing format (which will remain the current
-             * version).
+             * old version to the new format first. We cannot evolve old format
+             * to a new format that may be discarded because it is equal to the
+             * latest existing format (which will remain the current version).
              */
-            if (oldFormat != oldFormat.getLatestVersion() &&
-                newFormat.getPreviousVersion() == null) {
+            if (oldFormat != oldFormat.getLatestVersion() && newFormat.getPreviousVersion() == null) {
                 assert newFormats.containsValue(newFormat);
                 Format oldLatestFormat = oldFormat.getLatestVersion();
                 if (!evolveFormat(oldLatestFormat)) {
@@ -368,17 +335,14 @@ class Evolver {
             }
 
             /*
-             * If the old format was previously evolved to the new format
-             * (which means the new format is actually an existing format),
-             * then there is nothing to do.  This is the case where no class
-             * changes were made.
-             *
-             * However, if mutations were specified when opening the catalog
-             * that are different than the mutations last used, then we must
-             * force the re-evolution of all old formats.
+             * If the old format was previously evolved to the new format (which
+             * means the new format is actually an existing format), then there
+             * is nothing to do. This is the case where no class changes were
+             * made. However, if mutations were specified when opening the
+             * catalog that are different than the mutations last used, then we
+             * must force the re-evolution of all old formats.
              */
-            if (!forceEvolution &&
-                newFormat == oldFormat.getLatestVersion()) {
+            if (!forceEvolution && newFormat == oldFormat.getLatestVersion()) {
                 return true;
             }
         }
@@ -394,11 +358,9 @@ class Evolver {
         if (converter != null) {
             if (oldFormat.isEntity()) {
                 if (newFormat == null || !newFormat.isEntity()) {
-                    addInvalidMutation
-                        (oldFormat, newFormat, converter,
-                         "Class converter not allowed for an entity class " +
-                         "that is no longer present or not having an " +
-                         "@Entity annotation");
+                    addInvalidMutation(oldFormat, newFormat, converter,
+                            "Class converter not allowed for an entity class "
+                                    + "that is no longer present or not having an " + "@Entity annotation");
                     return false;
                 }
                 if (!oldFormat.evolveMetadata(newFormat, converter, this)) {
@@ -409,15 +371,11 @@ class Evolver {
         }
 
         /* Apply class Deleter and return. */
-        boolean needDeleter =
-            (newFormat == null) ||
-            (newFormat.isEntity() != oldFormat.isEntity());
+        boolean needDeleter = (newFormat == null) || (newFormat.isEntity() != oldFormat.isEntity());
         if (deleter != null) {
             if (!needDeleter) {
-                addInvalidMutation
-                    (oldFormat, newFormat, deleter,
-                     "Class deleter not allowed when the class and its " +
-                     "@Entity or @Persistent annotation is still present");
+                addInvalidMutation(oldFormat, newFormat, deleter, "Class deleter not allowed when the class and its "
+                        + "@Entity or @Persistent annotation is still present");
                 return false;
             }
             return applyClassDeleter(deleter, oldFormat, newFormat);
@@ -426,19 +384,16 @@ class Evolver {
                 if (newFormat == null) {
                     assert newFormatException != null;
                     /* FindBugs newFormat known to be null excluded. */
-                    addMissingMutation
-                        (oldFormat, newFormat, newFormatException);
+                    addMissingMutation(oldFormat, newFormat, newFormatException);
                 } else {
-                    addMissingMutation
-                        (oldFormat, newFormat,
-                         "@Entity switched to/from @Persistent");
+                    addMissingMutation(oldFormat, newFormat, "@Entity switched to/from @Persistent");
                 }
                 return false;
             }
         }
 
         /*
-         * Class-level mutations have been applied.  Now apply field mutations
+         * Class-level mutations have been applied. Now apply field mutations
          * (for complex classes) or special conversions (enum conversions, for
          * example) by calling the old format's evolve method.
          */
@@ -446,8 +401,8 @@ class Evolver {
     }
 
     /**
-     * Use the old format and discard the new format.  Called by
-     * Format.evolve when the old and new formats are identical.
+     * Use the old format and discard the new format. Called by Format.evolve
+     * when the old and new formats are identical.
      */
     void useOldFormat(Format oldFormat, Format newFormat) {
         Format renamedFormat = renameFormats.get(oldFormat);
@@ -455,28 +410,25 @@ class Evolver {
 
             /*
              * The format was renamed but, because this method is called, we
-             * know that no other class changes were made.  Use the new/renamed
+             * know that no other class changes were made. Use the new/renamed
              * format as the reader.
              */
             assert renamedFormat == newFormat;
             useEvolvedFormat(oldFormat, renamedFormat, renamedFormat);
-        } else if (newFormat != null &&
-                   (oldFormat.getVersion() != newFormat.getVersion() ||
-                    !oldFormat.isCurrentVersion())) {
+        } else if (newFormat != null
+                && (oldFormat.getVersion() != newFormat.getVersion() || !oldFormat.isCurrentVersion())) {
 
             /*
              * If the user wants a new version number, but ther are no other
-             * changes, we will oblige.  Or, if an attempt is being made to
-             * use an old version, then the following events happened and we
-             * must evolve the old format:
-             * 1) The (previously) latest version of the format was evolved
-             * because it is not equal to the live class version.  Note that
-             * evolveFormatInternal always evolves the latest version first.
-             * 2) We are now attempting to evolve an older version of the same
-             * format, and it happens to be equal to the live class version.
-             * However, we're already committed to the new format, and we must
-             * evolve all versions.
-             * [#16467]
+             * changes, we will oblige. Or, if an attempt is being made to use
+             * an old version, then the following events happened and we must
+             * evolve the old format: 1) The (previously) latest version of the
+             * format was evolved because it is not equal to the live class
+             * version. Note that evolveFormatInternal always evolves the latest
+             * version first. 2) We are now attempting to evolve an older
+             * version of the same format, and it happens to be equal to the
+             * live class version. However, we're already committed to the new
+             * format, and we must evolve all versions. [#16467]
              */
             useEvolvedFormat(oldFormat, newFormat, newFormat);
         } else {
@@ -489,12 +441,10 @@ class Evolver {
     }
 
     /**
-     * Install an evolver Reader in the old format.  Called by Format.evolve
-     * when the old and new formats are not identical.
+     * Install an evolver Reader in the old format. Called by Format.evolve when
+     * the old and new formats are not identical.
      */
-    void useEvolvedFormat(Format oldFormat,
-                          Reader evolveReader,
-                          Format newFormat) {
+    void useEvolvedFormat(Format oldFormat, Reader evolveReader, Format newFormat) {
         oldFormat.setReader(evolveReader);
         if (newFormat != null) {
             oldFormat.setLatestVersion(newFormat);
@@ -502,9 +452,7 @@ class Evolver {
         setFormatsChanged(oldFormat);
     }
 
-    private boolean applyClassRenamer(Renamer renamer,
-                                      Format oldFormat,
-                                      Format newFormat) {
+    private boolean applyClassRenamer(Renamer renamer, Format oldFormat, Format newFormat) {
         if (!checkUpdatedVersion(renamer, oldFormat, newFormat)) {
             return false;
         }
@@ -512,15 +460,12 @@ class Evolver {
             String newClassName = newFormat.getClassName();
             String oldClassName = oldFormat.getClassName();
             /* Queue the renaming of the primary and secondary databases. */
-            renameDbs.put
-                (Store.makePriDbName(storePrefix, oldClassName),
-                 Store.makePriDbName(storePrefix, newClassName));
-            for (SecondaryKeyMetadata keyMeta :
-                 oldFormat.getEntityMetadata().getSecondaryKeys().values()) {
+            renameDbs.put(Store.makePriDbName(storePrefix, oldClassName),
+                    Store.makePriDbName(storePrefix, newClassName));
+            for (SecondaryKeyMetadata keyMeta : oldFormat.getEntityMetadata().getSecondaryKeys().values()) {
                 String keyName = keyMeta.getKeyName();
-                renameDbs.put
-                    (Store.makeSecDbName(storePrefix, oldClassName, keyName),
-                     Store.makeSecDbName(storePrefix, newClassName, keyName));
+                renameDbs.put(Store.makeSecDbName(storePrefix, oldClassName, keyName),
+                        Store.makeSecDbName(storePrefix, newClassName, keyName));
             }
         }
 
@@ -537,18 +482,12 @@ class Evolver {
     /**
      * Called by ComplexFormat when a secondary key name is changed.
      */
-    void renameSecondaryDatabase(String oldEntityClass,
-                                 String newEntityClass,
-                                 String oldKeyName,
-                                 String newKeyName) {
-        renameDbs.put
-            (Store.makeSecDbName(storePrefix, oldEntityClass, oldKeyName),
-             Store.makeSecDbName(storePrefix, newEntityClass, newKeyName));
+    void renameSecondaryDatabase(String oldEntityClass, String newEntityClass, String oldKeyName, String newKeyName) {
+        renameDbs.put(Store.makeSecDbName(storePrefix, oldEntityClass, oldKeyName),
+                Store.makeSecDbName(storePrefix, newEntityClass, newKeyName));
     }
 
-    private boolean applyClassDeleter(Deleter deleter,
-                                      Format oldFormat,
-                                      Format newFormat) {
+    private boolean applyClassDeleter(Deleter deleter, Format oldFormat, Format newFormat) {
         if (!checkUpdatedVersion(deleter, oldFormat, newFormat)) {
             return false;
         }
@@ -556,10 +495,8 @@ class Evolver {
             /* Queue the deletion of the primary and secondary databases. */
             String className = oldFormat.getClassName();
             deleteDbs.add(Store.makePriDbName(storePrefix, className));
-            for (SecondaryKeyMetadata keyMeta :
-                 oldFormat.getEntityMetadata().getSecondaryKeys().values()) {
-                deleteDbs.add(Store.makeSecDbName
-                    (storePrefix, className, keyMeta.getKeyName()));
+            for (SecondaryKeyMetadata keyMeta : oldFormat.getEntityMetadata().getSecondaryKeys().values()) {
+                deleteDbs.add(Store.makeSecDbName(storePrefix, className, keyMeta.getKeyName()));
             }
         }
 
@@ -580,13 +517,10 @@ class Evolver {
      * Called by ComplexFormat when a secondary key is dropped.
      */
     void deleteSecondaryDatabase(String oldEntityClass, String keyName) {
-        deleteDbs.add(Store.makeSecDbName
-            (storePrefix, oldEntityClass, keyName));
+        deleteDbs.add(Store.makeSecDbName(storePrefix, oldEntityClass, keyName));
     }
 
-    private boolean applyConverter(Converter converter,
-                                   Format oldFormat,
-                                   Format newFormat) {
+    private boolean applyConverter(Converter converter, Format oldFormat, Format newFormat) {
         if (!checkUpdatedVersion(converter, oldFormat, newFormat)) {
             return false;
         }
@@ -599,56 +533,41 @@ class Evolver {
         return format.getReader() instanceof ConverterReader;
     }
 
-    private boolean checkUpdatedVersion(Mutation mutation,
-                                        Format oldFormat,
-                                        Format newFormat) {
-        if (newFormat != null &&
-            !oldFormat.isEnum() &&
-            newFormat.getVersion() <= oldFormat.getVersion()) {
-            addInvalidMutation
-                (oldFormat, newFormat, mutation,
-                 "A new higher version number must be assigned");
+    private boolean checkUpdatedVersion(Mutation mutation, Format oldFormat, Format newFormat) {
+        if (newFormat != null && !oldFormat.isEnum() && newFormat.getVersion() <= oldFormat.getVersion()) {
+            addInvalidMutation(oldFormat, newFormat, mutation, "A new higher version number must be assigned");
             return false;
         } else {
             return true;
         }
     }
 
-    boolean checkUpdatedVersion(String scenario,
-                                Format oldFormat,
-                                Format newFormat) {
-        if (newFormat != null &&
-            !oldFormat.isEnum() &&
-            newFormat.getVersion() <= oldFormat.getVersion()) {
-            addEvolveError
-                (oldFormat, newFormat, scenario,
-                 "A new higher version number must be assigned");
+    boolean checkUpdatedVersion(String scenario, Format oldFormat, Format newFormat) {
+        if (newFormat != null && !oldFormat.isEnum() && newFormat.getVersion() <= oldFormat.getVersion()) {
+            addEvolveError(oldFormat, newFormat, scenario, "A new higher version number must be assigned");
             return false;
         } else {
             return true;
         }
     }
 
-    void renameAndRemoveDatabases(Store store, Transaction txn)
-        throws DatabaseException {
+    void renameAndRemoveDatabases(Store store, Transaction txn) throws DatabaseException {
 
         for (String dbName : deleteDbs) {
             String[] fileAndDbNames = store.parseDbName(dbName);
             /* Do nothing if database does not exist. */
-            DbCompat.removeDatabase
-                (store.getEnvironment(), txn,
-                 fileAndDbNames[0], fileAndDbNames[1]);
+            DbCompat.removeDatabase(store.getEnvironment(), txn, fileAndDbNames[0], fileAndDbNames[1]);
         }
 
         /*
          * An importunate locker must be used to rename databases, since rename
-         * with Database handles open is not currently possible.  This is the
-         * same sort of operation as performed by the HA replayer.  If the
+         * with Database handles open is not currently possible. This is the
+         * same sort of operation as performed by the HA replayer. If the
          * evolution (and rename here) occurs in a replication group upgrade,
-         * this will cause DatabasePreemptedException the next time the
-         * database is accessed (via the store or otherwise).  In a standalone
+         * this will cause DatabasePreemptedException the next time the database
+         * is accessed (via the store or otherwise). In a standalone
          * environment, this won't happen because the database won't be open;
-         * evolve occurs before opening the database in this case.  [#16655]
+         * evolve occurs before opening the database in this case. [#16655]
          */
         boolean saveImportunate = false;
         if (txn != null) {
@@ -661,10 +580,8 @@ class Evolver {
                 String[] oldFileAndDbNames = store.parseDbName(oldName);
                 String[] newFileAndDbNames = store.parseDbName(newName);
                 /* Do nothing if database does not exist. */
-                DbCompat.renameDatabase
-                    (store.getEnvironment(), txn,
-                     oldFileAndDbNames[0], oldFileAndDbNames[1],
-                     newFileAndDbNames[0], newFileAndDbNames[1]);
+                DbCompat.renameDatabase(store.getEnvironment(), txn, oldFileAndDbNames[0], oldFileAndDbNames[1],
+                        newFileAndDbNames[0], newFileAndDbNames[1]);
             }
         } finally {
             if (txn != null) {
@@ -676,59 +593,41 @@ class Evolver {
     /**
      * Evolves a primary key field or composite key field.
      */
-    int evolveRequiredKeyField(Format oldParent,
-                               Format newParent,
-                               FieldInfo oldField,
-                               FieldInfo newField) {
+    int evolveRequiredKeyField(Format oldParent, Format newParent, FieldInfo oldField, FieldInfo newField) {
         int result = EVOLVE_NONE;
         String oldName = oldField.getName();
-        final String FIELD_KIND =
-            "primary key field or composite key class field";
-        final String FIELD_LABEL =
-            FIELD_KIND + ": " + oldName;
+        final String FIELD_KIND = "primary key field or composite key class field";
+        final String FIELD_LABEL = FIELD_KIND + ": " + oldName;
 
         if (newField == null) {
-            addMissingMutation
-                (oldParent, newParent,
-                 "Field is missing and deletion is not allowed for a " +
-                 FIELD_LABEL);
+            addMissingMutation(oldParent, newParent,
+                    "Field is missing and deletion is not allowed for a " + FIELD_LABEL);
             return EVOLVE_FAILURE;
         }
 
-        /* Check field mutations.  Only a Renamer is allowed. */
-        Deleter deleter = mutations.getDeleter
-            (oldParent.getClassName(), oldParent.getVersion(), oldName);
+        /* Check field mutations. Only a Renamer is allowed. */
+        Deleter deleter = mutations.getDeleter(oldParent.getClassName(), oldParent.getVersion(), oldName);
         if (deleter != null) {
-            addInvalidMutation
-                (oldParent, newParent, deleter,
-                 "Deleter is not allowed for a " + FIELD_LABEL);
+            addInvalidMutation(oldParent, newParent, deleter, "Deleter is not allowed for a " + FIELD_LABEL);
             return EVOLVE_FAILURE;
         }
-        Converter converter = mutations.getConverter
-            (oldParent.getClassName(), oldParent.getVersion(), oldName);
+        Converter converter = mutations.getConverter(oldParent.getClassName(), oldParent.getVersion(), oldName);
         if (converter != null) {
-            addInvalidMutation
-                (oldParent, newParent, converter,
-                 "Converter is not allowed for a " + FIELD_LABEL);
+            addInvalidMutation(oldParent, newParent, converter, "Converter is not allowed for a " + FIELD_LABEL);
             return EVOLVE_FAILURE;
         }
-        Renamer renamer = mutations.getRenamer
-            (oldParent.getClassName(), oldParent.getVersion(), oldName);
+        Renamer renamer = mutations.getRenamer(oldParent.getClassName(), oldParent.getVersion(), oldName);
         String newName = newField.getName();
         if (renamer != null) {
             if (!renamer.getNewName().equals(newName)) {
-                addInvalidMutation
-                    (oldParent, newParent, converter,
-                     "Converter is not allowed for a " + FIELD_LABEL);
+                addInvalidMutation(oldParent, newParent, converter, "Converter is not allowed for a " + FIELD_LABEL);
                 return EVOLVE_FAILURE;
             }
             result = EVOLVE_NEEDED;
         } else {
             if (!oldName.equals(newName)) {
-                addMissingMutation
-                    (oldParent, newParent,
-                     "Renamer is required when field name is changed from: " +
-                     oldName + " to: " + newName);
+                addMissingMutation(oldParent, newParent,
+                        "Renamer is required when field name is changed from: " + oldName + " to: " + newName);
                 return EVOLVE_FAILURE;
             }
         }
@@ -746,27 +645,20 @@ class Evolver {
         }
         Format newFieldFormat = newField.getType();
 
-        if (oldLatestFormat.getClassName().equals
-                (newFieldFormat.getClassName())) {
+        if (oldLatestFormat.getClassName().equals(newFieldFormat.getClassName())) {
             /* Formats are identical. */
             return result;
-        } else if ((oldLatestFormat.getWrapperFormat() != null &&
-                    oldLatestFormat.getWrapperFormat().getId() ==
-                    newFieldFormat.getId()) ||
-                   (newFieldFormat.getWrapperFormat() != null &&
-                    newFieldFormat.getWrapperFormat().getId() ==
-                    oldLatestFormat.getId())) {
+        } else if ((oldLatestFormat.getWrapperFormat() != null
+                && oldLatestFormat.getWrapperFormat().getId() == newFieldFormat.getId())
+                || (newFieldFormat.getWrapperFormat() != null
+                        && newFieldFormat.getWrapperFormat().getId() == oldLatestFormat.getId())) {
             /* Primitive <-> primitive wrapper type change. */
             return EVOLVE_NEEDED;
         } else {
             /* Type was changed incompatibly. */
-            addEvolveError
-                (oldParent, newParent,
-                 "Type may not be changed for a " + FIELD_KIND,
-                 "Old field type: " + oldLatestFormat.getClassName() +
-                 " is not compatible with the new type: " +
-                 newFieldFormat.getClassName() +
-                 " for field: " + oldName);
+            addEvolveError(oldParent, newParent, "Type may not be changed for a " + FIELD_KIND,
+                    "Old field type: " + oldLatestFormat.getClassName() + " is not compatible with the new type: "
+                            + newFieldFormat.getClassName() + " for field: " + oldName);
             return EVOLVE_FAILURE;
         }
     }

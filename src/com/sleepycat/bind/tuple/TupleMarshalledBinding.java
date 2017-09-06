@@ -18,25 +18,26 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
 /**
  * A concrete <code>TupleBinding</code> that delegates to the
  * <code>MarshalledTupleEntry</code> interface of the data or key object.
- *
- * <p>This class works by calling the methods of the {@link
- * MarshalledTupleEntry} interface, which must be implemented by the key or
- * data class, to convert between the key or data entry and the object.</p>
+ * <p>
+ * This class works by calling the methods of the {@link MarshalledTupleEntry}
+ * interface, which must be implemented by the key or data class, to convert
+ * between the key or data entry and the object.
+ * </p>
  *
  * @author Mark Hayes
  */
-public class TupleMarshalledBinding<E extends MarshalledTupleEntry>
-    extends TupleBinding<E> {
+public class TupleMarshalledBinding<E extends MarshalledTupleEntry> extends TupleBinding<E> {
 
     private Class<E> cls;
 
     /**
      * Creates a tuple marshalled binding object.
-     *
-     * <p>The given class is used to instantiate key or data objects using
+     * <p>
+     * The given class is used to instantiate key or data objects using
      * {@link Class#newInstance}, and therefore must be a public class and have
-     * a public no-arguments constructor.  It must also implement the {@link
-     * MarshalledTupleEntry} interface.</p>
+     * a public no-arguments constructor. It must also implement the
+     * {@link MarshalledTupleEntry} interface.
+     * </p>
      *
      * @param cls is the class of the key or data objects.
      */
@@ -44,10 +45,9 @@ public class TupleMarshalledBinding<E extends MarshalledTupleEntry>
 
         this.cls = cls;
 
-        /* The class will be used to instantiate the object.  */
+        /* The class will be used to instantiate the object. */
         if (!MarshalledTupleEntry.class.isAssignableFrom(cls)) {
-            throw new IllegalArgumentException
-                (cls.toString() + " does not implement MarshalledTupleEntry");
+            throw new IllegalArgumentException(cls.toString() + " does not implement MarshalledTupleEntry");
         }
     }
 

@@ -19,9 +19,10 @@ import com.sleepycat.je.DatabaseEntry;
 
 /**
  * A concrete <code>TupleBinding</code> for a <code>BigInteger</code> value.
- *
- * <p>This class produces byte array values that by default (without a custom
- * comparator) sort correctly.</p>
+ * <p>
+ * This class produces byte array values that by default (without a custom
+ * comparator) sort correctly.
+ * </p>
  *
  * @see <a href="package-summary.html#integerFormats">Integer Formats</a>
  */
@@ -49,7 +50,6 @@ public class BigIntegerBinding extends TupleBinding<BigInteger> {
      * Converts an entry buffer into a <code>BigInteger</code> value.
      *
      * @param entry is the source entry buffer.
-     *
      * @return the resulting value.
      */
     public static BigInteger entryToBigInteger(DatabaseEntry entry) {
@@ -61,7 +61,6 @@ public class BigIntegerBinding extends TupleBinding<BigInteger> {
      * Converts a <code>BigInteger</code> value into an entry buffer.
      *
      * @param val is the source value.
-     *
      * @param entry is the destination entry buffer.
      */
     public static void bigIntegerToEntry(BigInteger val, DatabaseEntry entry) {
@@ -70,8 +69,8 @@ public class BigIntegerBinding extends TupleBinding<BigInteger> {
     }
 
     /**
-     * Returns a tuple output object of the exact size needed, to avoid
-     * wasting space when a single primitive is output.
+     * Returns a tuple output object of the exact size needed, to avoid wasting
+     * space when a single primitive is output.
      */
     private static TupleOutput sizedOutput(BigInteger val) {
 

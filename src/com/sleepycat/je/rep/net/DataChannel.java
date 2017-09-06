@@ -20,20 +20,16 @@ import java.nio.channels.ScatteringByteChannel;
 import java.nio.channels.SocketChannel;
 
 /**
- * @hidden
- * An interface that associates a delegate socketChannel for network I/O, which
- * provides ByteChannel, GatheringByteChannel, and ScatteringByteChannel,
- * interfaces for callers.
+ * @hidden An interface that associates a delegate socketChannel for network
+ *         I/O, which provides ByteChannel, GatheringByteChannel, and
+ *         ScatteringByteChannel, interfaces for callers.
  */
-public interface DataChannel extends ByteChannel,
-                                     GatheringByteChannel,
-                                     ScatteringByteChannel {
+public interface DataChannel extends ByteChannel, GatheringByteChannel, ScatteringByteChannel {
 
     /**
-     * Accessor for the underlying SocketChannel.
-     * Callers may used the returned SocketChannel in order to query/modify
-     * connections attributes, but may not directly close, read from or write
-     * to the SocketChannel.
+     * Accessor for the underlying SocketChannel. Callers may used the returned
+     * SocketChannel in order to query/modify connections attributes, but may
+     * not directly close, read from or write to the SocketChannel.
      *
      * @return the socket channel underlying this data channel instance
      */
@@ -47,10 +43,10 @@ public interface DataChannel extends ByteChannel,
     public boolean isSecure();
 
     /**
-     * Checks whether  the channel capable of determining peer trust.
+     * Checks whether the channel capable of determining peer trust.
      *
-     * @return true if the data channel implementation has the capability
-     * to determine trust.
+     * @return true if the data channel implementation has the capability to
+     *         determine trust.
      */
     public boolean isTrustCapable();
 
@@ -86,12 +82,11 @@ public interface DataChannel extends ByteChannel,
     }
 
     /**
-     * Attempt to flush any pending writes to the underlying socket buffer.
-     * The caller should ensure that it is the only thread accessing the
-     * DataChannel in order that the return value be meaningful.
+     * Attempt to flush any pending writes to the underlying socket buffer. The
+     * caller should ensure that it is the only thread accessing the DataChannel
+     * in order that the return value be meaningful.
      *
      * @return the flush status
      */
     public FlushStatus flush() throws IOException;
 }
-

@@ -21,45 +21,38 @@ import java.util.List;
 
 public class JVMSystemUtils {
 
-    public static final boolean ZING_JVM =
-        "Azul Systems, Inc.".equals(System.getProperty("java.vendor"));
+    public static final boolean          ZING_JVM                      = "Azul Systems, Inc."
+            .equals(System.getProperty("java.vendor"));
 
     /**
      * Zing will bump the heap up to 1 GB if -Xmx is smaller.
      */
-    public static final int MIN_HEAP_MB = ZING_JVM ? 1024 : 0;
+    public static final int              MIN_HEAP_MB                   = ZING_JVM ? 1024 : 0;
 
-    private static final String ZING_MANAGEMENT_FACTORY_CLASS =
-        "com.azul.zing.management.ManagementFactory";
+    private static final String          ZING_MANAGEMENT_FACTORY_CLASS = "com.azul.zing.management.ManagementFactory";
 
-    private static final String ZING_ACCESS_ERROR =
-        "Could not access Zing management bean." +
-            " Make sure -XX:+UseZingMXBeans was specified.";
+    private static final String          ZING_ACCESS_ERROR             = "Could not access Zing management bean."
+            + " Make sure -XX:+UseZingMXBeans was specified.";
 
-    private static OperatingSystemMXBean osBean =
-        ManagementFactory.getOperatingSystemMXBean();
+    private static OperatingSystemMXBean osBean                        = ManagementFactory.getOperatingSystemMXBean();
 
-    private static final String MATCH_FILE_SEPARATOR =
-        "\\" + File.separatorChar;
+    private static final String          MATCH_FILE_SEPARATOR          = "\\" + File.separatorChar;
 
     /*
-     * Get the system load average for the last minute.
-     *
-     * This method is no longer needed and could be removed. It was originally
-     * used to perform reflection when we supported Java 5, but from Java 6
-     * onward the getSystemLoadAverage method can be called directly. However,
-     * it is a commonly used utility method, so we have chosen not to remove
-     * it, for now at least.
+     * Get the system load average for the last minute. This method is no longer
+     * needed and could be removed. It was originally used to perform reflection
+     * when we supported Java 5, but from Java 6 onward the getSystemLoadAverage
+     * method can be called directly. However, it is a commonly used utility
+     * method, so we have chosen not to remove it, for now at least.
      */
     public static double getSystemLoad() {
         return osBean.getSystemLoadAverage();
     }
 
     /**
-     * Returns the max amount of memory in the heap available, using an
-     * approach that depends on the JVM vendor, OS, etc.
-     *
-     * May return Long.MAX_VALUE if there is no inherent limit.
+     * Returns the max amount of memory in the heap available, using an approach
+     * that depends on the JVM vendor, OS, etc. May return Long.MAX_VALUE if
+     * there is no inherent limit.
      */
     public static long getRuntimeMaxMemory() {
 
@@ -77,17 +70,14 @@ public class JVMSystemUtils {
          */
         if (ZING_JVM) {
             try {
-                final Class<?> factoryClass =
-                    Class.forName(ZING_MANAGEMENT_FACTORY_CLASS);
+                final Class<?> factoryClass = Class.forName(ZING_MANAGEMENT_FACTORY_CLASS);
 
-                final Method getBeanMethod =
-                    factoryClass.getMethod("getMemoryMXBean");
+                final Method getBeanMethod = factoryClass.getMethod("getMemoryMXBean");
 
                 final Object memoryBean = getBeanMethod.invoke(null);
                 final Class<?> beanClass = memoryBean.getClass();
 
-                final Method getMaxMemoryMethod = beanClass.getMethod(
-                    "getApplicationObjectHeapUsableMemory");
+                final Method getMaxMemoryMethod = beanClass.getMethod("getApplicationObjectHeapUsableMemory");
 
                 return (Long) getMaxMemoryMethod.invoke(memoryBean);
 
@@ -110,14 +100,11 @@ public class JVMSystemUtils {
                 throw new IllegalStateException("Only allowed under Zing");
             }
 
-            final Class<?> factoryClass =
-                Class.forName(ZING_MANAGEMENT_FACTORY_CLASS);
+            final Class<?> factoryClass = Class.forName(ZING_MANAGEMENT_FACTORY_CLASS);
 
-            final Method getPoolsMethod =
-                factoryClass.getMethod("getMemoryPoolMXBeans");
+            final Method getPoolsMethod = factoryClass.getMethod("getMemoryPoolMXBeans");
 
-            final java.util.List<?> pools =
-                (java.util.List<?>) getPoolsMethod.invoke(null);
+            final java.util.List<?> pools = (java.util.List<?>) getPoolsMethod.invoke(null);
 
             final Class<?> poolClass = pools.get(0).getClass();
             final Method getNameMethod = poolClass.getMethod("getName");
@@ -129,8 +116,7 @@ public class JVMSystemUtils {
                 }
             }
 
-            throw new IllegalStateException(
-                "System Zing Memory pool not found");
+            throw new IllegalStateException("System Zing Memory pool not found");
 
         } catch (Exception e) {
             throw new IllegalStateException(ZING_ACCESS_ERROR, e);
@@ -138,16 +124,16 @@ public class JVMSystemUtils {
     }
 
     /**
-     * Appends Zing-specific Java args, should be called before starting a
-     * Java process.
+     * Appends Zing-specific Java args, should be called before starting a Java
+     * process.
      */
     public static void addZingJVMArgs(List<String> command) {
         insertZingJVMArgs(command, command.size());
     }
 
     /**
-     * Insert Zing-specific Java args after the 'java' command, if 'java' is
-     * the 0th element.
+     * Insert Zing-specific Java args after the 'java' command, if 'java' is the
+     * 0th element.
      */
     public static void insertZingJVMArgs(List<String> command) {
         if (!JVMSystemUtils.ZING_JVM) {

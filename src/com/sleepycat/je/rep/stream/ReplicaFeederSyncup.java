@@ -53,49 +53,42 @@ import com.sleepycat.je.utilint.VLSN;
 /**
  * Establish where the replication stream should start for a replica and feeder
  * pair. The replica compares what is in its log with what the feeder has, to
- * determine the latest common log entry matchpoint
- *
- * - If the replica has applied log entries after that matchpoint, roll them
- *   back
- * - If a common matchpoint can't be found, the replica will need to do
- *   a network restore.
+ * determine the latest common log entry matchpoint - If the replica has applied
+ * log entries after that matchpoint, roll them back - If a common matchpoint
+ * can't be found, the replica will need to do a network restore.
  */
 public class ReplicaFeederSyncup {
 
-    private final Logger logger;
+    private final Logger                                                  logger;
 
-    private final NamedChannel namedChannel;
-    private final Protocol protocol;
-    private final RepNode repNode;
-    private final VLSNIndex vlsnIndex;
-    private final Replay replay;
-    private final RepImpl repImpl;
-    private ReplicaSyncupReader backwardsReader;
+    private final NamedChannel                                            namedChannel;
+    private final Protocol                                                protocol;
+    private final RepNode                                                 repNode;
+    private final VLSNIndex                                               vlsnIndex;
+    private final Replay                                                  replay;
+    private final RepImpl                                                 repImpl;
+    private ReplicaSyncupReader                                           backwardsReader;
 
     /* The VLSN, lsn and log entry at which a match was made. */
-    private VLSN matchpointVLSN = NULL_VLSN;
-    private Long matchedVLSNTime = 0L;
+    private VLSN                                                          matchpointVLSN  = NULL_VLSN;
+    private Long                                                          matchedVLSNTime = 0L;
 
-    private final boolean hardRecoveryNeedsElection;
+    private final boolean                                                 hardRecoveryNeedsElection;
 
     /*
      * searchResults are the bundled outputs from the backwards scan by the
      * ReplicaSyncReader during its search for a matchpoint.
      */
-    private final MatchpointSearchResults searchResults;
+    private final MatchpointSearchResults                                 searchResults;
 
     /**
      * For unit tests only.
      */
-    private static TestHook<Object> globalSyncupEndHook;
-    private final TestHook<Object> syncupEndHook;
-    private static com.sleepycat.je.utilint.TestHook<ReplicaFeederSyncup>
-        rollbackHook;
+    private static TestHook<Object>                                       globalSyncupEndHook;
+    private final TestHook<Object>                                        syncupEndHook;
+    private static com.sleepycat.je.utilint.TestHook<ReplicaFeederSyncup> rollbackHook;
 
-    public ReplicaFeederSyncup(RepNode repNode,
-                               Replay replay,
-                               NamedChannel namedChannel,
-                               Protocol protocol,
+    public ReplicaFeederSyncup(RepNode repNode, Replay replay, NamedChannel namedChannel, Protocol protocol,
                                boolean hardRecoveryNeedsElection) {
         this.replay = replay;
         logger = LoggerUtils.getLogger(getClass());
@@ -119,40 +112,35 @@ public class ReplicaFeederSyncup {
 
     /**
      * The replica's side of the protocol.
+     * 
      * @throws InterruptedException
      * @throws InsufficientLogException
      * @throws HardRecoveryElectionException
      */
-    public void execute(LocalCBVLSNTracker cbvlsnTracker)
-        throws IOException,
-               DatabaseException,
-               InterruptedException,
-               InsufficientLogException,
-               HardRecoveryElectionException {
+    public void execute(LocalCBVLSNTracker cbvlsnTracker) throws IOException, DatabaseException, InterruptedException,
+            InsufficientLogException, HardRecoveryElectionException {
 
         final long startTime = System.currentTimeMillis();
         String feederName = namedChannel.getNameIdPair().getName();
-        LoggerUtils.info(logger, repImpl,
-                         "Replica-feeder " + feederName +
-                         " syncup started. Replica range: " +
-                         repNode.getVLSNIndex().getRange());
+        LoggerUtils.info(logger, repImpl, "Replica-feeder " + feederName + " syncup started. Replica range: "
+                + repNode.getVLSNIndex().getRange());
 
         /* Prohibit global CBVLSN update. */
         repNode.syncupStarted();
         try {
 
             /*
-             * Find a replication stream matchpoint and a place to start
-             * the replication stream. If the feeder cannot service this
-             * protocol because it has run out of replication stream,
-             * findMatchpoint will throw a InsufficientLogException. If the
+             * Find a replication stream matchpoint and a place to start the
+             * replication stream. If the feeder cannot service this protocol
+             * because it has run out of replication stream, findMatchpoint will
+             * throw a InsufficientLogException. If the
              */
             VLSNRange range = vlsnIndex.getRange();
             findMatchpoint(range);
 
             /*
-             * If we can't rollback to the found matchpoint, verifyRollback
-             * will throw the appropriate exception.
+             * If we can't rollback to the found matchpoint, verifyRollback will
+             * throw the appropriate exception.
              */
             verifyRollback(range);
 
@@ -160,22 +148,17 @@ public class ReplicaFeederSyncup {
 
             /* Update the vlsnIndex, it will commit synchronously. */
             VLSN startVLSN = matchpointVLSN.getNext();
-            vlsnIndex.truncateFromTail(startVLSN,
-                                       searchResults.getMatchpointLSN());
+            vlsnIndex.truncateFromTail(startVLSN, searchResults.getMatchpointLSN());
 
-            protocol.write(protocol.new
-                           StartStream(startVLSN, repImpl.getFeederFilter()),
-                           namedChannel);
-            LoggerUtils.info(logger, repImpl,
-                             "Replica-feeder " + feederName +
-                             " start stream at VLSN: " + startVLSN);
+            protocol.write(protocol.new StartStream(startVLSN, repImpl.getFeederFilter()), namedChannel);
+            LoggerUtils.info(logger, repImpl, "Replica-feeder " + feederName + " start stream at VLSN: " + startVLSN);
 
             /*
              * Initialize this node's local CBVLSN while global CBVLSN updates
-             * are prohibited. Hang onto the vlsn at the matchpoint -- don't
-             * let that be cleaned, because it may be of use for other replicas
-             * who need to sync up. Right now, this seems to be the best
-             * matchpoint in the group.
+             * are prohibited. Hang onto the vlsn at the matchpoint -- don't let
+             * that be cleaned, because it may be of use for other replicas who
+             * need to sync up. Right now, this seems to be the best matchpoint
+             * in the group.
              */
             cbvlsnTracker.registerMatchpoint(matchpointVLSN);
         } finally {
@@ -184,55 +167,38 @@ public class ReplicaFeederSyncup {
             assert runHook();
 
             repNode.syncupEnded();
-            LoggerUtils.info
-                (logger, repImpl,
-                 String.format
-                 ("Replica-feeder " + feederName +
-                  " syncup ended. Elapsed time: %,dms",
-                  (System.currentTimeMillis() - startTime)));
+            LoggerUtils.info(logger, repImpl,
+                    String.format("Replica-feeder " + feederName + " syncup ended. Elapsed time: %,dms",
+                            (System.currentTimeMillis() - startTime)));
             repImpl.setSyncupProgress(SyncupProgress.END);
         }
     }
 
     /**
-     * A matchpoint has been found. What happens next depends on the position
-     * of the matchpoint and its relationship to the last transaction end
-     * record.
-     *
-     * In following table,
-     *    M = some non-null matchpoint VLSN value,
-     *    T = some non-null last txn end value
-     *    S = some non-null last sync value
-     *
-     * txn end                last sync   found        action
-     *  VLSN                  VLSN        matchpoint
-     * ----------             ---------   ---------    ------------------------
-     * NULL_VLSN              NULL_VLSN   NULL_VLSN    rollback everything
-     * NULL_VLSN              NULL_VLSN      M         can't occur
-     * NULL_VLSN                 S        NULL_VLSN    rollback everything
-     * NULL_VLSN                 S           M         rollback to M
-     *   T                    NULL_VLSN   NULL_VLSN    can't occur
-     *   T                    NULL_VLSN      M         can't occur
-     *   T                       S        NULL_VLSN    network restore, though
-     *                                                 could also do hard recov
-     *   T <= M                  S           M         rollback to matchpoint
-     *   T > M, truncate not ok  S           M         network restore
-     *   T > M, truncation limit
-     *          exceeded         S           M         throw RollbackProhibited
-     *   T > M, truncate ok      S           M         hard recovery
+     * A matchpoint has been found. What happens next depends on the position of
+     * the matchpoint and its relationship to the last transaction end record.
+     * In following table, M = some non-null matchpoint VLSN value, T = some
+     * non-null last txn end value S = some non-null last sync value txn end
+     * last sync found action VLSN VLSN matchpoint ---------- ---------
+     * --------- ------------------------ NULL_VLSN NULL_VLSN NULL_VLSN rollback
+     * everything NULL_VLSN NULL_VLSN M can't occur NULL_VLSN S NULL_VLSN
+     * rollback everything NULL_VLSN S M rollback to M T NULL_VLSN NULL_VLSN
+     * can't occur T NULL_VLSN M can't occur T S NULL_VLSN network restore,
+     * though could also do hard recov T <= M S M rollback to matchpoint T > M,
+     * truncate not ok S M network restore T > M, truncation limit exceeded S M
+     * throw RollbackProhibited T > M, truncate ok S M hard recovery
+     * 
      * @throws IOException
      * @throws HardRecoveryElectionException
      */
     private void verifyRollback(VLSNRange range)
-        throws RollbackException, InsufficientLogException,
-        HardRecoveryElectionException, IOException {
+            throws RollbackException, InsufficientLogException, HardRecoveryElectionException, IOException {
         repImpl.setSyncupProgress(SyncupProgress.CHECK_FOR_ROLLBACK);
         VLSN lastTxnEnd = range.getLastTxnEnd();
         VLSN lastSync = range.getLastSync();
 
-        LoggerUtils.finest(logger, repImpl, "verify rollback" +
-                           " vlsn range=" + range +
-                           " searchResults=" + searchResults);
+        LoggerUtils.finest(logger, repImpl,
+                "verify rollback" + " vlsn range=" + range + " searchResults=" + searchResults);
 
         /* Test a rollback exception is thrown when sync up */
         TestHookExecute.doHookIfSet(rollbackHook, this);
@@ -243,10 +209,9 @@ public class ReplicaFeederSyncup {
          */
         if (lastTxnEnd.isNull()) {
             if (range.getLastSync().isNull() && !matchpointVLSN.isNull()) {
-                throw EnvironmentFailureException.unexpectedState
-                    (repNode.getRepImpl(), "Shouldn't be possible to find a "+
-                     "matchpoint of " + matchpointVLSN +
-                     " when the sync VLSN is null. Range=" + range);
+                throw EnvironmentFailureException.unexpectedState(repNode.getRepImpl(),
+                        "Shouldn't be possible to find a " + "matchpoint of " + matchpointVLSN
+                                + " when the sync VLSN is null. Range=" + range);
             }
 
             /* We'll be doing a normal rollback. */
@@ -255,48 +220,42 @@ public class ReplicaFeederSyncup {
         }
 
         if (lastSync.isNull()) {
-            throw EnvironmentFailureException.unexpectedState
-                (repNode.getRepImpl(),
-                 "Shouldn't be possible to have a null sync VLSN when the "
-                 + " lastTxnVLSN " + lastTxnEnd + " is not null. Range=" +
-                 range);
+            throw EnvironmentFailureException.unexpectedState(repNode.getRepImpl(),
+                    "Shouldn't be possible to have a null sync VLSN when the " + " lastTxnVLSN " + lastTxnEnd
+                            + " is not null. Range=" + range);
         }
 
         /*
-         * There is a non-null lastTxnEnd VLSN, so check if the found
-         * matchpoint precedes it. If it doesn't, we can't rollback.
+         * There is a non-null lastTxnEnd VLSN, so check if the found matchpoint
+         * precedes it. If it doesn't, we can't rollback.
          */
         if (matchpointVLSN.isNull()) {
 
             /*
-             * We could actually also try to do a hard recovery and truncate
-             * all committed txns, but for now, let's assume that it will cost
-             * less to copy the log files.
+             * We could actually also try to do a hard recovery and truncate all
+             * committed txns, but for now, let's assume that it will cost less
+             * to copy the log files.
              */
             LoggerUtils.info(logger, repImpl,
-                             "This node had a txn end at vlsn = " + lastTxnEnd +
-                             "but no matchpoint found.");
+                    "This node had a txn end at vlsn = " + lastTxnEnd + "but no matchpoint found.");
             throw setupLogRefresh(matchpointVLSN);
         }
 
         /*
-         * The matchpoint is after or equal to the last txn end, no problem
-         * with doing a normal rollback.
+         * The matchpoint is after or equal to the last txn end, no problem with
+         * doing a normal rollback.
          */
-        if ((lastTxnEnd.compareTo(matchpointVLSN) <= 0) &&
-            (searchResults.getNumPassedCommits() == 0)) {
-            LoggerUtils.fine(logger, repImpl, "txn end vlsn of " + lastTxnEnd +
-                             "<= matchpointVLSN of " + matchpointVLSN +
-                             ", normal rollback");
+        if ((lastTxnEnd.compareTo(matchpointVLSN) <= 0) && (searchResults.getNumPassedCommits() == 0)) {
+            LoggerUtils.fine(logger, repImpl,
+                    "txn end vlsn of " + lastTxnEnd + "<= matchpointVLSN of " + matchpointVLSN + ", normal rollback");
             return;
         }
 
         /* Rolling back past a commit or abort. */
 
         if (hardRecoveryNeedsElection) {
-            throw new Replica.HardRecoveryElectionException
-                    (repNode.getMasterStatus().getNodeMasterNameId(),
-                     lastTxnEnd,  matchpointVLSN);
+            throw new Replica.HardRecoveryElectionException(repNode.getMasterStatus().getNodeMasterNameId(), lastTxnEnd,
+                    matchpointVLSN);
         }
 
         /*
@@ -308,61 +267,46 @@ public class ReplicaFeederSyncup {
          * restore.
          */
         if (searchResults.getPassedCheckpointEnd()) {
-            LoggerUtils.info(logger, repImpl, "matchpointVLSN of " +
-                             matchpointVLSN + " precedes a checkpoint end, " +
-                             "needs network restore.");
+            LoggerUtils.info(logger, repImpl,
+                    "matchpointVLSN of " + matchpointVLSN + " precedes a checkpoint end, " + "needs network restore.");
             throw setupLogRefresh(matchpointVLSN);
         }
 
         /*
-         * Likewise, if we skipped over a gap in the log files, we can't be
-         * sure if we passed a ckpt with deleted log files. Do a network
-         * restore rather than a hard recovery.
+         * Likewise, if we skipped over a gap in the log files, we can't be sure
+         * if we passed a ckpt with deleted log files. Do a network restore
+         * rather than a hard recovery.
          */
         if (searchResults.getSkippedGap()) {
-            LoggerUtils.info(logger, repImpl, "matchpointVLSN of " +
-                             matchpointVLSN + " was found in a replica log " +
-                             "with gaps. Since we can't be sure if it " +
-                             "preceeds a checkpoint end, do network restore.");
+            LoggerUtils.info(logger, repImpl, "matchpointVLSN of " + matchpointVLSN + " was found in a replica log "
+                    + "with gaps. Since we can't be sure if it " + "preceeds a checkpoint end, do network restore.");
             throw setupLogRefresh(matchpointVLSN);
         }
 
         /*
          * We're planning on rolling back past a commit or abort, and we know
-         * that we have not passed a barrier checkpoint. See if we have
-         * exceeded the number of rolledback commits limit.
+         * that we have not passed a barrier checkpoint. See if we have exceeded
+         * the number of rolledback commits limit.
          */
         EnvironmentImpl envImpl = repNode.getRepImpl();
-        final int rollbackTxnLimit  =
-            envImpl.getConfigManager().getInt(RepParams.TXN_ROLLBACK_LIMIT);
+        final int rollbackTxnLimit = envImpl.getConfigManager().getInt(RepParams.TXN_ROLLBACK_LIMIT);
 
-        final int numPassedDurableCommits =
-            searchResults.getNumPassedDurableCommits();
-        final int numPassedCommits =
-            searchResults.getNumPassedCommits();
+        final int numPassedDurableCommits = searchResults.getNumPassedDurableCommits();
+        final int numPassedCommits = searchResults.getNumPassedCommits();
         final long dtvlsn = searchResults.getDTVLSN().getSequence();
         LoggerUtils.info(logger, repImpl,
-                         String.format("Rollback info. " +
-                                       "Number of passed commits:%,d. " +
-                                       "(durable commits:%,d). " +
-                                       "Durable commit VLSN:%,d " +
-                                       "Rollback transaction limit:%,d",
-                                       numPassedCommits,
-                                       numPassedDurableCommits,
-                                       dtvlsn,
-                                       rollbackTxnLimit));
+                String.format(
+                        "Rollback info. " + "Number of passed commits:%,d. " + "(durable commits:%,d). "
+                                + "Durable commit VLSN:%,d " + "Rollback transaction limit:%,d",
+                        numPassedCommits, numPassedDurableCommits, dtvlsn, rollbackTxnLimit));
 
         if (numPassedDurableCommits > rollbackTxnLimit) {
 
-            LoggerUtils.severe(logger, repImpl,
-                               "Limited list of transactions that would " +
-                               " be truncated for hard recovery:\n" +
-                               searchResults.dumpPassedTxns());
+            LoggerUtils.severe(logger, repImpl, "Limited list of transactions that would "
+                    + " be truncated for hard recovery:\n" + searchResults.dumpPassedTxns());
 
-            throw new RollbackProhibitedException(repNode.getRepImpl(),
-                                                  rollbackTxnLimit,
-                                                  matchpointVLSN,
-                                                  searchResults);
+            throw new RollbackProhibitedException(repNode.getRepImpl(), rollbackTxnLimit, matchpointVLSN,
+                    searchResults);
         }
 
         /*
@@ -376,20 +320,17 @@ public class ReplicaFeederSyncup {
      * Find a matchpoint, which is a log entry in the replication stream which
      * is the same on feeder and replica. Assign the matchpointVLSN field. The
      * matchpoint log entry must be be tagged with an environment id. If no
-     * matching entry is found, the matchpoint is effectively the NULL_VLSN.
-     *
-     * To determine the matchpoint, exchange messages with the feeder and
-     * compare log entries. If the feeder does not have enough log entries,
-     * throw InsufficientLogException.
+     * matching entry is found, the matchpoint is effectively the NULL_VLSN. To
+     * determine the matchpoint, exchange messages with the feeder and compare
+     * log entries. If the feeder does not have enough log entries, throw
+     * InsufficientLogException.
+     * 
      * @throws InsufficientLogException
      */
-    private void findMatchpoint(VLSNRange range)
-        throws IOException,
-               InsufficientLogException {
+    private void findMatchpoint(VLSNRange range) throws IOException, InsufficientLogException {
 
         int matchCounter = 0;
-        repImpl.setSyncupProgress(SyncupProgress.FIND_MATCHPOINT,
-                                  matchCounter++, -1);
+        repImpl.setSyncupProgress(SyncupProgress.FIND_MATCHPOINT, matchCounter++, -1);
         VLSN candidateMatchpoint = range.getLastSync();
         if (candidateMatchpoint.equals(NULL_VLSN)) {
 
@@ -397,24 +338,20 @@ public class ReplicaFeederSyncup {
              * If the replica has no sync-able log entries at all, the
              * matchpoint is the NULL_VLSN, and we should start the replication
              * stream at VLSN 1. Check if the feeder has the VLSN 1. If it
-             * doesn't, getFeederRecord() will throw a
-             * InsufficientLogException. We can assume that a non-cleaned
-             * feeder always has VLSN 1, because a ReplicatedEnvironment always
-             * creates a few replicated vlsns, such as the name db, at
-             * initial startup.
+             * doesn't, getFeederRecord() will throw a InsufficientLogException.
+             * We can assume that a non-cleaned feeder always has VLSN 1,
+             * because a ReplicatedEnvironment always creates a few replicated
+             * vlsns, such as the name db, at initial startup.
              */
-            getFeederRecord(range, VLSN.FIRST_VLSN,
-                            false /*acceptAlternative*/);
+            getFeederRecord(range, VLSN.FIRST_VLSN, false /* acceptAlternative */);
             return;
         }
 
         /*
-         * CandidateMatchpoint is not null, so ask the feeder for the log
-         * record at that vlsn.
+         * CandidateMatchpoint is not null, so ask the feeder for the log record
+         * at that vlsn.
          */
-        InputWireRecord feederRecord =
-            getFeederRecord(range, candidateMatchpoint,
-                            true /*acceptAlternative*/);
+        InputWireRecord feederRecord = getFeederRecord(range, candidateMatchpoint, true /* acceptAlternative */);
 
         /*
          * The feeder may have suggested an alternative matchpoint, so reset
@@ -422,26 +359,21 @@ public class ReplicaFeederSyncup {
          */
         candidateMatchpoint = feederRecord.getVLSN();
         if (logger.isLoggable(Level.FINE)) {
-            LoggerUtils.fine(logger, repImpl,
-                             "first candidate matchpoint: " +
-                             candidateMatchpoint);
+            LoggerUtils.fine(logger, repImpl, "first candidate matchpoint: " + candidateMatchpoint);
         }
         /*
          * Start comparing feeder records to replica records. Instead of using
          * the VLSNIndex to direct our search, we must scan from the end of the
          * log, recording entries that have an impact on our ability to
-         * rollback, like checkpoints.
-         *
-         * Start by finding the candidate matchpoint in the Replica.
+         * rollback, like checkpoints. Start by finding the candidate matchpoint
+         * in the Replica.
          */
-        backwardsReader = setupBackwardsReader
-            (candidateMatchpoint,
-             repNode.getRepImpl().getFileManager().getLastUsedLsn());
+        backwardsReader = setupBackwardsReader(candidateMatchpoint,
+                repNode.getRepImpl().getFileManager().getLastUsedLsn());
         OutputWireRecord replicaRecord = getReplicaRecord(candidateMatchpoint);
 
         while (!replicaRecord.match(feederRecord)) {
-            repImpl.setSyncupProgress(SyncupProgress.FIND_MATCHPOINT,
-                                      matchCounter++, -1);
+            repImpl.setSyncupProgress(SyncupProgress.FIND_MATCHPOINT, matchCounter++, -1);
 
             /*
              * That first bid didn't match, now just keep looking at all
@@ -453,83 +385,63 @@ public class ReplicaFeederSyncup {
 
                 /*
                  * The search for the previous sync log entry went past our
-                 * available contiguous VLSN range, so there is no
-                 * matchpoint.
+                 * available contiguous VLSN range, so there is no matchpoint.
                  */
                 LoggerUtils.info(logger, repImpl,
-                                 "Looking at candidate matchpoint vlsn " +
-                                 candidateMatchpoint +
-                                 " but this node went past its available" +
-                                 " contiguous VLSN range, need network" +
-                                 " restore.");
+                        "Looking at candidate matchpoint vlsn " + candidateMatchpoint
+                                + " but this node went past its available" + " contiguous VLSN range, need network"
+                                + " restore.");
                 throw setupLogRefresh(candidateMatchpoint);
             }
 
             /*
-             * Ask the feeder for the record. If the feeder doesn't have
-             * it, we'll throw out and do a network restore.
+             * Ask the feeder for the record. If the feeder doesn't have it,
+             * we'll throw out and do a network restore.
              */
             candidateMatchpoint = replicaRecord.getVLSN();
             if (logger.isLoggable(Level.FINE)) {
-                LoggerUtils.fine(logger, repImpl,
-                                 "Next candidate matchpoint: " +
-                                 candidateMatchpoint);
+                LoggerUtils.fine(logger, repImpl, "Next candidate matchpoint: " + candidateMatchpoint);
             }
-            feederRecord = getFeederRecord(range, candidateMatchpoint,
-                                           false);
+            feederRecord = getFeederRecord(range, candidateMatchpoint, false);
         }
 
         /* We've found the matchpoint. */
         matchedVLSNTime = replicaRecord.getTimeStamp();
         matchpointVLSN = candidateMatchpoint;
         searchResults.setMatchpoint(backwardsReader.getLastLsn());
-        LoggerUtils.finest(logger, repImpl,
-                           "after setting  matchpoint, searchResults=" +
-                           searchResults);
+        LoggerUtils.finest(logger, repImpl, "after setting  matchpoint, searchResults=" + searchResults);
     }
 
-    private ReplicaSyncupReader setupBackwardsReader(VLSN startScanVLSN,
-                                                     long startScanLsn) {
+    private ReplicaSyncupReader setupBackwardsReader(VLSN startScanVLSN, long startScanLsn) {
 
         EnvironmentImpl envImpl = repNode.getRepImpl();
-        int readBufferSize = envImpl.getConfigManager().
-            getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+        int readBufferSize = envImpl.getConfigManager().getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
 
-        return new ReplicaSyncupReader
-            (envImpl,
-             repNode.getVLSNIndex(),
-             startScanLsn,
-             readBufferSize,
-             repNode.getNameIdPair(),
-             startScanVLSN,
-             DbLsn.makeLsn(repNode.getCleanerBarrierFile(),  0),
-             searchResults);
+        return new ReplicaSyncupReader(envImpl, repNode.getVLSNIndex(), startScanLsn, readBufferSize,
+                repNode.getNameIdPair(), startScanVLSN, DbLsn.makeLsn(repNode.getCleanerBarrierFile(), 0),
+                searchResults);
     }
 
     /**
      * Search backwards for the replica's log record at this target VLSN. The
      * target record is either the replica's first suggestion for a matchpoint,
-     * or feeder's counter offer. We have checked earlier that the counter
-     * offer is within the replica's vlsn range.
+     * or feeder's counter offer. We have checked earlier that the counter offer
+     * is within the replica's vlsn range.
      */
     private OutputWireRecord getReplicaRecord(VLSN candidateMatchpoint) {
 
         OutputWireRecord replicaRecord = null;
         do {
             try {
-                replicaRecord =
-                    backwardsReader.scanBackwards(candidateMatchpoint);
+                replicaRecord = backwardsReader.scanBackwards(candidateMatchpoint);
 
                 /*
                  * We're hunting for a VLSN that should be in the VLSN range,
                  * and it should exist.
                  */
                 if (replicaRecord == null) {
-                    throw EnvironmentFailureException.unexpectedState
-                        (repImpl,
-                         "Searching for candidate matchpoint " +
-                         candidateMatchpoint +
-                         " but got null record back ");
+                    throw EnvironmentFailureException.unexpectedState(repImpl,
+                            "Searching for candidate matchpoint " + candidateMatchpoint + " but got null record back ");
                 }
 
                 /* We've found the record at candidateMatchpoint */
@@ -538,35 +450,27 @@ public class ReplicaFeederSyncup {
                 /*
                  * The ReplicaSyncupReader will throw a SkipGapException if it
                  * encounters a cleaned files gap in the log. There can be
-                 * multiple gaps on its way toward finding the candidate
-                 * vlsn. The ReplicaSyncupReader is obliged to traverse the
-                 * log, in order to note checkpoints, rather than simply using
-                 * the vlsn index. When a gap is detected, the vlsn on the left
-                 * side of the gap is used to re-init a new reader. For
-                 * example, suppose the log looks like this:
-                 *
-                 * file 100 has vlsns 41-50
-                 * file 200 has vlsns 51-60
-                 * file 300 has vlsns 61-70
-                 *
-                 * and the candidate matchpoint is 45, the search will start at
-                 * vlsn 70.
-                 *  t1: SkipGapException thrown at gap between file 200 & 300,
-                 *      create new reader positioned at vlsn 60
-                 *  t2: SkipGapException thrown at gap between file 100 & 200,
-                 *      create new reader positioned at vlsn 50
+                 * multiple gaps on its way toward finding the candidate vlsn.
+                 * The ReplicaSyncupReader is obliged to traverse the log, in
+                 * order to note checkpoints, rather than simply using the vlsn
+                 * index. When a gap is detected, the vlsn on the left side of
+                 * the gap is used to re-init a new reader. For example, suppose
+                 * the log looks like this: file 100 has vlsns 41-50 file 200
+                 * has vlsns 51-60 file 300 has vlsns 61-70 and the candidate
+                 * matchpoint is 45, the search will start at vlsn 70. t1:
+                 * SkipGapException thrown at gap between file 200 & 300, create
+                 * new reader positioned at vlsn 60 t2: SkipGapException thrown
+                 * at gap between file 100 & 200, create new reader positioned
+                 * at vlsn 50
                  */
                 VLSN gapRepositionVLSN = e.getVLSN();
                 if (gapRepositionVLSN.compareTo(candidateMatchpoint) < 0) {
-                    throw EnvironmentFailureException.unexpectedState
-                        ("Gap reposition point of " + gapRepositionVLSN +
-                         " should always be >= candidate matchpoint VLSN of " +
-                         candidateMatchpoint);
+                    throw EnvironmentFailureException.unexpectedState("Gap reposition point of " + gapRepositionVLSN
+                            + " should always be >= candidate matchpoint VLSN of " + candidateMatchpoint);
                 }
 
                 long startScanLsn = vlsnIndex.getGTELsn(gapRepositionVLSN);
-                backwardsReader = setupBackwardsReader(candidateMatchpoint,
-                                                       startScanLsn);
+                backwardsReader = setupBackwardsReader(candidateMatchpoint, startScanLsn);
                 /*
                  * If we skip a gap, there is a chance that we will have passed
                  * a checkpoint which had deleted log files. This has no impact
@@ -581,8 +485,8 @@ public class ReplicaFeederSyncup {
     }
 
     /**
-     * Search backwards for potential matchpoints in the replica log,
-     * accounting for potential gaps.
+     * Search backwards for potential matchpoints in the replica log, accounting
+     * for potential gaps.
      */
     private OutputWireRecord scanMatchpointEntries() {
         OutputWireRecord replicaRecord = null;
@@ -591,14 +495,13 @@ public class ReplicaFeederSyncup {
             try {
                 /*
                  * The first time around, when firstAttempt is true, ask the
-                 * reader to search for the vlsn before the currentVLSN,
-                 * because we entered this method having searched to a given
-                 * target matchpoint. All subsequent times, we are in search of
-                 * the reader's currentVLSN, but haven't found it yet, because
-                 * we hit a gap, so leave the currentVLSN alone.
+                 * reader to search for the vlsn before the currentVLSN, because
+                 * we entered this method having searched to a given target
+                 * matchpoint. All subsequent times, we are in search of the
+                 * reader's currentVLSN, but haven't found it yet, because we
+                 * hit a gap, so leave the currentVLSN alone.
                  */
-                replicaRecord =
-                    backwardsReader.findPrevSyncEntry(firstAttempt);
+                replicaRecord = backwardsReader.findPrevSyncEntry(firstAttempt);
 
                 /*
                  * Either se've found a possible matchpoint, or we've come to
@@ -613,86 +516,62 @@ public class ReplicaFeederSyncup {
                  * multiple gaps on its way toward finding the next potential
                  * matchpoint. The ReplicaSyncupReader is obliged to traverse
                  * the log, in order to note checkpoints, rather than simply
-                 * using the vlsn index. When a gap is detected, the vlsn on
-                 * the left side of the gap is used to re-init a new
-                 * reader. For example, suppose the log looks like this and the
-                 * search starts at vlsn 70
-                 *
-                 * file 100 has vlsns 51-60
-                 * file 200 has no vlsns
-                 * file 300 has no vlsns
-                 * file 400 has vlsns 61-70
-                 *
-                 *  SkipGapException thrown at gap between file 300 & 400,
-                 *  when the reader's currentVLSN is 60. Create a new reader,
-                 *  positioned at vlsn 60, skipping over files 200 and 300.
+                 * using the vlsn index. When a gap is detected, the vlsn on the
+                 * left side of the gap is used to re-init a new reader. For
+                 * example, suppose the log looks like this and the search
+                 * starts at vlsn 70 file 100 has vlsns 51-60 file 200 has no
+                 * vlsns file 300 has no vlsns file 400 has vlsns 61-70
+                 * SkipGapException thrown at gap between file 300 & 400, when
+                 * the reader's currentVLSN is 60. Create a new reader,
+                 * positioned at vlsn 60, skipping over files 200 and 300.
                  */
 
                 VLSN gapRepositionVLSN = e.getVLSN();
-                backwardsReader = setupBackwardsReader
-                    (gapRepositionVLSN,
-                     vlsnIndex.getGTELsn(gapRepositionVLSN));
+                backwardsReader = setupBackwardsReader(gapRepositionVLSN, vlsnIndex.getGTELsn(gapRepositionVLSN));
                 firstAttempt = false;
                 searchResults.noteSkippedGap();
             }
-        } while(true);
+        } while (true);
     }
 
     /**
-     * Ask the feeder for information to add to InsufficientLogException,
-     * and then throw the exception.
-     *
-     * The endVLSN marks the last VLSN that this node will want from
-     * the network restore. That information helps ensure that the restore
-     * source has enough vlsns to satisfy this replica.
-     *
-     * The replication node list identifies possible log provider members.
+     * Ask the feeder for information to add to InsufficientLogException, and
+     * then throw the exception. The endVLSN marks the last VLSN that this node
+     * will want from the network restore. That information helps ensure that
+     * the restore source has enough vlsns to satisfy this replica. The
+     * replication node list identifies possible log provider members.
+     * 
      * @throws IOException
      */
-    private InsufficientLogException setupLogRefresh(VLSN failedMatchpoint)
-        throws IOException {
+    private InsufficientLogException setupLogRefresh(VLSN failedMatchpoint) throws IOException {
 
-        protocol.write(protocol.new RestoreRequest(failedMatchpoint),
-                       namedChannel);
-        RestoreResponse response =
-            (RestoreResponse) protocol.read(namedChannel);
+        protocol.write(protocol.new RestoreRequest(failedMatchpoint), namedChannel);
+        RestoreResponse response = (RestoreResponse) protocol.read(namedChannel);
 
-        return new InsufficientLogException
-            (repNode,
-             response.getCBVLSN(),
-             new HashSet<ReplicationNode>(Arrays.asList
-                                          (response.getLogProviders())));
+        return new InsufficientLogException(repNode, response.getCBVLSN(),
+                new HashSet<ReplicationNode>(Arrays.asList(response.getLogProviders())));
     }
 
-
     /**
-     * Hard recovery:  truncate the files, repeat recovery.
-     * If this hard recovery came about before the ReplicatedEnvironment was
-     * fully instantiated, we will recreate the environment under the
-     * covers. If this came while the replica was up and supporting existing
-     * Environment handles, we must invalidate the environment, and ask the
-     * application to reopen.
+     * Hard recovery: truncate the files, repeat recovery. If this hard recovery
+     * came about before the ReplicatedEnvironment was fully instantiated, we
+     * will recreate the environment under the covers. If this came while the
+     * replica was up and supporting existing Environment handles, we must
+     * invalidate the environment, and ask the application to reopen.
      */
-    public RollbackException setupHardRecovery()
-        throws IOException {
+    public RollbackException setupHardRecovery() throws IOException {
 
         /* Creating the exception invalidates the environment. */
-        RollbackException r = new RollbackException(repImpl,
-                                                    matchpointVLSN,
-                                                    searchResults);
+        RollbackException r = new RollbackException(repImpl, matchpointVLSN, searchResults);
         LoggerUtils.severe(logger, repImpl,
-                           "Limited list of transactions truncated for " +
-                           "hard recovery:\n" +
-                           searchResults.dumpPassedTxns());
+                "Limited list of transactions truncated for " + "hard recovery:\n" + searchResults.dumpPassedTxns());
 
         /*
-         * Truncate after the environment is invalidated, which happens
-         * when we instantiate RollbackException.
+         * Truncate after the environment is invalidated, which happens when we
+         * instantiate RollbackException.
          */
         long matchpointLSN = searchResults.getMatchpointLSN();
-        repImpl.getFileManager().truncateLog
-            (DbLsn.getFileNumber(matchpointLSN),
-             DbLsn.getFileOffset(matchpointLSN));
+        repImpl.getFileManager().truncateLog(DbLsn.getFileNumber(matchpointLSN), DbLsn.getFileOffset(matchpointLSN));
 
         return r;
     }
@@ -703,21 +582,17 @@ public class ReplicaFeederSyncup {
      *
      * @throws InsufficientLogException
      */
-    private InputWireRecord getFeederRecord(VLSNRange range,
-                                            VLSN requestVLSN,
-                                            boolean acceptAlternative)
-        throws IOException, InsufficientLogException {
+    private InputWireRecord getFeederRecord(VLSNRange range, VLSN requestVLSN, boolean acceptAlternative)
+            throws IOException, InsufficientLogException {
 
         /* Ask the feeder for the matchpoint log record. */
         protocol.write(protocol.new EntryRequest(requestVLSN), namedChannel);
 
         /*
-         * Expect
-         *  a) the requested log record
-         *  b) message that says this feeder doesn't have RequestVLSN
-         *  c) if acceptAlternative == true and the feeder didn't have
-         *     requestVLSN, but had an earlier entry, the feeder may send an
-         *      earlier, alternative matchpoint
+         * Expect a) the requested log record b) message that says this feeder
+         * doesn't have RequestVLSN c) if acceptAlternative == true and the
+         * feeder didn't have requestVLSN, but had an earlier entry, the feeder
+         * may send an earlier, alternative matchpoint
          */
         Message message = protocol.read(namedChannel);
         if (message instanceof Entry) {
@@ -726,14 +601,12 @@ public class ReplicaFeederSyncup {
         }
 
         if (message instanceof EntryNotFound) {
-            LoggerUtils.info(logger, repImpl, "Requested " + requestVLSN +
-                             " from " + namedChannel.getNameIdPair() +
-                             " but that node did not have that vlsn.");
+            LoggerUtils.info(logger, repImpl, "Requested " + requestVLSN + " from " + namedChannel.getNameIdPair()
+                    + " but that node did not have that vlsn.");
             throw setupLogRefresh(requestVLSN);
         }
 
-        if ((acceptAlternative) &&
-            (message instanceof AlternateMatchpoint)) {
+        if ((acceptAlternative) && (message instanceof AlternateMatchpoint)) {
 
             AlternateMatchpoint alt = (AlternateMatchpoint) message;
             InputWireRecord feederRecord = alt.getAlternateWireRecord();
@@ -749,19 +622,15 @@ public class ReplicaFeederSyncup {
             return feederRecord;
         }
 
-        throw EnvironmentFailureException.unexpectedState
-            (repNode.getRepImpl(),
-             "Sent EntryRequest, got unexpected response of " + message);
+        throw EnvironmentFailureException.unexpectedState(repNode.getRepImpl(),
+                "Sent EntryRequest, got unexpected response of " + message);
     }
-
-
 
     public static void setGlobalSyncupEndHook(TestHook<Object> syncupEndHook) {
         ReplicaFeederSyncup.globalSyncupEndHook = syncupEndHook;
     }
 
-    private boolean runHook()
-        throws InterruptedException {
+    private boolean runHook() throws InterruptedException {
 
         if (syncupEndHook != null) {
             syncupEndHook.doHook();
@@ -777,13 +646,12 @@ public class ReplicaFeederSyncup {
      * This interface is used instead of com.sleepycat.je.utilint.TestHook
      * because the doHook method needs to throw InterruptedException.
      */
-     public interface TestHook<T> {
+    public interface TestHook<T> {
         public void doHook() throws InterruptedException;
-     }
+    }
 
     /* Setup the static rollback test hook, test use only */
-    public static void setRollbackTestHook(
-        com.sleepycat.je.utilint.TestHook<ReplicaFeederSyncup> rollbackHook) {
+    public static void setRollbackTestHook(com.sleepycat.je.utilint.TestHook<ReplicaFeederSyncup> rollbackHook) {
         ReplicaFeederSyncup.rollbackHook = rollbackHook;
     }
 }

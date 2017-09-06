@@ -12,7 +12,6 @@
  */
 package com.sleepycat.je.rep;
 
-
 /**
  * This exception indicates that the application attempted an operation that is
  * not permitted when it is in the {@link ReplicatedEnvironment.State#REPLICA}
@@ -23,19 +22,20 @@ public class ReplicaStateException extends StateChangeException {
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     public ReplicaStateException(String message) {
         super(message, null);
     }
 
-    private ReplicaStateException(String message,
-                                  ReplicaStateException cause) {
+    private ReplicaStateException(String message, ReplicaStateException cause) {
         super(message, cause);
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     @Override

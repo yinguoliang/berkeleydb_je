@@ -34,174 +34,170 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * Represents a snapshot of the Replication Group as a whole. Note that
- * membership associated with a group is dynamic and its constituents can
- * change at any time. It's useful to keep in mind that due to the distributed
- * nature of the Replication Group all the nodes in a replication group may not
- * have the same consistent picture of the replication group at a single point
- * in time, but will converge to become consistent eventually.
+ * membership associated with a group is dynamic and its constituents can change
+ * at any time. It's useful to keep in mind that due to the distributed nature
+ * of the Replication Group all the nodes in a replication group may not have
+ * the same consistent picture of the replication group at a single point in
+ * time, but will converge to become consistent eventually.
  */
 public class RepGroupImpl {
 
     /** The latest supported format version. */
-    public static final int MAX_FORMAT_VERSION = 3;
+    public static final int                 MAX_FORMAT_VERSION            = 3;
 
     /**
      * Format version introduced in JE 6.0.1 that records a node's most recent
      * JE version, and the minimum JE version required to join the group.
      */
-    public static final int FORMAT_VERSION_3 = 3;
+    public static final int                 FORMAT_VERSION_3              = 3;
 
     /**
      * The latest format version that is compatible with JE 6.0.0 and earlier
      * versions.
      */
-    public static final int FORMAT_VERSION_2 = 2;
+    public static final int                 FORMAT_VERSION_2              = 2;
 
     /** The initial format version for newly created RepGroupImpl instances. */
-    public static final int INITIAL_FORMAT_VERSION = 3;
+    public static final int                 INITIAL_FORMAT_VERSION        = 3;
 
     /** The oldest supported format version. */
-    static final int MIN_FORMAT_VERSION = 2;
+    static final int                        MIN_FORMAT_VERSION            = 2;
 
     /** The first JE version that supports FORMAT_VERSION_3. */
-    public static final JEVersion FORMAT_VERSION_3_JE_VERSION =
-        new JEVersion("6.0.1");
+    public static final JEVersion           FORMAT_VERSION_3_JE_VERSION   = new JEVersion("6.0.1");
 
     /**
      * The first JE version that supports the oldest supported format version.
      */
-    public static final JEVersion MIN_FORMAT_VERSION_JE_VERSION =
-        new JEVersion("5.0.0");
+    public static final JEVersion           MIN_FORMAT_VERSION_JE_VERSION = new JEVersion("5.0.0");
 
     /** The initial change version. */
-    private final static int CHANGE_VERSION_START = 0;
+    private final static int                CHANGE_VERSION_START          = 0;
 
     /*
      * The special UUID associated with a group, when the group UUID is unknown
      * because a node is still in the process of joining the group. This value
      * cannot be created by UUID.randomUUID
      */
-    private final static UUID UNKNOWN_UUID = new UUID(0, 0);
+    private final static UUID               UNKNOWN_UUID                  = new UUID(0, 0);
 
     /**
      * The maximum number of nodes with transient ID that can join the group at
-     * the same time time.  This number of transient id node IDs will be
-     * reserved at the top of the node ID range.
+     * the same time time. This number of transient id node IDs will be reserved
+     * at the top of the node ID range.
      */
-    public static final int MAX_NODES_WITH_TRANSIENT_ID = 1024;
+    public static final int                 MAX_NODES_WITH_TRANSIENT_ID   = 1024;
 
     /** The first node ID for persistent nodes. */
-    private static final int NODE_SEQUENCE_START = 0;
+    private static final int                NODE_SEQUENCE_START           = 0;
 
     /** The maximum node ID for persistent nodes. */
-    private static final int NODE_SEQUENCE_MAX =
-        Integer.MAX_VALUE - MAX_NODES_WITH_TRANSIENT_ID;
+    private static final int                NODE_SEQUENCE_MAX             = Integer.MAX_VALUE
+            - MAX_NODES_WITH_TRANSIENT_ID;
 
     /** Returns true if the node is electable. */
-    private static final Predicate ELECTABLE_PREDICATE = new Predicate() {
-        @Override
-        boolean include(final RepNodeImpl n) {
-            return n.getType().isElectable();
-        }
-    };
+    private static final Predicate          ELECTABLE_PREDICATE           = new Predicate() {
+                                                                              @Override
+                                                                              boolean include(final RepNodeImpl n) {
+                                                                                  return n.getType().isElectable();
+                                                                              }
+                                                                          };
 
     /** Returns true if the node is a monitor. */
-    private static final Predicate MONITOR_PREDICATE = new Predicate() {
-        @Override
-        boolean include(final RepNodeImpl n) {
-            return n.getType().isMonitor();
-        }
-    };
+    private static final Predicate          MONITOR_PREDICATE             = new Predicate() {
+                                                                              @Override
+                                                                              boolean include(final RepNodeImpl n) {
+                                                                                  return n.getType().isMonitor();
+                                                                              }
+                                                                          };
 
     /** Returns true if the node is secondary. */
-    private static final Predicate SECONDARY_PREDICATE = new Predicate() {
-        @Override
-        boolean include(final RepNodeImpl n) {
-            return n.getType().isSecondary();
-        }
-    };
+    private static final Predicate          SECONDARY_PREDICATE           = new Predicate() {
+                                                                              @Override
+                                                                              boolean include(final RepNodeImpl n) {
+                                                                                  return n.getType().isSecondary();
+                                                                              }
+                                                                          };
 
     /** Returns true if the node is external. */
-    private static final Predicate EXTERNAL_PREDICATE = new Predicate() {
-        @Override
-        boolean include(final RepNodeImpl n) {
-            return n.getType().isExternal();
-        }
-    };
+    private static final Predicate          EXTERNAL_PREDICATE            = new Predicate() {
+                                                                              @Override
+                                                                              boolean include(final RepNodeImpl n) {
+                                                                                  return n.getType().isExternal();
+                                                                              }
+                                                                          };
 
     /** Returns true if the node can return acks but is not an Arbiter. */
-    private static final Predicate ACK_PREDICATE = new Predicate() {
-        @Override
-        boolean include(final RepNodeImpl n) {
-            return n.getType().isElectable() && !n.getType().isArbiter();
-        }
-    };
+    private static final Predicate          ACK_PREDICATE                 = new Predicate() {
+                                                                              @Override
+                                                                              boolean include(final RepNodeImpl n) {
+                                                                                  return n.getType().isElectable()
+                                                                                          && !n.getType().isArbiter();
+                                                                              }
+                                                                          };
 
     /** Returns true if the node is an arbiter. */
-    private static final Predicate ARBITER_PREDICATE = new Predicate() {
-        @Override
-        boolean include(final RepNodeImpl n) {
-            return n.getType().isArbiter();
-        }
-    };
+    private static final Predicate          ARBITER_PREDICATE             = new Predicate() {
+                                                                              @Override
+                                                                              boolean include(final RepNodeImpl n) {
+                                                                                  return n.getType().isArbiter();
+                                                                              }
+                                                                          };
 
     /* The name of the Replication Group. */
-    private final String groupName;
+    private final String                    groupName;
 
     /*
      * The universally unique UUID associated with the replicated environment.
      */
-    private UUID uuid;
+    private UUID                            uuid;
 
     /*
      * The version number associated with this group's format in the database.
      */
-    private volatile int formatVersion;
+    private volatile int                    formatVersion;
 
     /*
      * Tracks the change version level. It's updated with every change to the
      * member set in the membership database.
      */
-    private int changeVersion = 0;
+    private int                             changeVersion                 = 0;
 
     /*
-     * The most recently assigned node ID for persistent nodes.  Node IDs for
+     * The most recently assigned node ID for persistent nodes. Node IDs for
      * persistent nodes are never reused.
      */
-    private int nodeIdSequence;
+    private int                             nodeIdSequence;
 
     /*
-     * The following maps represent the set of nodes in the group indexed in
-     * two different ways: by user-defined node name and by internal id. Note
-     * that both maps contain nodes that are no longer members of the group.
-     *
-     * All access to nodesById and nodesByName should be synchronized on
-     * nodesById, to avoid ConcurrentModificationException and to provide
-     * consistent results for both maps.
+     * The following maps represent the set of nodes in the group indexed in two
+     * different ways: by user-defined node name and by internal id. Note that
+     * both maps contain nodes that are no longer members of the group. All
+     * access to nodesById and nodesByName should be synchronized on nodesById,
+     * to avoid ConcurrentModificationException and to provide consistent
+     * results for both maps.
      */
 
     /* All the nodes that form the replication group, indexed by Id. */
-    private final Map<Integer, RepNodeImpl> nodesById =
-        new HashMap<Integer, RepNodeImpl>();
+    private final Map<Integer, RepNodeImpl> nodesById                     = new HashMap<Integer, RepNodeImpl>();
 
     /*
-     * All the nodes that form the replication group, indexed by node name.
-     * This map is used exclusively for efficient lookups by name. The map
-     * nodesById does all the heavy lifting.
+     * All the nodes that form the replication group, indexed by node name. This
+     * map is used exclusively for efficient lookups by name. The map nodesById
+     * does all the heavy lifting.
      */
-    private final Map<String, RepNodeImpl> nodesByName =
-        new HashMap<String, RepNodeImpl>();
+    private final Map<String, RepNodeImpl>  nodesByName                   = new HashMap<String, RepNodeImpl>();
 
     /** The minimum JE version required for nodes to join the group. */
-    private volatile JEVersion minJEVersion = MIN_FORMAT_VERSION_JE_VERSION;
+    private volatile JEVersion              minJEVersion                  = MIN_FORMAT_VERSION_JE_VERSION;
 
     /**
      * Constructor to create a new empty repGroup, typically as part of
      * environment initialization.
      *
      * @param groupName the group name
-     * @param currentJEVersion if non-null, override the current JE version,
-     * for testing
+     * @param currentJEVersion if non-null, override the current JE version, for
+     *            testing
      */
     public RepGroupImpl(String groupName, JEVersion currentJEVersion) {
         this(groupName, false, currentJEVersion);
@@ -211,21 +207,14 @@ public class RepGroupImpl {
      * Constructor to create a group and specify if the group's UUID should be
      * unknown or generated randomly.
      */
-    public RepGroupImpl(String groupName,
-                        boolean unknownUUID,
-                        JEVersion currentJEVersion) {
-        this(groupName,
-             unknownUUID ? UNKNOWN_UUID : UUID.randomUUID(),
-             getCurrentFormatVersion(currentJEVersion));
+    public RepGroupImpl(String groupName, boolean unknownUUID, JEVersion currentJEVersion) {
+        this(groupName, unknownUUID ? UNKNOWN_UUID : UUID.randomUUID(), getCurrentFormatVersion(currentJEVersion));
     }
 
     /** Get the current format version, supporting a test override. */
-    private static int getCurrentFormatVersion(
-        final JEVersion currentJEVersion) {
+    private static int getCurrentFormatVersion(final JEVersion currentJEVersion) {
 
-        return (currentJEVersion == null) ?
-            MAX_FORMAT_VERSION :
-            getMaxFormatVersion(currentJEVersion);
+        return (currentJEVersion == null) ? MAX_FORMAT_VERSION : getMaxFormatVersion(currentJEVersion);
     }
 
     /**
@@ -233,19 +222,13 @@ public class RepGroupImpl {
      * version.
      */
     public RepGroupImpl(String groupName, UUID uuid, int formatVersion) {
-        this(groupName,
-             uuid,
-             formatVersion,
-             CHANGE_VERSION_START,
-             NODE_SEQUENCE_START,
-             ((formatVersion < FORMAT_VERSION_3) ?
-              MIN_FORMAT_VERSION_JE_VERSION :
-              FORMAT_VERSION_3_JE_VERSION));
+        this(groupName, uuid, formatVersion, CHANGE_VERSION_START, NODE_SEQUENCE_START,
+                ((formatVersion < FORMAT_VERSION_3) ? MIN_FORMAT_VERSION_JE_VERSION : FORMAT_VERSION_3_JE_VERSION));
     }
 
     /**
-     * Constructor used to recreate an existing RepGroup, typically as part of
-     * a deserialization operation.
+     * Constructor used to recreate an existing RepGroup, typically as part of a
+     * deserialization operation.
      *
      * @param groupName
      * @param uuid
@@ -253,11 +236,7 @@ public class RepGroupImpl {
      * @param changeVersion
      * @param minJEVersion
      */
-    public RepGroupImpl(String groupName,
-                        UUID uuid,
-                        int formatVersion,
-                        int changeVersion,
-                        int nodeIdSequence,
+    public RepGroupImpl(String groupName, UUID uuid, int formatVersion, int changeVersion, int nodeIdSequence,
                         JEVersion minJEVersion) {
         this.groupName = groupName;
         this.uuid = uuid;
@@ -266,23 +245,19 @@ public class RepGroupImpl {
         setNodeIdSequence(nodeIdSequence);
         this.minJEVersion = minJEVersion;
 
-        if (formatVersion < MIN_FORMAT_VERSION ||
-            formatVersion > MAX_FORMAT_VERSION) {
-            throw new IllegalStateException(
-                "Expected membership database format version between: " +
-                MIN_FORMAT_VERSION + " and " + MAX_FORMAT_VERSION +
-                ", encountered unsupported version: " + formatVersion);
+        if (formatVersion < MIN_FORMAT_VERSION || formatVersion > MAX_FORMAT_VERSION) {
+            throw new IllegalStateException("Expected membership database format version between: " + MIN_FORMAT_VERSION
+                    + " and " + MAX_FORMAT_VERSION + ", encountered unsupported version: " + formatVersion);
         }
         if (minJEVersion == null) {
-            throw new IllegalArgumentException(
-                "The minJEVersion must not be null");
+            throw new IllegalArgumentException("The minJEVersion must not be null");
         }
     }
 
     /*
      * Returns true if the UUID has not as yet been established at this node.
-     * This is the case when a knew node first joins a group, and it has not
-     * as yet replicated the group database via the replication stream.
+     * This is the case when a knew node first joins a group, and it has not as
+     * yet replicated the group database via the replication stream.
      */
     public boolean hasUnknownUUID() {
         return UNKNOWN_UUID.equals(uuid);
@@ -301,8 +276,7 @@ public class RepGroupImpl {
      */
     public void setUUID(UUID uuid) {
         if (!hasUnknownUUID()) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Expected placeholder UUID, not " + uuid);
+            throw EnvironmentFailureException.unexpectedState("Expected placeholder UUID, not " + uuid);
         }
         this.uuid = uuid;
     }
@@ -313,24 +287,18 @@ public class RepGroupImpl {
      * is usually a precursor to making the change persistent on disk.
      *
      * @param nodeName identifies the node being removed
-     *
      * @param delete whether to delete the node from the maps
-     *
      * @return the node that was removed
-     *
      * @throws EnvironmentFailureException if the node is not part of the group
-     * or is a node with a transient ID
+     *             or is a node with a transient ID
      */
-    public RepNodeImpl removeMember(final String nodeName,
-                                    final boolean delete) {
+    public RepNodeImpl removeMember(final String nodeName, final boolean delete) {
         final RepNodeImpl node = getMember(nodeName);
         if (node == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Node:" + nodeName + " is not a member of the group.");
+            throw EnvironmentFailureException.unexpectedState("Node:" + nodeName + " is not a member of the group.");
         }
         if (node.getType().hasTransientId()) {
-            throw EnvironmentFailureException.unexpectedState(
-                "Cannot remove node with transient id: " + nodeName);
+            throw EnvironmentFailureException.unexpectedState("Cannot remove node with transient id: " + nodeName);
         }
         if (delete) {
             synchronized (nodesById) {
@@ -344,31 +312,27 @@ public class RepGroupImpl {
 
     /**
      * Checks for whether a new or changed node definition is in conflict with
-     * other members of the group.  In particular, checks that the specified
-     * node does not use the same socket address as another member.
+     * other members of the group. In particular, checks that the specified node
+     * does not use the same socket address as another member.
      * <p>
      * This check must be done when adding a new member to the group, or
-     * changing the network address of an existing member, and must be done
-     * with the rep group entry in the database locked for write to prevent
-     * race conditions.
+     * changing the network address of an existing member, and must be done with
+     * the rep group entry in the database locked for write to prevent race
+     * conditions.
      *
      * @param node the new node that is being checked for conflicts
      * @throws NodeConflictException if there is a conflict
      */
-    public void checkForConflicts(RepNodeImpl node)
-        throws DatabaseException, NodeConflictException {
+    public void checkForConflicts(RepNodeImpl node) throws DatabaseException, NodeConflictException {
 
         for (RepNodeImpl n : getAllMembers(null)) {
             if (n.getNameIdPair().equals(node.getNameIdPair())) {
                 continue;
             }
             if (n.getSocketAddress().equals(node.getSocketAddress())) {
-                throw new NodeConflictException
-                    ("New or moved node:" + node.getName() +
-                     ", is configured with the socket address: " +
-                     node.getSocketAddress() +
-                     ".  It conflicts with the socket already " +
-                     "used by the member: " + n.getName());
+                throw new NodeConflictException("New or moved node:" + node.getName()
+                        + ", is configured with the socket address: " + node.getSocketAddress()
+                        + ".  It conflicts with the socket already " + "used by the member: " + n.getName());
             }
         }
     }
@@ -378,14 +342,12 @@ public class RepGroupImpl {
         final int prime = 31;
         int result = 1;
         result = prime * result + changeVersion;
-        result = prime * result
-                + ((groupName == null) ? 0 : groupName.hashCode());
+        result = prime * result + ((groupName == null) ? 0 : groupName.hashCode());
         synchronized (nodesById) {
             result = prime * result + nodesById.hashCode();
         }
         /* Don't bother with nodesByName */
-        result = prime * result
-                + ((uuid == null) ? 0 : uuid.hashCode());
+        result = prime * result + ((uuid == null) ? 0 : uuid.hashCode());
         result = prime * result + formatVersion;
         return result;
     }
@@ -433,8 +395,7 @@ public class RepGroupImpl {
          */
         final Map<Integer, RepNodeImpl> otherNodesById;
         synchronized (other.nodesById) {
-            otherNodesById =
-                new HashMap<Integer, RepNodeImpl>(other.nodesById);
+            otherNodesById = new HashMap<Integer, RepNodeImpl>(other.nodesById);
         }
         synchronized (nodesById) {
             if (!nodesById.equals(otherNodesById)) {
@@ -454,9 +415,7 @@ public class RepGroupImpl {
         synchronized (nodesById) {
 
             /* Remove nodes with persistent id */
-            for (final Iterator<RepNodeImpl> iter =
-                     nodesById.values().iterator();
-                 iter.hasNext(); ) {
+            for (final Iterator<RepNodeImpl> iter = nodesById.values().iterator(); iter.hasNext();) {
                 final RepNodeImpl node = iter.next();
                 if (!node.getType().hasTransientId()) {
                     iter.remove();
@@ -467,88 +426,72 @@ public class RepGroupImpl {
             /* Add specified nodes */
             if (nodes != null) {
                 for (final RepNodeImpl node : nodes.values()) {
-                    final RepNodeImpl prevById =
-                        nodesById.put(node.getNodeId(), node);
-                    final RepNodeImpl prevByName =
-                        nodesByName.put(node.getName(), node);
+                    final RepNodeImpl prevById = nodesById.put(node.getNodeId(), node);
+                    final RepNodeImpl prevByName = nodesByName.put(node.getName(), node);
 
                     /*
-                     * Also remove entries for any previous nodes if the
-                     * mapping between names and IDs was changed.
+                     * Also remove entries for any previous nodes if the mapping
+                     * between names and IDs was changed.
                      */
-                    if ((prevById != null) &&
-                        !node.getName().equals(prevById.getName())) {
+                    if ((prevById != null) && !node.getName().equals(prevById.getName())) {
                         nodesByName.remove(prevById.getName());
                     }
-                    if ((prevByName != null) &&
-                        node.getNodeId() != prevByName.getNodeId()) {
+                    if ((prevByName != null) && node.getNodeId() != prevByName.getNodeId()) {
                         nodesById.remove(prevByName.getNodeId());
                     }
                 }
             }
 
-            assert new HashSet<>(nodesById.values()).equals(
-                new HashSet<>(nodesByName.values()))
-                : "Node maps indexed by ID and name differ: " +
-                "IDs: " + nodesById + ", Names: " + nodesByName;
+            assert new HashSet<>(nodesById.values())
+                    .equals(new HashSet<>(nodesByName.values())) : "Node maps indexed by ID and name differ: " + "IDs: "
+                            + nodesById + ", Names: " + nodesByName;
         }
     }
 
     /**
-     * Add a node with transient id.  The caller should already have assigned
-     * the node an ID and checked that the replication group supports secondary
+     * Add a node with transient id. The caller should already have assigned the
+     * node an ID and checked that the replication group supports secondary
      * nodes.
      *
      * @param node the node with transient id
      * @throws IllegalStateException if the store does not currently support
-     *         secondary nodes
+     *             secondary nodes
      * @throws NodeConflictException if the node conflicts with an existing
-     *         persistent node
+     *             persistent node
      */
     public void addTransientIdNode(final RepNodeImpl node) {
         if (!node.getType().hasTransientId()) {
             throw new IllegalArgumentException(
-                "Attempt to call addTransientIdNode on a node without " +
-                "transient id: " + node);
+                    "Attempt to call addTransientIdNode on a node without " + "transient id: " + node);
         }
         if (node.getNameIdPair().hasNullId()) {
-            throw new IllegalArgumentException(
-                "Attempt to call addTransientIdNode on node without ID: " +
-                node);
+            throw new IllegalArgumentException("Attempt to call addTransientIdNode on node without ID: " + node);
         }
 
         synchronized (nodesById) {
             final RepNodeImpl prevById = nodesById.get(node.getNodeId());
-            assert (prevById == null) || prevById.getType().hasTransientId()
-                : "Same node ID for nodes with transient and persistent ID: " +
-                node + ", " + prevById;
+            assert (prevById == null)
+                    || prevById.getType().hasTransientId() : "Same node ID for nodes with transient and persistent ID: "
+                            + node + ", " + prevById;
             final RepNodeImpl prevByName = nodesByName.get(node.getName());
-            if ((prevByName != null) &&
-                !prevByName.getType().hasTransientId()) {
-                throw new NodeConflictException(
-                    "New node with transient ID " + node.getName() +
-                    " conflicts with an existing node with persistent ID" +
-                    " with the same name: " + prevByName);
+            if ((prevByName != null) && !prevByName.getType().hasTransientId()) {
+                throw new NodeConflictException("New node with transient ID " + node.getName()
+                        + " conflicts with an existing node with persistent ID" + " with the same name: " + prevByName);
             }
-            final RepNodeImpl prevById2 =
-                nodesById.put(node.getNodeId(), node);
+            final RepNodeImpl prevById2 = nodesById.put(node.getNodeId(), node);
             assert prevById == prevById2;
-            final RepNodeImpl prevByName2 =
-                nodesByName.put(node.getName(), node);
+            final RepNodeImpl prevByName2 = nodesByName.put(node.getName(), node);
             assert prevByName == prevByName2;
-            if ((prevById != null) &&
-                !node.getName().equals(prevById.getName())) {
+            if ((prevById != null) && !node.getName().equals(prevById.getName())) {
                 nodesByName.remove(prevById.getName());
             }
-            if ((prevByName != null) &&
-                (node.getNodeId() != prevByName.getNodeId())) {
+            if ((prevByName != null) && (node.getNodeId() != prevByName.getNodeId())) {
                 nodesById.remove(prevByName.getNodeId());
             }
 
-            assert new HashSet<>(nodesById.values()).equals(
-                new HashSet<>(nodesByName.values()))
-                : "Node maps indexed by ID and name differ: " +
-                "IDs: " + nodesById + ", Names: " + nodesByName;
+            assert new HashSet<>(nodesById.values())
+                    .equals(new HashSet<>(nodesByName.values())) : "Node maps indexed by ID and name differ: " + "IDs: "
+                            + nodesById + ", Names: " + nodesByName;
         }
     }
 
@@ -560,13 +503,10 @@ public class RepGroupImpl {
     public void removeTransientNode(final RepNodeImpl node) {
         if (!node.getType().hasTransientId()) {
             throw new IllegalArgumentException(
-                "Attempt to call removeTransientNode on a" +
-                " node without transient ID: " + node);
+                    "Attempt to call removeTransientNode on a" + " node without transient ID: " + node);
         }
         if (node.getNameIdPair().hasNullId()) {
-            throw new IllegalArgumentException(
-                "Attempt to call removeTransientNode on a node with no ID: " +
-                node);
+            throw new IllegalArgumentException("Attempt to call removeTransientNode on a node with no ID: " + node);
         }
         synchronized (nodesById) {
             nodesById.remove(node.getNodeId());
@@ -594,8 +534,7 @@ public class RepGroupImpl {
     }
 
     /**
-     * Returns the highest format version supported by the specified JE
-     * version.
+     * Returns the highest format version supported by the specified JE version.
      *
      * @param jeVersion the JE version
      * @return the highest format version supported by that JE version
@@ -644,8 +583,7 @@ public class RepGroupImpl {
      */
     public void setNodeIdSequence(int nodeIdSequence) {
         if (nodeIdSequence < 0 || nodeIdSequence > NODE_SEQUENCE_MAX) {
-            throw new IllegalArgumentException(
-                "Bad nodeIdSequence: " + nodeIdSequence);
+            throw new IllegalArgumentException("Bad nodeIdSequence: " + nodeIdSequence);
         }
         this.nodeIdSequence = nodeIdSequence;
     }
@@ -680,24 +618,22 @@ public class RepGroupImpl {
 
     /**
      * Sets the minimum JE version that a node must be running in order to join
-     * the replication group.  The group object should have had its nodes
-     * fetched using the {@link RepGroupDB#fetchGroup} method and should be
-     * stored to the group database after making this change.  Throws a {@link
-     * MinJEVersionUnsupportedException} if the requested version is not
-     * supported.  Updates the group format version as needed to match the JE
-     * version.  Has no effect if the current minimum value is already as high
-     * or higher than the requested one.
+     * the replication group. The group object should have had its nodes fetched
+     * using the {@link RepGroupDB#fetchGroup} method and should be stored to
+     * the group database after making this change. Throws a
+     * {@link MinJEVersionUnsupportedException} if the requested version is not
+     * supported. Updates the group format version as needed to match the JE
+     * version. Has no effect if the current minimum value is already as high or
+     * higher than the requested one.
      *
      * @param newMinJEVersion the new minimum JE version
      * @throws MinJEVersionUnsupportedException if the requested version is not
-     * supported by the group's electable nodes
+     *             supported by the group's electable nodes
      */
-    public void setMinJEVersion(final JEVersion newMinJEVersion)
-        throws MinJEVersionUnsupportedException {
+    public void setMinJEVersion(final JEVersion newMinJEVersion) throws MinJEVersionUnsupportedException {
 
         if (newMinJEVersion == null) {
-            throw new IllegalArgumentException(
-                "The newMinJEVersion argument must not be null");
+            throw new IllegalArgumentException("The newMinJEVersion argument must not be null");
         }
         if (newMinJEVersion.compareTo(minJEVersion) <= 0) {
             return;
@@ -711,10 +647,8 @@ public class RepGroupImpl {
 
         for (final RepNodeImpl node : getElectableMembers()) {
             final JEVersion nodeJEVersion = node.getJEVersion();
-            if ((nodeJEVersion != null) &&
-                nodeJEVersion.compareTo(newMinJEVersion) < 0) {
-                throw new MinJEVersionUnsupportedException(
-                    newMinJEVersion, node.getName(), nodeJEVersion);
+            if ((nodeJEVersion != null) && nodeJEVersion.compareTo(newMinJEVersion) < 0) {
+                throw new MinJEVersionUnsupportedException(newMinJEVersion, node.getName(), nodeJEVersion);
             }
         }
         minJEVersion = newMinJEVersion;
@@ -722,17 +656,17 @@ public class RepGroupImpl {
     }
 
     /**
-     * Used to ensure that the ReplicationGroup value is consistent after it
-     * has been fetched via a readUncommitted access to the rep group database.
-     * It does so by ensuring that the summarized values match the nodes that
-     * were actually read.
+     * Used to ensure that the ReplicationGroup value is consistent after it has
+     * been fetched via a readUncommitted access to the rep group database. It
+     * does so by ensuring that the summarized values match the nodes that were
+     * actually read.
      */
     public void makeConsistent() {
         synchronized (nodesById) {
             if (nodesById.isEmpty()) {
                 return;
             }
-            int computedNodeId = NODE_SEQUENCE_START-1;
+            int computedNodeId = NODE_SEQUENCE_START - 1;
             int computedChangeVersion = -1;
             for (RepNodeImpl mi : nodesById.values()) {
                 /* Get the highest node ID */
@@ -771,7 +705,7 @@ public class RepGroupImpl {
 
         for (int i = 0; i < size; i++) {
             int lowNibble = (bytes[i] & 0xf);
-            int highNibble = ((bytes[i]>>4) & 0xf);
+            int highNibble = ((bytes[i] >> 4) & 0xf);
             buffer.append(Character.forDigit(lowNibble, 16));
             buffer.append(Character.forDigit(highNibble, 16));
         }
@@ -782,18 +716,17 @@ public class RepGroupImpl {
      * Returns a serialized character based form of the group suitable for use
      * in subclasses of SimpleProtocol. The serialized form is a multi-token
      * string. The first token represents the RepGroup object itself with each
-     * subsequent node representing a node in the group. Tokens are separated
-     * by '|', the protocol separator character. The number of tokens is thus
-     * equal to the number of nodes in the group + 1. Each token is itself a
-     * hex character based representation of the binding used to serialize a
+     * subsequent node representing a node in the group. Tokens are separated by
+     * '|', the protocol separator character. The number of tokens is thus equal
+     * to the number of nodes in the group + 1. Each token is itself a hex
+     * character based representation of the binding used to serialize a
      * RepGroup and store it into the database.
      *
      * @param groupFormatVersion the group format version
      * @return the string encoded as above
      */
     public String serializeHex(final int groupFormatVersion) {
-        final RepGroupDB.GroupBinding groupBinding =
-            new RepGroupDB.GroupBinding(groupFormatVersion);
+        final RepGroupDB.GroupBinding groupBinding = new RepGroupDB.GroupBinding(groupFormatVersion);
         StringBuilder buffer = new StringBuilder();
         buffer.append(objectToHex(groupBinding, this));
         synchronized (nodesById) {
@@ -803,8 +736,7 @@ public class RepGroupImpl {
                  * Only include nodes that can be serialized with the specified
                  * format version
                  */
-                if (NodeBinding.supportsObjectToEntry(
-                        mi, groupFormatVersion)) {
+                if (NodeBinding.supportsObjectToEntry(mi, groupFormatVersion)) {
                     buffer.append(TextProtocol.SEPARATOR);
                     buffer.append(serializeHex(mi, groupFormatVersion));
                 }
@@ -821,8 +753,7 @@ public class RepGroupImpl {
      * @param formatVersion the group format version
      * @return the string containing the serialized form of the node
      */
-    public static String serializeHex(final RepNodeImpl node,
-                                      final int formatVersion) {
+    public static String serializeHex(final RepNodeImpl node, final int formatVersion) {
         final NodeBinding nodeBinding = new NodeBinding(formatVersion);
         return objectToHex(nodeBinding, node);
     }
@@ -834,12 +765,10 @@ public class RepGroupImpl {
      * @param formatVersion the group format version
      * @return the serialized byte array
      */
-    public static byte[] serializeBytes(final RepNodeImpl node,
-                                        final int formatVersion) {
+    public static byte[] serializeBytes(final RepNodeImpl node, final int formatVersion) {
 
         final NodeBinding binding = new NodeBinding(formatVersion);
-        final TupleOutput tuple =
-            new TupleOutput(new byte[NodeBinding.APPROX_MAX_SIZE]);
+        final TupleOutput tuple = new TupleOutput(new byte[NodeBinding.APPROX_MAX_SIZE]);
         binding.objectToEntry(node, tuple);
         return tuple.getBufferBytes();
     }
@@ -849,11 +778,9 @@ public class RepGroupImpl {
      *
      * @param hex the string containing the serialized form of the node
      * @param formatVersion the group format version
-     *
      * @return the de-serialized object
      */
-    public static RepNodeImpl hexDeserializeNode(final String hex,
-                                                 final int formatVersion) {
+    public static RepNodeImpl hexDeserializeNode(final String hex, final int formatVersion) {
         final NodeBinding nodeBinding = new NodeBinding(formatVersion);
         return hexToObject(nodeBinding, hex);
     }
@@ -863,11 +790,9 @@ public class RepGroupImpl {
      *
      * @param bytes the byte representation of the node.
      * @param formatVersion the group format version
-     *
      * @return the deserialized object
      */
-    public static RepNodeImpl deserializeNode(final byte[] bytes,
-                                              final int formatVersion) {
+    public static RepNodeImpl deserializeNode(final byte[] bytes, final int formatVersion) {
         final NodeBinding binding = new NodeBinding(formatVersion);
         TupleInput tuple = new TupleInput(bytes);
         return binding.entryToObject(tuple);
@@ -884,7 +809,7 @@ public class RepGroupImpl {
         for (int i = 0; i < hex.length(); i += 2) {
             int value = Character.digit(hex.charAt(i), 16);
             value |= Character.digit(hex.charAt(i + 1), 16) << 4;
-            buffer[i >> 1] = (byte)value;
+            buffer[i >> 1] = (byte) value;
         }
         TupleInput tuple = new TupleInput(buffer);
         return binding.entryToObject(tuple);
@@ -897,21 +822,17 @@ public class RepGroupImpl {
      *
      * @param tokens the array representing the group and its nodes
      * @param start the position in the array at which to start the
-     * de-serialization.
-     *
+     *            de-serialization.
      * @return the de-serialized RepGroup
      */
     static public RepGroupImpl deserializeHex(String[] tokens, int start) {
-        final RepGroupDB.GroupBinding groupBinding =
-            new RepGroupDB.GroupBinding();
+        final RepGroupDB.GroupBinding groupBinding = new RepGroupDB.GroupBinding();
         RepGroupImpl group = hexToObject(groupBinding, tokens[start++]);
-        Map<Integer, RepNodeImpl> nodeMap =
-            new HashMap<Integer, RepNodeImpl>();
+        Map<Integer, RepNodeImpl> nodeMap = new HashMap<Integer, RepNodeImpl>();
         while (start < tokens.length) {
-            RepNodeImpl n =
-                hexDeserializeNode(tokens[start++], group.getFormatVersion());
+            RepNodeImpl n = hexDeserializeNode(tokens[start++], group.getFormatVersion());
             RepNodeImpl old = nodeMap.put(n.getNameIdPair().getId(), n);
-            assert(old == null);
+            assert (old == null);
         }
         group.setNodes(nodeMap);
         return group;
@@ -941,10 +862,10 @@ public class RepGroupImpl {
     }
 
     /**
-     * Returns all nodes that are currently members of the group.  Returns all
-     * ELECTABLE and MONITOR nodes that are acknowledged and not removed,
-     * and SECONDARY and EXTERNAL nodes.  If the predicate is
-     * not null, only includes members that satisfy the predicate.
+     * Returns all nodes that are currently members of the group. Returns all
+     * ELECTABLE and MONITOR nodes that are acknowledged and not removed, and
+     * SECONDARY and EXTERNAL nodes. If the predicate is not null, only includes
+     * members that satisfy the predicate.
      */
     public Set<RepNodeImpl> getAllMembers(final Predicate p) {
         final Set<RepNodeImpl> result = new HashSet<RepNodeImpl>();
@@ -954,12 +875,11 @@ public class RepGroupImpl {
 
     /**
      * Adds all nodes that are currently members of the group to the specified
-     * set.  Adds all ELECTABLE and MONITOR nodes that are not removed, even if
-     * they are not acknowledged, and SECONDARY and EXTERNAL nodes.  If the
+     * set. Adds all ELECTABLE and MONITOR nodes that are not removed, even if
+     * they are not acknowledged, and SECONDARY and EXTERNAL nodes. If the
      * predicate is not null, only adds members that satisfy the predicate.
      */
-    public void includeAllMembers(final Predicate p,
-                                  final Set<? super RepNodeImpl> set) {
+    public void includeAllMembers(final Predicate p, final Set<? super RepNodeImpl> set) {
         synchronized (nodesById) {
             for (RepNodeImpl mi : nodesById.values()) {
                 if (!mi.isRemoved() && ((p == null) || p.include(mi))) {
@@ -971,9 +891,9 @@ public class RepGroupImpl {
 
     /**
      * Counts the number of nodes that are currently members of the group.
-     * Counts all ELECTABLE and MONITOR nodes that are not removed, even if
-     * they are not acknowledged, and SECONDARY and EXTERNAL nodes.  If the
-     * predicate is not null, only counts members that satisfy the predicate.
+     * Counts all ELECTABLE and MONITOR nodes that are not removed, even if they
+     * are not acknowledged, and SECONDARY and EXTERNAL nodes. If the predicate
+     * is not null, only counts members that satisfy the predicate.
      */
     public int countAllMembers(final Predicate p) {
         int count = 0;
@@ -990,16 +910,13 @@ public class RepGroupImpl {
     /**
      * Adds nodes that are currently members of the group to the specified set.
      * Adds ELECTABLE and MONITOR node that are not removed and are
-     * acknowledged, and SECONDARY and EXTERNAL nodes.  If the predicate is not
+     * acknowledged, and SECONDARY and EXTERNAL nodes. If the predicate is not
      * null, only adds members that satisfy the predicate.
      */
-    public void includeMembers(final Predicate p,
-                               final Set<? super RepNodeImpl> set) {
+    public void includeMembers(final Predicate p, final Set<? super RepNodeImpl> set) {
         synchronized (nodesById) {
             for (RepNodeImpl n : nodesById.values()) {
-                if (!n.isRemoved() &&
-                    n.isQuorumAck() &&
-                    ((p == null) || p.include(n))) {
+                if (!n.isRemoved() && n.isQuorumAck() && ((p == null) || p.include(n))) {
                     set.add(n);
                 }
             }
@@ -1008,12 +925,11 @@ public class RepGroupImpl {
 
     /**
      * Gets the node that is currently a member of the group that has the given
-     * socket address.  Returns ELECTABLE and MONITOR nodes that are not
-     * removed, even if it is not acknowledged, and SECONDARY and EXTERNAL
-     * nodes.
+     * socket address. Returns ELECTABLE and MONITOR nodes that are not removed,
+     * even if it is not acknowledged, and SECONDARY and EXTERNAL nodes.
      *
-     * @return the desired node, or null if there is no such node, including
-     *         if it was removed
+     * @return the desired node, or null if there is no such node, including if
+     *         it was removed
      */
     public RepNodeImpl getMember(InetSocketAddress socket) {
         synchronized (nodesById) {
@@ -1027,9 +943,9 @@ public class RepGroupImpl {
     }
 
     /**
-     * Returns nodes that are removed from the group.  Returns ELECTABLE and
-     * MONITOR nodes that are removed and are acknowledged, but not SECONDARY
-     * or EXTERNAL nodes, which are not remembered when they are removed.
+     * Returns nodes that are removed from the group. Returns ELECTABLE and
+     * MONITOR nodes that are removed and are acknowledged, but not SECONDARY or
+     * EXTERNAL nodes, which are not remembered when they are removed.
      */
     public Set<RepNodeImpl> getRemovedNodes() {
         Set<RepNodeImpl> ret = new HashSet<RepNodeImpl>();
@@ -1058,9 +974,9 @@ public class RepGroupImpl {
     }
 
     /**
-     * Returns electable nodes that are currently members of the group.
-     * Returns ELECTABLE nodes that are not removed and are acknowledged, but
-     * not MONITOR, SECONDARY, or EXTERNAL nodes.
+     * Returns electable nodes that are currently members of the group. Returns
+     * ELECTABLE nodes that are not removed and are acknowledged, but not
+     * MONITOR, SECONDARY, or EXTERNAL nodes.
      */
     public Set<RepNodeImpl> getElectableMembers() {
         final Set<RepNodeImpl> result = new HashSet<RepNodeImpl>();
@@ -1070,23 +986,21 @@ public class RepGroupImpl {
 
     /**
      * Adds the electable nodes that are currently members of the group to the
-     * specified set.  Adds ELECTABLE nodes that are not removed and are
+     * specified set. Adds ELECTABLE nodes that are not removed and are
      * acknowledged, but not MONITOR, SECONDARY, or EXTERNAL nodes.
      */
     public void includeElectableMembers(final Set<? super RepNodeImpl> set) {
-        includeAllMembers(
-            new Predicate() {
-                @Override
-                boolean include(RepNodeImpl n) {
-                    return n.getType().isElectable() && n.isQuorumAck();
-                }
-            },
-            set);
+        includeAllMembers(new Predicate() {
+            @Override
+            boolean include(RepNodeImpl n) {
+                return n.getType().isElectable() && n.isQuorumAck();
+            }
+        }, set);
     }
 
     /**
      * Returns the nodes that are currently members of the group that store
-     * replication data.  Returns ELECTABLE nodes that are not removed and are
+     * replication data. Returns ELECTABLE nodes that are not removed and are
      * acknowledged, and SECONDARY nodes, but not MONITOR or EXTERNAL nodes.
      */
     public Set<RepNodeImpl> getDataMembers() {
@@ -1097,19 +1011,17 @@ public class RepGroupImpl {
 
     /**
      * Adds the nodes that are currently members of the group that store
-     * replication data to the specified set.  Adds ELECTABLE nodes that are
-     * not removed and are acknowledged, and SECONDARY nodes, but not MONITOR
-     * or EXTERNAL nodes.
+     * replication data to the specified set. Adds ELECTABLE nodes that are not
+     * removed and are acknowledged, and SECONDARY nodes, but not MONITOR or
+     * EXTERNAL nodes.
      */
     public void includeDataMembers(final Set<? super RepNodeImpl> set) {
-        includeAllMembers(
-            new Predicate() {
-                @Override
-                boolean include(final RepNodeImpl n) {
-                    return n.getType().isDataNode() && n.isQuorumAck();
-                }
-            },
-            set);
+        includeAllMembers(new Predicate() {
+            @Override
+            boolean include(final RepNodeImpl n) {
+                return n.getType().isDataNode() && n.isQuorumAck();
+            }
+        }, set);
     }
 
     /**
@@ -1127,7 +1039,7 @@ public class RepGroupImpl {
 
     /**
      * Adds the monitor nodes that are currently members of the group to the
-     * specified set.  Adds MONITOR nodes that are not removed and are
+     * specified set. Adds MONITOR nodes that are not removed and are
      * acknowledged, but not ELECTABLE, SECONDARY, or EXTERNAL nodes.
      */
     public void includeMonitorMembers(final Set<? super RepNodeImpl> set) {
@@ -1135,28 +1047,24 @@ public class RepGroupImpl {
     }
 
     /**
-     * Returns all the nodes that are currently members of the group that act
-     * as distinguished learners to receive election results.  Returns all
-     * ELECTABLE and MONITOR that are not removed, even if they are not
-     * acknowledged, but not SECONDARY or EXTERNAL nodes.
+     * Returns all the nodes that are currently members of the group that act as
+     * distinguished learners to receive election results. Returns all ELECTABLE
+     * and MONITOR that are not removed, even if they are not acknowledged, but
+     * not SECONDARY or EXTERNAL nodes.
      */
     public Set<RepNodeImpl> getAllLearnerMembers() {
         final Set<RepNodeImpl> result = new HashSet<RepNodeImpl>();
-        includeAllMembers(
-            new Predicate() {
-                @Override
-                boolean include(final RepNodeImpl n) {
-                    return (n.getType().isElectable() ||
-                            n.getType().isMonitor());
-                }
-            },
-            result);
+        includeAllMembers(new Predicate() {
+            @Override
+            boolean include(final RepNodeImpl n) {
+                return (n.getType().isElectable() || n.getType().isMonitor());
+            }
+        }, result);
         return result;
     }
 
     /**
      * Returns the secondary nodes that are currently members of the group.
-     *
      * Returns SECONDARY nodes, but not ELECTABLE, MONITOR, or EXTERNAL nodes.
      */
     public Set<RepNodeImpl> getSecondaryMembers() {
@@ -1167,7 +1075,6 @@ public class RepGroupImpl {
 
     /**
      * Returns the external nodes that are currently members of the group.
-     *
      * Returns EXTERNAL nodes, but not ELECTABLE, MONITOR, or SECONDARY nodes.
      */
     public Set<RepNodeImpl> getExternalMembers() {
@@ -1178,7 +1085,7 @@ public class RepGroupImpl {
 
     /**
      * Adds the secondary nodes that are currently members of the group to the
-     * specified set.  Adds SECONDARY nodes, but not ELECTABLE, MONITOR, or
+     * specified set. Adds SECONDARY nodes, but not ELECTABLE, MONITOR, or
      * EXTERNAL nodes.
      */
     public void includeSecondaryMembers(final Set<? super RepNodeImpl> set) {
@@ -1186,8 +1093,8 @@ public class RepGroupImpl {
     }
 
     /**
-     * Adds the external nodes. Adds EXTERNAL nodes, but not ELECTABLE,
-     * MONITOR, or SECONDARY nodes.
+     * Adds the external nodes. Adds EXTERNAL nodes, but not ELECTABLE, MONITOR,
+     * or SECONDARY nodes.
      */
     public void includeExternalMembers(final Set<? super RepNodeImpl> set) {
         includeAllMembers(EXTERNAL_PREDICATE, set);
@@ -1205,7 +1112,7 @@ public class RepGroupImpl {
 
     /**
      * Adds the arbiter nodes that are currently members of the group to the
-     * specified set.  Adds ARBITER nodes.
+     * specified set. Adds ARBITER nodes.
      */
     public void includeArbiterMembers(final Set<? super RepNodeImpl> set) {
         includeMembers(ARBITER_PREDICATE, set);
@@ -1213,21 +1120,18 @@ public class RepGroupImpl {
 
     /**
      * Returns the socket addresses for all nodes that are currently members of
-     * the group.  Returns addresses for all ELECTABLE and MONITOR nodes that
-     * are not removed, even if they are not acknowledged, and for all
-     * nodes with transient id. If the predicate is not null, only returns
-     * addresses for members that satisfy the predicate. ARBITER nodes are
-     * also ELECTABLE and will be part of the returned set.
+     * the group. Returns addresses for all ELECTABLE and MONITOR nodes that are
+     * not removed, even if they are not acknowledged, and for all nodes with
+     * transient id. If the predicate is not null, only returns addresses for
+     * members that satisfy the predicate. ARBITER nodes are also ELECTABLE and
+     * will be part of the returned set.
      */
     private Set<InetSocketAddress> getAllMemberSockets(Predicate p) {
         Set<InetSocketAddress> sockets = new HashSet<InetSocketAddress>();
         synchronized (nodesById) {
             for (final RepNodeImpl mi : nodesById.values()) {
-                if ((((mi.getType().isElectable() ||
-                       mi.getType().isMonitor()) &&
-                      !mi.isRemoved()) ||
-                     mi.getType().hasTransientId()) &&
-                    ((p == null) || p.include(mi))) {
+                if ((((mi.getType().isElectable() || mi.getType().isMonitor()) && !mi.isRemoved())
+                        || mi.getType().hasTransientId()) && ((p == null) || p.include(mi))) {
                     sockets.add(mi.getSocketAddress());
                 }
             }
@@ -1247,12 +1151,12 @@ public class RepGroupImpl {
     public Set<InetSocketAddress> getAllLearnerSockets() {
 
         /*
-         * TODO: Consider including secondary nodes in this list.
-         * That change would increase the chance that SECONDARY nodes have
-         * up-to-date information about the master, but would need to be
-         * paired with a change to only wait for delivery of notifications to
-         * ELECTABLE nodes, to avoid adding sensitivity to potentially longer
-         * network delays in communicating with secondary nodes.
+         * TODO: Consider including secondary nodes in this list. That change
+         * would increase the chance that SECONDARY nodes have up-to-date
+         * information about the master, but would need to be paired with a
+         * change to only wait for delivery of notifications to ELECTABLE nodes,
+         * to avoid adding sensitivity to potentially longer network delays in
+         * communicating with secondary nodes.
          */
         return getAllMemberSockets(new Predicate() {
             @Override
@@ -1264,7 +1168,7 @@ public class RepGroupImpl {
 
     /**
      * Return the socket addresses for all nodes that are currently members of
-     * the group and act as helpers to supply election results.  Returns
+     * the group and act as helpers to supply election results. Returns
      * addresses for all ELECTABLE and MONITOR nodes that are not removed, even
      * if they are not acknowledged, and SECONDARY nodes.
      *
@@ -1276,7 +1180,7 @@ public class RepGroupImpl {
 
     /**
      * Returns the socket addresses for all monitor nodes that are currently
-     * members of the group.  Returns addresses for all MONITOR nodes that are
+     * members of the group. Returns addresses for all MONITOR nodes that are
      * not removed, even if they are not acknowledged, but not for ELECTABLE,
      * SECONDARY, or EXTERNAL nodes.
      *
@@ -1288,7 +1192,7 @@ public class RepGroupImpl {
 
     /**
      * Returns the socket addresses for all nodes that are currently members of
-     * the group and act as acceptors for elections.  Returns addresses for all
+     * the group and act as acceptors for elections. Returns addresses for all
      * ELECTABLE nodes that are not removed, even if they are not acknowledged,
      * but not for MONITOR, SECONDARY, or EXTERNAL nodes, which do not act as
      * acceptors.
@@ -1302,8 +1206,8 @@ public class RepGroupImpl {
     /**
      * Returns the node with the specified ID that is currently a member of the
      * group, throwing an exception if the node is found but is no longer a
-     * member.  Returns ELECTABLE and MONITOR nodes that are not removed, even
-     * if they are not acknowledged, and SECONDARY and EXTERNAL nodes.
+     * member. Returns ELECTABLE and MONITOR nodes that are not removed, even if
+     * they are not acknowledged, and SECONDARY and EXTERNAL nodes.
      *
      * @param nodeId the node ID
      * @return the member or null
@@ -1315,8 +1219,7 @@ public class RepGroupImpl {
             return null;
         }
         if (node.isRemoved()) {
-            throw EnvironmentFailureException.unexpectedState
-                ("No longer a member:" + nodeId);
+            throw EnvironmentFailureException.unexpectedState("No longer a member:" + nodeId);
         }
         return node;
     }
@@ -1324,33 +1227,31 @@ public class RepGroupImpl {
     /**
      * Returns the node with the specified name that is currently a member of
      * the group, throwing an exception if the node is found but is no longer a
-     * member.  Returns ELECTABLE and MONITOR nodes that are not removed, even
-     * if they are not acknowledged, and SECONDARY and EXTERNAL nodes.
+     * member. Returns ELECTABLE and MONITOR nodes that are not removed, even if
+     * they are not acknowledged, and SECONDARY and EXTERNAL nodes.
      *
      * @param name the node name
      * @return the member or null
      * @throws MemberNotFoundException if the node is no longer a member
      */
-    public RepNodeImpl getMember(String name)
-        throws MemberNotFoundException {
+    public RepNodeImpl getMember(String name) throws MemberNotFoundException {
 
         RepNodeImpl node = getNode(name);
         if (node == null) {
             return null;
         }
         if (node.isRemoved()) {
-            throw new MemberNotFoundException
-                ("Node no longer a member:" + name);
+            throw new MemberNotFoundException("Node no longer a member:" + name);
         }
         return node;
     }
 
     /**
      * Returns the node with the specified ID, regardless of its membership
-     * state.  Returns all ELECTABLE and MONITOR nodes, even if they are
-     * removed or are not acknowledged, and SECONDARY and EXTERNAL nodes.
+     * state. Returns all ELECTABLE and MONITOR nodes, even if they are removed
+     * or are not acknowledged, and SECONDARY and EXTERNAL nodes.
      *
-     *  @return the node or null
+     * @return the node or null
      */
     public RepNodeImpl getNode(int nodeId) {
         synchronized (nodesById) {
@@ -1360,10 +1261,10 @@ public class RepGroupImpl {
 
     /**
      * Returns the node with the specified name, regardless of its membership
-     * state.  Returns all ELECTABLE and MONITOR nodes, even if they are
-     * removed or are not acknowledged, and SECONDARY and EXTERNAL nodes.
+     * state. Returns all ELECTABLE and MONITOR nodes, even if they are removed
+     * or are not acknowledged, and SECONDARY and EXTERNAL nodes.
      *
-     *  @return the node or null
+     * @return the node or null
      */
     public RepNodeImpl getNode(String name) {
         synchronized (nodesById) {
@@ -1373,10 +1274,10 @@ public class RepGroupImpl {
 
     /**
      * Returns the number of all electable nodes that are currently members of
-     * the group.  Includes all ELECTABLE nodes that are not removed, even if
-     * they are not acknowledged, but not MONITOR, SECONDARY, or EXTERNAL
-     * nodes.  Note that even unACKed nodes are considered part of the group
-     * for group size/durability considerations.
+     * the group. Includes all ELECTABLE nodes that are not removed, even if
+     * they are not acknowledged, but not MONITOR, SECONDARY, or EXTERNAL nodes.
+     * Note that even unACKed nodes are considered part of the group for group
+     * size/durability considerations.
      *
      * @return the size of the group for durability considerations
      */
@@ -1386,9 +1287,9 @@ public class RepGroupImpl {
 
     /**
      * Returns the number of all electable nodes that are currently members of
-     * the group.  Includes all ELECTABLE nodes that are not removed, even if
+     * the group. Includes all ELECTABLE nodes that are not removed, even if
      * they are not acknowledged, but not MONITOR, ARBITER, SECONDARY, or
-     * EXTERNAL nodes.  Note that even unACKed nodes are considered part of the
+     * EXTERNAL nodes. Note that even unACKed nodes are considered part of the
      * group for group size/durability considerations.
      *
      * @return the size of the group for durability considerations
@@ -1416,18 +1317,18 @@ public class RepGroupImpl {
         private static final long serialVersionUID = 1L;
 
         /*
-         * The latest sync position of this node in the replication stream.
-         * This position is approximate and is updated on some regular basis.
-         * It is conservative in that the node is likely to have a newer sync
-         * point. So it represents a lower bound for its sync point.
+         * The latest sync position of this node in the replication stream. This
+         * position is approximate and is updated on some regular basis. It is
+         * conservative in that the node is likely to have a newer sync point.
+         * So it represents a lower bound for its sync point.
          */
-        private final VLSN lastLocalCBVLSN;
+        private final VLSN        lastLocalCBVLSN;
 
         /*
          * The time that the sync point was last recorded. Note that clocks
          * should be reasonably synchronized.
          */
-        private final long barrierTime;
+        private final long        barrierTime;
 
         public BarrierState(VLSN lastLocalCBVLSN, long barrierTime) {
             super();
@@ -1439,10 +1340,8 @@ public class RepGroupImpl {
         public int hashCode() {
             final int prime = 31;
             int result = 1;
-            result = prime * result +
-                    (lastLocalCBVLSN == null ? 0 : lastLocalCBVLSN.hashCode());
-            result = prime * result +
-                     (int) (barrierTime ^ (barrierTime >>> 32));
+            result = prime * result + (lastLocalCBVLSN == null ? 0 : lastLocalCBVLSN.hashCode());
+            result = prime * result + (int) (barrierTime ^ (barrierTime >>> 32));
             return result;
         }
 
@@ -1481,8 +1380,7 @@ public class RepGroupImpl {
 
         @Override
         public String toString() {
-            return String.format("LocalCBVLSN:%,d at:%tc",
-                                 lastLocalCBVLSN.getSequence(), barrierTime);
+            return String.format("LocalCBVLSN:%,d at:%tc", lastLocalCBVLSN.getSequence(), barrierTime);
         }
     }
 
@@ -1504,12 +1402,9 @@ public class RepGroupImpl {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("Group info [").append(groupName).append("] ");
-        sb.append(getUUID()).
-            append("\n Format version: ").append(getFormatVersion()).
-            append("\n Change version: ").append(getChangeVersion()).
-            append("\n Max persist rep node ID: ").append(getNodeIdSequence()).
-            append("\n Min JE version: ").append(minJEVersion).
-            append("\n");
+        sb.append(getUUID()).append("\n Format version: ").append(getFormatVersion()).append("\n Change version: ")
+                .append(getChangeVersion()).append("\n Max persist rep node ID: ").append(getNodeIdSequence())
+                .append("\n Min JE version: ").append(minJEVersion).append("\n");
 
         synchronized (nodesById) {
             for (final RepNodeImpl node : nodesById.values()) {

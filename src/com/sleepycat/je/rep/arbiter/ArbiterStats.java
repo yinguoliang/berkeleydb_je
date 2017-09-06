@@ -36,32 +36,28 @@ public class ArbiterStats implements Serializable {
 
     private static final long serialVersionUID = 1734048134L;
 
-    private final StatGroup arbStats;
+    private final StatGroup   arbStats;
 
     /**
-     * @hidden
-     * Internal use only.
+     * @hidden Internal use only.
      */
     ArbiterStats(StatGroup arbGrp) {
         if (arbGrp != null) {
             arbStats = arbGrp;
         } else {
-            arbStats = new StatGroup(ArbiterStatDefinition.GROUP_NAME,
-                    ArbiterStatDefinition.GROUP_DESC);
+            arbStats = new StatGroup(ArbiterStatDefinition.GROUP_NAME, ArbiterStatDefinition.GROUP_DESC);
         }
     }
 
     /**
-     * The number of attempts to queue a response when
-     * the queue was full.
+     * The number of attempts to queue a response when the queue was full.
      */
     public long getReplayQueueOverflow() {
         return arbStats.getLong(ARB_N_REPLAY_QUEUE_OVERFLOW);
     }
 
     /**
-     * The number of transactions that has been
-     * acknowledged.
+     * The number of transactions that has been acknowledged.
      */
     public long getAcks() {
         return arbStats.getLong(ARB_N_ACKS);
@@ -82,16 +78,14 @@ public class ArbiterStats implements Serializable {
     }
 
     /**
-     * The highest commit VLSN that has been
-     * acknowledged.
+     * The highest commit VLSN that has been acknowledged.
      */
     public long getVLSN() {
         return arbStats.getLong(ARB_VLSN);
     }
 
     /**
-     * The highest commit DTVLSN that has been
-     * acknowledged.
+     * The highest commit DTVLSN that has been acknowledged.
      */
     public long getDTVLSN() {
         return arbStats.getLong(ARB_DTVLSN);
@@ -111,4 +105,3 @@ public class ArbiterStats implements Serializable {
         return arbStats.getLong(ARB_N_FSYNCS);
     }
 }
-

@@ -22,26 +22,20 @@ import static com.sleepycat.je.EnvironmentFailureException.assertState;
 
 /**
  * TinyHashSet is used to optimize (for speed, not space) the case where a
- * HashSet generally holds one or two elements.  This saves us the cost of
+ * HashSet generally holds one or two elements. This saves us the cost of
  * creating the HashSet and related elements as well as call Object.hashCode().
  * It was designed for holding the cursors of a BIN, which are often no more
- * than two in number.
- *
- * If (elem1 != null || elem2 != null), they are the only elements in the
- * TinyHashSet.  If (set != null) then only the set's elements are in the
- * TinyHashSet.
- *
- * It should never be true that:
- *   (elem1 != null || elem2 != null) and (set != null).
- *
- * This class does not support adding null elements, and only supports a few
- * of the methods in the Set interface.
+ * than two in number. If (elem1 != null || elem2 != null), they are the only
+ * elements in the TinyHashSet. If (set != null) then only the set's elements
+ * are in the TinyHashSet. It should never be true that: (elem1 != null || elem2
+ * != null) and (set != null). This class does not support adding null elements,
+ * and only supports a few of the methods in the Set interface.
  */
 public class TinyHashSet<T> implements Iterable<T> {
 
     private Set<T> set;
-    private T elem1;
-    private T elem2;
+    private T      elem1;
+    private T      elem2;
 
     /**
      * Creates an empty set.
@@ -95,18 +89,10 @@ public class TinyHashSet<T> implements Iterable<T> {
                 return false;
             }
             /*
-            if (set.size() > 2) {
-                return true;
-            }
-            final Iterator<T> iter = set.iterator();
-            if (iter.hasNext()) {
-                elem1 = iter.next();
-                if (iter.hasNext()) {
-                    elem2 = iter.next();
-                }
-            }
-            set = null;
-            */
+             * if (set.size() > 2) { return true; } final Iterator<T> iter =
+             * set.iterator(); if (iter.hasNext()) { elem1 = iter.next(); if
+             * (iter.hasNext()) { elem2 = iter.next(); } } set = null;
+             */
             return true;
         }
         if (elem1 != null && (elem1 == o || elem1.equals(o))) {
@@ -176,10 +162,10 @@ public class TinyHashSet<T> implements Iterable<T> {
      */
     private static class TwoElementIterator<T> implements Iterator<T> {
         final TinyHashSet<T> parent;
-        final T elem1;
-        final T elem2;
-        boolean returnedElem1;
-        boolean returnedElem2;
+        final T              elem1;
+        final T              elem2;
+        boolean              returnedElem1;
+        boolean              returnedElem2;
 
         TwoElementIterator(TinyHashSet<T> parent, T elem1, T elem2) {
             this.parent = parent;

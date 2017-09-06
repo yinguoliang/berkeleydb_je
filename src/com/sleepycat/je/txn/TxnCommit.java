@@ -52,7 +52,6 @@ public class TxnCommit extends VersionedWriteTxnEnd {
 
         TxnCommit otherCommit = (TxnCommit) other;
 
-        return ((id == otherCommit.id) &&
-                (repMasterNodeId == otherCommit.repMasterNodeId));
+        return ((id == otherCommit.id) && (repMasterNodeId == otherCommit.repMasterNodeId));
     }
 }

@@ -26,43 +26,42 @@ import com.sleepycat.je.rep.ReplicationConfig;
 /**
  * A utility to convert an existing, non replicated JE environment for
  * replication. This is useful when the user wants to initially prototype and
- * develop a standalone transactional application, and then add replication as
- * a second stage.
+ * develop a standalone transactional application, and then add replication as a
+ * second stage.
  * <p>
  * JE HA environment log files contain types of log records and metadata used
- * only by replication. Non replicated environments are lacking that
- * information and must undergo a one time conversion process to add that
- * metadata and enable replication. The conversion process is one way. Once an
- * environment directory is converted, the rules that govern {@link
- * ReplicatedEnvironment} apply; namely, the directory cannot be opened by a
- * read/write standalone {@link com.sleepycat.je.Environment}. Only a minimum
- * amount of replication metadata is added, and the conversion process is not
- * dependent on the size of the existing directory.
+ * only by replication. Non replicated environments are lacking that information
+ * and must undergo a one time conversion process to add that metadata and
+ * enable replication. The conversion process is one way. Once an environment
+ * directory is converted, the rules that govern {@link ReplicatedEnvironment}
+ * apply; namely, the directory cannot be opened by a read/write standalone
+ * {@link com.sleepycat.je.Environment}. Only a minimum amount of replication
+ * metadata is added, and the conversion process is not dependent on the size of
+ * the existing directory.
  * <p>
  * The conversion process takes these steps:
  * <ol>
- * <li> Use {@code DbEnableReplication} to convert an existing environment
- * directory. {@code DbEnableReplication} can be used as a command line
- * utility, and must be executed locally on the host which houses the
- * environment directory. Alternatively, {@code DbEnableReplication} may be
- * used programmatically through the provided APIs.
- * </li>
- * <li> Once converted, the environment directory may be treated as an existing
+ * <li>Use {@code DbEnableReplication} to convert an existing environment
+ * directory. {@code DbEnableReplication} can be used as a command line utility,
+ * and must be executed locally on the host which houses the environment
+ * directory. Alternatively, {@code DbEnableReplication} may be used
+ * programmatically through the provided APIs.</li>
+ * <li>Once converted, the environment directory may be treated as an existing
  * master node, and can be opened with a {@code ReplicatedEnvironment}. No
  * helper host configuration is needed.
- * <li> Additional nodes may be created and can join the group as newly created
- * replicas, as described in {@code ReplicatedEnvironment}.  Since these new
+ * <li>Additional nodes may be created and can join the group as newly created
+ * replicas, as described in {@code ReplicatedEnvironment}. Since these new
  * nodes are empty, they should be configured to use the converted master as
- * their helper node, and will go through the {@link <a
- * href="{@docRoot}/../ReplicationGuide/lifecycle.html#lifecycle-nodestartup">
- * replication node lifecycle</a>} to populate their environment
- * directories. In this case, there will be data in the converted master that
- * can only be transferred to the replica through a file copy executed with the
- * help of a {@link com.sleepycat.je.rep.NetworkRestore}
- * </li>
+ * their helper node, and will go through the {@link <a href=
+ * "{@docRoot}/../ReplicationGuide/lifecycle.html#lifecycle-nodestartup">
+ * replication node lifecycle</a>} to populate their environment directories. In
+ * this case, there will be data in the converted master that can only be
+ * transferred to the replica through a file copy executed with the help of a
+ * {@link com.sleepycat.je.rep.NetworkRestore}</li>
  * </ol>
  * <p>
  * For example:
+ * 
  * <pre class="code">
  * // Create the first node using an existing environment 
  * DbEnableReplication converter = 
@@ -100,29 +99,29 @@ import com.sleepycat.je.rep.ReplicationConfig;
  */
 public class DbEnableReplication {
 
-    /* 
-     * The code snippet in the header comment is tested in 
+    /*
+     * The code snippet in the header comment is tested in
      * com.sleepycat.je.rep.util.EnvConvertTest.
-     * testJavadocForDbEnableReplication(). Please update this test case
-     * when the example is changed.
+     * testJavadocForDbEnableReplication(). Please update this test case when
+     * the example is changed.
      */
-    private File envHome;
-    private String groupName;
-    private String nodeName;
-    private String nodeHostPort;
+    private File                envHome;
+    private String              groupName;
+    private String              nodeName;
+    private String              nodeHostPort;
 
-    private static final String usageString =
-        "usage: java -cp je.jar " +
-        "com.sleepycat.je.rep.util.DbEnableReplication\n" + 
-        " -h <dir>                              # environment home directory\n" +
-        " -groupName <group name>               # replication group name\n" +
-        " -nodeName <node name>                 # replicated node name\n" +
-        " -nodeHostPort <host name:port number> # host name or IP address\n" +
-        "                                          and port number to use\n" +
-        "                                          for this node\n";
+    private static final String usageString = "usage: java -cp je.jar "
+            + "com.sleepycat.je.rep.util.DbEnableReplication\n"
+            + " -h <dir>                              # environment home directory\n"
+            + " -groupName <group name>               # replication group name\n"
+            + " -nodeName <node name>                 # replicated node name\n"
+            + " -nodeHostPort <host name:port number> # host name or IP address\n"
+            + "                                          and port number to use\n"
+            + "                                          for this node\n";
 
     /**
      * Usage:
+     * 
      * <pre>
      * java -cp je.jar com.sleepycat.je.rep.util.DbEnableReplication
      *   -h &lt;dir&gt;                          # environment home directory
@@ -217,39 +216,32 @@ public class DbEnableReplication {
      * @param nodeName The node's name
      * @param nodeHostPort The host and port for this node
      */
-    public DbEnableReplication(File envHome, 
-                               String groupName, 
-                               String nodeName, 
-                               String nodeHostPort) {
+    public DbEnableReplication(File envHome, String groupName, String nodeName, String nodeHostPort) {
         this.envHome = envHome;
         this.groupName = groupName;
         this.nodeName = nodeName;
         this.nodeHostPort = nodeHostPort;
     }
 
-     /**
+    /**
      * Modify the log files in the environment directory to add a modicum of
      * replication required metadata.
      */
-     public void convert() {
+    public void convert() {
 
-        Durability durability =
-            new Durability(Durability.SyncPolicy.WRITE_NO_SYNC,
-                           Durability.SyncPolicy.WRITE_NO_SYNC,
-                           Durability.ReplicaAckPolicy.SIMPLE_MAJORITY);
+        Durability durability = new Durability(Durability.SyncPolicy.WRITE_NO_SYNC, Durability.SyncPolicy.WRITE_NO_SYNC,
+                Durability.ReplicaAckPolicy.SIMPLE_MAJORITY);
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         envConfig.setDurability(durability);
 
-        ReplicationConfig repConfig = 
-            new ReplicationConfig(groupName, nodeName, nodeHostPort);
+        ReplicationConfig repConfig = new ReplicationConfig(groupName, nodeName, nodeHostPort);
         repConfig.setHelperHosts(repConfig.getNodeHostPort());
         RepInternal.setAllowConvert(repConfig, true);
 
-        ReplicatedEnvironment repEnv = 
-            new ReplicatedEnvironment(envHome, repConfig, envConfig);
+        ReplicatedEnvironment repEnv = new ReplicatedEnvironment(envHome, repConfig, envConfig);
 
         repEnv.close();
     }

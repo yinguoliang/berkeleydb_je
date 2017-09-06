@@ -21,15 +21,13 @@ import com.sleepycat.je.EnvironmentFailureException;
 public class LongArrayStat extends Stat<long[]> {
     private static final long serialVersionUID = 1L;
 
-    protected long[] array;
+    protected long[]          array;
 
     public LongArrayStat(StatGroup group, StatDefinition definition) {
         super(group, definition);
     }
 
-    public LongArrayStat(StatGroup group,
-                         StatDefinition definition,
-                         long[] array) {
+    public LongArrayStat(StatGroup group, StatDefinition definition, long[] array) {
         super(group, definition);
         this.array = array;
     }
@@ -46,8 +44,7 @@ public class LongArrayStat extends Stat<long[]> {
 
     @Override
     public void add(Stat<long[]> other) {
-        throw EnvironmentFailureException.unexpectedState
-            ("LongArrayStat doesn't support the add operation.");
+        throw EnvironmentFailureException.unexpectedState("LongArrayStat doesn't support the add operation.");
     }
 
     @Override
@@ -57,8 +54,7 @@ public class LongArrayStat extends Stat<long[]> {
 
     @Override
     public void negate() {
-        throw EnvironmentFailureException.unexpectedState
-        ("LongArrayStat doesn't support the negate operation.");
+        throw EnvironmentFailureException.unexpectedState("LongArrayStat doesn't support the negate operation.");
     }
 
     @Override
@@ -76,8 +72,7 @@ public class LongArrayStat extends Stat<long[]> {
             LongArrayStat ret = (LongArrayStat) super.clone();
             if (array != null && array.length > 0) {
                 long[] newArray = new long[array.length];
-                System.arraycopy
-                    (array, 0, newArray, array.length - 1, array.length);
+                System.arraycopy(array, 0, newArray, array.length - 1, array.length);
                 ret.set(newArray);
             }
 

@@ -41,13 +41,11 @@ public class FileHeaderEntry extends SingleItemEntry<FileHeader> {
 
     /**
      * For a file header, the version is not available until after reading the
-     * item.  Set the version in the entry header so it can be used by
-     * FileReaders, etc.  [#16939]
+     * item. Set the version in the entry header so it can be used by
+     * FileReaders, etc. [#16939]
      */
     @Override
-    public void readEntry(EnvironmentImpl envImpl,
-                          LogEntryHeader header,
-                          ByteBuffer entryBuffer) {
+    public void readEntry(EnvironmentImpl envImpl, LogEntryHeader header, ByteBuffer entryBuffer) {
         super.readEntry(envImpl, header, entryBuffer);
         FileHeader entry = (FileHeader) getMainItem();
         header.setFileHeaderVersion(entry.getLogVersion());

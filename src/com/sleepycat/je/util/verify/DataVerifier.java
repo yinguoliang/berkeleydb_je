@@ -35,35 +35,31 @@ import com.sleepycat.je.utilint.CronScheduleParser;
 import com.sleepycat.je.utilint.StoppableThread;
 
 /**
- *  Periodically perform checksum verification, Btree verification, or both,
- *  depending on {@link com.sleepycat.je.EnvironmentConfig#VERIFY_LOG} and
- *  {@link com.sleepycat.je.EnvironmentConfig#VERIFY_BTREE}.
- *  
- *  The first-time start time and the period of the verification is determined
- *  by {@link com.sleepycat.je.EnvironmentConfig#VERIFY_SCHEDULE}.
- *  
- *  For current version, JE only implements checksum verification feature. The
- *  Btree verification feature will be implemented in next release.
+ * Periodically perform checksum verification, Btree verification, or both,
+ * depending on {@link com.sleepycat.je.EnvironmentConfig#VERIFY_LOG} and
+ * {@link com.sleepycat.je.EnvironmentConfig#VERIFY_BTREE}. The first-time start
+ * time and the period of the verification is determined by
+ * {@link com.sleepycat.je.EnvironmentConfig#VERIFY_SCHEDULE}. For current
+ * version, JE only implements checksum verification feature. The Btree
+ * verification feature will be implemented in next release.
  */
 public class DataVerifier {
     private final EnvironmentImpl envImpl;
-    private final Timer timer;
-    private VerifyTask verifyTask;
-    private final DbVerifyLog dbLogVerifier;
+    private final Timer           timer;
+    private VerifyTask            verifyTask;
+    private final DbVerifyLog     dbLogVerifier;
 
-    private long verifyDelay;
-    private long verifyInterval;
-    private String cronSchedule;
+    private long                  verifyDelay;
+    private long                  verifyInterval;
+    private String                cronSchedule;
 
-    private boolean shutdownRequest = false;
+    private boolean               shutdownRequest = false;
 
     public DataVerifier(EnvironmentImpl envImpl) {
 
         this.envImpl = envImpl;
-        this.timer = new Timer(
-            envImpl.makeDaemonThreadName(
-                Environment.DATA_CORRUPTION_VERIFIER_NAME),
-            true /*isDaemon*/);
+        this.timer = new Timer(envImpl.makeDaemonThreadName(Environment.DATA_CORRUPTION_VERIFIER_NAME),
+                true /* isDaemon */);
         dbLogVerifier = new DbVerifyLog(envImpl, 0);
     }
 
@@ -82,13 +78,9 @@ public class DataVerifier {
                 cancel();
 
                 if (cronSchedule != null) {
-                    verifyTask = new VerifyTask(
-                        envImpl,
-                        configMgr.getBoolean(VERIFY_LOG),
-                        configMgr.getBoolean(VERIFY_BTREE),
-                        configMgr.getBoolean(VERIFY_SECONDARIES),
-                        configMgr.getBoolean(VERIFY_DATA_RECORDS),
-                        configMgr.getBoolean(VERIFY_OBSOLETE_RECORDS));
+                    verifyTask = new VerifyTask(envImpl, configMgr.getBoolean(VERIFY_LOG),
+                            configMgr.getBoolean(VERIFY_BTREE), configMgr.getBoolean(VERIFY_SECONDARIES),
+                            configMgr.getBoolean(VERIFY_DATA_RECORDS), configMgr.getBoolean(VERIFY_OBSOLETE_RECORDS));
 
                     timer.schedule(verifyTask, verifyDelay, verifyInterval);
                 }
@@ -165,19 +157,14 @@ public class DataVerifier {
 
     class VerifyTask extends TimerTask {
         private final EnvironmentImpl envImpl;
-        private final boolean verifyLog;
-        private final boolean verifyBtree;
-        private final boolean verifySecondaries;
-        private final boolean verifyDataRecords;
-        private final boolean verifyObsoleteRecords;
+        private final boolean         verifyLog;
+        private final boolean         verifyBtree;
+        private final boolean         verifySecondaries;
+        private final boolean         verifyDataRecords;
+        private final boolean         verifyObsoleteRecords;
 
-        VerifyTask(
-            EnvironmentImpl envImpl,
-            boolean verifyLog,
-            boolean verifyBtree,
-            boolean verifySecondaries,
-            boolean verifyDataRecords,
-            boolean verifyObsoleteRecords) {
+        VerifyTask(EnvironmentImpl envImpl, boolean verifyLog, boolean verifyBtree, boolean verifySecondaries,
+                   boolean verifyDataRecords, boolean verifyObsoleteRecords) {
 
             this.envImpl = envImpl;
             this.verifyLog = verifyLog;
@@ -192,45 +179,26 @@ public class DataVerifier {
             boolean success = false;
             try {
                 /*
-                 * Now only consider the data corruption caused by
-                 * media/disk failure. Btree corruption will be verified
-                 * in next release.
+                 * Now only consider the data corruption caused by media/disk
+                 * failure. Btree corruption will be verified in next release.
                  */
                 if (verifyLog) {
                     dbLogVerifier.verifyAll();
                 }
 
                 /*
-                if (verifyBtree) {
- 
-                }
-
-                if (verifySecondaries) {
-
-                }
-
-                if (verifyDataRecords) {
-
-                }
-
-                if (verifyObsoleteRecords) {
-
-                }
-                */
+                 * if (verifyBtree) { } if (verifySecondaries) { } if
+                 * (verifyDataRecords) { } if (verifyObsoleteRecords) { }
+                 */
                 success = true;
             } catch (LogVerificationException lve) {
-                new EnvironmentFailureException(
-                    envImpl,
-                    EnvironmentFailureReason.LOG_CHECKSUM,
-                    "Corruption detected by log verifier",
-                    lve /*LogVerificationException*/);
+                new EnvironmentFailureException(envImpl, EnvironmentFailureReason.LOG_CHECKSUM,
+                        "Corruption detected by log verifier", lve /* LogVerificationException */);
             } catch (EnvironmentFailureException efe) {
                 // Do nothing. Just cancel this timer in finally.
             } catch (Throwable e) {
                 if (envImpl.isValid()) {
-                    StoppableThread.handleUncaughtException(
-                        envImpl.getLogger(), envImpl, Thread.currentThread(),
-                        e);
+                    StoppableThread.handleUncaughtException(envImpl.getLogger(), envImpl, Thread.currentThread(), e);
                 }
             } finally {
                 if (!success) {

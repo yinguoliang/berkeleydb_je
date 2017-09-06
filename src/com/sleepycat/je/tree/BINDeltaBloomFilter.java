@@ -20,27 +20,25 @@ import com.sleepycat.je.dbi.MemoryBudget;
 import com.sleepycat.je.log.LogUtils;
 
 /**
- * A Bloom filter implementation, highly specialized for use in BIN deltas.
- * Both space and computation times are minimized, with a potential small
- * loss in accuracy.
- *
- * A nice introduction to bloom filters can be found here:
- * http://en.wikipedia.org/wiki/Bloom_filter 
+ * A Bloom filter implementation, highly specialized for use in BIN deltas. Both
+ * space and computation times are minimized, with a potential small loss in
+ * accuracy. A nice introduction to bloom filters can be found here:
+ * http://en.wikipedia.org/wiki/Bloom_filter
  */
 public class BINDeltaBloomFilter {
 
     /*
      * Used to optimize creation of the bloom filter: Lets us avoid repeated
-     * (per key) hashing of the key prefix and repeated allocations of the
-     * RNG and the hashes array.
+     * (per key) hashing of the key prefix and repeated allocations of the RNG
+     * and the hashes array.
      */
     public static class HashContext {
 
-        public int[] hashes;
+        public int[]  hashes;
 
         public Random rng;
 
-        public long initFNVvalue;
+        public long   initFNVvalue;
 
         public HashContext() {
             hashes = new int[BINDeltaBloomFilter.K];
@@ -57,19 +55,19 @@ public class BINDeltaBloomFilter {
      * Params for the Fowler-Noll-Vo (FNV) hash function
      */
     private static final long FNVOffsetBasis = 2166136261L;
-    private static final long FNVPrime = 16777619L;
+    private static final long FNVPrime       = 16777619L;
 
     /*
-     * The m/n ratio, where m is the number of bits used by the bloom filter
-     * and n is the number of keys in the set represented by the bloom filter.
+     * The m/n ratio, where m is the number of bits used by the bloom filter and
+     * n is the number of keys in the set represented by the bloom filter.
      */
-    private static final int M_N_RATIO = 8;
+    private static final int  M_N_RATIO      = 8;
 
     /*
-     * The number of hash values to generate per key, when a key is added to
-     * the filter or when the key's membership is tested.
+     * The number of hash values to generate per key, when a key is added to the
+     * filter or when the key's membership is tested.
      */
-    private static final int K = 3;
+    private static final int  K              = 3;
 
     /*
      * Add the given key to the given bloom filter
@@ -106,8 +104,8 @@ public class BINDeltaBloomFilter {
      */
     private static void hash(byte[] bf, byte[] key, HashContext hc) {
 
-        assert(K == 3);
-        assert(hc.hashes.length == K);
+        assert (K == 3);
+        assert (hc.hashes.length == K);
 
         hc.rng.setSeed(hashFNV(key, hc.initFNVvalue));
 
@@ -121,9 +119,9 @@ public class BINDeltaBloomFilter {
             hash = hash >> 10;
             hc.hashes[2] = (hash & 0x000003FF) % numBits;
         } else {
-            hc.hashes[0] = (int)((hc.rng.nextInt() & 0xFFFFFFFFL) % numBits);
-            hc.hashes[1] = (int)((hc.rng.nextInt() & 0xFFFFFFFFL) % numBits);
-            hc.hashes[2] = (int)((hc.rng.nextInt() & 0xFFFFFFFFL) % numBits);
+            hc.hashes[0] = (int) ((hc.rng.nextInt() & 0xFFFFFFFFL) % numBits);
+            hc.hashes[1] = (int) ((hc.rng.nextInt() & 0xFFFFFFFFL) % numBits);
+            hc.hashes[2] = (int) ((hc.rng.nextInt() & 0xFFFFFFFFL) % numBits);
         }
     }
 
@@ -142,7 +140,6 @@ public class BINDeltaBloomFilter {
         return hash;
     }
 
-
     /*
      * Get the total memory consumed by the given bloom filter.
      */
@@ -151,11 +148,11 @@ public class BINDeltaBloomFilter {
     }
 
     /*
-     * Get the number of bytes needed to store the bitset of a bloom filter
-     * for the given number of keys.
+     * Get the number of bytes needed to store the bitset of a bloom filter for
+     * the given number of keys.
      */
     public static int getByteSize(int numKeys) {
-        assert(numKeys > 0);
+        assert (numKeys > 0);
         int nbits = numKeys * M_N_RATIO;
         return (nbits + 7) / 8;
     }
@@ -183,11 +180,11 @@ public class BINDeltaBloomFilter {
     }
 
     /*
-     * Create and return a bloom filter by reading its byytes from the
-     * given log buffer.
+     * Create and return a bloom filter by reading its byytes from the given log
+     * buffer.
      */
     public static byte[] readFromLog(ByteBuffer buffer, int entryVersion) {
-        return LogUtils.readByteArray(buffer, false/*unpacked*/);
+        return LogUtils.readByteArray(buffer, false/* unpacked */);
     }
 
     /*
@@ -230,6 +227,6 @@ public class BINDeltaBloomFilter {
      *
      */
     private static boolean getBit(byte[] bf, int idx) {
-        return ( (bf[idx / 8] & (1 << (idx % 8))) != 0 );
+        return ((bf[idx / 8] & (1 << (idx % 8))) != 0);
     }
 }

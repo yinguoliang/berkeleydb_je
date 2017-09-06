@@ -30,9 +30,8 @@ public class TxnPrepare extends TxnEnd implements Loggable {
 
     public TxnPrepare(long id, Xid xid) {
         /* LastLSN is never used. */
-        super(id, DbLsn.NULL_LSN,
-              0 /* masterNodeId, never replicated. */,
-              0l /* dtvlsn, never replicated. */);
+        super(id, DbLsn.NULL_LSN, 0 /* masterNodeId, never replicated. */,
+                0l /* dtvlsn, never replicated. */);
         this.xid = xid;
     }
 
@@ -57,9 +56,7 @@ public class TxnPrepare extends TxnEnd implements Loggable {
 
     @Override
     public int getLogSize() {
-        return LogUtils.getPackedLongLogSize(id) +
-            LogUtils.getTimestampLogSize(time) +
-            LogUtils.getXidSize(xid);
+        return LogUtils.getPackedLongLogSize(id) + LogUtils.getTimestampLogSize(time) + LogUtils.getXidSize(xid);
     }
 
     @Override

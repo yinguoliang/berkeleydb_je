@@ -33,78 +33,74 @@ import com.sleepycat.je.utilint.TestHookExecute;
  * The thread used to write responses asynchronously to the network, to avoid
  * network stalls in the replica replay thread. This thread, like the
  * Replica.ReplayThread, is created each time the node establishes contact with
- * a new feeder and starts replaying the log from it.
- *
- * The inputs and outputs of this thread are schematically described as:
- *
- * outputQueue -> ReplicaOutputThread (does write) -> writes to network
- *
- * It's the third component of the three thread structure outlined in the
- * Replica's class level comment.
+ * a new feeder and starts replaying the log from it. The inputs and outputs of
+ * this thread are schematically described as: outputQueue ->
+ * ReplicaOutputThread (does write) -> writes to network It's the third
+ * component of the three thread structure outlined in the Replica's class level
+ * comment.
  */
 public abstract class ReplicaOutputThreadBase extends StoppableThread {
 
     /**
      * The size of the write queue.
      */
-    private int queueSize;
+    private int                 queueSize;
 
     /*
      * The heartbeat interval in ms.
      */
-    private int heartbeatMs;
+    private int                 heartbeatMs;
 
     /**
      * Thread exit exception. It's non-null if the thread exited due to an
      * exception. It's the responsibility of the main replica thread to
      * propagate the exception across the thread boundary in this case.
      */
-    private volatile Exception exception;
+    private volatile Exception  exception;
 
-    private RepImpl repImpl;
+    private RepImpl             repImpl;
 
     /*
      * A reference to the common output queue shared with Replay
      */
     private BlockingQueue<Long> outputQueue;
 
-    protected Protocol protocol ;
+    protected Protocol          protocol;
 
-    protected DataChannel replicaFeederChannel;
+    protected DataChannel       replicaFeederChannel;
 
     /*
-     * Reserved transaction ids, that don't represent transaction Acks
-     * when encountered in the write queue.
+     * Reserved transaction ids, that don't represent transaction Acks when
+     * encountered in the write queue.
      */
 
     /*
-     * Forces the replica thread to exit when encountered in the write
-     * queue.
+     * Forces the replica thread to exit when encountered in the write queue.
      */
-    public final static Long EOF = Long.MAX_VALUE;
+    public final static Long    EOF            = Long.MAX_VALUE;
 
     /*
      * Results in a heartbeat response when encountered in the write queue.
      */
-    public final static Long HEARTBEAT_ACK = EOF - 1;
+    public final static Long    HEARTBEAT_ACK  = EOF - 1;
 
     /*
      * Results in a shutdown response when encountered in the write queue.
      */
-    public final static Long SHUTDOWN_ACK = EOF - 2;
+    public final static Long    SHUTDOWN_ACK   = EOF - 2;
 
-    private TestHook<Object> outputHook;
+    private TestHook<Object>    outputHook;
 
     /* Keep the max size below Maximum Segment Size = 1460 bytes. */
-    final static int maxGroupedAcks = (1460 - 100) / 8;
+    final static int            maxGroupedAcks = (1460 - 100) / 8;
 
-    final ArrayList<Long> groupAcks = new ArrayList<Long>(maxGroupedAcks);
+    final ArrayList<Long>       groupAcks      = new ArrayList<Long>(maxGroupedAcks);
 
-    boolean groupAcksEnabled;
+    boolean                     groupAcksEnabled;
 
-    private volatile long numGroupedAcks = 0;
+    private volatile long       numGroupedAcks = 0;
 
-    private Logger logger;
+    private Logger              logger;
 
     ReplicaOutputThreadBase(RepImpl repImpl) {
         super(repImpl, "ReplicaOutputThread");
@@ -118,31 +114,22 @@ public abstract class ReplicaOutputThreadBase extends StoppableThread {
         protocol = replica.getProtocol();
         replicaFeederChannel = replica.getReplicaFeederChannel();
 
-        heartbeatMs =
-            repImpl.getConfigManager().getInt(RepParams.HEARTBEAT_INTERVAL);
+        heartbeatMs = repImpl.getConfigManager().getInt(RepParams.HEARTBEAT_INTERVAL);
 
         queueSize = outputQueue.remainingCapacity();
 
-        groupAcksEnabled =
-        (protocol.getVersion() > Protocol.VERSION_5) &&
-         repImpl.getConfigManager().getBoolean(RepParams.ENABLE_GROUP_ACKS);
+        groupAcksEnabled = (protocol.getVersion() > Protocol.VERSION_5)
+                && repImpl.getConfigManager().getBoolean(RepParams.ENABLE_GROUP_ACKS);
     }
 
-    public ReplicaOutputThreadBase(RepImpl repImpl,
-                                   RepNode repNode,
-                                   BlockingQueue<Long> outputQueue,
-                                   Protocol protocol,
+    public ReplicaOutputThreadBase(RepImpl repImpl, RepNode repNode, BlockingQueue<Long> outputQueue, Protocol protocol,
                                    DataChannel replicaFeederChannel) {
         super(repImpl, "ReplicaOutputThread");
-        initialize(repImpl, repNode, outputQueue,
-                   protocol, replicaFeederChannel);
+        initialize(repImpl, repNode, outputQueue, protocol, replicaFeederChannel);
     }
 
-    private void initialize (RepImpl repImpl,
-                             RepNode repNode,
-                             BlockingQueue<Long> outputQueue,
-                             Protocol protocol,
-                             DataChannel replicaFeederChannel) {
+    private void initialize(RepImpl repImpl, RepNode repNode, BlockingQueue<Long> outputQueue, Protocol protocol,
+                            DataChannel replicaFeederChannel) {
         logger = repImpl.getLogger();
         this.repImpl = repImpl;
 
@@ -150,14 +137,12 @@ public abstract class ReplicaOutputThreadBase extends StoppableThread {
         this.protocol = protocol;
         this.replicaFeederChannel = replicaFeederChannel;
 
-        heartbeatMs =
-            repImpl.getConfigManager().getInt(RepParams.HEARTBEAT_INTERVAL);
+        heartbeatMs = repImpl.getConfigManager().getInt(RepParams.HEARTBEAT_INTERVAL);
 
         queueSize = outputQueue.remainingCapacity();
 
-        groupAcksEnabled =
-        (protocol.getVersion() > Protocol.VERSION_5) &&
-         repImpl.getConfigManager().getBoolean(RepParams.ENABLE_GROUP_ACKS);
+        groupAcksEnabled = (protocol.getVersion() > Protocol.VERSION_5)
+                && repImpl.getConfigManager().getBoolean(RepParams.ENABLE_GROUP_ACKS);
 
     }
 
@@ -195,16 +180,11 @@ public abstract class ReplicaOutputThreadBase extends StoppableThread {
         long numAcks = 0;
 
         LoggerUtils.info(logger, repImpl,
-                         "Replica output thread started. Queue size:" +
-                          queueSize +
-                          " Max grouped acks:" + maxGroupedAcks);
+                "Replica output thread started. Queue size:" + queueSize + " Max grouped acks:" + maxGroupedAcks);
 
         try {
-            for (Long txnId = outputQueue.poll(heartbeatMs,
-                                               TimeUnit.MILLISECONDS);
-                 !EOF.equals(txnId);
-                 txnId = outputQueue.poll(heartbeatMs,
-                                          TimeUnit.MILLISECONDS)) {
+            for (Long txnId = outputQueue.poll(heartbeatMs, TimeUnit.MILLISECONDS); !EOF
+                    .equals(txnId); txnId = outputQueue.poll(heartbeatMs, TimeUnit.MILLISECONDS)) {
 
                 assert TestHookExecute.doHookIfSet(outputHook, this);
 
@@ -222,8 +202,7 @@ public abstract class ReplicaOutputThreadBase extends StoppableThread {
                      * Acknowledge the shutdown request, the actual shutdown is
                      * processed in the replay thread.
                      */
-                    protocol.write(protocol.new ShutdownResponse(),
-                                   replicaFeederChannel);
+                    protocol.write(protocol.new ShutdownResponse(), replicaFeederChannel);
                     continue;
                 }
 
@@ -231,16 +210,14 @@ public abstract class ReplicaOutputThreadBase extends StoppableThread {
                 if (pending > maxPending) {
                     maxPending = pending;
                     if ((maxPending % 100) == 0) {
-                        LoggerUtils.info(logger, repImpl,
-                                         "Max pending acks:" + maxPending);
+                        LoggerUtils.info(logger, repImpl, "Max pending acks:" + maxPending);
                     }
                 }
 
-                if ((pending == 0) || (! groupAcksEnabled)) {
+                if ((pending == 0) || (!groupAcksEnabled)) {
                     /* A singleton ack. */
                     numAcks++;
-                    protocol.write(protocol.new Ack(txnId),
-                                   replicaFeederChannel);
+                    protocol.write(protocol.new Ack(txnId), replicaFeederChannel);
                 } else {
 
                     /*
@@ -261,26 +238,20 @@ public abstract class ReplicaOutputThreadBase extends StoppableThread {
              */
             RepUtils.shutdownChannel(replicaFeederChannel);
 
-            LoggerUtils.info(logger, repImpl,
-                             this + "exiting with exception:" + e);
+            LoggerUtils.info(logger, repImpl, this + "exiting with exception:" + e);
         } finally {
-            LoggerUtils.info(logger, repImpl,
-                             this + "exited. " +
-                                 "Singleton acks sent:" + numAcks +
-                                 " Grouped acks sent:" + numGroupedAcks +
-                                 " Max pending acks:" + maxPending);
+            LoggerUtils.info(logger, repImpl, this + "exited. " + "Singleton acks sent:" + numAcks
+                    + " Grouped acks sent:" + numGroupedAcks + " Max pending acks:" + maxPending);
         }
     }
 
     public abstract void writeHeartbeat(Long txnId) throws IOException;
 
     /**
-     * Writes out the acks that are currently queued in the output queue
-     *
-     * Returns true if it encountered an EOF or a request for a shutdown.
+     * Writes out the acks that are currently queued in the output queue Returns
+     * true if it encountered an EOF or a request for a shutdown.
      */
-    private boolean groupWriteAcks(long txnId)
-        throws IOException {
+    private boolean groupWriteAcks(long txnId) throws IOException {
 
         /* More potential acks, group them. */
         boolean eof = false;
@@ -295,8 +266,7 @@ public abstract class ReplicaOutputThreadBase extends StoppableThread {
                 eof = true;
                 break;
             } else if (gtxnId == SHUTDOWN_ACK) {
-                protocol.write(protocol.new ShutdownResponse(),
-                               replicaFeederChannel);
+                protocol.write(protocol.new ShutdownResponse(), replicaFeederChannel);
                 eof = true;
                 break;
             } else if (gtxnId == HEARTBEAT_ACK) {
@@ -328,7 +298,7 @@ public abstract class ReplicaOutputThreadBase extends StoppableThread {
     protected int initiateSoftShutdown() {
 
         /* Queue EOF to terminate the thread */
-        if (! outputQueue.offer(EOF)) {
+        if (!outputQueue.offer(EOF)) {
             /* No room in write queue, resort to an interrupt. */
             return -1;
         }

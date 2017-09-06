@@ -22,36 +22,26 @@ import com.sleepycat.je.rep.impl.node.NameIdPair;
 import com.sleepycat.je.rep.utilint.BinaryProtocol;
 
 /**
- * Defines the protocol used in support of node state querying.
- *
- * Because this protocol has to transfer byte array between two nodes, so
- * instead of using the former NodeStateProtocol, we introduce this new
- * protocol which inherits from BinaryProtocol.
- *
- * Note: once we support active version update, we can use one protocol only.
- *
- * The message request sequence:
- *    NODE_STATE_REQ -> NODE_STATE_RESP
+ * Defines the protocol used in support of node state querying. Because this
+ * protocol has to transfer byte array between two nodes, so instead of using
+ * the former NodeStateProtocol, we introduce this new protocol which inherits
+ * from BinaryProtocol. Note: once we support active version update, we can use
+ * one protocol only. The message request sequence: NODE_STATE_REQ ->
+ * NODE_STATE_RESP
  */
 public class BinaryNodeStateProtocol extends BinaryProtocol {
 
-    public static final int VERSION = 1;
+    public static final int       VERSION             = 1;
 
     /* The messages defined by this class. */
-    public final static MessageOp BIN_NODE_STATE_REQ =
-        new MessageOp((short) 1, BinaryNodeStateRequest.class);
-    public final static MessageOp BIN_NODE_STATE_RESP =
-        new MessageOp((short) 2, BinaryNodeStateResponse.class);
+    public final static MessageOp BIN_NODE_STATE_REQ  = new MessageOp((short) 1, BinaryNodeStateRequest.class);
+    public final static MessageOp BIN_NODE_STATE_RESP = new MessageOp((short) 2, BinaryNodeStateResponse.class);
 
-    public BinaryNodeStateProtocol(NameIdPair nameIdPair,
-                                   RepImpl repImpl) {
+    public BinaryNodeStateProtocol(NameIdPair nameIdPair, RepImpl repImpl) {
 
         super(nameIdPair, VERSION, VERSION, repImpl);
 
-        this.initializeMessageOps(new MessageOp[] {
-                BIN_NODE_STATE_REQ,
-                BIN_NODE_STATE_RESP
-        });
+        this.initializeMessageOps(new MessageOp[] { BIN_NODE_STATE_REQ, BIN_NODE_STATE_RESP });
     }
 
     /* Message request the state of the specified node. */
@@ -88,59 +78,49 @@ public class BinaryNodeStateProtocol extends BinaryProtocol {
 
         @Override
         public ByteBuffer wireFormat() {
-           return wireFormat(nodeName, groupName);
+            return wireFormat(nodeName, groupName);
         }
     }
 
     /* Message return state of specified node. */
     public class BinaryNodeStateResponse extends SimpleMessage {
         /* The name of the node which requests the status. */
-        private final String nodeName;
+        private final String    nodeName;
         /* The name of the group which this node joins. */
-        private final String groupName;
+        private final String    groupName;
         /* The name of the current master in the group. */
-        private final String masterName;
+        private final String    masterName;
         /* The JEVersion that this node runs. */
         private final JEVersion jeVersion;
         /* Time when this node joins the group. */
-        private final long joinTime;
+        private final long      joinTime;
         /* The current state of this node. */
-        private final State nodeState;
+        private final State     nodeState;
         /* The last commit VLSN on this node. */
-        private final long commitVLSN;
+        private final long      commitVLSN;
         /* The last master commit VLSN known by this node. */
-        private final long masterCommitVLSN;
+        private final long      masterCommitVLSN;
         /* The number of running feeders on this node. */
-        private final int activeFeeders;
+        private final int       activeFeeders;
         /* The log version of this node. */
-        private final int logVersion;
+        private final int       logVersion;
         /* The state of the JE application, specified by users themselves. */
-        private final byte[] appState;
+        private final byte[]    appState;
 
         /*
          * The system load of the node, it is serialized and deserialized in
          * String format.
          */
-        private final double systemLoad;
+        private final double    systemLoad;
 
-        public BinaryNodeStateResponse(String nodeName,
-                                       String groupName,
-                                       String masterName,
-                                       JEVersion jeVersion,
-                                       long joinTime,
-                                       State nodeState,
-                                       long commitVLSN,
-                                       long masterCommitVLSN,
-                                       int activeFeeders,
-                                       int logVersion,
-                                       byte[] appState,
-                                       double systemLoad) {
+        public BinaryNodeStateResponse(String nodeName, String groupName, String masterName, JEVersion jeVersion,
+                                       long joinTime, State nodeState, long commitVLSN, long masterCommitVLSN,
+                                       int activeFeeders, int logVersion, byte[] appState, double systemLoad) {
             super();
             this.nodeName = nodeName;
             this.groupName = groupName;
             /*
-             * Master could be unknown, but must be non-null for
-             * serialization.
+             * Master could be unknown, but must be non-null for serialization.
              */
             this.masterName = (masterName == null) ? "" : masterName;
             this.jeVersion = jeVersion;
@@ -236,34 +216,14 @@ public class BinaryNodeStateProtocol extends BinaryProtocol {
              * application state shouldn't be a zero length byte array.
              */
             byte[] realAppState = (appState == null ? new byte[0] : appState);
-            return wireFormat(nodeName,
-                              groupName,
-                              masterName,
-                              jeVersion.toString(),
-                              joinTime,
-                              nodeState,
-                              commitVLSN,
-                              masterCommitVLSN,
-                              activeFeeders,
-                              logVersion,
-                              realAppState,
-                              systemLoad);
+            return wireFormat(nodeName, groupName, masterName, jeVersion.toString(), joinTime, nodeState, commitVLSN,
+                    masterCommitVLSN, activeFeeders, logVersion, realAppState, systemLoad);
         }
 
         /* Convert the response to the NodeState. */
         public NodeState convertToNodeState() {
-            return new NodeState(nodeName,
-                                 groupName,
-                                 nodeState,
-                                 masterName,
-                                 jeVersion,
-                                 joinTime,
-                                 commitVLSN,
-                                 masterCommitVLSN,
-                                 activeFeeders,
-                                 logVersion,
-                                 getAppState(),
-                                 systemLoad);
+            return new NodeState(nodeName, groupName, nodeState, masterName, jeVersion, joinTime, commitVLSN,
+                    masterCommitVLSN, activeFeeders, logVersion, getAppState(), systemLoad);
         }
     }
 }

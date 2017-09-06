@@ -19,12 +19,11 @@ import com.sleepycat.je.utilint.DbLsn;
 /**
  * LockResult is the return type of Locker.lock(). It encapsulates a
  * LockGrantType (the return type of LockManager.lock()) and a WriteLockInfo.
- * 
  * The WriteLockInfo field is non-null if (a) the locker is transactional, and
  * (b) the request was for a WRITE or WRITE_RANGE lock, and (c) the request was
  * not a non-blocking request that got denied. If so, the WriteLockInfo is
  * either a newly created one or a pre-existing one if the same locker had
- * write-locked the same LSN before. 
+ * write-locked the same LSN before.
  */
 public class LockResult {
     private LockGrantType grant;
@@ -47,19 +46,12 @@ public class LockResult {
     /*
      * Method called from CursorImpl.LockStanding.prepareForUpdate()
      */
-    public void setAbortInfo(
-        long abortLsn,
-        boolean abortKD,
-        byte[] abortKey,
-        byte[] abortData,
-        long abortVLSN,
-        int abortExpiration,
-        boolean abortExpirationInHours,
-        DatabaseImpl db) {
+    public void setAbortInfo(long abortLsn, boolean abortKD, byte[] abortKey, byte[] abortData, long abortVLSN,
+                             int abortExpiration, boolean abortExpirationInHours, DatabaseImpl db) {
 
         /*
-         * Do not overwrite abort info if this locker has logged the
-         * associated record before.
+         * Do not overwrite abort info if this locker has logged the associated
+         * record before.
          */
         if (wli != null && wli.getNeverLocked()) {
             if (abortLsn != DbLsn.NULL_LSN) {

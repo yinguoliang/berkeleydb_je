@@ -22,13 +22,13 @@ import java.beans.PropertyDescriptor;
  * @hidden Getter/Setters for JavaBean based tools.
  */
 public class DatabaseConfigBeanInfo extends ConfigBeanInfoBase {
-	@Override
-	public BeanDescriptor getBeanDescriptor() {
-		return getBdescriptor(DatabaseConfig.class);
-	}
+    @Override
+    public BeanDescriptor getBeanDescriptor() {
+        return getBdescriptor(DatabaseConfig.class);
+    }
 
-	@Override
-	public PropertyDescriptor[] getPropertyDescriptors() {
-		return getPdescriptor(DatabaseConfig.class);
-	}
+    @Override
+    public PropertyDescriptor[] getPropertyDescriptors() {
+        return getPdescriptor(DatabaseConfig.class);
+    }
 }

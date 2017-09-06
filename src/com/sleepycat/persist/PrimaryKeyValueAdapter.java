@@ -41,21 +41,16 @@ class PrimaryKeyValueAdapter<V> implements ValueAdapter<V> {
         return BasicIndex.NO_RETURN_ENTRY;
     }
 
-    public void clearEntries(DatabaseEntry key,
-                             DatabaseEntry pkey,
-                             DatabaseEntry data) {
+    public void clearEntries(DatabaseEntry key, DatabaseEntry pkey, DatabaseEntry data) {
         key.setData(null);
         pkey.setData(null);
     }
 
-    public V entryToValue(DatabaseEntry key,
-                          DatabaseEntry pkey,
-                          DatabaseEntry data) {
+    public V entryToValue(DatabaseEntry key, DatabaseEntry pkey, DatabaseEntry data) {
         return (V) keyBinding.entryToObject(pkey);
     }
 
     public void valueToData(V value, DatabaseEntry data) {
-        throw new UnsupportedOperationException
-            ("Cannot change the data in a key-only index");
+        throw new UnsupportedOperationException("Cannot change the data in a key-only index");
     }
 }

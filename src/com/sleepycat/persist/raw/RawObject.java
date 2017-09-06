@@ -21,15 +21,16 @@ import com.sleepycat.persist.evolve.Conversion;
 import com.sleepycat.persist.model.EntityModel;
 
 /**
- * A raw instance that can be used with a {@link RawStore} or {@link
- * Conversion}.  A <code>RawObject</code> is used to represent instances of
- * complex types (persistent classes with fields), arrays, and enum values.  It
- * is not used to represent non-enum simple types, which are represented as
- * simple objects.  This includes primitives, which are represented as
- * instances of their wrapper class.
- *
- * <p>{@code RawObject} objects are thread-safe.  Multiple threads may safely
- * call the methods of a shared {@code RawObject} object.</p>
+ * A raw instance that can be used with a {@link RawStore} or {@link Conversion}
+ * . A <code>RawObject</code> is used to represent instances of complex types
+ * (persistent classes with fields), arrays, and enum values. It is not used to
+ * represent non-enum simple types, which are represented as simple objects.
+ * This includes primitives, which are represented as instances of their wrapper
+ * class.
+ * <p>
+ * {@code RawObject} objects are thread-safe. Multiple threads may safely call
+ * the methods of a shared {@code RawObject} object.
+ * </p>
  *
  * @author Mark Hayes
  */
@@ -37,31 +38,26 @@ public class RawObject {
 
     private static final String INDENT = "  ";
 
-    private RawType type;
+    private RawType             type;
     private Map<String, Object> values;
-    private Object[] elements;
-    private String enumConstant;
-    private RawObject superObject;
+    private Object[]            elements;
+    private String              enumConstant;
+    private RawObject           superObject;
 
     /**
-     * Creates a raw object with a given set of field values for a complex
-     * type.
+     * Creates a raw object with a given set of field values for a complex type.
      *
      * @param type the type of this raw object.
-     *
-     * @param values a map of field name to value for each declared field in
-     * the class, or null to create an empty map.  Each value in the map is a
-     * {@link RawObject}, a <a href="../model/Entity.html#simpleTypes">simple
-     * type</a> instance, or null.
-     *
+     * @param values a map of field name to value for each declared field in the
+     *            class, or null to create an empty map. Each value in the map
+     *            is a {@link RawObject}, a
+     *            <a href="../model/Entity.html#simpleTypes">simple type</a>
+     *            instance, or null.
      * @param superObject the instance of the superclass, or null if the
-     * superclass is {@code Object}.
-     *
+     *            superclass is {@code Object}.
      * @throws IllegalArgumentException if the type argument is an array type.
      */
-    public RawObject(RawType type,
-                     Map<String, Object> values,
-                     RawObject superObject) {
+    public RawObject(RawType type, Map<String, Object> values, RawObject superObject) {
         if (type == null || values == null) {
             throw new NullPointerException();
         }
@@ -74,13 +70,12 @@ public class RawObject {
      * Creates a raw object with the given array elements for an array type.
      *
      * @param type the type of this raw object.
-     *
-     * @param elements an array of elements.  Each element in the array is a
-     * {@link RawObject}, a <a href="../model/Entity.html#simpleTypes">simple
-     * type</a> instance, or null.
-     *
+     * @param elements an array of elements. Each element in the array is a
+     *            {@link RawObject}, a
+     *            <a href="../model/Entity.html#simpleTypes">simple type</a>
+     *            instance, or null.
      * @throws IllegalArgumentException if the type argument is not an array
-     * type.
+     *             type.
      */
     public RawObject(RawType type, Object[] elements) {
         if (type == null || elements == null) {
@@ -94,12 +89,10 @@ public class RawObject {
      * Creates a raw object with the given enum value for an enum type.
      *
      * @param type the type of this raw object.
-     *
-     * @param enumConstant the String value of this enum constant; must be
-     * one of the Strings returned by {@link RawType#getEnumConstants}.
-     *
+     * @param enumConstant the String value of this enum constant; must be one
+     *            of the Strings returned by {@link RawType#getEnumConstants}.
      * @throws IllegalArgumentException if the type argument is not an array
-     * type.
+     *             type.
      */
     public RawObject(RawType type, String enumConstant) {
         if (type == null || enumConstant == null) {
@@ -111,12 +104,12 @@ public class RawObject {
 
     /**
      * Returns the raw type information for this raw object.
-     *
-     * <p>Note that if this object is unevolved, the returned type may be
-     * different from the current type returned by {@link
-     * EntityModel#getRawType EntityModel.getRawType} for the same class name.
-     * This can only occur in a {@link Conversion#convert
-     * Conversion.convert}.</p>
+     * <p>
+     * Note that if this object is unevolved, the returned type may be different
+     * from the current type returned by {@link EntityModel#getRawType
+     * EntityModel.getRawType} for the same class name. This can only occur in a
+     * {@link Conversion#convert Conversion.convert}.
+     * </p>
      *
      * @return the RawType.
      */
@@ -126,15 +119,16 @@ public class RawObject {
 
     /**
      * Returns a map of field name to value for a complex type, or null for an
-     * array type or an enum type.  The map contains a String key for each
-     * declared field in the class.  Each value in the map is a {@link
-     * RawObject}, a <a href="../model/Entity.html#simpleTypes">simple
-     * type</a> instance, or null.
-     *
-     * <p>There will be an entry in the map for every field declared in this
-     * type, as determined by {@link RawType#getFields} for the type returned
-     * by {@link #getType}.  Values in the map may be null for fields with
-     * non-primitive types.</p>
+     * array type or an enum type. The map contains a String key for each
+     * declared field in the class. Each value in the map is a {@link RawObject}
+     * , a <a href="../model/Entity.html#simpleTypes">simple type</a> instance,
+     * or null.
+     * <p>
+     * There will be an entry in the map for every field declared in this type,
+     * as determined by {@link RawType#getFields} for the type returned by
+     * {@link #getType}. Values in the map may be null for fields with
+     * non-primitive types.
+     * </p>
      *
      * @return the map of field name to value, or null.
      */
@@ -144,9 +138,9 @@ public class RawObject {
 
     /**
      * Returns the array of elements for an array type, or null for a complex
-     * type or an enum type.  Each element in the array is a {@link RawObject},
-     * a <a href="../model/Entity.html#simpleTypes">simple type</a> instance,
-     * or null.
+     * type or an enum type. Each element in the array is a {@link RawObject}, a
+     * <a href="../model/Entity.html#simpleTypes">simple type</a> instance, or
+     * null.
      *
      * @return the array of elements, or null.
      */
@@ -156,7 +150,7 @@ public class RawObject {
 
     /**
      * Returns the enum constant String for an enum type, or null for a complex
-     * type or an array type.  The String returned will be one of the Strings
+     * type or an array type. The String returned will be one of the Strings
      * returned by {@link RawType#getEnumConstants}.
      *
      * @return the enum constant String, or null.
@@ -222,11 +216,9 @@ public class RawObject {
 
     @Override
     public int hashCode() {
-        return System.identityHashCode(type) +
-               Arrays.deepHashCode(elements) +
-               (enumConstant != null ? enumConstant.hashCode() : 0) +
-               (values != null ? values.hashCode() : 0) +
-               (superObject != null ? superObject.hashCode() : 0);
+        return System.identityHashCode(type) + Arrays.deepHashCode(elements)
+                + (enumConstant != null ? enumConstant.hashCode() : 0) + (values != null ? values.hashCode() : 0)
+                + (superObject != null ? superObject.hashCode() : 0);
     }
 
     /**
@@ -239,10 +231,7 @@ public class RawObject {
         return buf.toString();
     }
 
-    private void formatRawObject(StringBuilder buf,
-                                 String indent,
-                                 String id,
-                                 boolean isSuper) {
+    private void formatRawObject(StringBuilder buf, String indent, String id, boolean isSuper) {
         if (type.isEnum()) {
             buf.append(indent);
             buf.append("<Enum");
@@ -299,10 +288,7 @@ public class RawObject {
         }
     }
 
-    private static void formatValue(StringBuilder buf,
-                                    String indent,
-                                    String id,
-                                    Object val) {
+    private static void formatValue(StringBuilder buf, String indent, String id, Object val) {
         if (val == null) {
             buf.append(indent);
             buf.append("<Null");

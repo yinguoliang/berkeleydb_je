@@ -24,11 +24,9 @@ import com.sleepycat.je.DatabaseEntry;
 class EntityValueAdapter<V> implements ValueAdapter<V> {
 
     private EntityBinding entityBinding;
-    private boolean isSecondary;
+    private boolean       isSecondary;
 
-    EntityValueAdapter(Class<V> entityClass,
-                       EntityBinding entityBinding,
-                       boolean isSecondary) {
+    EntityValueAdapter(Class<V> entityClass, EntityBinding entityBinding, boolean isSecondary) {
         this.entityBinding = entityBinding;
         this.isSecondary = isSecondary;
     }
@@ -45,9 +43,7 @@ class EntityValueAdapter<V> implements ValueAdapter<V> {
         return new DatabaseEntry();
     }
 
-    public void clearEntries(DatabaseEntry key,
-                             DatabaseEntry pkey,
-                             DatabaseEntry data) {
+    public void clearEntries(DatabaseEntry key, DatabaseEntry pkey, DatabaseEntry data) {
         key.setData(null);
         if (isSecondary) {
             pkey.setData(null);
@@ -55,9 +51,7 @@ class EntityValueAdapter<V> implements ValueAdapter<V> {
         data.setData(null);
     }
 
-    public V entryToValue(DatabaseEntry key,
-                          DatabaseEntry pkey,
-                          DatabaseEntry data) {
+    public V entryToValue(DatabaseEntry key, DatabaseEntry pkey, DatabaseEntry data) {
         return (V) entityBinding.entryToObject(isSecondary ? pkey : key, data);
     }
 

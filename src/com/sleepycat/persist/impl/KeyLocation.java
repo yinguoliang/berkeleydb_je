@@ -14,7 +14,7 @@
 package com.sleepycat.persist.impl;
 
 /**
- * Holder for the input and format of a key.  Used when copying secondary keys.
+ * Holder for the input and format of a key. Used when copying secondary keys.
  * Returned by RecordInput.getKeyLocation().
  *
  * @author Mark Hayes
@@ -22,7 +22,7 @@ package com.sleepycat.persist.impl;
 class KeyLocation {
 
     RecordInput input;
-    Format format;
+    Format      format;
 
     KeyLocation(RecordInput input, Format format) {
         this.input = input;

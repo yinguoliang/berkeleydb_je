@@ -23,17 +23,16 @@ import com.sleepycat.je.tree.Key;
 
 /**
  * INDupDeleteInfo encapsulates the information logged about the removal of a
- * child from a duplicate IN during IN compression.
- *
- * Obsolete in log version 8, only used by DupConvert and some log readers.
+ * child from a duplicate IN during IN compression. Obsolete in log version 8,
+ * only used by DupConvert and some log readers.
  */
 public class INDupDeleteInfo implements Loggable {
 
-    private long deletedNodeId;
-    private byte[] deletedMainKey;
-    private byte[] deletedDupKey;
+    private long             deletedNodeId;
+    private byte[]           deletedMainKey;
+    private byte[]           deletedDupKey;
     private final DatabaseId dbId;
-    private boolean dupRootDeletion;
+    private boolean          dupRootDeletion;
 
     /**
      * Used by logging system only.
@@ -62,8 +61,8 @@ public class INDupDeleteInfo implements Loggable {
     }
 
     /**
-     * Returns true if we are certain that this log entry reflects deletion of
-     * a DIN root.  Returns false if it may or may not be a DIN root.  [#18663]
+     * Returns true if we are certain that this log entry reflects deletion of a
+     * DIN root. Returns false if it may or may not be a DIN root. [#18663]
      */
     public boolean isDupRootDeletion() {
         return dupRootDeletion;
@@ -93,16 +92,15 @@ public class INDupDeleteInfo implements Loggable {
     public void readFromLog(ByteBuffer itemBuffer, int entryVersion) {
         boolean unpacked = (entryVersion < 6);
         deletedNodeId = LogUtils.readLong(itemBuffer, unpacked);
-        deletedMainKey =
-            LogUtils.readByteArray(itemBuffer, unpacked);
+        deletedMainKey = LogUtils.readByteArray(itemBuffer, unpacked);
         deletedDupKey = LogUtils.readByteArray(itemBuffer, unpacked);
         dbId.readFromLog(itemBuffer, entryVersion);
 
         /*
-         * This log entry is only logged for dup root deletion, starting in
-         * JE 2.1.  We can't distinguish JE 2.1 through 3.2 using the log
-         * version, so we are only certain that this is a dup root deletion for
-         * version 6 (JE 3.3) and above. [#18663]
+         * This log entry is only logged for dup root deletion, starting in JE
+         * 2.1. We can't distinguish JE 2.1 through 3.2 using the log version,
+         * so we are only certain that this is a dup root deletion for version 6
+         * (JE 3.3) and above. [#18663]
          */
         dupRootDeletion = (entryVersion >= 6);
     }
@@ -127,8 +125,8 @@ public class INDupDeleteInfo implements Loggable {
     }
 
     /**
-     * @see Loggable#logicalEquals
-     * Always return false, this item should never be compared.
+     * @see Loggable#logicalEquals Always return false, this item should never
+     *      be compared.
      */
     public boolean logicalEquals(Loggable other) {
         return false;

@@ -19,15 +19,14 @@ package com.sleepycat.je.utilint;
  * @param <T> the type of the statistic value
  * @param <C> the type of the component
  */
-public abstract class MapStatComponent<T, C extends MapStatComponent<T, C>>
-        extends BaseStat<T> {
+public abstract class MapStatComponent<T, C extends MapStatComponent<T, C>> extends BaseStat<T> {
 
     /**
-     * Returns the value of the statistic as a formatted string, either using
-     * or not using commas as requested.  Implementations should make sure that
-     * the result does not contain commas when useCommas is false, because the
-     * value will be used in a comma-separated value file, where embedded
-     * commas would cause problems.
+     * Returns the value of the statistic as a formatted string, either using or
+     * not using commas as requested. Implementations should make sure that the
+     * result does not contain commas when useCommas is false, because the value
+     * will be used in a comma-separated value file, where embedded commas would
+     * cause problems.
      *
      * @param useCommas whether to use commas
      * @return the value as a formatted string

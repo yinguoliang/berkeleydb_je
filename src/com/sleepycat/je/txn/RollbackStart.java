@@ -28,17 +28,17 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * This class indicates the end of a partial rollback at syncup. This is a
- * non-replicated entry.  Although this is a replication related class, it
- * resides in the utilint package because it is referenced in
- * LogEntryType.java, and is used in a general way at recovery.
+ * non-replicated entry. Although this is a replication related class, it
+ * resides in the utilint package because it is referenced in LogEntryType.java,
+ * and is used in a general way at recovery.
  */
 public class RollbackStart implements Loggable {
 
     /* The matchpoint that is the logical start of this rollback period. */
-    private VLSN matchpointVLSN;
-    private long matchpointLSN;
+    private VLSN      matchpointVLSN;
+    private long      matchpointLSN;
 
-    /* 
+    /*
      * The active txn list are unfinished transactions that will be rolled back
      * by syncup.
      */
@@ -47,9 +47,7 @@ public class RollbackStart implements Loggable {
     /* For debugging in the field */
     private Timestamp time;
 
-    public RollbackStart(VLSN matchpointVLSN, 
-                         long matchpointLSN,
-                         Set<Long> activeTxnIds) {
+    public RollbackStart(VLSN matchpointVLSN, long matchpointLSN, Set<Long> activeTxnIds) {
         this.matchpointVLSN = matchpointVLSN;
         this.matchpointLSN = matchpointLSN;
         this.activeTxnIds = activeTxnIds;
@@ -69,7 +67,7 @@ public class RollbackStart implements Loggable {
     public Set<Long> getActiveTxnIds() {
         return activeTxnIds;
     }
-    
+
     public VLSN getMatchpointVLSN() {
         return matchpointVLSN;
     }
@@ -78,15 +76,14 @@ public class RollbackStart implements Loggable {
      * @see Loggable#getLogSize
      */
     public int getLogSize() {
-        int size = LogUtils.getPackedLongLogSize(matchpointVLSN.getSequence()) +
-            LogUtils.getPackedLongLogSize(matchpointLSN) +
-            LogUtils.getTimestampLogSize(time) +
-            LogUtils.getPackedIntLogSize(activeTxnIds.size());
+        int size = LogUtils.getPackedLongLogSize(matchpointVLSN.getSequence())
+                + LogUtils.getPackedLongLogSize(matchpointLSN) + LogUtils.getTimestampLogSize(time)
+                + LogUtils.getPackedIntLogSize(activeTxnIds.size());
 
         for (Long id : activeTxnIds) {
             size += LogUtils.getPackedLongLogSize(id);
         }
-        
+
         return size;
     }
 
@@ -103,7 +100,9 @@ public class RollbackStart implements Loggable {
         }
     }
 
-    /**"
+    /**
+     * "
+     * 
      * @see Loggable#readFromLog
      */
     public void readFromLog(ByteBuffer buffer, int entryVersion) {
@@ -125,15 +124,16 @@ public class RollbackStart implements Loggable {
         sb.append(" matchpointVLSN=").append(matchpointVLSN.getSequence());
         sb.append(" matchpointLSN=");
         sb.append(DbLsn.getNoFormatString(matchpointLSN));
-        
-        /* Make sure the active txns are listed in order, partially for the sake
+
+        /*
+         * Make sure the active txns are listed in order, partially for the sake
          * of the LoggableTest unit test, which expects the toString() for two
-         * equivalent objects to always display the same, and partially for 
-         * ease of debugging.
+         * equivalent objects to always display the same, and partially for ease
+         * of debugging.
          */
         List<Long> displayTxnIds = new ArrayList<Long>(activeTxnIds);
         Collections.sort(displayTxnIds);
-        sb.append(" activeTxnIds=") .append(displayTxnIds);
+        sb.append(" activeTxnIds=").append(displayTxnIds);
         sb.append("\" time=\"").append(time);
     }
 
@@ -155,14 +155,12 @@ public class RollbackStart implements Loggable {
 
         RollbackStart otherRS = (RollbackStart) other;
 
-        return (matchpointVLSN.equals(otherRS.matchpointVLSN) &&
-                (matchpointLSN == otherRS.matchpointLSN) &&
-                time.equals(otherRS.time) &&
-                activeTxnIds.equals(otherRS.activeTxnIds));
+        return (matchpointVLSN.equals(otherRS.matchpointVLSN) && (matchpointLSN == otherRS.matchpointLSN)
+                && time.equals(otherRS.time) && activeTxnIds.equals(otherRS.activeTxnIds));
     }
 
     @Override
-        public String toString() {
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         dumpLog(sb, true);
         return sb.toString();

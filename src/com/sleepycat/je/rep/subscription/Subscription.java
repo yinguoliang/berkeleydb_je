@@ -27,34 +27,32 @@ import com.sleepycat.je.utilint.TestHook;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * Object to represent a subscription to receive and process replication
- * streams from Feeder. It defines the public subscription APIs which can
- * be called by clients.
+ * Object to represent a subscription to receive and process replication streams
+ * from Feeder. It defines the public subscription APIs which can be called by
+ * clients.
  */
 public class Subscription {
 
     /* configuration parameters */
-    private final SubscriptionConfig configuration;
+    private final SubscriptionConfig    configuration;
     /* logger */
-    private final Logger logger;
+    private final Logger                logger;
     /* subscription dummy environment */
     private final ReplicatedEnvironment dummyRepEnv;
     /* subscription statistics */
-    private final SubscriptionStat statistics;
+    private final SubscriptionStat      statistics;
 
     /* main subscription thread */
-    private SubscriptionThread subscriptionThread;
+    private SubscriptionThread          subscriptionThread;
 
     /**
      * Create an instance of subscription from configuration
      *
      * @param configuration configuration parameters
-     * @param logger        logging handler
-     *
-     * @throws IllegalArgumentException  if env directory does not exist
+     * @param logger logging handler
+     * @throws IllegalArgumentException if env directory does not exist
      */
-    public Subscription(SubscriptionConfig configuration, Logger logger)
-        throws IllegalArgumentException {
+    public Subscription(SubscriptionConfig configuration, Logger logger) throws IllegalArgumentException {
 
         this.configuration = configuration;
         this.logger = logger;
@@ -66,62 +64,52 @@ public class Subscription {
     }
 
     /**
-     * Start subscription main thread, subscribe from the very first VLSN
-     * from the feeder. The subscriber will stay alive and consume all entries
-     * until it shuts down.
+     * Start subscription main thread, subscribe from the very first VLSN from
+     * the feeder. The subscriber will stay alive and consume all entries until
+     * it shuts down.
      *
-     * @throws InsufficientLogException if feeder is unable to stream from
-     *                                  start VLSN
-     * @throws GroupShutdownException   if subscription receives group shutdown
-     * @throws InternalException        if internal exception
-     * @throws TimeoutException         if subscription initialization timeout
-    */
-    public void start()
-        throws IllegalArgumentException, InsufficientLogException,
-        GroupShutdownException, InternalException, TimeoutException {
+     * @throws InsufficientLogException if feeder is unable to stream from start
+     *             VLSN
+     * @throws GroupShutdownException if subscription receives group shutdown
+     * @throws InternalException if internal exception
+     * @throws TimeoutException if subscription initialization timeout
+     */
+    public void start() throws IllegalArgumentException, InsufficientLogException, GroupShutdownException,
+            InternalException, TimeoutException {
 
         start(VLSN.FIRST_VLSN);
     }
 
     /**
-     * Start subscription main thread, subscribe from a specific VLSN
-     * from the feeder. The subscriber will stay alive and consume all entries
-     * until it shuts down.
+     * Start subscription main thread, subscribe from a specific VLSN from the
+     * feeder. The subscriber will stay alive and consume all entries until it
+     * shuts down.
      *
      * @param vlsn the start VLSN of subscription. It cannot be NULL_VLSN
-     *             otherwise an IllegalArgumentException will be raised.
-     *
-     * @throws InsufficientLogException if feeder is unable to stream from
-     *                                  start VLSN
-     * @throws GroupShutdownException   if subscription receives group shutdown
-     * @throws InternalException        if internal exception
-     * @throws TimeoutException         if subscription initialization timeout
+     *            otherwise an IllegalArgumentException will be raised.
+     * @throws InsufficientLogException if feeder is unable to stream from start
+     *             VLSN
+     * @throws GroupShutdownException if subscription receives group shutdown
+     * @throws InternalException if internal exception
+     * @throws TimeoutException if subscription initialization timeout
      */
-    public void start(VLSN vlsn)
-        throws IllegalArgumentException, InsufficientLogException,
-        GroupShutdownException, InternalException, TimeoutException {
+    public void start(VLSN vlsn) throws IllegalArgumentException, InsufficientLogException, GroupShutdownException,
+            InternalException, TimeoutException {
 
         if (vlsn.equals(VLSN.NULL_VLSN)) {
             throw new IllegalArgumentException("Start VLSN cannot be null");
         }
 
-        subscriptionThread =
-            new SubscriptionThread(dummyRepEnv, vlsn,
-                                   configuration, statistics,
-                                   logger);
+        subscriptionThread = new SubscriptionThread(dummyRepEnv, vlsn, configuration, statistics, logger);
         /* fire the subscription thread */
         subscriptionThread.start();
 
         if (!waitForSubscriptionInitDone(subscriptionThread)) {
-            LoggerUtils.warning(logger,
-                                RepInternal.getNonNullRepImpl(dummyRepEnv),
-                                "Timeout in initialization, shut down " +
-                                "subscription.");
+            LoggerUtils.warning(logger, RepInternal.getNonNullRepImpl(dummyRepEnv),
+                    "Timeout in initialization, shut down " + "subscription.");
             shutdown();
-            throw new TimeoutException("Subscription initialization timeout " +
-                                       "after " +
-                                       configuration.getPollTimeoutMs() +
-                                       " ms");
+            throw new TimeoutException(
+                    "Subscription initialization timeout " + "after " + configuration.getPollTimeoutMs() + " ms");
         }
 
         /* if not success, throw exception to caller */
@@ -139,9 +127,8 @@ public class Subscription {
             case UNKNOWN_ERROR:
             case CONNECTION_ERROR:
             default:
-                throw new InternalException("internal exception from " +
-                                            "subscription thread, err:" +
-                                            exp.getMessage(), exp);
+                throw new InternalException("internal exception from " + "subscription thread, err:" + exp.getMessage(),
+                        exp);
         }
     }
 
@@ -160,8 +147,8 @@ public class Subscription {
     }
 
     /**
-     * Get subscription thread status, if thread does not exit,
-     * return subscription not yet started.
+     * Get subscription thread status, if thread does not exit, return
+     * subscription not yet started.
      *
      * @return status of subscription
      */
@@ -176,7 +163,7 @@ public class Subscription {
     /**
      * Get subscription statistics
      *
-     * @return  statistics
+     * @return statistics
      */
     public SubscriptionStat getStatistics() {
         return statistics;
@@ -203,26 +190,23 @@ public class Subscription {
     }
 
     /**
-     * Create a dummy replicated env used by subscription. The dummy env will
-     * be used in the SubscriptionThread, SubscriptionProcessMessageThread and
+     * Create a dummy replicated env used by subscription. The dummy env will be
+     * used in the SubscriptionThread, SubscriptionProcessMessageThread and
      * SubscriptionOutputThread to connect to feeder.
      *
      * @param config subscription configuration
      * @return a replicated environment
      * @throws IllegalArgumentException if env directory does not exist
      */
-    private ReplicatedEnvironment createDummyRepEnv(SubscriptionConfig config)
-        throws IllegalArgumentException {
+    private ReplicatedEnvironment createDummyRepEnv(SubscriptionConfig config) throws IllegalArgumentException {
 
         File envHome = new File(config.getSubscriberHome());
         if (!envHome.exists()) {
-            throw new IllegalArgumentException("Env directory " +
-                                               envHome.getAbsolutePath() +
-                                               " does not exist.");
+            throw new IllegalArgumentException("Env directory " + envHome.getAbsolutePath() + " does not exist.");
         }
 
-        return RepInternal.createInternalEnvHandle(envHome, configuration
-            .createReplicationConfig(), configuration.createEnvConfig());
+        return RepInternal.createInternalEnvHandle(envHome, configuration.createReplicationConfig(),
+                configuration.createEnvConfig());
     }
 
     /**
@@ -232,8 +216,7 @@ public class Subscription {
      * @return true if init done successfully, false if timeout
      */
     private boolean waitForSubscriptionInitDone(final SubscriptionThread t) {
-        return new PollCondition(configuration.getPollIntervalMs(),
-                                 configuration.getPollTimeoutMs()) {
+        return new PollCondition(configuration.getPollIntervalMs(), configuration.getPollTimeoutMs()) {
             @Override
             protected boolean condition() {
                 return t.getStatus() != SubscriptionStatus.INIT;

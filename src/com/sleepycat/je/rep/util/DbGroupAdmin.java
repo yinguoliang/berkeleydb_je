@@ -34,71 +34,72 @@ import com.sleepycat.je.utilint.CmdUtil;
 import com.sleepycat.je.utilint.PropUtil;
 
 /**
- * DbGroupAdmin supplies the functionality of the administrative class {@link
- * ReplicationGroupAdmin} in a convenient command line utility. For example, it
- * can be used to display replication group information, or to remove a node
- * from the replication group.
+ * DbGroupAdmin supplies the functionality of the administrative class
+ * {@link ReplicationGroupAdmin} in a convenient command line utility. For
+ * example, it can be used to display replication group information, or to
+ * remove a node from the replication group.
  * <p>
- * Note: This utility does not handle security and authorization. It is left
- * to the user to ensure that the utility is invoked with proper authorization.
+ * Note: This utility does not handle security and authorization. It is left to
+ * the user to ensure that the utility is invoked with proper authorization.
  * <p>
  * See {@link DbGroupAdmin#main} for a full description of the command line
  * arguments.
  */
 /*
- * SSL deferred
- * See {@link ReplicationConfig} for descriptions of the parameters that
- * control replication service access.
+ * SSL deferred See {@link ReplicationConfig} for descriptions of the parameters
+ * that control replication service access.
  */
 public class DbGroupAdmin {
 
-    enum Command { DUMP, REMOVE, TRANSFER_MASTER, UPDATE_ADDRESS, DELETE };
+    enum Command {
+        DUMP,
+        REMOVE,
+        TRANSFER_MASTER,
+        UPDATE_ADDRESS,
+        DELETE
+    };
 
-    private String groupName;
-    private Set<InetSocketAddress> helperSockets;
-    private String nodeName;
-    private String newHostName;
-    private int newPort;
-    private String timeout;
-    private boolean forceFlag;
-    private DataChannelFactory channelFactory;
-    private ReplicationGroupAdmin groupAdmin;
-    private final ArrayList<Command> actions = new ArrayList<Command>();
+    private String                   groupName;
+    private Set<InetSocketAddress>   helperSockets;
+    private String                   nodeName;
+    private String                   newHostName;
+    private int                      newPort;
+    private String                   timeout;
+    private boolean                  forceFlag;
+    private DataChannelFactory       channelFactory;
+    private ReplicationGroupAdmin    groupAdmin;
+    private final ArrayList<Command> actions                 = new ArrayList<Command>();
 
-    private static final String undocumentedUsageString =
-        "  -netProps <optional>   # name of a property file containing\n" +
-        "                            # properties needed for replication\n" +
-        "                            # service access\n";
+    private static final String      undocumentedUsageString = "  -netProps <optional>   # name of a property file containing\n"
+            + "                            # properties needed for replication\n"
+            + "                            # service access\n";
 
-    private static final String usageString =
-        "Usage: " + CmdUtil.getJavaCommand(DbGroupAdmin.class) + "\n" +
-        "  -groupName <group name>   # name of replication group\n" +
-        "  -helperHosts <host:port>  # identifier for one or more members\n" +
-        "                            # of the replication group which can\n"+
-        "                            # be contacted for group information,\n"+
-        "                            # in this format:\n" +
-        "                            # hostname[:port][,hostname[:port]]\n" +
-        "  -dumpGroup                # dump group information\n" +
-        "  -removeMember <node name> # node to be removed\n" +
-        "  -updateAddress <node name> <new host:port>\n" +
-        "                            # update the network address for a\n" +
-        "                            # specified node.  The node should not\n" +
-        "                            # be alive when updating the address\n" +
-        "  -transferMaster [-force] <node1,node2,...> <timeout>\n" +
-        "                            # transfer master role to one of the\n" +
-        "                            # specified nodes.";
+    private static final String      usageString             = "Usage: " + CmdUtil.getJavaCommand(DbGroupAdmin.class)
+            + "\n" + "  -groupName <group name>   # name of replication group\n"
+            + "  -helperHosts <host:port>  # identifier for one or more members\n"
+            + "                            # of the replication group which can\n"
+            + "                            # be contacted for group information,\n"
+            + "                            # in this format:\n"
+            + "                            # hostname[:port][,hostname[:port]]\n"
+            + "  -dumpGroup                # dump group information\n"
+            + "  -removeMember <node name> # node to be removed\n" + "  -updateAddress <node name> <new host:port>\n"
+            + "                            # update the network address for a\n"
+            + "                            # specified node.  The node should not\n"
+            + "                            # be alive when updating the address\n"
+            + "  -transferMaster [-force] <node1,node2,...> <timeout>\n"
+            + "                            # transfer master role to one of the\n"
+            + "                            # specified nodes.";
 
-    /* Undocumented options for main()
-     *   -netProps &lt;propFile&gt;  # (optional)
-     *                               # name of a property file containing
-     *                               # properties needed for replication
-     *                               # service access
-     *   -deleteMember <node name>   # Deletes the node from the group, doesn't
-     *                               # just mark it removed
+    /*
+     * Undocumented options for main() -netProps &lt;propFile&gt; # (optional) #
+     * name of a property file containing # properties needed for replication #
+     * service access -deleteMember <node name> # Deletes the node from the
+     * group, doesn't # just mark it removed
      */
 
     /**
      * Usage:
+     * 
      * <pre>
      * java {com.sleepycat.je.rep.util.DbGroupAdmin |
      *       -jar je-&lt;version&gt;.jar DbGroupAdmin}
@@ -119,8 +120,7 @@ public class DbGroupAdmin {
      *                            # specified nodes.
      * </pre>
      */
-    public static void main(String... args)
-        throws Exception {
+    public static void main(String... args) throws Exception {
 
         DbGroupAdmin admin = new DbGroupAdmin();
         admin.parseArgs(args);
@@ -140,7 +140,6 @@ public class DbGroupAdmin {
         System.out.println(usageString);
         System.exit(-1);
     }
-
 
     /**
      * Parse the command line parameters.
@@ -188,22 +187,18 @@ public class DbGroupAdmin {
                         String hostPort = argv[argc++];
                         int index = hostPort.indexOf(":");
                         if (index < 0) {
-                            printUsage("Host port pair format must be " +
-                                       "<host name>:<port number>");
+                            printUsage("Host port pair format must be " + "<host name>:<port number>");
                         }
 
                         newHostName = hostPort.substring(0, index);
-                        newPort = Integer.parseInt
-                            (hostPort.substring(index + 1, hostPort.length()));
+                        newPort = Integer.parseInt(hostPort.substring(index + 1, hostPort.length()));
                     } else {
-                        printUsage("-updateAddress requires a " +
-                                   "<host name>:<port number> argument");
+                        printUsage("-updateAddress requires a " + "<host name>:<port number> argument");
                     }
 
                     actions.add(Command.UPDATE_ADDRESS);
                 } else {
-                    printUsage
-                        ("-updateAddress requires the node name argument");
+                    printUsage("-updateAddress requires the node name argument");
                 }
             } else if (thisArg.equals("-transferMaster")) {
 
@@ -218,10 +213,8 @@ public class DbGroupAdmin {
                     nodeName = argv[argc++];
 
                     /*
-                     * Allow either
-                     *     -transferMaster mercury,venus 900 ms
-                     * or
-                     *     -transferMaster mercury,venus "900 ms"
+                     * Allow either -transferMaster mercury,venus 900 ms or
+                     * -transferMaster mercury,venus "900 ms"
                      */
                     if (argc + 1 < nArgs && argv[argc + 1].charAt(0) != '-') {
                         timeout = argv[argc] + " " + argv[argc + 1];
@@ -232,8 +225,7 @@ public class DbGroupAdmin {
 
                     actions.add(Command.TRANSFER_MASTER);
                 } else {
-                    printUsage
-                        ("-transferMaster requires at least two arguments");
+                    printUsage("-transferMaster requires at least two arguments");
                 }
             } else if (thisArg.equals("-netProps")) {
                 if (argc < nArgs) {
@@ -253,18 +245,14 @@ public class DbGroupAdmin {
             }
         }
 
-        ReplicationNetworkConfig repNetConfig =
-        		ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig repNetConfig = ReplicationNetworkConfig.createDefault();
         if (netPropsName != null) {
             try {
-                repNetConfig =
-                    ReplicationNetworkConfig.create(new File(netPropsName));
+                repNetConfig = ReplicationNetworkConfig.create(new File(netPropsName));
             } catch (FileNotFoundException fnfe) {
-                printUsage("The net properties file " + netPropsName +
-                           " does not exist: " + fnfe.getMessage());
+                printUsage("The net properties file " + netPropsName + " does not exist: " + fnfe.getMessage());
             } catch (IllegalArgumentException iae) {
-                printUsage("The net properties file " + netPropsName +
-                           " is not valid: " + iae.getMessage());
+                printUsage("The net properties file " + netPropsName + " is not valid: " + iae.getMessage());
             }
         }
 
@@ -272,8 +260,7 @@ public class DbGroupAdmin {
     }
 
     /* Execute commands */
-    private void run()
-        throws Exception {
+    private void run() throws Exception {
 
         createGroupAdmin();
 
@@ -285,32 +272,32 @@ public class DbGroupAdmin {
             switch (action) {
 
                 /* Dump the group information. */
-            case DUMP:
-                dumpGroup();
-                break;
+                case DUMP:
+                    dumpGroup();
+                    break;
 
                 /* Remove a member. */
-            case REMOVE:
-                removeMember(nodeName);
-                break;
+                case REMOVE:
+                    removeMember(nodeName);
+                    break;
 
                 /* Transfer the current mastership to a specified node. */
-            case TRANSFER_MASTER:
-                transferMaster(nodeName, timeout);
-                break;
+                case TRANSFER_MASTER:
+                    transferMaster(nodeName, timeout);
+                    break;
 
                 /* Update the network address of a specified node. */
-            case UPDATE_ADDRESS:
-                updateAddress(nodeName, newHostName, newPort);
-                break;
+                case UPDATE_ADDRESS:
+                    updateAddress(nodeName, newHostName, newPort);
+                    break;
 
                 /* Delete a member */
-            case DELETE:
-                deleteMember(nodeName);
-                break;
+                case DELETE:
+                    deleteMember(nodeName);
+                    break;
 
-            default:
-                throw new AssertionError();
+                default:
+                    throw new AssertionError();
             }
         }
     }
@@ -323,54 +310,45 @@ public class DbGroupAdmin {
      *
      * @param groupName replication group name
      * @param helperSockets set of host and port pairs for group members which
-     * can be queried to obtain group information.
-    */
-    /*
-     * SSL deferred
-     * This constructor does not support non-default service net properties.
-     * See the other constructor forms which allow setting of net properties.
+     *            can be queried to obtain group information.
      */
-    public DbGroupAdmin(String groupName,
-                        Set<InetSocketAddress> helperSockets) {
-        this(groupName, helperSockets, (ReplicationNetworkConfig)null);
+    /*
+     * SSL deferred This constructor does not support non-default service net
+     * properties. See the other constructor forms which allow setting of net
+     * properties.
+     */
+    public DbGroupAdmin(String groupName, Set<InetSocketAddress> helperSockets) {
+        this(groupName, helperSockets, (ReplicationNetworkConfig) null);
     }
 
     /**
-     * @hidden SSL deferred
-     * Create a DbGroupAdmin instance for programmatic use.
-     *
+     * @hidden SSL deferred Create a DbGroupAdmin instance for programmatic use.
      * @param groupName replication group name
      * @param helperSockets set of host and port pairs for group members which
-     * can be queried to obtain group information.
-     * @param netPropsFile a File containing replication net property
-     * settings.  This parameter is ignored if null.
+     *            can be queried to obtain group information.
+     * @param netPropsFile a File containing replication net property settings.
+     *            This parameter is ignored if null.
      * @throws FileNotFoundException if the netPropsFile does not exist
-     * @throws IllegalArgumentException if the netPropsFile contains
-     * invalid settings.
+     * @throws IllegalArgumentException if the netPropsFile contains invalid
+     *             settings.
      */
-    public DbGroupAdmin(String groupName,
-                        Set<InetSocketAddress> helperSockets,
-                        File netPropsFile)
-        throws FileNotFoundException {
+    public DbGroupAdmin(String groupName, Set<InetSocketAddress> helperSockets, File netPropsFile)
+            throws FileNotFoundException {
 
         this(groupName, helperSockets, makeRepNetConfig(netPropsFile));
     }
 
     /**
-     * @hidden SSL deferred
-     * Create a DbGroupAdmin instance for programmatic use.
-     *
+     * @hidden SSL deferred Create a DbGroupAdmin instance for programmatic use.
      * @param groupName replication group name
      * @param helperSockets set of host and port pairs for group members which
-     * can be queried to obtain group information.
-     * @param netConfig replication net configuration - null allowable
-     * This parameter is ignored if null.
-     * @throws IllegalArgumentException if the netProps contains
-     * invalid settings.
+     *            can be queried to obtain group information.
+     * @param netConfig replication net configuration - null allowable This
+     *            parameter is ignored if null.
+     * @throws IllegalArgumentException if the netProps contains invalid
+     *             settings.
      */
-    public DbGroupAdmin(String groupName,
-                        Set<InetSocketAddress> helperSockets,
-                        ReplicationNetworkConfig netConfig) {
+    public DbGroupAdmin(String groupName, Set<InetSocketAddress> helperSockets, ReplicationNetworkConfig netConfig) {
         this.groupName = groupName;
         this.helperSockets = helperSockets;
         this.channelFactory = initializeFactory(netConfig, groupName);
@@ -388,29 +366,28 @@ public class DbGroupAdmin {
             printUsage("Host and ports of helper nodes must be specified");
         }
 
-        groupAdmin = new ReplicationGroupAdmin(
-            groupName, helperSockets, channelFactory);
+        groupAdmin = new ReplicationGroupAdmin(groupName, helperSockets, channelFactory);
     }
 
     /**
-     * Display group information. Lists all members and the group master.  Can
-     * be used when reviewing the <a
-     * href="http://www.oracle.com/technetwork/database/berkeleydb/je-faq-096044.html#HAChecklist">group configuration. </a>
+     * Display group information. Lists all members and the group master. Can be
+     * used when reviewing the <a href=
+     * "http://www.oracle.com/technetwork/database/berkeleydb/je-faq-096044.html#HAChecklist">
+     * group configuration. </a>
      */
     public void dumpGroup() {
         System.out.println(getFormattedOutput());
     }
 
     /**
-     * Remove a node from the replication group. Once removed, a
-     * node cannot be added again to the group under the same node name.
-     *
-     * <p>{@link NodeType#SECONDARY Secondary} nodes cannot be removed; they
+     * Remove a node from the replication group. Once removed, a node cannot be
+     * added again to the group under the same node name.
+     * <p>
+     * {@link NodeType#SECONDARY Secondary} nodes cannot be removed; they
      * automatically leave the group when they are shut down or become
      * disconnected from the master.
      *
      * @param name name of the node to be removed
-     *
      * @see ReplicationGroupAdmin#removeMember
      */
     /*
@@ -426,17 +403,15 @@ public class DbGroupAdmin {
     }
 
     /**
-     * @hidden internal, for use in disaster recovery [#23447]
-     *
-     * Deletes a node from the replication group, which allows the node to be
-     * added to the group again under the same name.
-     *
-     * <p>{@link NodeType#SECONDARY Secondary} and {@link NodeType#EXTERNAL
-     * External} nodes cannot be deleted; they automatically leave the group
-     * when they are shut down or become disconnected from the master.
-     *
+     * @hidden internal, for use in disaster recovery [#23447] Deletes a node
+     *         from the replication group, which allows the node to be added to
+     *         the group again under the same name.
+     *         <p>
+     *         {@link NodeType#SECONDARY Secondary} and {@link NodeType#EXTERNAL
+     *         External} nodes cannot be deleted; they automatically leave the
+     *         group when they are shut down or become disconnected from the
+     *         master.
      * @param name name of the node to be deleted
-     *
      * @see ReplicationGroupAdmin#deleteMember
      */
     public void deleteMember(String name) {
@@ -449,23 +424,20 @@ public class DbGroupAdmin {
 
     /**
      * Update the network address for a specified node. When updating the
-     * address of a node, the node cannot be alive. See {@link
-     * ReplicationGroupAdmin#updateAddress} for more information.
-     *
-     * <p>The address of a {@link NodeType#SECONDARY} node cannot be updated
-     * with this method, since nodes must be members but not alive to be
-     * updated, and secondary nodes are not members when they are not alive.
-     * To change the address of a secondary node, restart the node with the
-     * updated address.
+     * address of a node, the node cannot be alive. See
+     * {@link ReplicationGroupAdmin#updateAddress} for more information.
+     * <p>
+     * The address of a {@link NodeType#SECONDARY} node cannot be updated with
+     * this method, since nodes must be members but not alive to be updated, and
+     * secondary nodes are not members when they are not alive. To change the
+     * address of a secondary node, restart the node with the updated address.
      *
      * @param nodeName the name of the node whose address will be updated
      * @param newHostName the new host name of the node
      * @param newPort the new port number of the node
      */
     @SuppressWarnings("hiding")
-    public void updateAddress(String nodeName,
-                              String newHostName,
-                              int newPort) {
+    public void updateAddress(String nodeName, String newHostName, int newPort) {
         if (nodeName == null || newHostName == null) {
             printUsage("Node name and new host name must be specified");
         }
@@ -478,22 +450,19 @@ public class DbGroupAdmin {
     }
 
     /**
-     * Transfers the master role from the current master to one of the
-     * electable replicas specified in the argument list.
+     * Transfers the master role from the current master to one of the electable
+     * replicas specified in the argument list.
      *
      * @param nodeList comma-separated list of nodes
-     * @param timeout in <a href="../../EnvironmentConfig.html#timeDuration">
-     *        same form</a> as accepted by duration config params
-     *
+     * @param timeout in
+     *            <a href="../../EnvironmentConfig.html#timeDuration"> same
+     *            form</a> as accepted by duration config params
      * @see ReplicatedEnvironment#transferMaster
      */
     @SuppressWarnings("hiding")
     public void transferMaster(String nodeList, String timeout) {
-        String result =
-            groupAdmin.transferMaster(parseNodes(nodeList),
-                                      PropUtil.parseDuration(timeout),
-                                      TimeUnit.MILLISECONDS,
-                                      forceFlag);
+        String result = groupAdmin.transferMaster(parseNodes(nodeList), PropUtil.parseDuration(timeout),
+                TimeUnit.MILLISECONDS, forceFlag);
         System.out.println("The new master is: " + result);
     }
 
@@ -528,11 +497,9 @@ public class DbGroupAdmin {
             sb.append("    No electable members\n");
         } else {
             for (RepNodeImpl node : nodes) {
-                String type =
-                    masterName.equals(node.getName()) ? "master, " : "";
-                sb.append("    " + node.getName() + " (" + type +
-                          node.getHostName() + ":" + node.getPort() + ", " +
-                          node.getBarrierState() + ")\n");
+                String type = masterName.equals(node.getName()) ? "master, " : "";
+                sb.append("    " + node.getName() + " (" + type + node.getHostName() + ":" + node.getPort() + ", "
+                        + node.getBarrierState() + ")\n");
             }
         }
 
@@ -543,8 +510,7 @@ public class DbGroupAdmin {
             sb.append("    No monitors\n");
         } else {
             for (RepNodeImpl node : nodes) {
-                sb.append("    " + node.getName() + " (" + node.getHostName() +
-                          ":" + node.getPort() + ")\n");
+                sb.append("    " + node.getName() + " (" + node.getHostName() + ":" + node.getPort() + ")\n");
             }
         }
 
@@ -555,9 +521,8 @@ public class DbGroupAdmin {
             sb.append("    No secondary members\n");
         } else {
             for (final RepNodeImpl node : nodes) {
-                sb.append("    " + node.getName() + " (" + node.getHostName() +
-                          ":" + node.getPort() + ", " +
-                          node.getBarrierState() + ")\n");
+                sb.append("    " + node.getName() + " (" + node.getHostName() + ":" + node.getPort() + ", "
+                        + node.getBarrierState() + ")\n");
             }
         }
 
@@ -568,18 +533,16 @@ public class DbGroupAdmin {
             sb.append("    No external members\n");
         } else {
             for (final RepNodeImpl node : nodes) {
-                sb.append("    " + node.getName() + " (" + node.getHostName() +
-                          ":" + node.getPort() + ", " +
-                          node.getBarrierState() + ")\n");
+                sb.append("    " + node.getName() + " (" + node.getHostName() + ":" + node.getPort() + ", "
+                        + node.getBarrierState() + ")\n");
             }
         }
 
         return sb.toString();
     }
 
-    private static ReplicationNetworkConfig makeRepNetConfig(File propFile)
-        throws FileNotFoundException {
-    	
+    private static ReplicationNetworkConfig makeRepNetConfig(File propFile) throws FileNotFoundException {
+
         if (propFile == null) {
             return ReplicationNetworkConfig.createDefault();
         }
@@ -587,13 +550,10 @@ public class DbGroupAdmin {
         return ReplicationNetworkConfig.create(propFile);
     }
 
-    private static DataChannelFactory initializeFactory(
-        ReplicationNetworkConfig repNetConfig,
-        String logContext) {
+    private static DataChannelFactory initializeFactory(ReplicationNetworkConfig repNetConfig, String logContext) {
 
         if (repNetConfig == null) {
-            repNetConfig =
-                ReplicationNetworkConfig.createDefault();
+            repNetConfig = ReplicationNetworkConfig.createDefault();
         }
 
         return DataChannelFactoryBuilder.construct(repNetConfig, logContext);

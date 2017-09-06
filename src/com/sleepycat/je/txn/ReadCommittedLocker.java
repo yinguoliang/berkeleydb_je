@@ -21,14 +21,15 @@ import com.sleepycat.je.tree.BIN;
 
 /**
  * Extends BuddyLocker to acquire write locks using the buddy locker (the
- * transaction locker).  This is used for ReadCommitted (Degree 2) isolation.
+ * transaction locker). This is used for ReadCommitted (Degree 2) isolation.
  */
 public class ReadCommittedLocker extends BuddyLocker {
 
     /**
      * Creates a ReadCommittedLocker.
+     * 
      * @param buddy is a transactional locker that will be used for acquiring
-     * write locks.
+     *            write locks.
      */
     private ReadCommittedLocker(EnvironmentImpl env, Locker buddy) {
 
@@ -36,38 +37,32 @@ public class ReadCommittedLocker extends BuddyLocker {
          * If the buddy param is a read-committed locker, reach in to get its
          * transactional buddy locker.
          */
-        super(env,
-              (buddy instanceof ReadCommittedLocker) ?
-              ((ReadCommittedLocker) buddy).getBuddy() : buddy);
+        super(env, (buddy instanceof ReadCommittedLocker) ? ((ReadCommittedLocker) buddy).getBuddy() : buddy);
 
-        assert(getBuddy() instanceof Txn);
+        assert (getBuddy() instanceof Txn);
     }
 
-    public static ReadCommittedLocker createReadCommittedLocker(
-        EnvironmentImpl env,
-        Locker buddy)
-        throws DatabaseException {
+    public static ReadCommittedLocker createReadCommittedLocker(EnvironmentImpl env, Locker buddy)
+            throws DatabaseException {
 
         return new ReadCommittedLocker(env, buddy);
     }
 
     /**
      * Returns a new ReadCommittedLocker that shares locks with this locker by
-     * virtue of both lockers only holding READ locks.  The buddy locker
+     * virtue of both lockers only holding READ locks. The buddy locker
      * underlying both ReadCommittedLocker lockers is the same transactional
      * locker, so WRITE locks are also shared.
      */
     @Override
-    public Locker newNonTxnLocker()
-        throws DatabaseException {
+    public Locker newNonTxnLocker() throws DatabaseException {
 
         /*
          * getBuddy().newNonTxnLocker() will return the transactional buddy
          * locker itself (same as getBuddy), but we call newNonTxnLocker for
          * consistency.
          */
-        return ReadCommittedLocker.createReadCommittedLocker
-            (envImpl, getBuddy().newNonTxnLocker());
+        return ReadCommittedLocker.createReadCommittedLocker(envImpl, getBuddy().newNonTxnLocker());
     }
 
     /**
@@ -76,19 +71,14 @@ public class ReadCommittedLocker extends BuddyLocker {
      * @see Locker#lockInternal
      */
     @Override
-    protected LockResult lockInternal(long lsn,
-                                      LockType lockType,
-                                      boolean noWait,
-                                      boolean jumpAheadOfWaiters,
+    protected LockResult lockInternal(long lsn, LockType lockType, boolean noWait, boolean jumpAheadOfWaiters,
                                       DatabaseImpl database)
-        throws DatabaseException {
+            throws DatabaseException {
 
         if (lockType.isWriteLock()) {
-            return getBuddy().lockInternal
-                (lsn, lockType, noWait, jumpAheadOfWaiters, database);
+            return getBuddy().lockInternal(lsn, lockType, noWait, jumpAheadOfWaiters, database);
         } else {
-            return super.lockInternal
-                (lsn, lockType, noWait, jumpAheadOfWaiters, database);
+            return super.lockInternal(lsn, lockType, noWait, jumpAheadOfWaiters, database);
         }
     }
 
@@ -97,8 +87,7 @@ public class ReadCommittedLocker extends BuddyLocker {
      * releases it from the buddy locker.
      */
     @Override
-    public boolean releaseLock(long lsn)
-        throws DatabaseException {
+    public boolean releaseLock(long lsn) throws DatabaseException {
 
         boolean ret = true;
         if (!lockManager.release(lsn, this)) {
@@ -125,8 +114,8 @@ public class ReadCommittedLocker extends BuddyLocker {
     }
 
     /**
-     * Forwards this method to the transactional buddy.  The buddy handles
-     * write locks and therefore handles delete information.
+     * Forwards this method to the transactional buddy. The buddy handles write
+     * locks and therefore handles delete information.
      */
     @Override
     public void addDeleteInfo(BIN bin) {
@@ -134,7 +123,7 @@ public class ReadCommittedLocker extends BuddyLocker {
     }
 
     /**
-     * Forwards this method to the transactional buddy.  The buddy Txn tracks
+     * Forwards this method to the transactional buddy. The buddy Txn tracks
      * cursors.
      */
     @Override
@@ -143,7 +132,7 @@ public class ReadCommittedLocker extends BuddyLocker {
     }
 
     /**
-     * Forwards this method to the transactional buddy.  The buddy Txn tracks
+     * Forwards this method to the transactional buddy. The buddy Txn tracks
      * cursors.
      */
     @Override

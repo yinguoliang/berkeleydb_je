@@ -44,57 +44,57 @@ final class FieldWriter extends FieldVisitor {
     /**
      * Access flags of this field.
      */
-    private final int access;
+    private final int         access;
 
     /**
      * The index of the constant pool item that contains the name of this
      * method.
      */
-    private final int name;
+    private final int         name;
 
     /**
      * The index of the constant pool item that contains the descriptor of this
      * field.
      */
-    private final int desc;
+    private final int         desc;
 
     /**
      * The index of the constant pool item that contains the signature of this
      * field.
      */
-    private int signature;
+    private int               signature;
 
     /**
      * The index of the constant pool item that contains the constant value of
      * this field.
      */
-    private int value;
+    private int               value;
 
     /**
      * The runtime visible annotations of this field. May be <tt>null</tt>.
      */
-    private AnnotationWriter anns;
+    private AnnotationWriter  anns;
 
     /**
      * The runtime invisible annotations of this field. May be <tt>null</tt>.
      */
-    private AnnotationWriter ianns;
+    private AnnotationWriter  ianns;
 
     /**
      * The runtime visible type annotations of this field. May be <tt>null</tt>.
      */
-    private AnnotationWriter tanns;
+    private AnnotationWriter  tanns;
 
     /**
      * The runtime invisible type annotations of this field. May be
      * <tt>null</tt>.
      */
-    private AnnotationWriter itanns;
+    private AnnotationWriter  itanns;
 
     /**
      * The non standard attributes of this field. May be <tt>null</tt>.
      */
-    private Attribute attrs;
+    private Attribute         attrs;
 
     // ------------------------------------------------------------------------
     // Constructor
@@ -103,21 +103,15 @@ final class FieldWriter extends FieldVisitor {
     /**
      * Constructs a new {@link FieldWriter}.
      * 
-     * @param cw
-     *            the class writer to which this field must be added.
-     * @param access
-     *            the field's access flags (see {@link Opcodes}).
-     * @param name
-     *            the field's name.
-     * @param desc
-     *            the field's descriptor (see {@link Type}).
-     * @param signature
-     *            the field's signature. May be <tt>null</tt>.
-     * @param value
-     *            the field's constant value. May be <tt>null</tt>.
+     * @param cw the class writer to which this field must be added.
+     * @param access the field's access flags (see {@link Opcodes}).
+     * @param name the field's name.
+     * @param desc the field's descriptor (see {@link Type}).
+     * @param signature the field's signature. May be <tt>null</tt>.
+     * @param value the field's constant value. May be <tt>null</tt>.
      */
-    FieldWriter(final ClassWriter cw, final int access, final String name,
-            final String desc, final String signature, final Object value) {
+    FieldWriter(final ClassWriter cw, final int access, final String name, final String desc, final String signature,
+                final Object value) {
         super(Opcodes.ASM5);
         if (cw.firstField == null) {
             cw.firstField = this;
@@ -142,8 +136,7 @@ final class FieldWriter extends FieldVisitor {
     // ------------------------------------------------------------------------
 
     @Override
-    public AnnotationVisitor visitAnnotation(final String desc,
-            final boolean visible) {
+    public AnnotationVisitor visitAnnotation(final String desc, final boolean visible) {
         if (!ClassReader.ANNOTATIONS) {
             return null;
         }
@@ -162,8 +155,8 @@ final class FieldWriter extends FieldVisitor {
     }
 
     @Override
-    public AnnotationVisitor visitTypeAnnotation(final int typeRef,
-            final TypePath typePath, final String desc, final boolean visible) {
+    public AnnotationVisitor visitTypeAnnotation(final int typeRef, final TypePath typePath, final String desc,
+                                                 final boolean visible) {
         if (!ClassReader.ANNOTATIONS) {
             return null;
         }
@@ -172,8 +165,7 @@ final class FieldWriter extends FieldVisitor {
         AnnotationWriter.putTarget(typeRef, typePath, bv);
         // write type, and reserve space for values count
         bv.putShort(cw.newUTF8(desc)).putShort(0);
-        AnnotationWriter aw = new AnnotationWriter(cw, true, bv, bv,
-                bv.length - 2);
+        AnnotationWriter aw = new AnnotationWriter(cw, true, bv, bv, bv.length - 2);
         if (visible) {
             aw.next = tanns;
             tanns = aw;
@@ -210,8 +202,7 @@ final class FieldWriter extends FieldVisitor {
             size += 8;
         }
         if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
-            if ((cw.version & 0xFFFF) < Opcodes.V1_5
-                    || (access & ClassWriter.ACC_SYNTHETIC_ATTRIBUTE) != 0) {
+            if ((cw.version & 0xFFFF) < Opcodes.V1_5 || (access & ClassWriter.ACC_SYNTHETIC_ATTRIBUTE) != 0) {
                 cw.newUTF8("Synthetic");
                 size += 6;
             }
@@ -249,8 +240,7 @@ final class FieldWriter extends FieldVisitor {
     /**
      * Puts the content of this field into the given byte vector.
      * 
-     * @param out
-     *            where the content of this field must be put.
+     * @param out where the content of this field must be put.
      */
     void put(final ByteVector out) {
         final int FACTOR = ClassWriter.TO_ACC_SYNTHETIC;
@@ -262,8 +252,7 @@ final class FieldWriter extends FieldVisitor {
             ++attributeCount;
         }
         if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
-            if ((cw.version & 0xFFFF) < Opcodes.V1_5
-                    || (access & ClassWriter.ACC_SYNTHETIC_ATTRIBUTE) != 0) {
+            if ((cw.version & 0xFFFF) < Opcodes.V1_5 || (access & ClassWriter.ACC_SYNTHETIC_ATTRIBUTE) != 0) {
                 ++attributeCount;
             }
         }
@@ -294,8 +283,7 @@ final class FieldWriter extends FieldVisitor {
             out.putInt(2).putShort(value);
         }
         if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
-            if ((cw.version & 0xFFFF) < Opcodes.V1_5
-                    || (access & ClassWriter.ACC_SYNTHETIC_ATTRIBUTE) != 0) {
+            if ((cw.version & 0xFFFF) < Opcodes.V1_5 || (access & ClassWriter.ACC_SYNTHETIC_ATTRIBUTE) != 0) {
                 out.putShort(cw.newUTF8("Synthetic")).putInt(0);
             }
         }

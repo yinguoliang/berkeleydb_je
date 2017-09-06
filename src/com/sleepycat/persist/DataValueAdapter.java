@@ -42,21 +42,16 @@ class DataValueAdapter<V> implements ValueAdapter<V> {
         return new DatabaseEntry();
     }
 
-    public void clearEntries(DatabaseEntry key,
-                             DatabaseEntry pkey,
-                             DatabaseEntry data) {
+    public void clearEntries(DatabaseEntry key, DatabaseEntry pkey, DatabaseEntry data) {
         key.setData(null);
         data.setData(null);
     }
 
-    public V entryToValue(DatabaseEntry key,
-                          DatabaseEntry pkey,
-                          DatabaseEntry data) {
+    public V entryToValue(DatabaseEntry key, DatabaseEntry pkey, DatabaseEntry data) {
         return (V) dataBinding.entryToObject(data);
     }
 
     public void valueToData(V value, DatabaseEntry data) {
-        throw new UnsupportedOperationException
-            ("Cannot change the data in a key-only index");
+        throw new UnsupportedOperationException("Cannot change the data in a key-only index");
     }
 }

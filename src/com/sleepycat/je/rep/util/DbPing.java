@@ -41,41 +41,40 @@ import com.sleepycat.je.utilint.CmdUtil;
  */
 public class DbPing {
     /* The name of the state requested node. */
-    private String nodeName;
+    private String              nodeName;
     /* The name of group which the requested node joins. */
-    private String groupName;
+    private String              groupName;
     /* The SocketAddress of the requested node. */
-    private InetSocketAddress socketAddress;
+    private InetSocketAddress   socketAddress;
     /* The timeout value for building the connection. */
-    private int socketTimeout = 10000;
+    private int                 socketTimeout           = 10000;
     /* The factory for channel creation */
-    private DataChannelFactory channelFactory;
+    private DataChannelFactory  channelFactory;
 
-    private static final String undocumentedUsageString =
-        "  -netProps <optional>    # name of a property file containing\n" +
-        "                             # properties needed for replication\n" +
-        "                             # service access\n";
+    private static final String undocumentedUsageString = "  -netProps <optional>    # name of a property file containing\n"
+            + "                             # properties needed for replication\n"
+            + "                             # service access\n";
 
-    private static final String usageString =
-        "Usage: " + CmdUtil.getJavaCommand(DbPing.class) + "\n" +
-        "  -nodeName <node name>      # name of the node whose state is\n" +
-        "                             # requested\n" +
-        "  -groupName <group name>    # name of the group which the node\n" +
-        "                             # joins\n" +
-        "  -nodeHost <host:port>      # the host name and port pair the\n" +
-        "                             # node used to join the group\n" +
-        "  -socketTimeout <optional>  # the timeout value for creating a\n" +
-        "                             # socket connection with the node,\n" +
-        "                             # default is 10 seconds if not set";
+    private static final String usageString             = "Usage: " + CmdUtil.getJavaCommand(DbPing.class) + "\n"
+            + "  -nodeName <node name>      # name of the node whose state is\n"
+            + "                             # requested\n"
+            + "  -groupName <group name>    # name of the group which the node\n"
+            + "                             # joins\n"
+            + "  -nodeHost <host:port>      # the host name and port pair the\n"
+            + "                             # node used to join the group\n"
+            + "  -socketTimeout <optional>  # the timeout value for creating a\n"
+            + "                             # socket connection with the node,\n"
+            + "                             # default is 10 seconds if not set";
 
-    /* Undocumented usage - SSL deferred
-     *   -netProps &lt;optional&gt; # name of a property file containing
-     *                               # properties needed for replication
-     *                               # service access
+    /*
+     * Undocumented usage - SSL deferred -netProps &lt;optional&gt; # name of a
+     * property file containing # properties needed for replication # service
+     * access
      */
 
     /**
      * Usage:
+     * 
      * <pre>
      * java {com.sleepycat.je.rep.util.DbPing |
      *       -jar je-&lt;version&gt;.jar DbPing}
@@ -89,8 +88,7 @@ public class DbPing {
      *                               # default is 10 seconds if not set
      * </pre>
      */
-    public static void main(String args[])
-        throws Exception {
+    public static void main(String args[]) throws Exception {
 
         DbPing ping = new DbPing();
         ping.parseArgs(args);
@@ -141,14 +139,12 @@ public class DbPing {
                 }
             } else if (thisArg.equals("-nodeHost")) {
                 if (argc < nArgs) {
-                    StringTokenizer st =
-                        new StringTokenizer(argv[argc++], ":");
+                    StringTokenizer st = new StringTokenizer(argv[argc++], ":");
                     if (st.countTokens() != 2) {
                         printUsage("Argument for -nodeHost is not valid.");
                     }
                     try {
-                        socketAddress = new InetSocketAddress
-                            (st.nextToken(), Integer.parseInt(st.nextToken()));
+                        socketAddress = new InetSocketAddress(st.nextToken(), Integer.parseInt(st.nextToken()));
                     } catch (NumberFormatException e) {
                         printUsage("the port of -nodeHost is not valid");
                     }
@@ -180,24 +176,19 @@ public class DbPing {
             printUsage("-socketTimeout requires a positive integer number");
         }
 
-        ReplicationNetworkConfig repNetConfig =
-            ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig repNetConfig = ReplicationNetworkConfig.createDefault();
         if (netPropsName != null) {
             try {
-                repNetConfig =
-                    ReplicationNetworkConfig.create(new File(netPropsName));
+                repNetConfig = ReplicationNetworkConfig.create(new File(netPropsName));
             } catch (FileNotFoundException fnfe) {
-                printUsage("The net properties file " + netPropsName +
-                           " does not exist: " + fnfe.getMessage());
+                printUsage("The net properties file " + netPropsName + " does not exist: " + fnfe.getMessage());
             } catch (IllegalArgumentException iae) {
-                printUsage("The net properties file " + netPropsName +
-                           " is not valid: " + iae.getMessage());
+                printUsage("The net properties file " + netPropsName + " is not valid: " + iae.getMessage());
             }
         }
 
         if (nodeName == null || groupName == null || socketAddress == null) {
-            printUsage("Node name, group name and the node host port are " +
-                       "mandatory arguments, please configure.");
+            printUsage("Node name, group name and the node host port are " + "mandatory arguments, please configure.");
         }
 
         this.channelFactory = initializeFactory(repNetConfig, nodeName);
@@ -210,85 +201,66 @@ public class DbPing {
      * Create a DbPing instance for programmatic use.
      *
      * @param repNode a class that implements
-     * {@link com.sleepycat.je.rep.ReplicationNode}
+     *            {@link com.sleepycat.je.rep.ReplicationNode}
      * @param groupName name of the group which the node joins
-     * @param socketTimeout timeout value for creating a socket connection
-     * with the node
+     * @param socketTimeout timeout value for creating a socket connection with
+     *            the node
      */
     /*
-     * SSL deferred
-     * This constructor form does not support setting of non-default service
-     * access properties.
+     * SSL deferred This constructor form does not support setting of
+     * non-default service access properties.
      */
-    public DbPing(ReplicationNode repNode,
-                  String groupName,
-                  int socketTimeout) {
-        this(repNode, groupName, socketTimeout, (ReplicationNetworkConfig)null);
+    public DbPing(ReplicationNode repNode, String groupName, int socketTimeout) {
+        this(repNode, groupName, socketTimeout, (ReplicationNetworkConfig) null);
     }
 
     /**
-     * @hidden SSL deferred
-     * Create a DbPing instance for programmatic use.
-     *
+     * @hidden SSL deferred Create a DbPing instance for programmatic use.
      * @param repNode a class that implements
-     * {@link com.sleepycat.je.rep.ReplicationNode}
+     *            {@link com.sleepycat.je.rep.ReplicationNode}
      * @param groupName name of the group which the node joins
-     * @param socketTimeout timeout value for creating a socket connection
-     * with the node
-     * @param netPropsFile a File containing replication net property
-     * settings.  Null is allowed.
+     * @param socketTimeout timeout value for creating a socket connection with
+     *            the node
+     * @param netPropsFile a File containing replication net property settings.
+     *            Null is allowed.
      * @throws FileNotFoundException if the netPropsFile does not exist
-     * @throws IllegalArgumentException if the netProps file contains
-     * invalid settings.
+     * @throws IllegalArgumentException if the netProps file contains invalid
+     *             settings.
      */
-    public DbPing(ReplicationNode repNode,
-                  String groupName,
-                  int socketTimeout,
-                  File netPropsFile)
-        throws FileNotFoundException, IllegalArgumentException {
+    public DbPing(ReplicationNode repNode, String groupName, int socketTimeout, File netPropsFile)
+            throws FileNotFoundException, IllegalArgumentException {
 
         this(repNode, groupName, socketTimeout, makeRepNetConfig(netPropsFile));
     }
 
     /**
-     * @hidden SSL deferred
-     * Create a DbPing instance for programmatic use.
-     *
+     * @hidden SSL deferred Create a DbPing instance for programmatic use.
      * @param repNode a class that implements
-     * {@link com.sleepycat.je.rep.ReplicationNode}
+     *            {@link com.sleepycat.je.rep.ReplicationNode}
      * @param groupName name of the group which the node joins
-     * @param socketTimeout timeout value for creating a socket connection
-     * with the node
-     * @param netConfig a replication-net configuration object
-     * property settings.  Null is allowed.
+     * @param socketTimeout timeout value for creating a socket connection with
+     *            the node
+     * @param netConfig a replication-net configuration object property
+     *            settings. Null is allowed.
      * @throws IllegalArgumentException if the netProps contains invalid
-     * settings.
+     *             settings.
      */
-    public DbPing(ReplicationNode repNode,
-                  String groupName,
-                  int socketTimeout,
-                  ReplicationNetworkConfig netConfig) {
-        this(repNode, groupName, socketTimeout,
-             initializeFactory(netConfig, repNode.getName()));
+    public DbPing(ReplicationNode repNode, String groupName, int socketTimeout, ReplicationNetworkConfig netConfig) {
+        this(repNode, groupName, socketTimeout, initializeFactory(netConfig, repNode.getName()));
     }
 
     /**
-     * @hidden SSL deferred
-     * Create a DbPing instance for programmatic use.
-     *
+     * @hidden SSL deferred Create a DbPing instance for programmatic use.
      * @param repNode a class that implements
-     * {@link com.sleepycat.je.rep.ReplicationNode}
+     *            {@link com.sleepycat.je.rep.ReplicationNode}
      * @param groupName name of the group which the node joins
-     * @param socketTimeout timeout value for creating a socket connection
-     * with the node
+     * @param socketTimeout timeout value for creating a socket connection with
+     *            the node
      * @param channelFactory the factory for channel creation
      * @throws IllegalArgumentException if the netProps contains invalid
-     * settings.
+     *             settings.
      */
-    public DbPing(ReplicationNode repNode,
-                  String groupName,
-                  int socketTimeout,
-                  DataChannelFactory channelFactory) {
+    public DbPing(ReplicationNode repNode, String groupName, int socketTimeout, DataChannelFactory channelFactory) {
         this.nodeName = repNode.getName();
         this.groupName = groupName;
         this.socketAddress = repNode.getSocketAddress();
@@ -297,32 +269,22 @@ public class DbPing {
     }
 
     /* Get the state of the specified node. */
-    public NodeState getNodeState()
-        throws IOException, ServiceConnectFailedException {
+    public NodeState getNodeState() throws IOException, ServiceConnectFailedException {
 
-        BinaryNodeStateProtocol protocol =
-            new BinaryNodeStateProtocol(NameIdPair.NOCHECK, null);
+        BinaryNodeStateProtocol protocol = new BinaryNodeStateProtocol(NameIdPair.NOCHECK, null);
         DataChannel channel = null;
 
         try {
             /* Build the connection. */
-            channel = channelFactory.connect(
-                socketAddress,
-                new ConnectOptions().
-                setTcpNoDelay(true).
-                setOpenTimeout(socketTimeout).
-                setReadTimeout(socketTimeout));
-            ServiceDispatcher.doServiceHandshake
-                (channel, BinaryNodeStateService.SERVICE_NAME);
+            channel = channelFactory.connect(socketAddress, new ConnectOptions().setTcpNoDelay(true)
+                    .setOpenTimeout(socketTimeout).setReadTimeout(socketTimeout));
+            ServiceDispatcher.doServiceHandshake(channel, BinaryNodeStateService.SERVICE_NAME);
 
             /* Send a NodeState request to the node. */
-            protocol.write
-                (protocol.new BinaryNodeStateRequest(nodeName, groupName),
-                 channel);
+            protocol.write(protocol.new BinaryNodeStateRequest(nodeName, groupName), channel);
 
             /* Get the response and return the NodeState. */
-            BinaryNodeStateResponse response =
-                protocol.read(channel, BinaryNodeStateResponse.class);
+            BinaryNodeStateResponse response = protocol.read(channel, BinaryNodeStateResponse.class);
 
             return response.convertToNodeState();
         } finally {
@@ -332,9 +294,8 @@ public class DbPing {
         }
     }
 
-    private static ReplicationNetworkConfig makeRepNetConfig(File propFile)
-        throws FileNotFoundException {
-    	
+    private static ReplicationNetworkConfig makeRepNetConfig(File propFile) throws FileNotFoundException {
+
         if (propFile == null) {
             return ReplicationNetworkConfig.createDefault();
         }
@@ -342,9 +303,7 @@ public class DbPing {
         return ReplicationNetworkConfig.create((propFile));
     }
 
-    private static DataChannelFactory initializeFactory(
-        ReplicationNetworkConfig repNetConfig,
-        String logContext) {
+    private static DataChannelFactory initializeFactory(ReplicationNetworkConfig repNetConfig, String logContext) {
 
         if (repNetConfig == null) {
             repNetConfig = ReplicationNetworkConfig.createDefault();

@@ -50,104 +50,95 @@ public class SubscriptionConfig implements Cloneable {
     /*-----------------------------------*/
 
     /* queue poll interval in millisecond, 1 second */
-    public final static long QUEUE_POLL_INTERVAL_MS = 1000l;
+    public final static long     QUEUE_POLL_INTERVAL_MS = 1000l;
 
     /* for quick response, no Nagle's algorithm */
-    public final boolean TCP_NO_DELAY = true;
+    public final boolean         TCP_NO_DELAY           = true;
     /* always blocking mode socket channel */
-    public final boolean BLOCKING_MODE_CHANNEL = true;
+    public final boolean         BLOCKING_MODE_CHANNEL  = true;
     /* always validate parameters */
-    private final boolean validateParams = true;
+    private final boolean        validateParams         = true;
 
     /*-----------------------------------*/
     /*-    User-defined Parameters      -*/
     /*-----------------------------------*/
 
     /* local directory of subscriber */
-    private final String subHome;
+    private final String         subHome;
 
     /*
-     * identity of a subscription node.
-     *
-     * Subscription client need to create a globally unique node name, e.g.,
-     * subscription-<uuid> because the feeder maintains the identity of
-     * each connection, and would reject request from a client with a
-     * duplicate identity.
+     * identity of a subscription node. Subscription client need to create a
+     * globally unique node name, e.g., subscription-<uuid> because the feeder
+     * maintains the identity of each connection, and would reject request from
+     * a client with a duplicate identity.
      */
-    private final String subNodeName;
+    private final String         subNodeName;
 
     /* subscriber host and port */
-    private final String subHostPortPair;
+    private final String         subHostPortPair;
     /* host where the feeder is running */
-    private final String feederHostPortPair;
+    private final String         feederHostPortPair;
     /* name of replication group */
-    private final String groupName;
+    private final String         groupName;
 
     /*
-     * uuid of feeder replication group.
-     *
-     * This parameter is optional. It subscription client does not provide a
-     * group UUID, subscription would subscribe a feeder as long as the
-     * subscription group name matches that of the feeder. However, if
-     * subscription client does provide a valid group UUID, it has to match
-     * that of feeder, otherwise subscription request will be rejected.
+     * uuid of feeder replication group. This parameter is optional. It
+     * subscription client does not provide a group UUID, subscription would
+     * subscribe a feeder as long as the subscription group name matches that of
+     * the feeder. However, if subscription client does provide a valid group
+     * UUID, it has to match that of feeder, otherwise subscription request will
+     * be rejected.
      */
-    private UUID groupUUID;
+    private UUID                 groupUUID;
 
     /* callback used in subscription */
     private SubscriptionCallback callBack;
     /* filter passed to feeder */
-    private FeederFilter feederFilter;
+    private FeederFilter         feederFilter;
 
     /* home of a set of connection parameters */
-    private Properties props;
+    private Properties           props;
 
     /* message queue size */
-    private int inputMessageQueueSize;
-    private int outputMessageQueueSize;
+    private int                  inputMessageQueueSize;
+    private int                  outputMessageQueueSize;
 
     /*
      * subscription node type, by default it is SECONDARY, e.g. used by FTS.
      * however, user is able to override it with other types, e.g., EXTERNAL
-     * used in NoSQL Stream. As of now we only allow SECONDARY and EXTERNAL
-     * node to use subscription service.
+     * used in NoSQL Stream. As of now we only allow SECONDARY and EXTERNAL node
+     * to use subscription service.
      */
-    private NodeType nodeType = NodeType.SECONDARY;
+    private NodeType             nodeType               = NodeType.SECONDARY;
 
     /**
      * Create a subscription configuration
      *
-     * @param subNodeName        id of the subscription
-     * @param subHome            home directory of subscriber
-     * @param subHostPortPair    subscriber host and port
+     * @param subNodeName id of the subscription
+     * @param subHome home directory of subscriber
+     * @param subHostPortPair subscriber host and port
      * @param feederHostPortPair feeder host and port
-     * @param groupName          name of replication group feeder belong to
+     * @param groupName name of replication group feeder belong to
      */
-    public SubscriptionConfig(String subNodeName,
-                              String subHome,
-                              String subHostPortPair,
-                              String feederHostPortPair,
-                              String groupName) throws UnknownHostException {
-       this(subNodeName, subHome, subHostPortPair, feederHostPortPair,
-            groupName, null);
+    public SubscriptionConfig(String subNodeName, String subHome, String subHostPortPair, String feederHostPortPair,
+                              String groupName)
+            throws UnknownHostException {
+        this(subNodeName, subHome, subHostPortPair, feederHostPortPair, groupName, null);
     }
 
     /**
      * Create a subscription configuration with group UUID.
      *
-     * @param subNodeName        id of the subscription
-     * @param subHome            home directory of subscriber
-     * @param subHostPortPair    subscriber host and port
+     * @param subNodeName id of the subscription
+     * @param subHome home directory of subscriber
+     * @param subHostPortPair subscriber host and port
      * @param feederHostPortPair feeder host and port
-     * @param groupName          name of replication group feeder belong to
-     * @param groupUUID          id of replication group feeder belong to
+     * @param groupName name of replication group feeder belong to
+     * @param groupUUID id of replication group feeder belong to
      */
-    public SubscriptionConfig(String subNodeName,
-                              String subHome,
-                              String subHostPortPair,
-                              String feederHostPortPair,
-                              String groupName,
-                              UUID   groupUUID) throws UnknownHostException {
+    public SubscriptionConfig(String subNodeName, String subHome, String subHostPortPair, String feederHostPortPair,
+                              String groupName, UUID groupUUID)
+            throws UnknownHostException {
         /* subscriber */
         this.subNodeName = subNodeName;
         this.subHome = subHome;
@@ -175,24 +166,19 @@ public class SubscriptionConfig implements Cloneable {
     /**
      * Create a subscription configuration with group UUID.
      *
-     * @param subNodeName        id of the subscription
-     * @param subHome            home directory of subscriber
-     * @param subHostPortPair    subscriber host and port
+     * @param subNodeName id of the subscription
+     * @param subHome home directory of subscriber
+     * @param subHostPortPair subscriber host and port
      * @param feederHostPortPair feeder host and port
-     * @param groupName          name of replication group feeder belong to
-     * @param groupUUID          id of replication group feeder belong to
-     * @param nodeType           type of subscription node
+     * @param groupName name of replication group feeder belong to
+     * @param groupUUID id of replication group feeder belong to
+     * @param nodeType type of subscription node
      */
-    public SubscriptionConfig(String subNodeName,
-                              String subHome,
-                              String subHostPortPair,
-                              String feederHostPortPair,
-                              String groupName,
-                              UUID   groupUUID,
-                              NodeType nodeType) throws UnknownHostException {
+    public SubscriptionConfig(String subNodeName, String subHome, String subHostPortPair, String feederHostPortPair,
+                              String groupName, UUID groupUUID, NodeType nodeType)
+            throws UnknownHostException {
 
-        this(subNodeName, subHome, subHostPortPair, feederHostPortPair,
-             groupName, groupUUID);
+        this(subNodeName, subHome, subHostPortPair, feederHostPortPair, groupName, groupUUID);
         this.nodeType = nodeType;
         verifyParameters();
     }
@@ -207,10 +193,8 @@ public class SubscriptionConfig implements Cloneable {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setReadOnly(true);
         envConfig.setTransactional(true);
-        envConfig.setConfigParam(
-            EnvironmentParams.ENV_RECOVERY.getName(), "false");
-        envConfig.setConfigParam(
-            EnvironmentParams.ENV_SETUP_LOGGER.getName(), "true");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RECOVERY.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_SETUP_LOGGER.getName(), "true");
 
         return envConfig;
     }
@@ -222,48 +206,36 @@ public class SubscriptionConfig implements Cloneable {
      */
     public ReplicationConfig createReplicationConfig() {
         /* Populate rep. configuration parameters */
-        ReplicationConfig repConfig =
-            new ReplicationConfig(getGroupName(),
-                                  getSubNodeName(),
-                                  getSubNodeHostPort());
+        ReplicationConfig repConfig = new ReplicationConfig(getGroupName(), getSubNodeName(), getSubNodeHostPort());
 
         repConfig.setConfigParam(RepParams.SUBSCRIBER_USE.getName(), "true");
 
-        ReplicationNetworkConfig defaultNetConfig =
-            ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig defaultNetConfig = ReplicationNetworkConfig.createDefault();
         repConfig.setRepNetConfig(defaultNetConfig);
 
         repConfig.setConfigParam(RepParams.REPLICA_MESSAGE_QUEUE_SIZE.getName(),
-                                 Integer.toString(getDefaultMsgQueueSize()));
+                Integer.toString(getDefaultMsgQueueSize()));
 
-        repConfig.setConfigParam(
-            RepParams.REPLICA_TIMEOUT.getName(),
-            String.valueOf(getChannelTimeout(TimeUnit.MILLISECONDS)) +
-            " ms");
+        repConfig.setConfigParam(RepParams.REPLICA_TIMEOUT.getName(),
+                String.valueOf(getChannelTimeout(TimeUnit.MILLISECONDS)) + " ms");
 
-        repConfig.setConfigParam(
-            RepParams.PRE_HEARTBEAT_TIMEOUT.getName(),
-            String.valueOf(getPreHeartbeatTimeout(TimeUnit.MILLISECONDS)) +
-            " ms");
+        repConfig.setConfigParam(RepParams.PRE_HEARTBEAT_TIMEOUT.getName(),
+                String.valueOf(getPreHeartbeatTimeout(TimeUnit.MILLISECONDS)) + " ms");
 
-        repConfig.setConfigParam(
-            RepParams.REPSTREAM_OPEN_TIMEOUT.getName(),
-            String.valueOf(getStreamOpenTimeout(TimeUnit.MILLISECONDS)) +
-            " ms");
+        repConfig.setConfigParam(RepParams.REPSTREAM_OPEN_TIMEOUT.getName(),
+                String.valueOf(getStreamOpenTimeout(TimeUnit.MILLISECONDS)) + " ms");
 
-        repConfig.setConfigParam(RepParams.HEARTBEAT_INTERVAL.getName(),
-                                 Integer.toString(getHeartbeatIntervalMs()));
+        repConfig.setConfigParam(RepParams.HEARTBEAT_INTERVAL.getName(), Integer.toString(getHeartbeatIntervalMs()));
 
-        repConfig.setConfigParam(
-            RepParams.REPLICA_RECEIVE_BUFFER_SIZE.getName(),
-            Integer.toString(getReceiveBufferSize()));
+        repConfig.setConfigParam(RepParams.REPLICA_RECEIVE_BUFFER_SIZE.getName(),
+                Integer.toString(getReceiveBufferSize()));
 
         /* set subscription client node type */
         repConfig.setNodeType(nodeType);
 
         return repConfig;
     }
-    
+
     /*--------------*/
     /*-  Getters   -*/
     /*--------------*/
@@ -289,8 +261,7 @@ public class SubscriptionConfig implements Cloneable {
     }
 
     public InetAddress getFeederHostAddr() throws UnknownHostException {
-        return InetAddress.getByName(HostPortPair
-                                         .getHostname(feederHostPortPair));
+        return InetAddress.getByName(HostPortPair.getHostname(feederHostPortPair));
     }
 
     public String getSubNodeName() {
@@ -310,25 +281,17 @@ public class SubscriptionConfig implements Cloneable {
     }
 
     public int getMaxConnectRetries() {
-        return DbConfigManager.getIntVal(props,
-                                         RepParams
-                                             .SUBSCRIPTION_MAX_CONNECT_RETRIES);
+        return DbConfigManager.getIntVal(props, RepParams.SUBSCRIPTION_MAX_CONNECT_RETRIES);
     }
 
     public long getSleepBeforeRetryMs() {
-        return
-            DbConfigManager.getDurationVal(props,
-                                           RepParams
-                                               .SUBSCRIPTION_SLEEP_BEFORE_RETRY,
-                                           TimeUnit.MILLISECONDS);
+        return DbConfigManager.getDurationVal(props, RepParams.SUBSCRIPTION_SLEEP_BEFORE_RETRY, TimeUnit.MILLISECONDS);
     }
 
     public long getChannelTimeout(TimeUnit unit) {
         DurationConfigParam param = RepParams.REPLICA_TIMEOUT;
         if (props.containsKey(param.getName())) {
-            return DbConfigManager.getDurationVal(props,
-                                                  RepParams.REPLICA_TIMEOUT,
-                                                  unit);
+            return DbConfigManager.getDurationVal(props, RepParams.REPLICA_TIMEOUT, unit);
         } else {
             long ms = PropUtil.parseDuration(param.getDefault());
             return unit.convert(ms, TimeUnit.MILLISECONDS);
@@ -336,17 +299,11 @@ public class SubscriptionConfig implements Cloneable {
     }
 
     public long getPollIntervalMs() {
-        return DbConfigManager.getDurationVal(props,
-                                              RepParams
-                                                  .SUBSCRIPTION_POLL_INTERVAL,
-                                              TimeUnit.MILLISECONDS);
+        return DbConfigManager.getDurationVal(props, RepParams.SUBSCRIPTION_POLL_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
     public long getPollTimeoutMs() {
-        return DbConfigManager.getDurationVal(props,
-                                              RepParams
-                                                  .SUBSCRIPTION_POLL_TIMEOUT,
-                                              TimeUnit.MILLISECONDS);
+        return DbConfigManager.getDurationVal(props, RepParams.SUBSCRIPTION_POLL_TIMEOUT, TimeUnit.MILLISECONDS);
     }
 
     public long getPreHeartbeatTimeout(TimeUnit unit) {
@@ -395,11 +352,9 @@ public class SubscriptionConfig implements Cloneable {
         return outputMessageQueueSize;
     }
 
-    public InetSocketAddress getInetSocketAddress()
-        throws UnknownHostException {
+    public InetSocketAddress getInetSocketAddress() throws UnknownHostException {
         return new InetSocketAddress(getFeederHostAddr(), getFeederPort());
     }
-
 
     /*--------------*/
     /*-  Setters   -*/
@@ -411,39 +366,29 @@ public class SubscriptionConfig implements Cloneable {
 
     public void setCallback(SubscriptionCallback cbk) {
         if (cbk == null) {
-            throw new IllegalArgumentException("Subscription callback cannot " +
-                                               "be null.");
+            throw new IllegalArgumentException("Subscription callback cannot " + "be null.");
         }
         callBack = cbk;
     }
 
-    public void setChannelTimeout(long timeout, TimeUnit unit)
-            throws IllegalArgumentException {
-        DbConfigManager.setDurationVal(props, RepParams.REPLICA_TIMEOUT,
-                                       timeout, unit, validateParams);
+    public void setChannelTimeout(long timeout, TimeUnit unit) throws IllegalArgumentException {
+        DbConfigManager.setDurationVal(props, RepParams.REPLICA_TIMEOUT, timeout, unit, validateParams);
     }
 
-    public void setPreHeartbeatTimeout(long timeout, TimeUnit unit)
-            throws IllegalArgumentException {
-        DbConfigManager.setDurationVal(props, RepParams.PRE_HEARTBEAT_TIMEOUT,
-                                       timeout, unit, validateParams);
+    public void setPreHeartbeatTimeout(long timeout, TimeUnit unit) throws IllegalArgumentException {
+        DbConfigManager.setDurationVal(props, RepParams.PRE_HEARTBEAT_TIMEOUT, timeout, unit, validateParams);
     }
 
-    public void setHeartbeatInterval(int ms)
-            throws IllegalArgumentException {
-        DbConfigManager.setIntVal(props, RepParams.HEARTBEAT_INTERVAL, ms,
-                                  validateParams);
+    public void setHeartbeatInterval(int ms) throws IllegalArgumentException {
+        DbConfigManager.setIntVal(props, RepParams.HEARTBEAT_INTERVAL, ms, validateParams);
     }
 
-    public void setStreamOpenTimeout(long timeout, TimeUnit unit)
-            throws IllegalArgumentException {
-        DbConfigManager.setDurationVal(props, RepParams.REPSTREAM_OPEN_TIMEOUT,
-                                       timeout, unit, validateParams);
+    public void setStreamOpenTimeout(long timeout, TimeUnit unit) throws IllegalArgumentException {
+        DbConfigManager.setDurationVal(props, RepParams.REPSTREAM_OPEN_TIMEOUT, timeout, unit, validateParams);
     }
 
     public void setReceiveBufferSize(int val) {
-        DbConfigManager.setIntVal(props, RepParams.REPLICA_RECEIVE_BUFFER_SIZE,
-                                  val, validateParams);
+        DbConfigManager.setIntVal(props, RepParams.REPLICA_RECEIVE_BUFFER_SIZE, val, validateParams);
     }
 
     public void setInputMessageQueueSize(int size) {
@@ -471,7 +416,7 @@ public class SubscriptionConfig implements Cloneable {
     /**
      * Set the feeder filter which will be transmitted to Feeder.
      *
-     * @param filter  the non-null feeder filter
+     * @param filter the non-null feeder filter
      */
     public void setFeederFilter(FeederFilter filter) {
 
@@ -494,15 +439,12 @@ public class SubscriptionConfig implements Cloneable {
         sb.append("home directory: ").append(subHome).append("\n");
         sb.append("home host and port: ").append(subHostPortPair).append("\n");
 
-        sb.append("feeder host and port: ").append(feederHostPortPair)
-          .append("\n");
+        sb.append("feeder host and port: ").append(feederHostPortPair).append("\n");
 
         try {
-            sb.append("feeder address: ")
-              .append(getFeederHostAddr()).append("\n");
+            sb.append("feeder address: ").append(getFeederHostAddr()).append("\n");
         } catch (UnknownHostException e) {
-            sb.append("feeder address: unknown host ")
-              .append(feederHostPortPair).append("\n");
+            sb.append("feeder address: unknown host ").append(feederHostPortPair).append("\n");
         }
         sb.append("feeder filter: ").append(feederFilter).append("\n");
 
@@ -513,48 +455,35 @@ public class SubscriptionConfig implements Cloneable {
     }
 
     /*
-     * Verify all required parameters are available and valid
-     *
-     * must-have parameters:
-     * - non-null home directory
-     * - non-null feeder host port pair
-     * - non-null feeder host name
-     * - non-null feeder host port
-     * - non-null subscriber node host port pair
-     * - non-null subscriber node name
-     * - non-null subscriber node host port
-     * - non-null replication group name
-     *
+     * Verify all required parameters are available and valid must-have
+     * parameters: - non-null home directory - non-null feeder host port pair -
+     * non-null feeder host name - non-null feeder host port - non-null
+     * subscriber node host port pair - non-null subscriber node name - non-null
+     * subscriber node host port - non-null replication group name
      * @throws IllegalArgumentException
      */
     private void verifyParameters() throws IllegalArgumentException {
 
-        DatabaseUtil.checkForNullParam(getSubscriberHome(),
-                "subscription home directory");
+        DatabaseUtil.checkForNullParam(getSubscriberHome(), "subscription home directory");
 
-        DatabaseUtil.checkForNullParam(feederHostPortPair,
-                                       "feeder host port pair");
+        DatabaseUtil.checkForNullParam(feederHostPortPair, "feeder host port pair");
 
         DatabaseUtil.checkForNullParam(getFeederHost(), "feeder host name");
 
         DatabaseUtil.checkForNullParam(getFeederPort(), "feeder host port");
 
-        DatabaseUtil.checkForNullParam(subHostPortPair,
-                                       "subscriber host port pair");
+        DatabaseUtil.checkForNullParam(subHostPortPair, "subscriber host port pair");
 
-        DatabaseUtil.checkForNullParam(getSubNodeName(),
-                                       "subscriber node name");
+        DatabaseUtil.checkForNullParam(getSubNodeName(), "subscriber node name");
 
-        DatabaseUtil.checkForNullParam(getSubNodeHostPort(),
-                                       "subscriber node host port");
+        DatabaseUtil.checkForNullParam(getSubNodeHostPort(), "subscriber node host port");
 
         DatabaseUtil.checkForNullParam(getGroupName(), "replication group");
 
         /* we only support SECONDARY and EXTERNAL node type for subscription */
         if (!nodeType.isExternal() && !nodeType.isSecondary()) {
             throw new IllegalArgumentException(
-                "'node type' param must be either SECONDARY or " +
-                "EXTERNAL, found node type: " + nodeType);
+                    "'node type' param must be either SECONDARY or " + "EXTERNAL, found node type: " + nodeType);
         }
     }
 
@@ -565,8 +494,7 @@ public class SubscriptionConfig implements Cloneable {
         }
 
         @Override
-        public void processPut(VLSN vlsn, byte[] key, byte[] value,
-                               long txnId) {
+        public void processPut(VLSN vlsn, byte[] key, byte[] value, long txnId) {
 
         }
 
@@ -604,8 +532,7 @@ public class SubscriptionConfig implements Cloneable {
      * a default filter that filters out entries from internal db and db
      * supporting duplicates.
      */
-    private static class DefaultFeederFilter
-            implements FeederFilter, Serializable {
+    private static class DefaultFeederFilter implements FeederFilter, Serializable {
         private static final long serialVersionUID = 1L;
 
         DefaultFeederFilter() {
@@ -613,8 +540,7 @@ public class SubscriptionConfig implements Cloneable {
         }
 
         @Override
-        public OutputWireRecord execute(final OutputWireRecord record,
-                                        final RepImpl repImpl) {
+        public OutputWireRecord execute(final OutputWireRecord record, final RepImpl repImpl) {
 
             /* keep record if db id is null */
             final DatabaseId dbId = record.getReplicableDBId();

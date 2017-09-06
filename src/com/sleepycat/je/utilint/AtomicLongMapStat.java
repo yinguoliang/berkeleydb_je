@@ -19,12 +19,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.sleepycat.je.utilint.StatDefinition.StatType;
 
 /**
- * A JE stat that maintains a map of individual values based on AtomicLong
- * which can be looked up with a String key, and that returns results as a
- * formatted string.
+ * A JE stat that maintains a map of individual values based on AtomicLong which
+ * can be looked up with a String key, and that returns results as a formatted
+ * string.
  */
-public final class AtomicLongMapStat
-        extends MapStat<Long, AtomicLongComponent> {
+public final class AtomicLongMapStat extends MapStat<Long, AtomicLongComponent> {
 
     private static final long serialVersionUID = 1L;
 
@@ -70,8 +69,7 @@ public final class AtomicLongMapStat
         }
         final AtomicLongMapStat baseMapStat = (AtomicLongMapStat) base;
         synchronized (copy) {
-            for (final Entry<String, AtomicLongComponent> entry :
-                     copy.statMap.entrySet()) {
+            for (final Entry<String, AtomicLongComponent> entry : copy.statMap.entrySet()) {
 
                 final AtomicLongComponent baseValue;
                 synchronized (baseMapStat) {
@@ -94,7 +92,7 @@ public final class AtomicLongMapStat
 
                 /*
                  * Negate the value atomically, retrying if another change
-                 * intervenes.  This loop emulates the behavior of
+                 * intervenes. This loop emulates the behavior of
                  * AtomicLong.getAndIncrement.
                  */
                 while (true) {

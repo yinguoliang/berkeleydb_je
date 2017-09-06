@@ -26,13 +26,10 @@ import java.util.IdentityHashMap;
 class RawArrayInput extends RawAbstractInput {
 
     private Object[] array;
-    private int index;
-    private Format componentFormat;
+    private int      index;
+    private Format   componentFormat;
 
-    RawArrayInput(Catalog catalog,
-                  boolean rawAccess,
-                  IdentityHashMap converted,
-                  RawObject raw,
+    RawArrayInput(Catalog catalog, boolean rawAccess, IdentityHashMap converted, RawObject raw,
                   Format componentFormat) {
         super(catalog, rawAccess, converted);
         array = raw.getElements();
@@ -45,8 +42,7 @@ class RawArrayInput extends RawAbstractInput {
     }
 
     @Override
-    Object readNext()
-        throws RefreshException {
+    Object readNext() throws RefreshException {
 
         Object o = array[index++];
         return checkAndConvert(o, componentFormat);

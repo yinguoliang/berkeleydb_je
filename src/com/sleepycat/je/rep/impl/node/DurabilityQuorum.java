@@ -34,49 +34,42 @@ import com.sleepycat.je.utilint.LoggerUtils;
 public class DurabilityQuorum {
 
     private final RepImpl repImpl;
-    private final Logger logger;
+    private final Logger  logger;
 
     public DurabilityQuorum(RepImpl repImpl) {
 
-       this.repImpl = repImpl;
-       logger = LoggerUtils.getLogger(getClass());
+        this.repImpl = repImpl;
+        logger = LoggerUtils.getLogger(getClass());
     }
 
     /**
-     * See if there are a sufficient number of replicas alive to support
-     * the commit for this transaction. Used as an optimizing step before any
-     * writes are executed, to reduce the number of outstanding writes that
-     * suffer from insufficient ack problems.
-     *
-     * If this node is not the master, just return. A different kind of check
-     * will catch the fact that this node cannot support writes.
-     *
-     * TODO: Read only transactions on the master should not have to wait.
-     * In the future, introduce either a read-only attribute as part of
+     * See if there are a sufficient number of replicas alive to support the
+     * commit for this transaction. Used as an optimizing step before any writes
+     * are executed, to reduce the number of outstanding writes that suffer from
+     * insufficient ack problems. If this node is not the master, just return. A
+     * different kind of check will catch the fact that this node cannot support
+     * writes. TODO: Read only transactions on the master should not have to
+     * wait. In the future, introduce either a read-only attribute as part of
      * TransactionConfig or a read only transaction class to optimize this.
      *
      * @param insufficientReplicasTimeout timeout in ms
      * @throws InsufficientReplicasException if there are not enough replicas
-     * connected to this feeder to be able to commit the transaction.
+     *             connected to this feeder to be able to commit the
+     *             transaction.
      */
-    public void ensureReplicasForCommit(MasterTxn txn,
-                                        int insufficientReplicasTimeout)
-        throws DatabaseException, InterruptedException,
-               InsufficientReplicasException {
+    public void ensureReplicasForCommit(MasterTxn txn, int insufficientReplicasTimeout)
+            throws DatabaseException, InterruptedException, InsufficientReplicasException {
 
         RepNode repNode = repImpl.getRepNode();
         if (!repNode.isMaster()) {
             return;
         }
 
-        ReplicaAckPolicy ackPolicy =
-            txn.getDefaultDurability().getReplicaAck();
+        ReplicaAckPolicy ackPolicy = txn.getDefaultDurability().getReplicaAck();
         int requiredReplicaAckCount = getCurrentRequiredAckCount(ackPolicy);
         if (logger.isLoggable(FINE)) {
-            LoggerUtils.fine(logger, repImpl,
-                             "Txn " + txn + ": checking that " +
-                             requiredReplicaAckCount +
-                             " feeders exist before starting commit");
+            LoggerUtils.fine(logger, repImpl, "Txn " + txn + ": checking that " + requiredReplicaAckCount
+                    + " feeders exist before starting commit");
         }
 
         /* No need to wait for anyone else, only this node is needed. */
@@ -84,8 +77,8 @@ public class DurabilityQuorum {
             return;
         }
 
-        if (repNode.feederManager().awaitFeederReplicaConnections
-            (requiredReplicaAckCount, insufficientReplicasTimeout)) {
+        if (repNode.feederManager().awaitFeederReplicaConnections(requiredReplicaAckCount,
+                insufficientReplicasTimeout)) {
             /* Wait was successful */
             return;
         }
@@ -98,22 +91,19 @@ public class DurabilityQuorum {
 
             /*
              * Continue if we are no longer the master after the wait. The
-             * transaction will fail if it tries to acquire write locks, or
-             * at commit.
+             * transaction will fail if it tries to acquire write locks, or at
+             * commit.
              */
             return;
         }
 
-        if (ackPolicy.equals(ReplicaAckPolicy.SIMPLE_MAJORITY) &&
-            repNode.getArbiter().activateArbitration()) {
+        if (ackPolicy.equals(ReplicaAckPolicy.SIMPLE_MAJORITY) && repNode.getArbiter().activateArbitration()) {
             return;
         }
 
-        final boolean includeArbiters =
-            !ackPolicy.equals(ReplicaAckPolicy.ALL);
-        throw new InsufficientReplicasException(
-            txn, ackPolicy, requiredReplicaAckCount,
-            repNode.feederManager().activeAckReplicas(includeArbiters));
+        final boolean includeArbiters = !ackPolicy.equals(ReplicaAckPolicy.ALL);
+        throw new InsufficientReplicasException(txn, ackPolicy, requiredReplicaAckCount,
+                repNode.feederManager().activeAckReplicas(includeArbiters));
     }
 
     /**
@@ -133,11 +123,9 @@ public class DurabilityQuorum {
      * Determine if this transaction has been adequately acknowledged.
      *
      * @throws InsufficientAcksException if the transaction's durability
-     * requirements have not been met.
+     *             requirements have not been met.
      */
-    public void ensureSufficientAcks(FeederTxns.TxnInfo txnInfo,
-                                     int timeoutMs)
-        throws InsufficientAcksException {
+    public void ensureSufficientAcks(FeederTxns.TxnInfo txnInfo, int timeoutMs) throws InsufficientAcksException {
 
         int pendingAcks = txnInfo.getPendingAcks();
         if (pendingAcks == 0) {
@@ -145,15 +133,13 @@ public class DurabilityQuorum {
         }
 
         MasterTxn txn = txnInfo.getTxn();
-        final int requiredAcks = getCurrentRequiredAckCount(
-            txn.getCommitDurability().getReplicaAck());
+        final int requiredAcks = getCurrentRequiredAckCount(txn.getCommitDurability().getReplicaAck());
         int requiredAckDelta = txn.getRequiredAckCount() - requiredAcks;
         if (requiredAckDelta >= pendingAcks) {
 
             /*
-             * The group size was reduced while waiting for acks and the
-             * acks received are sufficient given the new reduced group
-             * size.
+             * The group size was reduced while waiting for acks and the acks
+             * received are sufficient given the new reduced group size.
              */
             return;
         }
@@ -162,28 +148,21 @@ public class DurabilityQuorum {
         final String dumpState = repImpl.dumpAckFeederState();
 
         /*
-         * Repeat the check to ensure that acks have not been received in
-         * the time between the completion of the await() call above and
-         * the creation of the exception message. This tends to happen when
-         * there are lots of threads in the process thus potentially
-         * delaying the resumption of this thread following the timeout
-         * resulting from the await.
-         *
-         * It should be noted that some transactions may be setup to not
-         * decrement the wait latch count for Arbiter acks. Checking an
-         * Arbiters feeder VLSN here will account for the Arbiter ack.
+         * Repeat the check to ensure that acks have not been received in the
+         * time between the completion of the await() call above and the
+         * creation of the exception message. This tends to happen when there
+         * are lots of threads in the process thus potentially delaying the
+         * resumption of this thread following the timeout resulting from the
+         * await. It should be noted that some transactions may be setup to not
+         * decrement the wait latch count for Arbiter acks. Checking an Arbiters
+         * feeder VLSN here will account for the Arbiter ack.
          */
-        final FeederManager feederManager =
-            repImpl.getRepNode().feederManager();
-        int currentFeederCount =
-            feederManager.getNumCurrentAckFeeders(txn.getCommitVLSN());
+        final FeederManager feederManager = repImpl.getRepNode().feederManager();
+        int currentFeederCount = feederManager.getNumCurrentAckFeeders(txn.getCommitVLSN());
         if (currentFeederCount >= requiredAcks) {
-            String msg = "txn " + txn.getId() +
-                " commit vlsn:" + txnInfo.getCommitVLSN() +
-                " acknowledged after explicit feeder check" +
-                " latch count:" + txnInfo.getPendingAcks() +
-                " state:" + dumpState +
-                " required acks:" + requiredAcks;
+            String msg = "txn " + txn.getId() + " commit vlsn:" + txnInfo.getCommitVLSN()
+                    + " acknowledged after explicit feeder check" + " latch count:" + txnInfo.getPendingAcks()
+                    + " state:" + dumpState + " required acks:" + requiredAcks;
 
             LoggerUtils.info(logger, repImpl, msg);
             return;
@@ -192,30 +171,28 @@ public class DurabilityQuorum {
         /*
          * We can avoid the exception if it's possible for this node to enter
          * activate arbitration. It's useful to check for this again here in
-         * case we happen to lose connections to replicas in the (brief)
-         * period since the pre-log hook.  Note that in this case we merely
-         * want to check; we don't want to switch into active arbitration
-         * unless/until we actually lose the connection to the replica at
-         * commit time. TODO: this doesn't seem right! Shouldn't we require
-         * activation at this point!!!
+         * case we happen to lose connections to replicas in the (brief) period
+         * since the pre-log hook. Note that in this case we merely want to
+         * check; we don't want to switch into active arbitration unless/until
+         * we actually lose the connection to the replica at commit time. TODO:
+         * this doesn't seem right! Shouldn't we require activation at this
+         * point!!!
          */
         if (repImpl.getRepNode().getArbiter().activationPossible()) {
             return;
         }
-        throw new InsufficientAcksException(txn, pendingAcks, timeoutMs,
-                                            dumpState);
+        throw new InsufficientAcksException(txn, pendingAcks, timeoutMs, dumpState);
 
     }
 
     /**
      * Returns the minimum number of acknowledgments required to satisfy the
-     * ReplicaAckPolicy for a given group size. Does not include the master.
-     * The method factors in considerations like the current arbitration status
-     * of the environment and the composition of the replication group.
-     *
-     * TODO: it seems sufficient to return a number, as opposed to a set of
-     * qualified ack nodes, as long as {@link #replicaAcksQualify} will only
-     * count qualified acks against the required count. That does mean that
+     * ReplicaAckPolicy for a given group size. Does not include the master. The
+     * method factors in considerations like the current arbitration status of
+     * the environment and the composition of the replication group. TODO: it
+     * seems sufficient to return a number, as opposed to a set of qualified ack
+     * nodes, as long as {@link #replicaAcksQualify} will only count qualified
+     * acks against the required count. That does mean that
      * getCurrentRequiredAckCount and noteReplicaAcks for a transaction must be
      * kept consistent.
      *
@@ -228,13 +205,12 @@ public class DurabilityQuorum {
          * election quorum, let it also influence the durability quorum.
          */
         RepNode repNode = repImpl.getRepNode();
-        int electableGroupSizeOverride =
-            repNode.getElectionQuorum().getElectableGroupSizeOverride();
+        int electableGroupSizeOverride = repNode.getElectionQuorum().getElectableGroupSizeOverride();
         if (electableGroupSizeOverride > 0) {
 
             /*
-             * Use the override-defined group size to determine the
-             * number of acks.
+             * Use the override-defined group size to determine the number of
+             * acks.
              */
             return ackPolicy.minAckNodes(electableGroupSizeOverride) - 1;
         }
@@ -244,7 +220,6 @@ public class DurabilityQuorum {
             return arbiter.getAckCount(ackPolicy);
         }
 
-        return ackPolicy.minAckNodes
-            (repNode.getGroup().getAckGroupSize()) - 1;
+        return ackPolicy.minAckNodes(repNode.getGroup().getAckGroupSize()) - 1;
     }
 }

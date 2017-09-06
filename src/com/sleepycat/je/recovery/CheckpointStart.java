@@ -21,20 +21,19 @@ import com.sleepycat.je.log.Loggable;
 import com.sleepycat.je.utilint.Timestamp;
 
 /**
- * CheckpointStart creates a log entry that marks the beginning of a
- * checkpoint.
+ * CheckpointStart creates a log entry that marks the beginning of a checkpoint.
  */
 public class CheckpointStart implements Loggable {
 
     private Timestamp startTime;
-    private long id;
+    private long      id;
 
     /*
      * invoker is just a way to tag each checkpoint in the log for easier log
      * based debugging. It will tell us whether the checkpoint was invoked by
      * recovery, the daemon, the api, or the cleaner.
      */
-    private String invoker;
+    private String    invoker;
 
     public CheckpointStart(long id, String invoker) {
         Calendar cal = Calendar.getInstance();
@@ -59,9 +58,8 @@ public class CheckpointStart implements Loggable {
      * @see Loggable#getLogSize
      */
     public int getLogSize() {
-        return LogUtils.getTimestampLogSize(startTime) +
-            LogUtils.getPackedLongLogSize(id) +
-            LogUtils.getStringLogSize(invoker);
+        return LogUtils.getTimestampLogSize(startTime) + LogUtils.getPackedLongLogSize(id)
+                + LogUtils.getStringLogSize(invoker);
     }
 
     /**
@@ -100,9 +98,9 @@ public class CheckpointStart implements Loggable {
         return 0;
     }
 
-   /**
-     * @see Loggable#logicalEquals
-     * Always return false, this item should never be compared.
+    /**
+     * @see Loggable#logicalEquals Always return false, this item should never
+     *      be compared.
      */
     public boolean logicalEquals(Loggable other) {
         return false;

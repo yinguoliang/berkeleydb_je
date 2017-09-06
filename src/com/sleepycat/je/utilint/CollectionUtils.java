@@ -36,95 +36,137 @@ public final class CollectionUtils {
     }
 
     /**
-     * An empty, unmodifiable, serializable, sorted set used for
-     * emptySortedSet.
+     * An empty, unmodifiable, serializable, sorted set used for emptySortedSet.
      */
-    private static class EmptySortedSet<E> extends AbstractSet<E>
-            implements SortedSet<E>, Serializable {
+    private static class EmptySortedSet<E> extends AbstractSet<E> implements SortedSet<E>, Serializable {
 
-        private static final long serialVersionUID = 1;
-
-        @SuppressWarnings("rawtypes")
-        static final SortedSet<?> INSTANCE = new EmptySortedSet<Object>();
+        private static final long  serialVersionUID = 1;
 
         @SuppressWarnings("rawtypes")
-        private static Iterator<?> ITER = new Iterator<Object>() {
-            @Override
-            public boolean hasNext() { return false; }
-            @Override
-            public Object next() { throw new NoSuchElementException(); }
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException("remove");
-            }
-        };
+        static final SortedSet<?>  INSTANCE         = new EmptySortedSet<Object>();
+
+        @SuppressWarnings("rawtypes")
+        private static Iterator<?> ITER             = new Iterator<Object>() {
+                                                        @Override
+                                                        public boolean hasNext() {
+                                                            return false;
+                                                        }
+
+                                                        @Override
+                                                        public Object next() {
+                                                            throw new NoSuchElementException();
+                                                        }
+
+                                                        @Override
+                                                        public void remove() {
+                                                            throw new UnsupportedOperationException("remove");
+                                                        }
+                                                    };
 
         /* Implement SortedSet */
 
         @Override
-        public Comparator<? super E> comparator() { return null; }
+        public Comparator<? super E> comparator() {
+            return null;
+        }
+
         @Override
         public SortedSet<E> subSet(E fromElement, E toElement) {
             return emptySortedSet();
         }
+
         @Override
-        public SortedSet<E> headSet(E toElement) { return emptySortedSet(); }
+        public SortedSet<E> headSet(E toElement) {
+            return emptySortedSet();
+        }
+
         @Override
-        public SortedSet<E> tailSet(E fromElement) { return emptySortedSet(); }
+        public SortedSet<E> tailSet(E fromElement) {
+            return emptySortedSet();
+        }
+
         @Override
-        public E first() { throw new NoSuchElementException(); }
+        public E first() {
+            throw new NoSuchElementException();
+        }
+
         @Override
-        public E last() { throw new NoSuchElementException(); }
+        public E last() {
+            throw new NoSuchElementException();
+        }
 
         /* Implement Set */
 
         @SuppressWarnings("unchecked")
         @Override
-        public Iterator<E> iterator() { return (Iterator<E>) ITER; }
+        public Iterator<E> iterator() {
+            return (Iterator<E>) ITER;
+        }
+
         @Override
-        public int size() { return 0; }
+        public int size() {
+            return 0;
+        }
 
         /** Use canonical instance. */
-        private Object readResolve() { return INSTANCE; }
+        private Object readResolve() {
+            return INSTANCE;
+        }
     }
 
     /**
-     * An empty, unmodifiable, serializable, sorted map used for
-     * emptySortedMap.
+     * An empty, unmodifiable, serializable, sorted map used for emptySortedMap.
      */
-    private static class EmptySortedMap<K, V> extends AbstractMap<K, V>
-            implements SortedMap<K, V>, Serializable {
+    private static class EmptySortedMap<K, V> extends AbstractMap<K, V> implements SortedMap<K, V>, Serializable {
 
-        private static final long serialVersionUID = 1;
+        private static final long    serialVersionUID = 1;
 
         @SuppressWarnings("rawtypes")
-        static final SortedMap<?, ?> INSTANCE =
-            new EmptySortedMap<Object, Object>();
+        static final SortedMap<?, ?> INSTANCE         = new EmptySortedMap<Object, Object>();
 
         /* Implement SortedMap */
 
         @Override
-        public Comparator<? super K> comparator() { return null; }
+        public Comparator<? super K> comparator() {
+            return null;
+        }
+
         @Override
         public SortedMap<K, V> subMap(K fromKey, K toKey) {
             return emptySortedMap();
         }
+
         @Override
-        public SortedMap<K, V> headMap(K toKey) { return emptySortedMap(); }
+        public SortedMap<K, V> headMap(K toKey) {
+            return emptySortedMap();
+        }
+
         @Override
-        public SortedMap<K,V> tailMap(K fromKey) { return emptySortedMap(); }
+        public SortedMap<K, V> tailMap(K fromKey) {
+            return emptySortedMap();
+        }
+
         @Override
-        public K firstKey() { throw new NoSuchElementException(); }
+        public K firstKey() {
+            throw new NoSuchElementException();
+        }
+
         @Override
-        public K lastKey()  { throw new NoSuchElementException(); }
+        public K lastKey() {
+            throw new NoSuchElementException();
+        }
 
         /* Implement Map */
 
         @Override
-        public Set<Entry<K, V>> entrySet() { return emptySet(); }
+        public Set<Entry<K, V>> entrySet() {
+            return emptySet();
+        }
 
         /** Use canonical instance. */
-        private Object readResolve() { return INSTANCE; }
+        private Object readResolve() {
+            return INSTANCE;
+        }
     }
 
     /**

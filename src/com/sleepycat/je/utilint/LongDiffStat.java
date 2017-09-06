@@ -19,51 +19,50 @@ import java.io.ObjectOutputStream;
 
 /**
  * A long JE stat component that computes the difference between another stat
- * and a specified value.  Reports 0 if the value is greater than the stat
- * value.  The computed difference remains valid for a specified amount of
- * time, which should represent the maximum amount of time expected to elapse
- * between when new values are provided.  If no value is specified within the
- * validity interval, then the difference is recomputed using the current base
- * stat value and the last specified value.  The idea is to treat the specified
- * value as up-to-date for a certain period of time, and then represent that
- * the lack of updates means it is falling behind.
+ * and a specified value. Reports 0 if the value is greater than the stat value.
+ * The computed difference remains valid for a specified amount of time, which
+ * should represent the maximum amount of time expected to elapse between when
+ * new values are provided. If no value is specified within the validity
+ * interval, then the difference is recomputed using the current base stat value
+ * and the last specified value. The idea is to treat the specified value as
+ * up-to-date for a certain period of time, and then represent that the lack of
+ * updates means it is falling behind.
  */
 public class LongDiffStat extends MapStatComponent<Long, LongDiffStat> {
     private static final long serialVersionUID = 1L;
 
     /** The stat that supplies the base value for computing differences. */
-    private final Stat<Long> base;
+    private final Stat<Long>  base;
 
     /**
-     * The maximum time, in milliseconds, that a computed difference is
-     * valid.
+     * The maximum time, in milliseconds, that a computed difference is valid.
      */
-    private final long validityMillis;
+    private final long        validityMillis;
 
     /**
-     * The previous value, or 0.  Synchronize on this instance when accessing
+     * The previous value, or 0. Synchronize on this instance when accessing
      * this field.
      */
-    private long prevValue;
+    private long              prevValue;
 
     /**
-     * The time in milliseconds of the previous value, or 0.  Synchronize on
-     * this instance when accessing this field.
+     * The time in milliseconds of the previous value, or 0. Synchronize on this
+     * instance when accessing this field.
      */
-    private long prevTime;
+    private long              prevTime;
 
     /**
-     * The last computed difference, or 0.  Synchronize on this instance when
+     * The last computed difference, or 0. Synchronize on this instance when
      * accessing this field.
      */
-    private long diff;
+    private long              diff;
 
     /**
      * Creates an instance of this class.
      *
      * @param base the base stat used for computing differences
      * @param validityMillis the amount of time, in milliseconds, which a
-     * computed difference remains valid
+     *            computed difference remains valid
      */
     public LongDiffStat(Stat<Long> base, long validityMillis) {
         assert base != null;
@@ -164,25 +163,22 @@ public class LongDiffStat extends MapStatComponent<Long, LongDiffStat> {
 
     @Override
     public synchronized boolean isNotSet() {
-       return prevTime == 0;
+        return prevTime == 0;
     }
 
     @Override
     public synchronized String toString() {
-        return "LongDiffStat[prevValue=" + prevValue +
-            ", prevTime=" + prevTime + ", diff=" + diff + "]";
+        return "LongDiffStat[prevValue=" + prevValue + ", prevTime=" + prevTime + ", diff=" + diff + "]";
     }
 
     /** Synchronize access to fields. */
-    private synchronized void readObject(ObjectInputStream in)
-        throws IOException, ClassNotFoundException {
+    private synchronized void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 
         in.defaultReadObject();
     }
 
     /** Synchronize access to fields. */
-    private synchronized void writeObject(ObjectOutputStream out)
-        throws IOException {
+    private synchronized void writeObject(ObjectOutputStream out) throws IOException {
 
         out.defaultWriteObject();
     }

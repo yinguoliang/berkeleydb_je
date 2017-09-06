@@ -22,19 +22,17 @@ import com.sleepycat.je.log.Loggable;
 import com.sleepycat.je.tree.Key;
 
 /**
- * INDeleteInfo encapsulates the information logged about the removal of a
- * child from an IN during IN compression.
- *
- * As of JE 3.3.87, INDelete is no longer logged becaue the root compression
- * feature has been removed.  However, INDelete must still be processed in log
- * files created with 3.3.87 and earlier. [#17546]
- *
- * Obsolete in log version 8, only used by DupConvert and some log readers.
+ * INDeleteInfo encapsulates the information logged about the removal of a child
+ * from an IN during IN compression. As of JE 3.3.87, INDelete is no longer
+ * logged becaue the root compression feature has been removed. However,
+ * INDelete must still be processed in log files created with 3.3.87 and
+ * earlier. [#17546] Obsolete in log version 8, only used by DupConvert and some
+ * log readers.
  */
 public class INDeleteInfo implements Loggable {
 
-    private long deletedNodeId;
-    private byte[] deletedIdKey;
+    private long             deletedNodeId;
+    private byte[]           deletedIdKey;
     private final DatabaseId dbId;
 
     /**
@@ -102,8 +100,8 @@ public class INDeleteInfo implements Loggable {
     }
 
     /**
-     * @see Loggable#logicalEquals
-     * Always return false, this item should never be compared.
+     * @see Loggable#logicalEquals Always return false, this item should never
+     *      be compared.
      */
     public boolean logicalEquals(Loggable other) {
         return false;

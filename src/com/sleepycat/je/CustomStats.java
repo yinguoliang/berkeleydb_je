@@ -27,18 +27,18 @@ package com.sleepycat.je;
  */
 public interface CustomStats {
 
-	/**
-	 * The field names that are output to the je.stats.csv file.
-	 *
-	 * @return Array of strings that represent the field values.
-	 */
-	String[] getFieldNames();
+    /**
+     * The field names that are output to the je.stats.csv file.
+     *
+     * @return Array of strings that represent the field values.
+     */
+    String[] getFieldNames();
 
-	/**
-	 * The field values that are output to the je.stats.csv file.
-	 *
-	 * @return Array of strings that represent a value for the associated field
-	 *         name.
-	 */
-	String[] getFieldValues();
+    /**
+     * The field values that are output to the je.stats.csv file.
+     *
+     * @return Array of strings that represent a value for the associated field
+     *         name.
+     */
+    String[] getFieldValues();
 }

@@ -23,13 +23,13 @@ import java.beans.PropertyDescriptor;
  */
 public class EnvironmentMutableConfigBeanInfo extends ConfigBeanInfoBase {
 
-	@Override
-	public BeanDescriptor getBeanDescriptor() {
-		return getBdescriptor(EnvironmentMutableConfig.class);
-	}
+    @Override
+    public BeanDescriptor getBeanDescriptor() {
+        return getBdescriptor(EnvironmentMutableConfig.class);
+    }
 
-	@Override
-	public PropertyDescriptor[] getPropertyDescriptors() {
-		return getPdescriptor(EnvironmentMutableConfig.class);
-	}
+    @Override
+    public PropertyDescriptor[] getPropertyDescriptors() {
+        return getPdescriptor(EnvironmentMutableConfig.class);
+    }
 }

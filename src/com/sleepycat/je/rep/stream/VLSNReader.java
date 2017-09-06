@@ -28,20 +28,19 @@ import com.sleepycat.je.utilint.VLSN;
 /**
  * The VLSNReader returns picks out replicated log entries from the log. It
  * works in tandem with the VLSNIndex, using vlsn->lsn mappings if those are
- * available, and otherwise scanning the log for replicated entries.
- *
- * A VLSNReader is not thread safe, and can only be used serially.
+ * available, and otherwise scanning the log for replicated entries. A
+ * VLSNReader is not thread safe, and can only be used serially.
  */
 abstract class VLSNReader extends FileReader {
 
-    final VLSNIndex vlsnIndex;
+    final VLSNIndex  vlsnIndex;
 
     /*
-     * currentVLSN is the target VLSN that the reader is looking for. It is
-     * set if the reader is scanning vlsn sequentially, either forwards or
+     * currentVLSN is the target VLSN that the reader is looking for. It is set
+     * if the reader is scanning vlsn sequentially, either forwards or
      * backwards.
      */
-    VLSN currentVLSN;
+    VLSN             currentVLSN;
 
     /*
      * The current log entry that the reader is positioned at, in wire record
@@ -52,42 +51,32 @@ abstract class VLSNReader extends FileReader {
     /*
      * True if the reader has been positioned at a point in the file. Forward
      * scanning readers may read from either the log buffer or the log files.
-     * It's preferable to read first from the log buffers, in case the log
-     * entry is cached (or the log entry hasn't been written to disk).
+     * It's preferable to read first from the log buffers, in case the log entry
+     * is cached (or the log entry hasn't been written to disk).
      */
 
     /* stats */
-    long nScanned;    // Num log entries seen by the reader
-    long nReposition; // Number of times the reader has used a vlsn->lsn
+    long             nScanned;         // Num log entries seen by the reader
+    long             nReposition;      // Number of times the reader has used a vlsn->lsn
                       // mapping and have reset the read window
 
-    VLSNReader(EnvironmentImpl envImpl,
-               VLSNIndex vlsnIndex,
-               boolean forward,
-               long startLsn,
-               int readBufferSize,
-               NameIdPair nameIdPair,
-               long finishLsn)
-        throws DatabaseException {
+    VLSNReader(EnvironmentImpl envImpl, VLSNIndex vlsnIndex, boolean forward, long startLsn, int readBufferSize,
+               NameIdPair nameIdPair, long finishLsn)
+            throws DatabaseException {
 
         /*
-         * If we go backwards, endOfFileLsn and startLsn must not be null.
-         * Make them the same, so we always start at the same very end.
+         * If we go backwards, endOfFileLsn and startLsn must not be null. Make
+         * them the same, so we always start at the same very end.
          */
-        super(envImpl,
-              readBufferSize,
-              forward,
-              startLsn,
-              null,            // singleFileNumber
-              startLsn,        // endOfFileLsn
-              finishLsn); 
+        super(envImpl, readBufferSize, forward, startLsn, null, // singleFileNumber
+                startLsn, // endOfFileLsn
+                finishLsn);
 
         this.vlsnIndex = vlsnIndex;
         currentVLSN = VLSN.NULL_VLSN;
     }
 
-    void setPosition(long startLsn)
-        throws ChecksumException, FileNotFoundException, DatabaseException {
+    void setPosition(long startLsn) throws ChecksumException, FileNotFoundException, DatabaseException {
 
         if (startLsn == DbLsn.NULL_LSN) {
             return;
@@ -98,19 +87,19 @@ abstract class VLSNReader extends FileReader {
          */
         if (forward) {
             if (DbLsn.compareTo(getLastLsn(), startLsn) > 0) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("Feeder forward scanning should not be repositioned to " +
-                     " a position earlier than the current position. Current" +
-                     " lsn = " + DbLsn.getNoFormatString(getLastLsn()) + 
-                     " reposition = " + DbLsn.getNoFormatString(startLsn));
+                throw EnvironmentFailureException
+                        .unexpectedState("Feeder forward scanning should not be repositioned to "
+                                + " a position earlier than the current position. Current" + " lsn = "
+                                + DbLsn.getNoFormatString(getLastLsn()) + " reposition = "
+                                + DbLsn.getNoFormatString(startLsn));
             }
         } else {
             if (DbLsn.compareTo(getLastLsn(), startLsn) < 0) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("Feeder backward scanning should not be repositioned to " +
-                     " a position later than the current position. Current" +
-                     " lsn = " + DbLsn.getNoFormatString(getLastLsn()) + 
-                     " reposition = " + DbLsn.getNoFormatString(startLsn));
+                throw EnvironmentFailureException
+                        .unexpectedState("Feeder backward scanning should not be repositioned to "
+                                + " a position later than the current position. Current" + " lsn = "
+                                + DbLsn.getNoFormatString(getLastLsn()) + " reposition = "
+                                + DbLsn.getNoFormatString(startLsn));
             }
         }
 
@@ -138,11 +127,9 @@ abstract class VLSNReader extends FileReader {
     protected boolean processEntry(ByteBuffer entryBuffer) {
         ByteBuffer buffer = entryBuffer.slice();
         buffer.limit(currentEntryHeader.getItemSize());
-        currentFeedRecord =
-            new OutputWireRecord(envImpl, currentEntryHeader, buffer);
+        currentFeedRecord = new OutputWireRecord(envImpl, currentEntryHeader, buffer);
 
-        entryBuffer.position(entryBuffer.position() +
-                             currentEntryHeader.getItemSize());
+        entryBuffer.position(entryBuffer.position() + currentEntryHeader.getItemSize());
         return true;
     }
 

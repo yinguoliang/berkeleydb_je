@@ -39,8 +39,7 @@ public class RepJEDiagnostics extends JEDiagnostics {
     }
 
     @Override
-    protected void doRegisterMBean(Environment useEnv)
-        throws Exception {
+    protected void doRegisterMBean(Environment useEnv) throws Exception {
 
         server.registerMBean(new RepJEDiagnostics(useEnv), jeName);
     }

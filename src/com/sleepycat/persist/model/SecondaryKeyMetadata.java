@@ -14,12 +14,12 @@
 package com.sleepycat.persist.model;
 
 /**
- * The metadata for a secondary key field.  A secondary key may be specified
- * with the {@link SecondaryKey} annotation.
- *
- * <p>{@code SecondaryKeyMetadata} objects are thread-safe.  Multiple threads
- * may safely call the methods of a shared {@code SecondaryKeyMetadata}
- * object.</p>
+ * The metadata for a secondary key field. A secondary key may be specified with
+ * the {@link SecondaryKey} annotation.
+ * <p>
+ * {@code SecondaryKeyMetadata} objects are thread-safe. Multiple threads may
+ * safely call the methods of a shared {@code SecondaryKeyMetadata} object.
+ * </p>
  *
  * @author Mark Hayes
  */
@@ -27,11 +27,11 @@ public class SecondaryKeyMetadata extends FieldMetadata {
 
     private static final long serialVersionUID = 8118924993396722502L;
 
-    private String keyName;
-    private Relationship relationship;
-    private String elementClassName;
-    private String relatedEntity;
-    private DeleteAction deleteAction;
+    private String            keyName;
+    private Relationship      relationship;
+    private String            elementClassName;
+    private String            relatedEntity;
+    private DeleteAction      deleteAction;
 
     /**
      * Used by an {@code EntityModel} to construct secondary key metadata.
@@ -39,20 +39,15 @@ public class SecondaryKeyMetadata extends FieldMetadata {
      * @param name the field name.
      * @param className the class name.
      * @param declaringClassName the name of the class where the field is
-     * declared.
+     *            declared.
      * @param elementClassName the element class name.
      * @param keyName the key name.
      * @param relationship the Relationship.
      * @param relatedEntity the class name of the related (foreign) entity.
      * @param deleteAction the DeleteAction.
      */
-    public SecondaryKeyMetadata(String name,
-                                String className,
-                                String declaringClassName,
-                                String elementClassName,
-                                String keyName,
-                                Relationship relationship,
-                                String relatedEntity,
+    public SecondaryKeyMetadata(String name, String className, String declaringClassName, String elementClassName,
+                                String keyName, Relationship relationship, String relatedEntity,
                                 DeleteAction deleteAction) {
         super(name, className, declaringClassName);
         this.elementClassName = elementClassName;
@@ -63,10 +58,10 @@ public class SecondaryKeyMetadata extends FieldMetadata {
     }
 
     /**
-     * Returns the class name of the array or collection element for a {@link
-     * Relationship#ONE_TO_MANY ONE_TO_MANY} or {@link
-     * Relationship#MANY_TO_MANY MANY_TO_MANY} relationship, or null for a
-     * Relationship#ONE_TO_ONE ONE_TO_ONE} or {@link Relationship#MANY_TO_ONE
+     * Returns the class name of the array or collection element for a
+     * {@link Relationship#ONE_TO_MANY ONE_TO_MANY} or
+     * {@link Relationship#MANY_TO_MANY MANY_TO_MANY} relationship, or null for
+     * a Relationship#ONE_TO_ONE ONE_TO_ONE} or {@link Relationship#MANY_TO_ONE
      * MANY_TO_ONE} relationship.
      *
      * @return the element class name.
@@ -86,8 +81,8 @@ public class SecondaryKeyMetadata extends FieldMetadata {
 
     /**
      * Returns the relationship between instances of the entity class and the
-     * secondary keys.  This may be specified using the {@link
-     * SecondaryKey#relate} annotation.
+     * secondary keys. This may be specified using the
+     * {@link SecondaryKey#relate} annotation.
      *
      * @return the Relationship.
      */
@@ -96,9 +91,9 @@ public class SecondaryKeyMetadata extends FieldMetadata {
     }
 
     /**
-     * Returns the class name of the related (foreign) entity, for which
-     * foreign key constraints are specified using the {@link
-     * SecondaryKey#relatedEntity} annotation.
+     * Returns the class name of the related (foreign) entity, for which foreign
+     * key constraints are specified using the
+     * {@link SecondaryKey#relatedEntity} annotation.
      *
      * @return the class name of the related (foreign) entity.
      */
@@ -109,8 +104,8 @@ public class SecondaryKeyMetadata extends FieldMetadata {
     /**
      * Returns the action to take when a related entity is deleted having a
      * primary key value that exists as a secondary key value for this entity.
-     * This may be specified using the {@link
-     * SecondaryKey#onRelatedEntityDelete} annotation.
+     * This may be specified using the
+     * {@link SecondaryKey#onRelatedEntityDelete} annotation.
      *
      * @return the DeleteAction.
      */
@@ -122,13 +117,11 @@ public class SecondaryKeyMetadata extends FieldMetadata {
     public boolean equals(Object other) {
         if (other instanceof SecondaryKeyMetadata) {
             SecondaryKeyMetadata o = (SecondaryKeyMetadata) other;
-            return super.equals(o) &&
-                   relationship == o.relationship &&
-                   ClassMetadata.nullOrEqual(deleteAction, o.deleteAction) &&
-                   ClassMetadata.nullOrEqual(keyName, o.keyName) &&
-                   ClassMetadata.nullOrEqual(elementClassName,
-                                             o.elementClassName) &&
-                   ClassMetadata.nullOrEqual(relatedEntity, o.relatedEntity);
+            return super.equals(o) && relationship == o.relationship
+                    && ClassMetadata.nullOrEqual(deleteAction, o.deleteAction)
+                    && ClassMetadata.nullOrEqual(keyName, o.keyName)
+                    && ClassMetadata.nullOrEqual(elementClassName, o.elementClassName)
+                    && ClassMetadata.nullOrEqual(relatedEntity, o.relatedEntity);
         } else {
             return false;
         }
@@ -136,11 +129,8 @@ public class SecondaryKeyMetadata extends FieldMetadata {
 
     @Override
     public int hashCode() {
-        return super.hashCode() +
-               relationship.hashCode() +
-               ClassMetadata.hashCode(deleteAction) +
-               ClassMetadata.hashCode(keyName) +
-               ClassMetadata.hashCode(elementClassName) +
-               ClassMetadata.hashCode(relatedEntity);
+        return super.hashCode() + relationship.hashCode() + ClassMetadata.hashCode(deleteAction)
+                + ClassMetadata.hashCode(keyName) + ClassMetadata.hashCode(elementClassName)
+                + ClassMetadata.hashCode(relatedEntity);
     }
 }

@@ -18,29 +18,26 @@ import com.sleepycat.je.utilint.StatDefinition.StatType;
 /**
  * A JE stat that maintains a map of individual {@link LongDiffStat} values
  * which can be looked up with a String key, and that returns results as a
- * formatted string.  Only supports CUMULATIVE stats.
+ * formatted string. Only supports CUMULATIVE stats.
  */
 public final class LongDiffMapStat extends MapStat<Long, LongDiffStat> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The maximum time, in milliseconds, that a computed difference is
-     * valid.
+     * The maximum time, in milliseconds, that a computed difference is valid.
      */
-    private final long validityMillis;
+    private final long        validityMillis;
 
     /**
-     * Creates an instance of this class.  The definition type must be
+     * Creates an instance of this class. The definition type must be
      * CUMULATIVE.
      *
      * @param group the owning group
      * @param definition the associated definition
      * @param validityMillis the amount of time, in milliseconds, which a
-     * computed difference remains valid
+     *            computed difference remains valid
      */
-    public LongDiffMapStat(StatGroup group,
-                           StatDefinition definition,
-                           long validityMillis) {
+    public LongDiffMapStat(StatGroup group, StatDefinition definition, long validityMillis) {
         super(group, definition);
         assert definition.getType() == StatType.CUMULATIVE;
         assert validityMillis > 0;
@@ -79,5 +76,6 @@ public final class LongDiffMapStat extends MapStat<Long, LongDiffStat> {
 
     /** Does nothing for a non-additive stat. */
     @Override
-    public synchronized void negate() { }
+    public synchronized void negate() {
+    }
 }

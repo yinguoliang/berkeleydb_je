@@ -14,8 +14,8 @@
 package com.sleepycat.persist.impl;
 
 /**
- * Base class for EntityInput implementations.  RecordInput cannot use this
- * base class because it extends TupleInput, so it repeats the code here.
+ * Base class for EntityInput implementations. RecordInput cannot use this base
+ * class because it extends TupleInput, so it repeats the code here.
  *
  * @author Mark Hayes
  */

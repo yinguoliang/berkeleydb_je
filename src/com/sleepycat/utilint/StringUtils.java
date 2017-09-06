@@ -24,25 +24,25 @@ import java.nio.charset.CharacterCodingException;
 public class StringUtils {
 
     private final static Charset ASCII = Charset.forName("US-ASCII");
-    private final static Charset UTF8 = Charset.forName("UTF-8");
+    private final static Charset UTF8  = Charset.forName("UTF-8");
 
     /**
      * In all src and test code, the String(byte[], ...) constructor and
      * String.getBytes method must always be passed a Charset, to avoid
-     * portability issues.  Otherwise, portability issues will occur when
-     * running on a JVM plataform with a non-western default charset, the
-     * EBCDIC encoding (on z/OS), etc.  [#20967]
+     * portability issues. Otherwise, portability issues will occur when running
+     * on a JVM plataform with a non-western default charset, the EBCDIC
+     * encoding (on z/OS), etc. [#20967]
      * <p>
      * In most cases, the UTF8 or ASCII charset should be used for portability.
-     * UTF8 should be used when any character may be represented.  ASCII can be
-     * used when all characters are in the ASCII range.  The default charset
-     * should only be used when handling user-input data directly, e.g.,
-     * console input/output or user-visible files.
+     * UTF8 should be used when any character may be represented. ASCII can be
+     * used when all characters are in the ASCII range. The default charset
+     * should only be used when handling user-input data directly, e.g., console
+     * input/output or user-visible files.
      * <p>
      * Rather than passing the charset as a string (getBytes("UTF-8")), the
-     * Charset objects defined here should be passed (getBytes(UTF8)).  Not
-     * only is using a Charset object slightly more efficient because it avoids
-     * a lookup, even more importantly it avoids having to clutter code with a
+     * Charset objects defined here should be passed (getBytes(UTF8)). Not only
+     * is using a Charset object slightly more efficient because it avoids a
+     * lookup, even more importantly it avoids having to clutter code with a
      * catch for java.io.UnsupportedEncodingException, which should never be
      * thrown for the "UTF-8" or "US-ASCII" charsets.
      */

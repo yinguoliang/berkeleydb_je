@@ -18,8 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * A stat component based on an AtomicLong.
  */
-public class AtomicLongComponent
-        extends MapStatComponent<Long, AtomicLongComponent> {
+public class AtomicLongComponent extends MapStatComponent<Long, AtomicLongComponent> {
 
     final AtomicLong val;
 

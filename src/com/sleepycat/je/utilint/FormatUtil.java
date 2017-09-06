@@ -38,7 +38,7 @@ public class FormatUtil {
         long rend = rstart;
 
         while (i.hasNext()) {
-            final long f= i.next();
+            final long f = i.next();
             if (f == (rend + 1)) {
                 /* Continue the existing range. */
                 rend++;
@@ -48,15 +48,14 @@ public class FormatUtil {
             /* flush and start new range */
             flushRange(sb, rstart, rend);
             rstart = rend = f;
-        };
+        }
+        ;
 
         flushRange(sb, rstart, rend);
         return sb.toString();
     }
 
-    private static void flushRange(final StringBuilder sb,
-                                   long rstart,
-                                   long rend) {
+    private static void flushRange(final StringBuilder sb, long rstart, long rend) {
         if (rstart == -1) {
             return;
         }
@@ -64,9 +63,7 @@ public class FormatUtil {
         if (rstart == rend) {
             sb.append(" 0x").append(Long.toHexString(rstart));
         } else {
-            sb.append(" 0x").append(Long.toHexString(rstart)).
-            append("-").
-            append("0x").append(Long.toHexString(rend));
+            sb.append(" 0x").append(Long.toHexString(rstart)).append("-").append("0x").append(Long.toHexString(rend));
         }
     }
 }

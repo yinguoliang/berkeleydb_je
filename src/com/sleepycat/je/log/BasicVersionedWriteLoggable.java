@@ -19,15 +19,15 @@ import java.util.Collections;
 
 /**
  * A basic implementation of {@link VersionedWriteLoggable} that provides for
- * writing in a single format by default.  Starting with log version 9, as
+ * writing in a single format by default. Starting with log version 9, as
  * specified by {@link LogEntryType#LOG_VERSION_REPLICATE_OLDER}, loggable
- * classes whose log format has changed since the previous log version will
- * need to override the {@link VersionedWriteLoggable#getLastFormatChange},
- * {@link #getLogSize(int, boolean)} and {@link #writeToLog(ByteBuffer,
- * int, boolean)} methods to support writing the entry in earlier log formats.
+ * classes whose log format has changed since the previous log version will need
+ * to override the {@link VersionedWriteLoggable#getLastFormatChange},
+ * {@link #getLogSize(int, boolean)} and
+ * {@link #writeToLog(ByteBuffer, int, boolean)} methods to support writing the
+ * entry in earlier log formats.
  */
-public abstract class BasicVersionedWriteLoggable
-        implements VersionedWriteLoggable {
+public abstract class BasicVersionedWriteLoggable implements VersionedWriteLoggable {
 
     /**
      * Creates an instance of this class.
@@ -37,13 +37,12 @@ public abstract class BasicVersionedWriteLoggable
 
     @Override
     public int getLogSize() {
-        return getLogSize(LogEntryType.LOG_VERSION, false /*forReplication*/);
+        return getLogSize(LogEntryType.LOG_VERSION, false /* forReplication */);
     }
 
     @Override
     public void writeToLog(final ByteBuffer logBuffer) {
-        writeToLog(
-            logBuffer, LogEntryType.LOG_VERSION, false /*forReplication*/);
+        writeToLog(logBuffer, LogEntryType.LOG_VERSION, false /* forReplication */);
     }
 
     @Override
@@ -52,8 +51,7 @@ public abstract class BasicVersionedWriteLoggable
     }
 
     @Override
-    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer,
-                                                 final int srcVersion,
+    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer, final int srcVersion,
                                                  final int destVersion) {
         return false;
     }

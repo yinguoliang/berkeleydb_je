@@ -20,16 +20,15 @@ import com.sleepycat.je.Transaction;
  * through its lifecycle. The following table captures the relationship between
  * transaction lifecycle operations and their trigger methods.
  * <p>
- * WARNING: Only transient triggers are currently supported, and the
- * documention below has not yet been updated to reflect this fact.  See
- * details at the top of Trigger.java.  Also see the warning at the top of
+ * WARNING: Only transient triggers are currently supported, and the documention
+ * below has not yet been updated to reflect this fact. See details at the top
+ * of Trigger.java. Also see the warning at the top of
  * ReplicatedDatabaseTrigger.java.
  * <p>
  * <table BORDER CELLPADDING=3 CELLSPACING=1 width="50%" align="center">
  * <tr>
  * <td ALIGN=CENTER><b>Transaction Operation</b></td>
  * <td ALIGN=CENTER><b>Trigger Method</b></td>
- *
  * <tr>
  * <td>{@link Transaction#commit Transaction.commit}. If the database was was
  * modified in the scope of the transaction.</td>
@@ -63,8 +62,7 @@ import com.sleepycat.je.Transaction;
  * automatically by this transaction. For example, triggers defined solely to
  * create additional indexes in the environment do not need to define
  * transaction triggers. Only sophisticated applications that manage state
- * outside of JE, or in independent transactions typically define such
- * triggers.
+ * outside of JE, or in independent transactions typically define such triggers.
  */
 public interface TransactionTrigger {
 

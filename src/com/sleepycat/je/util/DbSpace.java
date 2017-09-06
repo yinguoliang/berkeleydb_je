@@ -40,6 +40,7 @@ import com.sleepycat.je.utilint.DbLsn;
 
 /**
  * DbSpace displays the disk space utilization for an environment.
+ * 
  * <pre>
  * usage: java { com.sleepycat.je.util.DbSpace |
  *               -jar je-&lt;version&gt;.jar DbSpace }
@@ -59,26 +60,20 @@ import com.sleepycat.je.utilint.DbLsn;
  */
 public class DbSpace {
 
-    private static final String DATE_FORMAT = "yyyy-MM-dd'T'HHZ";
+    private static final String DATE_FORMAT  = "yyyy-MM-dd'T'HHZ";
     private static final String DATE_EXAMPLE = "2016-03-17T22-0800";
 
-    private static final String USAGE =
-        "usage: " + CmdUtil.getJavaCommand(DbSpace.class) + "\n" +
-        "       -h <dir> # environment home directory\n" +
-        "       [-q]     # quiet, print grand totals only\n" +
-        "       [-u]     # sort by average utilization\n" +
-        "       [-d]     # dump file summary details\n" +
-        "       [-r]     # recalculate utilization (expensive)\n" +
-        "       [-R]     # recalculate expired data (expensive)\n" +
-        "       [-s]     # start file number or LSN, in hex\n" +
-        "       [-e]     # end file number or LSN, in hex\n" +
-        "       [-t]     # time for calculating expired data,\n" +
-        "                #   format: " + DATE_FORMAT + "\n" +
-        "                #  example: " + DATE_EXAMPLE + "\n" +
-        "       [-V]     # print JE version number";
+    private static final String USAGE        = "usage: " + CmdUtil.getJavaCommand(DbSpace.class) + "\n"
+            + "       -h <dir> # environment home directory\n" + "       [-q]     # quiet, print grand totals only\n"
+            + "       [-u]     # sort by average utilization\n" + "       [-d]     # dump file summary details\n"
+            + "       [-r]     # recalculate utilization (expensive)\n"
+            + "       [-R]     # recalculate expired data (expensive)\n"
+            + "       [-s]     # start file number or LSN, in hex\n"
+            + "       [-e]     # end file number or LSN, in hex\n"
+            + "       [-t]     # time for calculating expired data,\n" + "                #   format: " + DATE_FORMAT
+            + "\n" + "                #  example: " + DATE_EXAMPLE + "\n" + "       [-V]     # print JE version number";
 
-    public static void main(String argv[])
-        throws Exception {
+    public static void main(String argv[]) throws Exception {
 
         DbSpace space = new DbSpace();
         space.parseArgs(argv);
@@ -104,16 +99,16 @@ public class DbSpace {
         }
     }
 
-    private File envHome = null;
+    private File            envHome         = null;
     private EnvironmentImpl envImpl;
-    private boolean quiet = false;
-    private boolean sorted = false;
-    private boolean details = false;
-    private boolean doRecalcUtil = false;
-    private boolean doRecalcExpired = false;
-    private long startLsn = DbLsn.NULL_LSN;
-    private long finishLsn = DbLsn.NULL_LSN;
-    private long targetTime = System.currentTimeMillis();
+    private boolean         quiet           = false;
+    private boolean         sorted          = false;
+    private boolean         details         = false;
+    private boolean         doRecalcUtil    = false;
+    private boolean         doRecalcExpired = false;
+    private long            startLsn        = DbLsn.NULL_LSN;
+    private long            finishLsn       = DbLsn.NULL_LSN;
+    private long            targetTime      = System.currentTimeMillis();
 
     private DbSpace() {
     }
@@ -122,21 +117,16 @@ public class DbSpace {
      * Creates a DbSpace object for calculating utilization using an open
      * Environment.
      */
-    public DbSpace(Environment env,
-                   boolean quiet,
-                   boolean details,
-                   boolean sorted) {
+    public DbSpace(Environment env, boolean quiet, boolean details, boolean sorted) {
         this(DbInternal.getNonNullEnvImpl(env), quiet, details, sorted);
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    public DbSpace(EnvironmentImpl envImpl,
-                   boolean quiet,
-                   boolean details,
-                   boolean sorted) {
+    public DbSpace(EnvironmentImpl envImpl, boolean quiet, boolean details, boolean sorted) {
         initEnv(envImpl);
         this.quiet = quiet;
         this.details = details;
@@ -207,9 +197,7 @@ public class DbSpace {
                     if (date != null) {
                         targetTime = date.getTime();
                     } else {
-                        printUsage(
-                            "-t doesn't match format: " + DATE_FORMAT +
-                            " example: " + DATE_EXAMPLE);
+                        printUsage("-t doesn't match format: " + DATE_FORMAT + " example: " + DATE_EXAMPLE);
                     }
                 } else {
                     printUsage("-t requires an argument");
@@ -228,17 +216,17 @@ public class DbSpace {
 
     /**
      * Sets the recalculation property, which if true causes a more expensive
-     * recalculation of utilization to be performed for debugging purposes.
-     * This property is false by default.
+     * recalculation of utilization to be performed for debugging purposes. This
+     * property is false by default.
      */
     public void setRecalculate(boolean recalc) {
         this.doRecalcUtil = recalc;
     }
 
     /**
-     * Sets the start file number, which is a lower bound on the range of
-     * files for which utilization is reported and (optionally) recalculated.
-     * By default there is no lower bound.
+     * Sets the start file number, which is a lower bound on the range of files
+     * for which utilization is reported and (optionally) recalculated. By
+     * default there is no lower bound.
      */
     public void setStartFile(long startFile) {
         this.startLsn = startFile;
@@ -246,8 +234,8 @@ public class DbSpace {
 
     /**
      * Sets the ending file number, which is an upper bound on the range of
-     * files for which utilization is reported and (optionally) recalculated.
-     * By default there is no upper bound.
+     * files for which utilization is reported and (optionally) recalculated. By
+     * default there is no upper bound.
      */
     public void setEndFile(long endFile) {
         this.finishLsn = endFile;
@@ -263,26 +251,19 @@ public class DbSpace {
     /**
      * Calculates utilization and prints a report to the given output stream.
      */
-    public void print(PrintStream out)
-        throws DatabaseException {
+    public void print(PrintStream out) throws DatabaseException {
 
-        long startFile = (startLsn != DbLsn.NULL_LSN) ?
-            DbLsn.getFileNumber(startLsn) : 0;
+        long startFile = (startLsn != DbLsn.NULL_LSN) ? DbLsn.getFileNumber(startLsn) : 0;
 
-        long finishFile = (finishLsn != DbLsn.NULL_LSN) ?
-            DbLsn.getFileNumber(finishLsn) : Long.MAX_VALUE;
+        long finishFile = (finishLsn != DbLsn.NULL_LSN) ? DbLsn.getFileNumber(finishLsn) : Long.MAX_VALUE;
 
-        SortedMap<Long,FileSummary> map =
-            envImpl.getUtilizationProfile().getFileSummaryMap(true).
-            subMap(startFile, finishFile);
+        SortedMap<Long, FileSummary> map = envImpl.getUtilizationProfile().getFileSummaryMap(true).subMap(startFile,
+                finishFile);
 
-        Map<Long, FileSummary> recalcMap =
-            doRecalcUtil ?
-            UtilizationFileReader.calcFileSummaryMap(
-                envImpl, startLsn, finishLsn) : null;
+        Map<Long, FileSummary> recalcMap = doRecalcUtil
+                ? UtilizationFileReader.calcFileSummaryMap(envImpl, startLsn, finishLsn) : null;
 
-        ExpirationProfile expProfile =
-            new ExpirationProfile(envImpl.getExpirationProfile());
+        ExpirationProfile expProfile = new ExpirationProfile(envImpl.getExpirationProfile());
 
         expProfile.refresh(targetTime);
 
@@ -312,15 +293,13 @@ public class DbSpace {
 
             if (doRecalcExpired) {
 
-                FileProcessor fileProcessor =
-                    envImpl.getCleaner().createProcessor();
+                FileProcessor fileProcessor = envImpl.getCleaner().createProcessor();
 
                 expTracker = fileProcessor.countExpiration(fileNum);
                 recalcExpiredSize = expTracker.getExpiredBytes(targetTime);
             }
 
-            Summary summary = new Summary(
-                fileNum, fs, recalcFs, expiredSize, recalcExpiredSize);
+            Summary summary = new Summary(fileNum, fs, recalcFs, expiredSize, recalcExpiredSize);
 
             if (summaries != null) {
                 summaries[fileIndex] = summary;
@@ -328,23 +307,16 @@ public class DbSpace {
 
             if (details) {
 
-                out.println(
-                    "File 0x" + Long.toHexString(fileNum) +
-                    " expired: " + expiredSize +
-                    " histogram: " + expProfile.toString(fileNum) +
-                    " " + fs);
+                out.println("File 0x" + Long.toHexString(fileNum) + " expired: " + expiredSize + " histogram: "
+                        + expProfile.toString(fileNum) + " " + fs);
 
                 if (recalcMap != null) {
-                    out.println(
-                        "Recalc util 0x" + Long.toHexString(fileNum) +
-                        " " + recalcFs);
+                    out.println("Recalc util 0x" + Long.toHexString(fileNum) + " " + recalcFs);
                 }
 
                 if (expTracker != null) {
-                    out.println(
-                        "Recalc expiration 0x" + Long.toHexString(fileNum) +
-                        " recalcExpired: " + recalcExpiredSize +
-                        " recalcHistogram: " + expTracker.toString());
+                    out.println("Recalc expiration 0x" + Long.toHexString(fileNum) + " recalcExpired: "
+                            + recalcExpiredSize + " recalcHistogram: " + expTracker.toString());
                 }
             }
 
@@ -356,9 +328,8 @@ public class DbSpace {
             out.println();
         }
 
-        out.println(
-            doRecalcExpired ? Summary.RECALC_EXPIRED_HEADER :
-                (doRecalcUtil ? Summary.RECALC_HEADER : Summary.HEADER));
+        out.println(doRecalcExpired ? Summary.RECALC_EXPIRED_HEADER
+                : (doRecalcUtil ? Summary.RECALC_HEADER : Summary.HEADER));
 
         if (summaries != null) {
             if (sorted) {
@@ -379,54 +350,46 @@ public class DbSpace {
 
             DateFormat format = new SimpleDateFormat(DATE_FORMAT);
 
-            System.out.format(
-                "%nAs of %s, %,d kB are expired, resulting in the%n" +
-                "differences between minimum and maximum utilization.%n",
+            System.out.format("%nAs of %s, %,d kB are expired, resulting in the%n"
+                    + "differences between minimum and maximum utilization.%n",
 
-            format.format(targetTime), totals.expiredSize / 1024);
+                    format.format(targetTime), totals.expiredSize / 1024);
         }
     }
 
     private class Summary {
 
-        static final String HEADER =
-            "                      % Utilized\n" +
-            "  File    Size (kB)  Avg  Min  Max  \n" +
-            "--------  ---------  ---- ---  ---";
-          // 12345678  123456789  123  123  123
-          //         12         12   12   12
-          // TOTALS:
+        static final String HEADER                = "                      % Utilized\n"
+                + "  File    Size (kB)  Avg  Min  Max  \n" + "--------  ---------  ---- ---  ---";
+        // 12345678  123456789  123  123  123
+        //         12         12   12   12
+        // TOTALS:
 
-        static final String RECALC_HEADER =
-            "                      % Utilized    Recalculated\n" +
-            "  File    Size (kB)  Avg  Min  Max  Avg  Min  Max\n" +
-            "--------  ---------  ---  ---  ---  ---  ---  ---";
-          // 12345678  123456789  123  123  123  123  123  123
-          //         12         12   12   12   12   12   12
-          // TOTALS:
+        static final String RECALC_HEADER         = "                      % Utilized    Recalculated\n"
+                + "  File    Size (kB)  Avg  Min  Max  Avg  Min  Max\n"
+                + "--------  ---------  ---  ---  ---  ---  ---  ---";
+        // 12345678  123456789  123  123  123  123  123  123
+        //         12         12   12   12   12   12   12
+        // TOTALS:
 
-        static final String RECALC_EXPIRED_HEADER =
-            "                      % Utilized    w/Expiration\n" +
-            "  File    Size (kB)  Avg  Min  Max  Recalculated\n" +
-            "--------  ---------  ---  ---  ---  ------------";
-          // 12345678  123456789  123  123  123      123
-          //         12         12   12   12   123456
-          // TOTALS:
+        static final String RECALC_EXPIRED_HEADER = "                      % Utilized    w/Expiration\n"
+                + "  File    Size (kB)  Avg  Min  Max  Recalculated\n"
+                + "--------  ---------  ---  ---  ---  ------------";
+        // 12345678  123456789  123  123  123      123
+        //         12         12   12   12   123456
+        // TOTALS:
 
-        Long fileNum;
-        long totalSize;
-        long obsoleteSize;
-        long recalcObsoleteSize;
-        long expiredSize;
-        long recalcExpiredSize;
+        Long                fileNum;
+        long                totalSize;
+        long                obsoleteSize;
+        long                recalcObsoleteSize;
+        long                expiredSize;
+        long                recalcExpiredSize;
 
-        Summary() {}
+        Summary() {
+        }
 
-        Summary(Long fileNum,
-                FileSummary summary,
-                FileSummary recalcSummary,
-                int expiredSize,
-                int recalcExpiredSize) {
+        Summary(Long fileNum, FileSummary summary, FileSummary recalcSummary, int expiredSize, int recalcExpiredSize) {
             this.fileNum = fileNum;
             totalSize = summary.totalSize;
             obsoleteSize = summary.getObsoleteSize();
@@ -511,21 +474,14 @@ public class DbSpace {
         }
 
         private int minUtilization(long obsolete, long expired) {
-            return FileSummary.utilization(
-                Math.min(obsolete + expired, totalSize),
-                totalSize);
+            return FileSummary.utilization(Math.min(obsolete + expired, totalSize), totalSize);
         }
 
         private int maxUtilization(long obsolete, long expired) {
-            return FileSummary.utilization(
-                Math.max(obsolete, expired),
-                totalSize);
+            return FileSummary.utilization(Math.max(obsolete, expired), totalSize);
         }
 
-        private void pad(PrintStream out,
-                         String val,
-                         int digits,
-                         char  padChar) {
+        private void pad(PrintStream out, String val, int digits, char padChar) {
             int padSize = digits - val.length();
             for (int i = 0; i < padSize; i += 1) {
                 out.print(padChar);

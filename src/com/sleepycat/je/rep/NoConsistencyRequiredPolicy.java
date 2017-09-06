@@ -20,17 +20,17 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
 
 /**
  * A consistency policy that lets a transaction on a replica using this policy
- * proceed regardless of the state of the Replica relative to the Master. It
- * can also be used to access a database when a replication node is in a
- * DETACHED state.
+ * proceed regardless of the state of the Replica relative to the Master. It can
+ * also be used to access a database when a replication node is in a DETACHED
+ * state.
  * <p>
  * Consistency policies are specified at either a per-transaction level through
  * {@link com.sleepycat.je.TransactionConfig#setConsistencyPolicy} or as an
- * replication node wide default through {@link
- * com.sleepycat.je.rep.ReplicationConfig#setConsistencyPolicy}
+ * replication node wide default through
+ * {@link com.sleepycat.je.rep.ReplicationConfig#setConsistencyPolicy}
  *
- * @see <a href="{@docRoot}/../ReplicationGuide/consistency.html"
- * target="_top">Managing Consistency</a>
+ * @see <a href="{@docRoot}/../ReplicationGuide/consistency.html" target="_top">
+ *      Managing Consistency</a>
  */
 public class NoConsistencyRequiredPolicy implements ReplicaConsistencyPolicy {
 
@@ -38,13 +38,12 @@ public class NoConsistencyRequiredPolicy implements ReplicaConsistencyPolicy {
      * The name:{@value} associated with this policy. The name can be used when
      * constructing policy property values for use in je.properties files.
      */
-    public static final String NAME = "NoConsistencyRequiredPolicy";
+    public static final String                      NAME           = "NoConsistencyRequiredPolicy";
 
     /**
      * Convenience instance.
      */
-    public final static NoConsistencyRequiredPolicy NO_CONSISTENCY =
-        new NoConsistencyRequiredPolicy();
+    public final static NoConsistencyRequiredPolicy NO_CONSISTENCY = new NoConsistencyRequiredPolicy();
 
     /**
      * Create a NoConsistencyRequiredPolicy.
@@ -54,6 +53,7 @@ public class NoConsistencyRequiredPolicy implements ReplicaConsistencyPolicy {
 
     /**
      * Returns the name:{@value #NAME}, associated with this policy.
+     * 
      * @see #NAME
      */
     @Override

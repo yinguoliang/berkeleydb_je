@@ -20,22 +20,18 @@ import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.dbi.EnvironmentImpl;
 
 /**
- * FileSource is used as a channel to a log file when faulting in objects
- * from the log.
+ * FileSource is used as a channel to a log file when faulting in objects from
+ * the log.
  */
 class FileSource implements LogSource {
 
     private final RandomAccessFile file;
-    private final int readBufferSize;
-    private final FileManager fileManager;
-    private final long fileNum;
-    private final int logVersion;
+    private final int              readBufferSize;
+    private final FileManager      fileManager;
+    private final long             fileNum;
+    private final int              logVersion;
 
-    FileSource(RandomAccessFile file,
-               int readBufferSize,
-               FileManager fileManager,
-               long fileNum,
-               int logVersion) {
+    FileSource(RandomAccessFile file, int readBufferSize, FileManager fileManager, long fileNum, int logVersion) {
         this.file = file;
         this.readBufferSize = readBufferSize;
         this.fileManager = fileManager;
@@ -47,15 +43,13 @@ class FileSource implements LogSource {
      * @throws DatabaseException in subclasses.
      * @see LogSource#release
      */
-    public void release()
-        throws DatabaseException {
+    public void release() throws DatabaseException {
     }
 
     /**
      * @see LogSource#getBytes
      */
-    public ByteBuffer getBytes(long fileOffset)
-        throws DatabaseException {
+    public ByteBuffer getBytes(long fileOffset) throws DatabaseException {
 
         return getBytes(fileOffset, readBufferSize);
     }
@@ -63,8 +57,7 @@ class FileSource implements LogSource {
     /**
      * @see LogSource#getBytes
      */
-    public ByteBuffer getBytes(long fileOffset, int numBytes)
-        throws DatabaseException {
+    public ByteBuffer getBytes(long fileOffset, int numBytes) throws DatabaseException {
 
         /* Fill up buffer from file. */
         ByteBuffer destBuf = ByteBuffer.allocate(numBytes);

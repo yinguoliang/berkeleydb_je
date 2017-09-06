@@ -19,6 +19,7 @@ import com.sleepycat.je.dbi.DupKeyData;
 import com.sleepycat.je.dbi.MemoryBudget;
 import com.sleepycat.je.evictor.Evictor;
 import com.sleepycat.je.utilint.SizeofMarker;
+import com.test.Utils;
 
 /**
  * The abstract class that defines the various formats used to represent the
@@ -203,7 +204,8 @@ public abstract class INKeyRep extends INArrayRep<INKeyRep, INKeyRep.Type, byte[
         }
 
         @Override
-        public int compareKeys(byte[] searchKey, byte[] prefix, int idx, boolean embeddedData,  Comparator<byte[]> comparator) {
+        public int compareKeys(byte[] searchKey, byte[] prefix, int idx, boolean embeddedData,
+                               Comparator<byte[]> comparator) {
             if (comparator != null) {
                 byte[] myKey = getFullKey(prefix, idx, embeddedData);
                 return Key.compareKeys(searchKey, myKey, comparator);
@@ -216,7 +218,8 @@ public abstract class INKeyRep extends INArrayRep<INKeyRep, INKeyRep.Type, byte[
                 return compareSuffixes(searchKey, 0, searchKey.length, idx, embeddedData);
             }
 
-            cmp = Key.compareUnsignedBytes(searchKey, 0, Math.min(searchKey.length, prefix.length), prefix, 0, prefix.length);
+            cmp = Key.compareUnsignedBytes(searchKey, 0, Math.min(searchKey.length, prefix.length), prefix, 0,
+                    prefix.length);
 
             if (cmp == 0) {
 
@@ -233,6 +236,8 @@ public abstract class INKeyRep extends INArrayRep<INKeyRep, INKeyRep.Type, byte[
                                     boolean embeddedData) {
 
             byte[] myKey = keys[idx];
+            Utils.checkBytes(searchKey);
+            Utils.checkBytes(myKey);
             int myKeyLen;
 
             if (myKey == null) {

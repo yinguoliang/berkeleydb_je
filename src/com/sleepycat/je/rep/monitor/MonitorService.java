@@ -34,35 +34,31 @@ import com.sleepycat.je.utilint.LoggerUtils;
 import com.sleepycat.je.utilint.TestHook;
 
 /**
- * @hidden
- * For internal use only.
+ * @hidden For internal use only.
  */
 public class MonitorService extends ExecutingService {
 
     /*
-     * Test hooks that are run before processing various events.  If the hooks
+     * Test hooks that are run before processing various events. If the hooks
      * throw IllegalStateException, then the event will not be processed.
      */
     public static volatile TestHook<GroupChangeEvent> processGroupChangeHook;
-    public static volatile TestHook<JoinGroupEvent> processJoinGroupHook;
-    public static volatile TestHook<LeaveGroupEvent> processLeaveGroupHook;
+    public static volatile TestHook<JoinGroupEvent>   processJoinGroupHook;
+    public static volatile TestHook<LeaveGroupEvent>  processLeaveGroupHook;
 
-    private final Monitor monitor;
-    private final Protocol protocol;
-    private final Logger logger;
-    private final Formatter formatter;
+    private final Monitor                             monitor;
+    private final Protocol                            protocol;
+    private final Logger                              logger;
+    private final Formatter                           formatter;
 
     /* Identifies the Group Service. */
-    public static final String SERVICE_NAME = "Monitor";
+    public static final String                        SERVICE_NAME = "Monitor";
 
-    public MonitorService(Monitor monitor,
-                          ServiceDispatcher dispatcher) {
+    public MonitorService(Monitor monitor, ServiceDispatcher dispatcher) {
         super(SERVICE_NAME, dispatcher);
         this.monitor = monitor;
-        protocol = new Protocol(monitor.getGroupName(),
-                                monitor.getMonitorNameIdPair(),
-                                null,
-                                dispatcher.getChannelFactory());
+        protocol = new Protocol(monitor.getGroupName(), monitor.getMonitorNameIdPair(), null,
+                dispatcher.getChannelFactory());
         logger = LoggerUtils.getLoggerFormatterNeeded(getClass());
         formatter = new ReplicationFormatter(monitor.getMonitorNameIdPair());
     }
@@ -73,10 +69,8 @@ public class MonitorService extends ExecutingService {
      * Notify the monitor about the group change (add/remove a node) event.
      */
     public ResponseMessage process(GroupChange groupChange) {
-        GroupChangeEvent event =
-            new GroupChangeEvent(new ReplicationGroup(groupChange.getGroup()),
-                                 groupChange.getNodeName(),
-                                 groupChange.getOpType());
+        GroupChangeEvent event = new GroupChangeEvent(new ReplicationGroup(groupChange.getGroup()),
+                groupChange.getNodeName(), groupChange.getOpType());
         try {
             assert doHookIfSet(processGroupChangeHook, event);
         } catch (IllegalStateException e) {
@@ -90,9 +84,8 @@ public class MonitorService extends ExecutingService {
      * Notify the monitor about a node has joined the group.
      */
     public ResponseMessage process(JoinGroup joinGroup) {
-        JoinGroupEvent event = new JoinGroupEvent(joinGroup.getNodeName(),
-                                                  joinGroup.getMasterName(),
-                                                  joinGroup.getJoinTime());
+        JoinGroupEvent event = new JoinGroupEvent(joinGroup.getNodeName(), joinGroup.getMasterName(),
+                joinGroup.getJoinTime());
         try {
             assert doHookIfSet(processJoinGroupHook, event);
         } catch (IllegalStateException e) {
@@ -106,12 +99,8 @@ public class MonitorService extends ExecutingService {
      * Notify the monitor about a node has left the group.
      */
     public ResponseMessage process(LeaveGroup leaveGroup) {
-        LeaveGroupEvent event =
-            new LeaveGroupEvent(leaveGroup.getNodeName(),
-                                leaveGroup.getMasterName(),
-                                leaveGroup.getLeaveReason(),
-                                leaveGroup.getJoinTime(),
-                                leaveGroup.getLeaveTime());
+        LeaveGroupEvent event = new LeaveGroupEvent(leaveGroup.getNodeName(), leaveGroup.getMasterName(),
+                leaveGroup.getLeaveReason(), leaveGroup.getJoinTime(), leaveGroup.getLeaveTime());
         try {
             assert doHookIfSet(processLeaveGroupHook, event);
         } catch (IllegalStateException e) {
@@ -127,14 +116,12 @@ public class MonitorService extends ExecutingService {
     }
 
     class MonitorServiceRunnable extends ExecutingRunnable {
-        MonitorServiceRunnable(DataChannel dataChannel,
-                               Protocol protocol) {
+        MonitorServiceRunnable(DataChannel dataChannel, Protocol protocol) {
             super(dataChannel, protocol, false);
         }
 
         @Override
-        protected ResponseMessage getResponse(RequestMessage request)
-            throws IOException {
+        protected ResponseMessage getResponse(RequestMessage request) throws IOException {
 
             return protocol.process(MonitorService.this, request);
         }

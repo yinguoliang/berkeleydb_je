@@ -20,41 +20,46 @@ import com.sleepycat.persist.raw.RawObject;
 import com.sleepycat.persist.raw.RawType;
 
 /**
- * Converts an old version of an object value to conform to the current class
- * or field definition.
- *
- * <p>The {@code Conversion} interface is implemented by the user.  A
+ * Converts an old version of an object value to conform to the current class or
+ * field definition.
+ * <p>
+ * The {@code Conversion} interface is implemented by the user. A
  * {@code Conversion} instance is passed to the {@link Converter#Converter}
- * constructor.</p>
- *
- * <p>The {@code Conversion} interface extends {@link Serializable} and the
+ * constructor.
+ * </p>
+ * <p>
+ * The {@code Conversion} interface extends {@link Serializable} and the
  * {@code Conversion} instance is serialized for storage using standard Java
- * serialization.  Normally, the {@code Conversion} class should only have
+ * serialization. Normally, the {@code Conversion} class should only have
  * transient fields that are initialized in the {@link #initialize} method.
  * While non-transient fields are allowed, care must be taken to only include
- * fields that are serializable and will not pull in large amounts of data.</p>
- *
- * <p>When a class conversion is specified, two special considerations
- * apply:</p>
+ * fields that are serializable and will not pull in large amounts of data.
+ * </p>
+ * <p>
+ * When a class conversion is specified, two special considerations apply:
+ * </p>
  * <ol>
- * <li>A class conversion is only applied when to instances of that class.  The
- * conversion will not be applied when the class when it appears as a
- * superclass of the instance's class.  In this case, a conversion for the
- * instance's class must also be specified.</li>
+ * <li>A class conversion is only applied when to instances of that class. The
+ * conversion will not be applied when the class when it appears as a superclass
+ * of the instance's class. In this case, a conversion for the instance's class
+ * must also be specified.</li>
  * <li>Although field renaming (as well as all other changes) is handled by the
- * conversion method, a field Renamer is still needed when a secondary key
- * field is renamed and field Deleter is still needed when a secondary key
- * field is deleted.  This is necessary for evolution of the metadata;
- * specifically, if the key name changes the database must be renamed and if
- * the key field is deleted the secondary database must be deleted.</li>
+ * conversion method, a field Renamer is still needed when a secondary key field
+ * is renamed and field Deleter is still needed when a secondary key field is
+ * deleted. This is necessary for evolution of the metadata; specifically, if
+ * the key name changes the database must be renamed and if the key field is
+ * deleted the secondary database must be deleted.</li>
  * </ol>
- *
- * <p>The {@code Conversion} class must implement the standard equals method.
- * See {@link #equals} for more information.</p>
- *
- * <p>Conversions of simple types are generally simple.  For example, a {@code
- * String} field that contains only integer values can be easily converted to
- * an {@code int} field:</p>
+ * <p>
+ * The {@code Conversion} class must implement the standard equals method. See
+ * {@link #equals} for more information.
+ * </p>
+ * <p>
+ * Conversions of simple types are generally simple. For example, a {@code
+ * String} field that contains only integer values can be easily converted to an
+ * {@code int} field:
+ * </p>
+ * 
  * <pre class="code">
  *  // The old class.  Version 0 is implied.
  *  //
@@ -95,12 +100,14 @@ import com.sleepycat.persist.raw.RawType;
  *  Converter converter = new Converter(Address.class.getName(), 0,
  *                                      "zipCode", new MyConversion1());
  *
- *  // Configure the converter as described {@link Mutations here}.</pre>
- *
- * <p>A conversion may perform arbitrary transformations on an object.  For
- * example, a conversion may transform a single String address field into an
- * Address object containing four fields for street, city, state and zip
- * code.</p>
+ *  // Configure the converter as described {@link Mutations here}.
+ * </pre>
+ * <p>
+ * A conversion may perform arbitrary transformations on an object. For example,
+ * a conversion may transform a single String address field into an Address
+ * object containing four fields for street, city, state and zip code.
+ * </p>
+ * 
  * <pre class="code">
  *  // The old class.  Version 0 is implied.
  *  //
@@ -168,16 +175,19 @@ import com.sleepycat.persist.raw.RawType;
  *  Converter converter = new Converter(Person.class.getName(), 0,
  *                                      "address", new MyConversion2());
  *
- *  // Configure the converter as described {@link Mutations here}.</pre>
- *
- * <p>Note that when a conversion returns a {@link RawObject}, it must return
- * it with a {@link RawType} that is current as defined by the current class
- * definitions.  The proper types can be obtained from the {@link EntityModel}
- * in the conversion's {@link #initialize initialize} method.</p>
- *
- * <p>A variation on the example above is where several fields in a class
- * (street, city, state and zipCode) are converted to a single field (address).
- * In this case a class converter rather than a field converter is used.</p>
+ *  // Configure the converter as described {@link Mutations here}.
+ * </pre>
+ * <p>
+ * Note that when a conversion returns a {@link RawObject}, it must return it
+ * with a {@link RawType} that is current as defined by the current class
+ * definitions. The proper types can be obtained from the {@link EntityModel} in
+ * the conversion's {@link #initialize initialize} method.
+ * </p>
+ * <p>
+ * A variation on the example above is where several fields in a class (street,
+ * city, state and zipCode) are converted to a single field (address). In this
+ * case a class converter rather than a field converter is used.
+ * </p>
  *
  * <pre class="code">
  *  // The old class.  Version 0 is implied.
@@ -250,12 +260,13 @@ import com.sleepycat.persist.raw.RawType;
  *  Converter converter = new Converter(Person.class.getName(), 0,
  *                                      new MyConversion3());
  *
- *  // Configure the converter as described {@link Mutations here}.</pre>
- *
- *
- * <p>A conversion can also handle changes to class hierarchies.  For example,
- * if a "name" field originally declared in class A is moved to its superclass
- * B, a conversion can move the field value accordingly:</p>
+ *  // Configure the converter as described {@link Mutations here}.
+ * </pre>
+ * <p>
+ * A conversion can also handle changes to class hierarchies. For example, if a
+ * "name" field originally declared in class A is moved to its superclass B, a
+ * conversion can move the field value accordingly:
+ * </p>
  *
  * <pre class="code">
  *  // The old classes.  Version 0 is implied.
@@ -313,14 +324,17 @@ import com.sleepycat.persist.raw.RawType;
  *  Converter converter = new Converter(A.class.getName(), 0,
  *                                      new MyConversion4());
  *
- *  // Configure the converter as described {@link Mutations here}.</pre>
- *
- * <p>A conversion may return an instance of a different class entirely, as
- * long as it conforms to current class definitions and is the type expected
- * in the given context (a subtype of the old type, or a type compatible with
- * the new field type).  For example, a field that is used to discriminate
- * between two types of objects could be removed and replaced by two new
- * subclasses:</p> <pre class="code">
+ *  // Configure the converter as described {@link Mutations here}.
+ * </pre>
+ * <p>
+ * A conversion may return an instance of a different class entirely, as long as
+ * it conforms to current class definitions and is the type expected in the
+ * given context (a subtype of the old type, or a type compatible with the new
+ * field type). For example, a field that is used to discriminate between two
+ * types of objects could be removed and replaced by two new subclasses:
+ * </p>
+ * 
+ * <pre class="code">
  *  // The old class.  Version 0 is implied.
  *  //
  *  {@literal @Persistent}
@@ -376,12 +390,14 @@ import com.sleepycat.persist.raw.RawType;
  *  Converter converter = new Converter(Pet.class.getName(), 0,
  *                                      new MyConversion5());
  *
- *  // Configure the converter as described {@link Mutations here}.</pre>
- *
- * <p>The primary limitation of a conversion is that it may access at most a
- * single entity instance at one time.  Conversions involving multiple entities
- * at once may be made by performing a <a
- * href="package-summary.html#storeConversion">store conversion</a>.</p>
+ *  // Configure the converter as described {@link Mutations here}.
+ * </pre>
+ * <p>
+ * The primary limitation of a conversion is that it may access at most a single
+ * entity instance at one time. Conversions involving multiple entities at once
+ * may be made by performing a
+ * <a href="package-summary.html#storeConversion">store conversion</a>.
+ * </p>
  *
  * @see com.sleepycat.persist.evolve Class Evolution
  * @author Mark Hayes
@@ -399,47 +415,50 @@ public interface Conversion extends Serializable {
     /**
      * Converts an old version of an object value to conform to the current
      * class or field definition.
+     * <p>
+     * If a {@link RuntimeException} is thrown by this method, it will be thrown
+     * to the original caller. Similarly, a {@link IllegalArgumentException}
+     * will be thrown to the original caller if the object returned by this
+     * method does not conform to current class definitions.
+     * </p>
+     * <p>
+     * The class of the input and output object may be one of the simple types
+     * or {@link RawObject}. For primitive types, the primitive wrapper class is
+     * used.
+     * </p>
      *
-     * <p>If a {@link RuntimeException} is thrown by this method, it will be
-     * thrown to the original caller.  Similarly, a {@link
-     * IllegalArgumentException} will be thrown to the original caller if the
-     * object returned by this method does not conform to current class
-     * definitions.</p>
-     *
-     * <p>The class of the input and output object may be one of the simple
-     * types or {@link RawObject}.  For primitive types, the primitive wrapper
-     * class is used.</p>
-     *
-     * @param fromValue the object value being converted.  The type of this
-     * value is defined by the old class version that is being converted.
-     *
-     * @return the converted object.  The type of this value must conform to
-     * a current class definition.  If this is a class conversion, it must
-     * be the current version of the class.  If this is a field conversion, it
-     * must be of a type compatible with the current declared type of the
-     * field.
+     * @param fromValue the object value being converted. The type of this value
+     *            is defined by the old class version that is being converted.
+     * @return the converted object. The type of this value must conform to a
+     *         current class definition. If this is a class conversion, it must
+     *         be the current version of the class. If this is a field
+     *         conversion, it must be of a type compatible with the current
+     *         declared type of the field.
      */
     Object convert(Object fromValue);
 
     /**
-     * The standard {@code equals} method that must be implemented by
-     * conversion class.
-     *
-     * <p>When mutations are specified when opening a store, the specified and
-     * previously stored mutations are compared for equality.  If they are
-     * equal, there is no need to replace the existing mutations in the stored
-     * catalog.  To accurately determine equality, the conversion class must
-     * implement the {@code equals} method.</p>
-     *
-     * <p>If the {@code equals} method is not explicitly implemented by the
+     * The standard {@code equals} method that must be implemented by conversion
+     * class.
+     * <p>
+     * When mutations are specified when opening a store, the specified and
+     * previously stored mutations are compared for equality. If they are equal,
+     * there is no need to replace the existing mutations in the stored catalog.
+     * To accurately determine equality, the conversion class must implement the
+     * {@code equals} method.
+     * </p>
+     * <p>
+     * If the {@code equals} method is not explicitly implemented by the
      * conversion class or a superclass other than {@code Object}, {@code
-     * IllegalArgumentException} will be thrown when the store is opened.</p>
-     *
-     * <p>Normally whenever {@code equals} is implemented the {@code hashCode}
-     * method should also be implemented to support hash sets and maps.
-     * However, hash sets and maps containing <code>Conversion</code> objects
-     * are not used by the DPL and therefore the DPL does not require
-     * {@code hashCode} to be implemented.</p>
+     * IllegalArgumentException} will be thrown when the store is opened.
+     * </p>
+     * <p>
+     * Normally whenever {@code equals} is implemented the {@code hashCode}
+     * method should also be implemented to support hash sets and maps. However,
+     * hash sets and maps containing <code>Conversion</code> objects are not
+     * used by the DPL and therefore the DPL does not require {@code hashCode}
+     * to be implemented.
+     * </p>
      */
     boolean equals(Object other);
 }

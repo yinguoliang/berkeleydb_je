@@ -22,19 +22,14 @@ import com.sleepycat.je.utilint.PropUtil;
  */
 public class DurationConfigParam extends ConfigParam {
 
-    private static final String DEBUG_NAME =
-        DurationConfigParam.class.getName();
+    private static final String DEBUG_NAME = DurationConfigParam.class.getName();
 
-    private String minString;
-    private int minMillis;
-    private String maxString;
-    private int maxMillis;
+    private String              minString;
+    private int                 minMillis;
+    private String              maxString;
+    private int                 maxMillis;
 
-    public DurationConfigParam(String configName,
-                               String minVal,
-                               String maxVal,
-                               String defaultValue,
-                               boolean mutable,
+    public DurationConfigParam(String configName, String minVal, String maxVal, String defaultValue, boolean mutable,
                                boolean forReplication) {
         super(configName, defaultValue, mutable, forReplication);
         if (minVal != null) {
@@ -48,8 +43,7 @@ public class DurationConfigParam extends ConfigParam {
     }
 
     @Override
-    public void validateValue(String value)
-        throws IllegalArgumentException {
+    public void validateValue(String value) throws IllegalArgumentException {
 
         final int millis;
         try {
@@ -57,34 +51,20 @@ public class DurationConfigParam extends ConfigParam {
             millis = PropUtil.parseDuration(value);
         } catch (IllegalArgumentException e) {
             /* Identify this property in the exception message. */
-            throw new IllegalArgumentException
-                (DEBUG_NAME + ":" +
-                 " param " + name +
-                 " doesn't validate, " +
-                 value +
-                 " fails validation: " + e.getMessage());
+            throw new IllegalArgumentException(DEBUG_NAME + ":" + " param " + name + " doesn't validate, " + value
+                    + " fails validation: " + e.getMessage());
         }
         /* Check min/max. */
         if (minString != null) {
             if (millis < minMillis) {
-                throw new IllegalArgumentException
-                    (DEBUG_NAME + ":" +
-                     " param " + name +
-                     " doesn't validate, " +
-                     value +
-                     " is less than min of "+
-                     minString);
+                throw new IllegalArgumentException(DEBUG_NAME + ":" + " param " + name + " doesn't validate, " + value
+                        + " is less than min of " + minString);
             }
         }
         if (maxString != null) {
             if (millis > maxMillis) {
-                throw new IllegalArgumentException
-                    (DEBUG_NAME + ":" +
-                     " param " + name +
-                     " doesn't validate, " +
-                     value +
-                     " is greater than max of " +
-                     maxString);
+                throw new IllegalArgumentException(DEBUG_NAME + ":" + " param " + name + " doesn't validate, " + value
+                        + " is greater than max of " + maxString);
             }
         }
     }

@@ -20,14 +20,10 @@ public class IntConfigParam extends ConfigParam {
 
     private static final String DEBUG_NAME = IntConfigParam.class.getName();
 
-    private Integer min;
-    private Integer max;
+    private Integer             min;
+    private Integer             max;
 
-    public IntConfigParam(String configName,
-                          Integer minVal,
-                          Integer maxVal,
-                          Integer defaultValue,
-                          boolean mutable,
+    public IntConfigParam(String configName, Integer minVal, Integer maxVal, Integer defaultValue, boolean mutable,
                           boolean forReplication) {
         /* defaultValue must not be null. */
         super(configName, defaultValue.toString(), mutable, forReplication);
@@ -38,44 +34,31 @@ public class IntConfigParam extends ConfigParam {
     /**
      * Self validate. Check mins and maxs
      */
-    private void validate(Integer value)
-        throws IllegalArgumentException {
+    private void validate(Integer value) throws IllegalArgumentException {
 
         if (value != null) {
             if (min != null) {
                 if (value.compareTo(min) < 0) {
-                    throw new IllegalArgumentException
-                        (DEBUG_NAME + ":" +
-                         " param " + name +
-                         " doesn't validate, " +
-                         value +
-                         " is less than min of "+
-                         min);
+                    throw new IllegalArgumentException(DEBUG_NAME + ":" + " param " + name + " doesn't validate, "
+                            + value + " is less than min of " + min);
                 }
             }
             if (max != null) {
                 if (value.compareTo(max) > 0) {
-                    throw new IllegalArgumentException
-                        (DEBUG_NAME + ":" +
-                         " param " + name +
-                         " doesn't validate, " +
-                         value +
-                         " is greater than max of " +
-                         max);
+                    throw new IllegalArgumentException(DEBUG_NAME + ":" + " param " + name + " doesn't validate, "
+                            + value + " is greater than max of " + max);
                 }
             }
         }
     }
 
     @Override
-    public void validateValue(String value)
-        throws IllegalArgumentException {
+    public void validateValue(String value) throws IllegalArgumentException {
 
         try {
             validate(new Integer(value));
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException
-                (DEBUG_NAME + ": " +  value + " not valid value for " + name);
+            throw new IllegalArgumentException(DEBUG_NAME + ": " + value + " not valid value for " + name);
         }
     }
 }

@@ -26,80 +26,70 @@ import com.sleepycat.je.utilint.LoggerUtils;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * Supports updating the group database with each node's local CBVLSN when it
- * is in the Master state. There is one instance per feeder connection, plus
- * one for the Master. There is, logically, a LocalCBVLSNTracker instance
- * associated with each instance of the updater. The instance is local for an
- * update associated with a node in the Master state and is remote for each
- * Replica.
- *
+ * Supports updating the group database with each node's local CBVLSN when it is
+ * in the Master state. There is one instance per feeder connection, plus one
+ * for the Master. There is, logically, a LocalCBVLSNTracker instance associated
+ * with each instance of the updater. The instance is local for an update
+ * associated with a node in the Master state and is remote for each Replica.
  * The nodeCBVLSN can only increase during the lifetime of the
- * LocalCBVLSNUpdater instance. Note however that the value of the node's
- * CBVLSN as stored in the database, which represents the values from multiple
- * updaters associated, with a node over its lifetime may both decrease and
- * increase over its lifetime. The decreases are due primarily to rollbacks,
- * and should be relatively rare.
- *
- * The updaters used to maintain the Replica's local CBVLSNs are stored in the
- * Feeder.InputThread. The lifetime of such a LocalCBVLSNUpdater is therefore
- * determined by the lifetime of the connection between the Master and the
- * Replica. The node CBVLSN is updated each time a heart beat response is
- * processed by the FeederInput thread. It's also updated when the Master
- * detects that a Replica needs a network restore. In this case, it updates
- * cbvlsn to the value expected from the node after a network restore so that
- * the global CBVLSN can continue to make forward progress and not hold up the
- * cleaner.
- *
- * The Master maintains an updater for its own CBVLSN in the FeederManager.
- * This updater exists as long as the node retains its Master state.
- *
- * Local CBVLSNs are used only to contribute to the calculation of the global
- * CBVLSN. The global CBVLSN acts as the cleaner throttle. Any invariants, such
- * as the rule that the cleaner throttle cannot regress, are applied when doing
- * the global calculation.
- *
- * Note that CBVLSNs are not stored in the database for secondary nodes, but
- * transient information about them is still maintained.
+ * LocalCBVLSNUpdater instance. Note however that the value of the node's CBVLSN
+ * as stored in the database, which represents the values from multiple updaters
+ * associated, with a node over its lifetime may both decrease and increase over
+ * its lifetime. The decreases are due primarily to rollbacks, and should be
+ * relatively rare. The updaters used to maintain the Replica's local CBVLSNs
+ * are stored in the Feeder.InputThread. The lifetime of such a
+ * LocalCBVLSNUpdater is therefore determined by the lifetime of the connection
+ * between the Master and the Replica. The node CBVLSN is updated each time a
+ * heart beat response is processed by the FeederInput thread. It's also updated
+ * when the Master detects that a Replica needs a network restore. In this case,
+ * it updates cbvlsn to the value expected from the node after a network restore
+ * so that the global CBVLSN can continue to make forward progress and not hold
+ * up the cleaner. The Master maintains an updater for its own CBVLSN in the
+ * FeederManager. This updater exists as long as the node retains its Master
+ * state. Local CBVLSNs are used only to contribute to the calculation of the
+ * global CBVLSN. The global CBVLSN acts as the cleaner throttle. Any
+ * invariants, such as the rule that the cleaner throttle cannot regress, are
+ * applied when doing the global calculation. Note that CBVLSNs are not stored
+ * in the database for secondary nodes, but transient information about them is
+ * still maintained.
  */
 public class LocalCBVLSNUpdater {
 
-    private static final String VLSN_SOURCE = "vlsn";
-    private static final String MASTER_SOURCE = "master";
-    private static final String HEARTBEAT_SOURCE = "heartbeat";
+    private static final String VLSN_SOURCE            = "vlsn";
+    private static final String MASTER_SOURCE          = "master";
+    private static final String HEARTBEAT_SOURCE       = "heartbeat";
 
     /*
      * The node ID of the node whose CBLVLSN is being tracked. If this updater
-     * is working on the behalf o a replica node, the nameIdPair is not the
-     * name of this node.
+     * is working on the behalf o a replica node, the nameIdPair is not the name
+     * of this node.
      */
-    private final NameIdPair nameIdPair;
+    private final NameIdPair    nameIdPair;
 
     /** The node type of the node whose CBVLSN is being tracked. */
-    private final NodeType trackedNodeType;
+    private final NodeType      trackedNodeType;
 
     /* This node; note that its node ID may be different from nodeId above. */
-    private final RepNode repNode;
+    private final RepNode       repNode;
 
     /*
-     * The node's local CBVLSN is cached here, for use without reading the
-     * group db.
+     * The node's local CBVLSN is cached here, for use without reading the group
+     * db.
      */
-    private VLSN nodeCBVLSN;
+    private VLSN                nodeCBVLSN;
 
     /*
-     * True if this node's local CBVLSN  has changed, but the new value
-     * has not been stored into the group db yet.
+     * True if this node's local CBVLSN has changed, but the new value has not
+     * been stored into the group db yet.
      */
-    private boolean updatePending;
+    private boolean             updatePending;
 
     /* Used to suppress database updates during unit testing. */
-    private static boolean suppressGroupDBUpdates = false;
+    private static boolean      suppressGroupDBUpdates = false;
 
-    private final Logger logger;
+    private final Logger        logger;
 
-    LocalCBVLSNUpdater(final NameIdPair nameIdPair,
-                       final NodeType trackedNodeType,
-                       final RepNode repNode) {
+    LocalCBVLSNUpdater(final NameIdPair nameIdPair, final NodeType trackedNodeType, final RepNode repNode) {
         this.nameIdPair = nameIdPair;
         this.trackedNodeType = trackedNodeType;
         this.repNode = repNode;
@@ -111,21 +101,18 @@ public class LocalCBVLSNUpdater {
     }
 
     /**
-     * Sets the current CBVLSN for this node, and trips the updatePending
-     * flag so that we know there is something to store to the RepGroupDB.
+     * Sets the current CBVLSN for this node, and trips the updatePending flag
+     * so that we know there is something to store to the RepGroupDB.
      *
      * @param syncableVLSN the new local CBVLSN
      */
     private void set(VLSN syncableVLSN, String source) {
 
-        assert repNode.isMaster() :
-               "LocalCBVLSNUpdater.set() can only be called by the master";
+        assert repNode.isMaster() : "LocalCBVLSNUpdater.set() can only be called by the master";
 
         if (!nodeCBVLSN.equals(syncableVLSN)) {
-            LoggerUtils.fine(logger, repNode.getRepImpl(),
-                             "update local CBVLSN for " + nameIdPair +
-                             " from nodeCBVLSN " + nodeCBVLSN + " to " +
-                             syncableVLSN + " from " + source);
+            LoggerUtils.fine(logger, repNode.getRepImpl(), "update local CBVLSN for " + nameIdPair + " from nodeCBVLSN "
+                    + nodeCBVLSN + " to " + syncableVLSN + " from " + source);
             if (nodeCBVLSN.compareTo(syncableVLSN) >= 0) {
 
                 /*
@@ -133,11 +120,9 @@ public class LocalCBVLSNUpdater {
                  * value that's outside a truncated VLSNIndex range. See SR
                  * [#17343]
                  */
-                throw EnvironmentFailureException.unexpectedState
-                    (repNode.getRepImpl(),
-                     "nodeCBVLSN" + nodeCBVLSN + " >= " + syncableVLSN +
-                     " attempted update local CBVLSN for " + nameIdPair +
-                     " from " + source);
+                throw EnvironmentFailureException.unexpectedState(repNode.getRepImpl(),
+                        "nodeCBVLSN" + nodeCBVLSN + " >= " + syncableVLSN + " attempted update local CBVLSN for "
+                                + nameIdPair + " from " + source);
             }
             nodeCBVLSN = syncableVLSN;
             updatePending = true;
@@ -147,8 +132,8 @@ public class LocalCBVLSNUpdater {
     /**
      * Exercise caution when using this method. The normal mode of updating the
      * CBVLSN is via the heartbeat. So, if the CBVLSN is updated through the
-     * method, ensure that it supplies an increasing CBCLSN and that its
-     * CBVLSN is coordinated with the one supplied by
+     * method, ensure that it supplies an increasing CBCLSN and that its CBVLSN
+     * is coordinated with the one supplied by
      * {@link #updateForReplica(com.sleepycat.je.rep.stream.Protocol.HeartbeatResponse)}
      * . The two methods together, must maintain the invariant that the local
      * CBVLSN value must always be ascending.
@@ -160,11 +145,11 @@ public class LocalCBVLSNUpdater {
     }
 
     /**
-     * Sets the current CBVLSN for this node. Can only be used by the
-     * master. The new cbvlsn value comes from an incoming heartbeat response
-     * message.
-     * @param heartbeat The incoming heartbeat response message from the
-     * replica containing its newest local cbvlsn.
+     * Sets the current CBVLSN for this node. Can only be used by the master.
+     * The new cbvlsn value comes from an incoming heartbeat response message.
+     * 
+     * @param heartbeat The incoming heartbeat response message from the replica
+     *            containing its newest local cbvlsn.
      */
     public void updateForReplica(Protocol.HeartbeatResponse heartbeat) {
         doUpdate(heartbeat.getSyncupVLSN(), HEARTBEAT_SOURCE);
@@ -173,8 +158,7 @@ public class LocalCBVLSNUpdater {
     /**
      * As a master, update the database with the local CBVLSN for this node.
      * This call is needed because the master's local CBVLSN will not be
-     * broadcast via a heartbeat, so it needs to get to the updater another
-     * way.
+     * broadcast via a heartbeat, so it needs to get to the updater another way.
      */
     void updateForMaster(LocalCBVLSNTracker tracker) {
         doUpdate(tracker.getBroadcastCBVLSN(), MASTER_SOURCE);
@@ -186,8 +170,8 @@ public class LocalCBVLSNUpdater {
     }
 
     /**
-     * Update the database, with the local CBVLSN associated with the node ID
-     * if required. Note that updates can only be invoked on the master
+     * Update the database, with the local CBVLSN associated with the node ID if
+     * required. Note that updates can only be invoked on the master
      */
     public void update() {
 
@@ -218,12 +202,11 @@ public class LocalCBVLSNUpdater {
             }
 
             if (candidate.compareTo(repNode.getGroupCBVLSN()) < 0) {
-                /* Don't let the group CBVLSN regress.*/
+                /* Don't let the group CBVLSN regress. */
                 return;
             }
 
-            final boolean updated = repNode.repGroupDB.updateLocalCBVLSN(
-                nameIdPair, candidate, trackedNodeType);
+            final boolean updated = repNode.repGroupDB.updateLocalCBVLSN(nameIdPair, candidate, trackedNodeType);
             /* If not updated, we'll try again later. */
             if (updated) {
                 updatePending = false;
@@ -231,36 +214,32 @@ public class LocalCBVLSNUpdater {
         } catch (EnvironmentFailureException e) {
 
             /*
-             * Propagate environment failure exception so that the master
-             * can shut down.
+             * Propagate environment failure exception so that the master can
+             * shut down.
              */
             throw e;
         } catch (LockNotAvailableException lnae) {
             /*
              * Expected exception, due to use of nowait transaction
              */
-            LoggerUtils.info(repNode.logger, repNode.getRepImpl(),
-                             " lock not available without waiting. " +
-                             "local cbvlsn update skipped for node: " +
-                              nameIdPair + " Error: " + lnae.getMessage());
+            LoggerUtils.info(repNode.logger, repNode.getRepImpl(), " lock not available without waiting. "
+                    + "local cbvlsn update skipped for node: " + nameIdPair + " Error: " + lnae.getMessage());
         } catch (DatabaseException e) {
-            LoggerUtils.warning(repNode.logger, repNode.getRepImpl(),
-                                "local cbvlsn update failed for node: " +
-                                nameIdPair + " Error: " + e.getMessage() +
-                                "\n" + LoggerUtils.getStackTrace(e));
+            LoggerUtils.warning(repNode.logger, repNode.getRepImpl(), "local cbvlsn update failed for node: "
+                    + nameIdPair + " Error: " + e.getMessage() + "\n" + LoggerUtils.getStackTrace(e));
         }
     }
 
     /**
      * Used during testing to suppress CBVLSN updates at this node. Note that
-     * the cleaner must also typically be turned off (first) in conjunction
-     * with the suppression. If multiple nodes are running in the VM all nodes
-     * will have the CBVLSN updates turned off.
+     * the cleaner must also typically be turned off (first) in conjunction with
+     * the suppression. If multiple nodes are running in the VM all nodes will
+     * have the CBVLSN updates turned off.
+     * 
      * @param suppressGroupDBUpdates If true, the group DB and the group CBVLSN
-     * won't be updated at the master.
+     *            won't be updated at the master.
      */
-    static public
-    void setSuppressGroupDBUpdates(boolean suppressGroupDBUpdates) {
+    static public void setSuppressGroupDBUpdates(boolean suppressGroupDBUpdates) {
         LocalCBVLSNUpdater.suppressGroupDBUpdates = suppressGroupDBUpdates;
     }
 

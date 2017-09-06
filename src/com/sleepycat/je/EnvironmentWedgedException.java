@@ -47,33 +47,33 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
  */
 public class EnvironmentWedgedException extends EnvironmentFailureException {
 
-	private static final long serialVersionUID = 1;
+    private static final long serialVersionUID = 1;
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	public EnvironmentWedgedException(EnvironmentImpl envImpl, String message) {
-		super(envImpl, EnvironmentFailureReason.WEDGED, message);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    public EnvironmentWedgedException(EnvironmentImpl envImpl, String message) {
+        super(envImpl, EnvironmentFailureReason.WEDGED, message);
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	private EnvironmentWedgedException(String message, EnvironmentWedgedException cause) {
-		super(message, cause);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    private EnvironmentWedgedException(String message, EnvironmentWedgedException cause) {
+        super(message, cause);
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	@Override
-	public EnvironmentWedgedException wrapSelf(String msg) {
-		return new EnvironmentWedgedException(msg, this);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    @Override
+    public EnvironmentWedgedException wrapSelf(String msg) {
+        return new EnvironmentWedgedException(msg, this);
+    }
 }

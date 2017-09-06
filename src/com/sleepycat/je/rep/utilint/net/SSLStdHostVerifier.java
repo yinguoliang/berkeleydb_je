@@ -31,17 +31,17 @@ import com.sleepycat.je.rep.net.InstanceParams;
 import com.sleepycat.je.rep.net.InstanceLogger;
 
 /**
- * This is an implementation of HostnameVerifier which verifies that the
- * host to which we are connected is valid using the standard SSL matching
- * rules.  That is, the host string that we are using to connect with
- * must have a match to the common name or a subject alternative name.
+ * This is an implementation of HostnameVerifier which verifies that the host to
+ * which we are connected is valid using the standard SSL matching rules. That
+ * is, the host string that we are using to connect with must have a match to
+ * the common name or a subject alternative name.
  */
 public class SSLStdHostVerifier implements HostnameVerifier {
 
     private final InstanceLogger logger;
 
-    private final static int ALTNAME_DNS = 2;
-    private final static int ALTNAME_IP  = 7;
+    private final static int     ALTNAME_DNS = 2;
+    private final static int     ALTNAME_IP  = 7;
 
     /**
      * Construct an SSLStdHostVerifier
@@ -76,7 +76,7 @@ public class SSLStdHostVerifier implements HostnameVerifier {
         /* Check for SubjectAlternativeNames */
         if (peerCerts[0] instanceof X509Certificate) {
 
-            final X509Certificate peerCert = (X509Certificate)peerCerts[0];
+            final X509Certificate peerCert = (X509Certificate) peerCerts[0];
 
             Collection<List<?>> altNames = null;
             try {
@@ -85,10 +85,9 @@ public class SSLStdHostVerifier implements HostnameVerifier {
                 final Principal issuerPrinc = peerCert.getIssuerX500Principal();
                 final BigInteger serNo = peerCert.getSerialNumber();
 
-                logger.log(INFO, "Unable to parse peer certificate: " +
-                           "issuer = " + issuerPrinc +
-                           ", serialNumber = " + serNo);
-                
+                logger.log(INFO,
+                        "Unable to parse peer certificate: " + "issuer = " + issuerPrinc + ", serialNumber = " + serNo);
+
             }
 
             if (altNames == null) {
@@ -97,13 +96,13 @@ public class SSLStdHostVerifier implements HostnameVerifier {
 
             for (List<?> altName : altNames) {
                 /*
-                 * altName will be a 2-element list, with the first being
-                 * the name type and the second being the "name".  For
-                 * DNS and IP entries, the "name" will be a string.
+                 * altName will be a 2-element list, with the first being the
+                 * name type and the second being the "name". For DNS and IP
+                 * entries, the "name" will be a string.
                  */
-                final int nameType = ((Integer)altName.get(0)).intValue();
+                final int nameType = ((Integer) altName.get(0)).intValue();
                 if (nameType == ALTNAME_IP || nameType == ALTNAME_DNS) {
-                    final String nameValue = (String)altName.get(1);
+                    final String nameValue = (String) altName.get(1);
                     if (targetHost.equals(nameValue)) {
                         return true;
                     }
@@ -113,5 +112,3 @@ public class SSLStdHostVerifier implements HostnameVerifier {
         return false;
     }
 }
-
-

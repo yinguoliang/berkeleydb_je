@@ -26,19 +26,13 @@ public class ReplicaOutputThread extends ReplicaOutputThreadBase {
         repNode = repImpl.getRepNode();
     }
 
-   public void writeHeartbeat(Long txnId)
-            throws IOException {
-        if ((txnId == null) &&
-            (repNode.getReplica().getTestDelayMs() > 0)) {
-                return;
-            }
-
-            final VLSN broadcastCBVLSN =
-                repNode.getCBVLSNTracker().getBroadcastCBVLSN();
-            protocol.write(protocol.new HeartbeatResponse
-                           (broadcastCBVLSN,
-                            repNode.getReplica().getTxnEndVLSN()),
-                            replicaFeederChannel);
+    public void writeHeartbeat(Long txnId) throws IOException {
+        if ((txnId == null) && (repNode.getReplica().getTestDelayMs() > 0)) {
+            return;
         }
-}
 
+        final VLSN broadcastCBVLSN = repNode.getCBVLSNTracker().getBroadcastCBVLSN();
+        protocol.write(protocol.new HeartbeatResponse(broadcastCBVLSN, repNode.getReplica().getTxnEndVLSN()),
+                replicaFeederChannel);
+    }
+}

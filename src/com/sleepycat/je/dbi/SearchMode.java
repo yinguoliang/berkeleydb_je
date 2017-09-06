@@ -21,19 +21,17 @@ public enum SearchMode {
 
     private final boolean exactSearch;
     private final boolean dataSearch;
-    private final String name;
+    private final String  name;
 
-    private SearchMode(boolean exactSearch,
-                       boolean dataSearch,
-                       String name) {
+    private SearchMode(boolean exactSearch, boolean dataSearch, String name) {
         this.exactSearch = exactSearch;
         this.dataSearch = dataSearch;
         this.name = "SearchMode." + name;
     }
 
     /**
-     * Returns true when the key or key/data search is exact, i.e., for SET
-     * and BOTH.
+     * Returns true when the key or key/data search is exact, i.e., for SET and
+     * BOTH.
      */
     public final boolean isExactSearch() {
         return exactSearch;

@@ -16,22 +16,23 @@ package com.sleepycat.util;
 import java.io.InputStream;
 
 /**
- * A replacement for ByteArrayInputStream that does not synchronize every
- * byte read.
- *
- * <p>This class extends {@link InputStream} and its <code>read()</code>
- * methods allow it to be used as a standard input stream.  In addition, it
- * provides <code>readFast()</code> methods that are not declared to throw
- * <code>IOException</code>.  <code>IOException</code> is never thrown by this
- * class.</p>
+ * A replacement for ByteArrayInputStream that does not synchronize every byte
+ * read.
+ * <p>
+ * This class extends {@link InputStream} and its <code>read()</code> methods
+ * allow it to be used as a standard input stream. In addition, it provides
+ * <code>readFast()</code> methods that are not declared to throw
+ * <code>IOException</code>. <code>IOException</code> is never thrown by this
+ * class.
+ * </p>
  *
  * @author Mark Hayes
  */
 public class FastInputStream extends InputStream {
 
-    protected int len;
-    protected int off;
-    protected int mark;
+    protected int    len;
+    protected int    off;
+    protected int    mark;
     protected byte[] buf;
 
     /**
@@ -49,9 +50,7 @@ public class FastInputStream extends InputStream {
      * Creates an input stream.
      *
      * @param buffer the data to read.
-     *
      * @param offset the byte offset at which to begin reading.
-     *
      * @param length the number of bytes to read.
      */
     public FastInputStream(byte[] buffer, int offset, int length) {
@@ -123,7 +122,6 @@ public class FastInputStream extends InputStream {
      * number of remaining bytes.
      *
      * @param count the number of bytes to skip.
-     *
      * @see #skip(long)
      */
     public final void skipFast(int count) {
@@ -135,7 +133,6 @@ public class FastInputStream extends InputStream {
      * <code>IOException</code>.
      *
      * @return the next byte of data, or -1 if at the end of the stream.
-     *
      * @see #read()
      */
     public final int readFast() {
@@ -146,11 +143,9 @@ public class FastInputStream extends InputStream {
     /**
      * Equivalent to <code>read(byte[])</code> but does not throw
      * <code>IOException</code>.
-
+     * 
      * @param toBuf the buffer into which the data is read.
-     *
      * @return the number of bytes read, or -1 if at the end of the stream.
-     *
      * @see #read(byte[])
      */
     public final int readFast(byte[] toBuf) {
@@ -163,13 +158,9 @@ public class FastInputStream extends InputStream {
      * <code>IOException</code>.
      *
      * @param toBuf the buffer into which the data is read.
-     *
      * @param offset the start offset in array at which the data is written.
-     *
      * @param length the maximum number of bytes to read.
-     *
      * @return the number of bytes read, or -1 if at the end of the stream.
-     *
      * @see #read(byte[],int,int)
      */
     public final int readFast(byte[] toBuf, int offset, int length) {

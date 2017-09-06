@@ -32,8 +32,8 @@ import com.sleepycat.je.utilint.DbLsn;
 abstract class LSNAccumulator {
     /* File number -> OffsetList<LSN Offsets> */
     private Map<Long, OffsetList> offsetsByFile;
-    private int nTotalEntries;
-    private long lsnAccMemoryUsage;
+    private int                   nTotalEntries;
+    private long                  lsnAccMemoryUsage;
 
     LSNAccumulator() {
         init();
@@ -81,8 +81,7 @@ abstract class LSNAccumulator {
             incInternalMemoryUsage(MemoryBudget.TREEMAP_ENTRY_OVERHEAD);
         }
 
-        boolean newSegment =
-            offsetsForFile.add(DbLsn.getFileOffset(lsn), false);
+        boolean newSegment = offsetsForFile.add(DbLsn.getFileOffset(lsn), false);
         if (newSegment) {
             incInternalMemoryUsage(MemoryBudget.TFS_LIST_SEGMENT_OVERHEAD);
         }
@@ -94,8 +93,7 @@ abstract class LSNAccumulator {
         long[] currentLSNs = new long[nTotalEntries];
         int curIdx = 0;
 
-        for (Map.Entry<Long, OffsetList> fileEntry :
-                 offsetsByFile.entrySet()) {
+        for (Map.Entry<Long, OffsetList> fileEntry : offsetsByFile.entrySet()) {
 
             long fileNumber = fileEntry.getKey();
 
@@ -112,8 +110,7 @@ abstract class LSNAccumulator {
 
     void getLSNs(long[] lsns, int nLsns) {
 
-        for (Map.Entry<Long, OffsetList> fileEntry :
-                 offsetsByFile.entrySet()) {
+        for (Map.Entry<Long, OffsetList> fileEntry : offsetsByFile.entrySet()) {
 
             long fileNumber = fileEntry.getKey();
 

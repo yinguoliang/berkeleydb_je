@@ -17,7 +17,6 @@ import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
  * The root of all BDB JE-defined exceptions.
- *
  * <p>
  * Exceptions thrown by BDB JE fall into three categories.
  * </p>
@@ -36,12 +35,10 @@ import com.sleepycat.je.utilint.LoggerUtils;
  * {@link EnvironmentFailureException} or one of its subclasses is thrown. See
  * {@link EnvironmentFailureException} for details.</li>
  * </ol>
- *
  * <p>
  * {@link OperationFailureException} and {@link EnvironmentFailureException} are
  * the only two direct subclasses of {@code DatabaseException}.
  * </p>
- *
  * <p>
  * (Actually the above statement is not strictly correct.
  * {@link EnvironmentFailureException} extends {@link RunRecoveryException}
@@ -49,7 +46,6 @@ import com.sleepycat.je.utilint.LoggerUtils;
  * for backward compatibility and has been deprecated.
  * {@link EnvironmentFailureException} should be used instead.)
  * </p>
- *
  * <p>
  * Note that in some cases, certain methods return status values without issuing
  * an exception. This occurs in situations that are not normally considered an
@@ -62,111 +58,105 @@ import com.sleepycat.je.utilint.LoggerUtils;
 @SuppressWarnings("javadoc")
 public abstract class DatabaseException extends RuntimeException {
 
-	private static final long serialVersionUID = 1535562945L;
+    private static final long             serialVersionUID    = 1535562945L;
 
-	/* String appended to original message, see addErrorMessage. */
-	private String extraInfo = null;
+    /* String appended to original message, see addErrorMessage. */
+    private String                        extraInfo           = null;
 
-	/* Per-thread re-thrown stack traces, see addRethrownStackTrace. */
-	private transient ThreadLocal<String> rethrownStackTraces = new ThreadLocal<String>();
+    /* Per-thread re-thrown stack traces, see addRethrownStackTrace. */
+    private transient ThreadLocal<String> rethrownStackTraces = new ThreadLocal<String>();
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	public DatabaseException(Throwable t) {
-		super(getVersionHeader() + t.toString(), t);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    public DatabaseException(Throwable t) {
+        super(getVersionHeader() + t.toString(), t);
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	public DatabaseException(String message) {
-		super(getVersionHeader() + message);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    public DatabaseException(String message) {
+        super(getVersionHeader() + message);
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	public DatabaseException(String message, Throwable t) {
-		super((getVersionHeader() + message), t);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    public DatabaseException(String message, Throwable t) {
+        super((getVersionHeader() + message), t);
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden Utility for generating the version at the start of the exception
-	 *         message. Public for unit tests.
-	 */
-	public static String getVersionHeader() {
-		return "(JE " + JEVersion.CURRENT_VERSION + ") ";
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden Utility for generating the version at the start of the exception
+     *         message. Public for unit tests.
+     */
+    public static String getVersionHeader() {
+        return "(JE " + JEVersion.CURRENT_VERSION + ") ";
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 *
-	 * 		Support the addition of extra error information. Use this
-	 *         approach rather than wrapping exceptions whenever possible for
-	 *         two reasons: 1) so the user can catch the original exception
-	 *         class and handle it appropriately, and 2) because the
-	 *         EnvironmentFailureException hierarchy does some intricate things
-	 *         with setting the environment as invalid.
-	 *
-	 * @param newExtraInfo
-	 *            the message to add, not including separator space.
-	 */
-	public void addErrorMessage(String newExtraInfo) {
+    /**
+     * For internal use only.
+     * 
+     * @hidden Support the addition of extra error information. Use this
+     *         approach rather than wrapping exceptions whenever possible for
+     *         two reasons: 1) so the user can catch the original exception
+     *         class and handle it appropriately, and 2) because the
+     *         EnvironmentFailureException hierarchy does some intricate things
+     *         with setting the environment as invalid.
+     * @param newExtraInfo the message to add, not including separator space.
+     */
+    public void addErrorMessage(String newExtraInfo) {
 
-		if (extraInfo == null) {
-			extraInfo = " " + newExtraInfo;
-		} else {
-			extraInfo = extraInfo + ' ' + newExtraInfo;
-		}
-	}
+        if (extraInfo == null) {
+            extraInfo = " " + newExtraInfo;
+        } else {
+            extraInfo = extraInfo + ' ' + newExtraInfo;
+        }
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 *
-	 * 		Adds the current stack trace to the exception message, before it
-	 *         is re-thrown in a different thread. The full stack trace will
-	 *         then show both where it was generated and where it was re-thrown.
-	 *         Use this approach rather than wrapping (via wrapSelf) when user
-	 *         code relies on the getCause method to return a specific
-	 *         exception, and wrapping would change the cause exception to
-	 *         something unexpected.
-	 */
-	public void addRethrownStackTrace() {
+    /**
+     * For internal use only.
+     * 
+     * @hidden Adds the current stack trace to the exception message, before it
+     *         is re-thrown in a different thread. The full stack trace will
+     *         then show both where it was generated and where it was re-thrown.
+     *         Use this approach rather than wrapping (via wrapSelf) when user
+     *         code relies on the getCause method to return a specific
+     *         exception, and wrapping would change the cause exception to
+     *         something unexpected.
+     */
+    public void addRethrownStackTrace() {
 
-		final Exception localEx = new Exception(
-				"Stacktrace where exception below was rethrown (" + getClass().getName() + ")");
+        final Exception localEx = new Exception(
+                "Stacktrace where exception below was rethrown (" + getClass().getName() + ")");
 
-		rethrownStackTraces.set(LoggerUtils.getStackTrace(localEx));
-	}
+        rethrownStackTraces.set(LoggerUtils.getStackTrace(localEx));
+    }
 
-	@Override
-	public String getMessage() {
+    @Override
+    public String getMessage() {
 
-		/*
-		 * If extraInfo and rethrownStackTrace are null, don't allocate memory
-		 * by constructing a new string. An OutOfMemoryError (or related Error)
-		 * may have occurred, and we'd rather not cause another one here.
-		 */
-		final String msg = (extraInfo != null) ? (super.getMessage() + extraInfo) : super.getMessage();
+        /*
+         * If extraInfo and rethrownStackTrace are null, don't allocate memory
+         * by constructing a new string. An OutOfMemoryError (or related Error)
+         * may have occurred, and we'd rather not cause another one here.
+         */
+        final String msg = (extraInfo != null) ? (super.getMessage() + extraInfo) : super.getMessage();
 
-		final String rethrownStackTrace = rethrownStackTraces.get();
-		if (rethrownStackTrace == null) {
-			return msg;
-		}
+        final String rethrownStackTrace = rethrownStackTraces.get();
+        if (rethrownStackTrace == null) {
+            return msg;
+        }
 
-		return rethrownStackTrace + "\n" + msg;
-	}
+        return rethrownStackTrace + "\n" + msg;
+    }
 }

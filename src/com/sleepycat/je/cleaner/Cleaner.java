@@ -103,176 +103,167 @@ import com.sleepycat.je.utilint.TestHook;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * The Cleaner is responsible for effectively garbage collecting the JE log.
- * It selects the least utilized log file for cleaning (see FileSelector),
- * reads through the log file (FileProcessor) and determines whether each entry
- * is obsolete (no longer relevant) or active (referenced by the Btree).
- * Entries that are active are migrated (copied) to the end of the log, and
- * finally the cleaned file is deleted.
- *
- * The migration of active entries is a multi-step process that can be
- * configured to operate in different ways.  Eviction and checkpointing, as
- * well as the cleaner threads (FileProcessor instances) are participants in
- * this process.  Migration may be immediate or lazy.
- *
- * Active INs are always migrated lazily, which means that they are marked
- * dirty by the FileProcessor, and then logged later by an eviction or
- * checkpoint.  Active LNs are always migrated immediately by the FileProcessor
- * by logging them.
- *
- * When the FileProcessor is finished with a file, all lazy migration for that
- * file is normally completed by the end of the next checkpoint, if not sooner
- * via eviction.  The checkpoint/recovery mechanism will ensure that obsolete
- * entries will not be referenced by the Btree.  At the end of the checkpoint,
- * it is therefore safe to delete the log file.
- *
- * There is one exception to the above paragraph.  When attempting to migrate
- * an LN, if the LN cannot be locked then we must retry the migration at a
- * later time.  Also, if a database removal is in progress, we consider all
- * entries in the database obsolete but cannot delete the log file until
- * database removal is complete.  Such "pending" LNs and databases are queued
- * and processed periodically during file processing and at the start of a
- * checkpoint; see processPending().  In this case, we may have to wait for
- * more than one checkpoint to occur before the log file can be deleted.  See
- * FileSelector and the use of the pendingLNs and pendingDBs collections.
+ * The Cleaner is responsible for effectively garbage collecting the JE log. It
+ * selects the least utilized log file for cleaning (see FileSelector), reads
+ * through the log file (FileProcessor) and determines whether each entry is
+ * obsolete (no longer relevant) or active (referenced by the Btree). Entries
+ * that are active are migrated (copied) to the end of the log, and finally the
+ * cleaned file is deleted. The migration of active entries is a multi-step
+ * process that can be configured to operate in different ways. Eviction and
+ * checkpointing, as well as the cleaner threads (FileProcessor instances) are
+ * participants in this process. Migration may be immediate or lazy. Active INs
+ * are always migrated lazily, which means that they are marked dirty by the
+ * FileProcessor, and then logged later by an eviction or checkpoint. Active LNs
+ * are always migrated immediately by the FileProcessor by logging them. When
+ * the FileProcessor is finished with a file, all lazy migration for that file
+ * is normally completed by the end of the next checkpoint, if not sooner via
+ * eviction. The checkpoint/recovery mechanism will ensure that obsolete entries
+ * will not be referenced by the Btree. At the end of the checkpoint, it is
+ * therefore safe to delete the log file. There is one exception to the above
+ * paragraph. When attempting to migrate an LN, if the LN cannot be locked then
+ * we must retry the migration at a later time. Also, if a database removal is
+ * in progress, we consider all entries in the database obsolete but cannot
+ * delete the log file until database removal is complete. Such "pending" LNs
+ * and databases are queued and processed periodically during file processing
+ * and at the start of a checkpoint; see processPending(). In this case, we may
+ * have to wait for more than one checkpoint to occur before the log file can be
+ * deleted. See FileSelector and the use of the pendingLNs and pendingDBs
+ * collections.
  */
 public class Cleaner implements DaemonRunner, EnvConfigObserver {
     /* From cleaner */
-    static final String CLEAN_IN = "CleanIN:";
-    static final String CLEAN_LN = "CleanLN:";
-    static final String CLEAN_PENDING_LN = "CleanPendingLN:";
+    static final String                 CLEAN_IN                      = "CleanIN:";
+    static final String                 CLEAN_LN                      = "CleanLN:";
+    static final String                 CLEAN_PENDING_LN              = "CleanPendingLN:";
 
     /**
-     * The CacheMode to use for Btree searches.  This is currently UNCHANGED
-     * because we update the generation of the BIN when we migrate an LN.
-     * In other other cases, it is not desirable to keep INs in cache.
+     * The CacheMode to use for Btree searches. This is currently UNCHANGED
+     * because we update the generation of the BIN when we migrate an LN. In
+     * other other cases, it is not desirable to keep INs in cache.
      */
-    static final CacheMode UPDATE_GENERATION = CacheMode.UNCHANGED;
+    static final CacheMode              UPDATE_GENERATION             = CacheMode.UNCHANGED;
 
     /**
-     * Whether the cleaner should participate in critical eviction.  Ideally
-     * the cleaner would not participate in eviction, since that would reduce
-     * the cost of cleaning.  However, the cleaner can add large numbers of
-     * nodes to the cache.  By not participating in eviction, other threads
-     * could be kept in a constant state of eviction and would effectively
-     * starve.  Therefore, this setting is currently enabled.
+     * Whether the cleaner should participate in critical eviction. Ideally the
+     * cleaner would not participate in eviction, since that would reduce the
+     * cost of cleaning. However, the cleaner can add large numbers of nodes to
+     * the cache. By not participating in eviction, other threads could be kept
+     * in a constant state of eviction and would effectively starve. Therefore,
+     * this setting is currently enabled.
      */
-    static final boolean DO_CRITICAL_EVICTION = true;
+    static final boolean                DO_CRITICAL_EVICTION          = true;
 
     /*
-     * Constants used by checkBacklogGrowth.  These settings are not
-     * configurable externally because our internal backlog data will probably
-     * be removed or changed in the future, and we'll have to use a different
-     * approach for determining whether the cleaner is making progress.
+     * Constants used by checkBacklogGrowth. These settings are not configurable
+     * externally because our internal backlog data will probably be removed or
+     * changed in the future, and we'll have to use a different approach for
+     * determining whether the cleaner is making progress.
      */
     /* Number of backlogs counted in the trailing average. */
-    static final int BACKLOG_ALERT_COUNT = 5;
+    static final int                    BACKLOG_ALERT_COUNT           = 5;
     /* Smallest backlog value that will generate an alert. */
-    static final int BACKLOG_ALERT_FLOOR = 5;
+    static final int                    BACKLOG_ALERT_FLOOR           = 5;
 
-    private static final String DELETED_SUBDIR = "deleted";
+    private static final String         DELETED_SUBDIR                = "deleted";
 
     /*
      * Used to reduce repetitions of the same message about protected files.
      */
-    private volatile SortedSet<Long> lastProtectedFileSet = null;
-    private volatile String lastProtectedFileMsg = null;
+    private volatile SortedSet<Long>    lastProtectedFileSet          = null;
+    private volatile String             lastProtectedFileMsg          = null;
 
     /* Used to disable processing of safe-to-delete files during testing. */
-    private boolean fileDeletionEnabled = true;
+    private boolean                     fileDeletionEnabled           = true;
 
     /*
-     * Cumulative counters.  Updates to these counters occur in multiple
-     * threads, including FileProcessor threads,  and are not synchronized.
-     * This could produce errors in counting, but avoids contention around stat
-     * updates.
+     * Cumulative counters. Updates to these counters occur in multiple threads,
+     * including FileProcessor threads, and are not synchronized. This could
+     * produce errors in counting, but avoids contention around stat updates.
      */
-    StatGroup stats;
-    LongStat nCleanerRuns;
-    LongStat nTwoPassRuns;
-    LongStat nRevisalRuns;
-    LongStat nCleanerDeletions;
-    LongStat nINsObsolete;
-    LongStat nINsCleaned;
-    LongStat nINsDead;
-    LongStat nINsMigrated;
-    LongStat nBINDeltasObsolete;
-    LongStat nBINDeltasCleaned;
-    LongStat nBINDeltasDead;
-    LongStat nBINDeltasMigrated;
-    LongStat nLNsObsolete;
-    LongStat nLNsExpired;
-    LongStat nLNsCleaned;
-    LongStat nLNsDead;
-    LongStat nLNsLocked;
-    LongStat nLNsMigrated;
-    LongStat nLNsMarked;
-    LongStat nLNQueueHits;
-    LongStat nPendingLNsProcessed;
-    LongStat nMarkedLNsProcessed;
-    LongStat nToBeCleanedLNsProcessed;
-    LongStat nClusterLNsProcessed;
-    LongStat nPendingLNsLocked;
-    LongStat nEntriesRead;
-    LongStat nDiskReads;
-    LongStat nRepeatIteratorReads;
-    LongStat totalLogSize;
-    IntStat currentMinUtilization;
-    IntStat currentMaxUtilization;
+    StatGroup                           stats;
+    LongStat                            nCleanerRuns;
+    LongStat                            nTwoPassRuns;
+    LongStat                            nRevisalRuns;
+    LongStat                            nCleanerDeletions;
+    LongStat                            nINsObsolete;
+    LongStat                            nINsCleaned;
+    LongStat                            nINsDead;
+    LongStat                            nINsMigrated;
+    LongStat                            nBINDeltasObsolete;
+    LongStat                            nBINDeltasCleaned;
+    LongStat                            nBINDeltasDead;
+    LongStat                            nBINDeltasMigrated;
+    LongStat                            nLNsObsolete;
+    LongStat                            nLNsExpired;
+    LongStat                            nLNsCleaned;
+    LongStat                            nLNsDead;
+    LongStat                            nLNsLocked;
+    LongStat                            nLNsMigrated;
+    LongStat                            nLNsMarked;
+    LongStat                            nLNQueueHits;
+    LongStat                            nPendingLNsProcessed;
+    LongStat                            nMarkedLNsProcessed;
+    LongStat                            nToBeCleanedLNsProcessed;
+    LongStat                            nClusterLNsProcessed;
+    LongStat                            nPendingLNsLocked;
+    LongStat                            nEntriesRead;
+    LongStat                            nDiskReads;
+    LongStat                            nRepeatIteratorReads;
+    LongStat                            totalLogSize;
+    IntStat                             currentMinUtilization;
+    IntStat                             currentMaxUtilization;
 
     /*
      * Configuration parameters are non-private for use by FileProcessor,
      * UtilizationTracker, or UtilizationCalculator.
      */
-    long lockTimeout;
-    int readBufferSize;
-    int lookAheadCacheSize;
-    long nDeadlockRetries;
-    boolean expunge;
-    boolean useDeletedDir;
-    int twoPassGap;
-    int twoPassThreshold;
-    boolean gradualExpiration;
-    long cleanerBytesInterval;
-    boolean trackDetail;
-    boolean fetchObsoleteSize;
-    int dbCacheClearCount;
-    private final boolean rmwFixEnabled;
-    int minUtilization;
-    int minFileUtilization;
-    int minAge;
+    long                                lockTimeout;
+    int                                 readBufferSize;
+    int                                 lookAheadCacheSize;
+    long                                nDeadlockRetries;
+    boolean                             expunge;
+    boolean                             useDeletedDir;
+    int                                 twoPassGap;
+    int                                 twoPassThreshold;
+    boolean                             gradualExpiration;
+    long                                cleanerBytesInterval;
+    boolean                             trackDetail;
+    boolean                             fetchObsoleteSize;
+    int                                 dbCacheClearCount;
+    private final boolean               rmwFixEnabled;
+    int                                 minUtilization;
+    int                                 minFileUtilization;
+    int                                 minAge;
 
-    private final String name;
-    private final EnvironmentImpl env;
-    private final UtilizationProfile profile;
-    private final UtilizationTracker tracker;
-    private final ExpirationProfile expirationProfile;
+    private final String                name;
+    private final EnvironmentImpl       env;
+    private final UtilizationProfile    profile;
+    private final UtilizationTracker    tracker;
+    private final ExpirationProfile     expirationProfile;
     private final UtilizationCalculator calculator;
-    private final FileSelector fileSelector;
-    private FileProcessor[] threads;
+    private final FileSelector          fileSelector;
+    private FileProcessor[]             threads;
 
     /*
      * Log file deletion must check for ongoing backups and other procedures
-     * that rely on a set log files remaining stable (no deletions).  Multiple
+     * that rely on a set log files remaining stable (no deletions). Multiple
      * ranges of file numbers may be protected from deletion, where each range
-     * is from a given file number to the end of the log.
-     *
-     * protectedFileRanges is a list that contains the starting file number for
-     * each protected range.  All files from the mininum of these values to the
-     * end of the log are protected from deletion.  This field is accessed only
-     * while synchronizing on protectedFileRanges.
+     * is from a given file number to the end of the log. protectedFileRanges is
+     * a list that contains the starting file number for each protected range.
+     * All files from the mininum of these values to the end of the log are
+     * protected from deletion. This field is accessed only while synchronizing
+     * on protectedFileRanges.
      */
-    private final List<Long> protectedFileRanges;
-    private final Logger logger;
-    final AtomicLong totalRuns;
-    TestHook fileChosenHook;
+    private final List<Long>            protectedFileRanges;
+    private final Logger                logger;
+    final AtomicLong                    totalRuns;
+    TestHook                            fileChosenHook;
 
     /** @see #processPending */
-    private final AtomicBoolean processPendingReentrancyGuard =
-        new AtomicBoolean(false);
+    private final AtomicBoolean         processPendingReentrancyGuard = new AtomicBoolean(false);
 
     /** @see #wakeupAfterWrite */
-    private final AtomicLong bytesWrittenSinceActivation = new AtomicLong(0);
+    private final AtomicLong            bytesWrittenSinceActivation   = new AtomicLong(0);
 
     public Cleaner(EnvironmentImpl env, String name) {
         this.env = env;
@@ -300,18 +291,14 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
         nLNsMigrated = new LongStat(stats, CLEANER_LNS_MIGRATED);
         nLNsMarked = new LongStat(stats, CLEANER_LNS_MARKED);
         nLNQueueHits = new LongStat(stats, CLEANER_LNQUEUE_HITS);
-        nPendingLNsProcessed =
-            new LongStat(stats, CLEANER_PENDING_LNS_PROCESSED);
+        nPendingLNsProcessed = new LongStat(stats, CLEANER_PENDING_LNS_PROCESSED);
         nMarkedLNsProcessed = new LongStat(stats, CLEANER_MARKED_LNS_PROCESSED);
-        nToBeCleanedLNsProcessed =
-            new LongStat(stats, CLEANER_TO_BE_CLEANED_LNS_PROCESSED);
-        nClusterLNsProcessed =
-            new LongStat(stats, CLEANER_CLUSTER_LNS_PROCESSED);
+        nToBeCleanedLNsProcessed = new LongStat(stats, CLEANER_TO_BE_CLEANED_LNS_PROCESSED);
+        nClusterLNsProcessed = new LongStat(stats, CLEANER_CLUSTER_LNS_PROCESSED);
         nPendingLNsLocked = new LongStat(stats, CLEANER_PENDING_LNS_LOCKED);
         nEntriesRead = new LongStat(stats, CLEANER_ENTRIES_READ);
         nDiskReads = new LongStat(stats, CLEANER_DISK_READS);
-        nRepeatIteratorReads =
-            new LongStat(stats, CLEANER_REPEAT_ITERATOR_READS);
+        nRepeatIteratorReads = new LongStat(stats, CLEANER_REPEAT_ITERATOR_READS);
         totalLogSize = new LongStat(stats, CLEANER_TOTAL_LOG_SIZE);
         currentMinUtilization = new IntStat(stats, CLEANER_MIN_UTILIZATION);
         currentMaxUtilization = new IntStat(stats, CLEANER_MAX_UTILIZATION);
@@ -331,11 +318,9 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
          * it were mutable) in determining whether to update the memory budget
          * and perform eviction.
          */
-        trackDetail = env.getConfigManager().getBoolean
-            (EnvironmentParams.CLEANER_TRACK_DETAIL);
+        trackDetail = env.getConfigManager().getBoolean(EnvironmentParams.CLEANER_TRACK_DETAIL);
 
-        rmwFixEnabled = env.getConfigManager().getBoolean
-            (EnvironmentParams.CLEANER_RMW_FIX);
+        rmwFixEnabled = env.getConfigManager().getBoolean(EnvironmentParams.CLEANER_RMW_FIX);
 
         /* Initialize mutable properties and register for notifications. */
         setMutableProperties(env.getConfigManager());
@@ -346,10 +331,9 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
      * Process notifications of mutable property changes.
      *
      * @throws IllegalArgumentException via Environment ctor and
-     * setMutableConfig.
+     *             setMutableConfig.
      */
-    public void envConfigUpdate(DbConfigManager cm,
-                                EnvironmentMutableConfig ignore) {
+    public void envConfigUpdate(DbConfigManager cm, EnvironmentMutableConfig ignore) {
 
         setMutableProperties(cm);
 
@@ -363,36 +347,28 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
 
         readBufferSize = cm.getInt(EnvironmentParams.CLEANER_READ_SIZE);
         if (readBufferSize <= 0) {
-            readBufferSize =
-                cm.getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+            readBufferSize = cm.getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
         }
 
-        lookAheadCacheSize =
-            cm.getInt(EnvironmentParams.CLEANER_LOOK_AHEAD_CACHE_SIZE);
+        lookAheadCacheSize = cm.getInt(EnvironmentParams.CLEANER_LOOK_AHEAD_CACHE_SIZE);
 
         nDeadlockRetries = cm.getInt(EnvironmentParams.CLEANER_DEADLOCK_RETRY);
 
         expunge = cm.getBoolean(EnvironmentParams.CLEANER_REMOVE);
 
-        useDeletedDir =
-            cm.getBoolean(EnvironmentParams.CLEANER_USE_DELETED_DIR);
+        useDeletedDir = cm.getBoolean(EnvironmentParams.CLEANER_USE_DELETED_DIR);
 
-        twoPassGap =
-            cm.getInt(EnvironmentParams.CLEANER_TWO_PASS_GAP);
+        twoPassGap = cm.getInt(EnvironmentParams.CLEANER_TWO_PASS_GAP);
 
-        twoPassThreshold =
-            cm.getInt(EnvironmentParams.CLEANER_TWO_PASS_THRESHOLD);
+        twoPassThreshold = cm.getInt(EnvironmentParams.CLEANER_TWO_PASS_THRESHOLD);
 
         if (twoPassThreshold == 0) {
-            twoPassThreshold =
-                cm.getInt(EnvironmentParams.CLEANER_MIN_UTILIZATION) - 5;
+            twoPassThreshold = cm.getInt(EnvironmentParams.CLEANER_MIN_UTILIZATION) - 5;
         }
 
-        gradualExpiration =
-            cm.getBoolean(EnvironmentParams.CLEANER_GRADUAL_EXPIRATION);
+        gradualExpiration = cm.getBoolean(EnvironmentParams.CLEANER_GRADUAL_EXPIRATION);
 
-        dbCacheClearCount =
-            cm.getInt(EnvironmentParams.ENV_DB_CACHE_CLEAR_COUNT);
+        dbCacheClearCount = cm.getInt(EnvironmentParams.ENV_DB_CACHE_CLEAR_COUNT);
 
         int nThreads = cm.getInt(EnvironmentParams.CLEANER_THREADS);
         assert nThreads > 0;
@@ -422,23 +398,18 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
                 if (threads[i] != null) {
                     continue;
                 }
-                threads[i] = new FileProcessor(
-                    name + '-' + (i + 1),
-                    i == 0 /*firstThread*/,
-                    env, this, profile, calculator, fileSelector);
+                threads[i] = new FileProcessor(name + '-' + (i + 1), i == 0 /* firstThread */, env, this, profile,
+                        calculator, fileSelector);
             }
         }
 
-        cleanerBytesInterval = cm.getLong(
-            EnvironmentParams.CLEANER_BYTES_INTERVAL);
+        cleanerBytesInterval = cm.getLong(EnvironmentParams.CLEANER_BYTES_INTERVAL);
 
         if (cleanerBytesInterval == 0) {
-            cleanerBytesInterval =
-                cm.getLong(EnvironmentParams.LOG_FILE_MAX) / 4;
+            cleanerBytesInterval = cm.getLong(EnvironmentParams.LOG_FILE_MAX) / 4;
         }
 
-        final int wakeupInterval =
-            cm.getDuration(EnvironmentParams.CLEANER_WAKEUP_INTERVAL);
+        final int wakeupInterval = cm.getDuration(EnvironmentParams.CLEANER_WAKEUP_INTERVAL);
 
         for (FileProcessor thread : threads) {
             if (thread == null) {
@@ -447,13 +418,11 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             thread.setWaitTime(wakeupInterval);
         }
 
-        fetchObsoleteSize =
-            cm.getBoolean(EnvironmentParams.CLEANER_FETCH_OBSOLETE_SIZE);
+        fetchObsoleteSize = cm.getBoolean(EnvironmentParams.CLEANER_FETCH_OBSOLETE_SIZE);
 
         minAge = cm.getInt(EnvironmentParams.CLEANER_MIN_AGE);
         minUtilization = cm.getInt(EnvironmentParams.CLEANER_MIN_UTILIZATION);
-        minFileUtilization =
-            cm.getInt(EnvironmentParams.CLEANER_MIN_FILE_UTILIZATION);
+        minFileUtilization = cm.getInt(EnvironmentParams.CLEANER_MIN_FILE_UTILIZATION);
     }
 
     public UtilizationTracker getUtilizationTracker() {
@@ -494,10 +463,9 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     }
 
     /*
-     * Delegate the run/pause/wakeup/shutdown DaemonRunner operations.  We
-     * always check for null to account for the possibility of exceptions
-     * during thread creation.  Cleaner daemon can't ever be run if No Locking
-     * mode is enabled.
+     * Delegate the run/pause/wakeup/shutdown DaemonRunner operations. We always
+     * check for null to account for the possibility of exceptions during thread
+     * creation. Cleaner daemon can't ever be run if No Locking mode is enabled.
      */
     public void runOrPause(boolean run) {
 
@@ -523,8 +491,7 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
      */
     public void wakeupAfterWrite(int writeSize) {
 
-        if (bytesWrittenSinceActivation.addAndGet(writeSize) >
-            cleanerBytesInterval) {
+        if (bytesWrittenSinceActivation.addAndGet(writeSize) > cleanerBytesInterval) {
 
             bytesWrittenSinceActivation.set(0);
             wakeupActivate();
@@ -579,29 +546,25 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     }
 
     /**
-     * Cleans selected files and returns the number of files cleaned.  This
+     * Cleans selected files and returns the number of files cleaned. This
      * method is not invoked by a deamon thread, it is programatically.
      *
-     * @param cleanMultipleFiles is true to clean until we're under budget,
-     * or false to clean at most one file.
-     *
+     * @param cleanMultipleFiles is true to clean until we're under budget, or
+     *            false to clean at most one file.
      * @param forceCleaning is true to clean even if we're not under the
-     * utilization threshold.
-     *
+     *            utilization threshold.
      * @return the number of files cleaned, not including files cleaned
-     * unsuccessfully.
+     *         unsuccessfully.
      */
     public int doClean(boolean cleanMultipleFiles, boolean forceCleaning) {
 
         FileProcessor processor = createProcessor();
 
-        return processor.doClean
-            (false /*invokedFromDaemon*/, cleanMultipleFiles, forceCleaning);
+        return processor.doClean(false /* invokedFromDaemon */, cleanMultipleFiles, forceCleaning);
     }
 
     public FileProcessor createProcessor() {
-        return new FileProcessor(
-            "", false, env, this, profile, calculator, fileSelector);
+        return new FileProcessor("", false, env, this, profile, calculator, fileSelector);
     }
 
     /**
@@ -624,9 +587,9 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     }
 
     /**
-     * Enables or disabling processing of safe-to-delete files, including
-     * the truncation of the VLSN index. Disabling this is needed for tests,
-     * when VLSNIndex changes should be prevented.
+     * Enables or disabling processing of safe-to-delete files, including the
+     * truncation of the VLSN index. Disabling this is needed for tests, when
+     * VLSNIndex changes should be prevented.
      */
     public synchronized void enableFileDeletion(boolean enable) {
         fileDeletionEnabled = enable;
@@ -635,33 +598,24 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     /**
      * Deletes all files that are safe-to-delete and which are not protected by
      * a DbBackup or replication. Files are deleted only if there are no
-     * read-only processes.
-     *
-     * Log file deletion is coordinated by the use of three mechanisms:
-     *
-     * 1) To guard against read/only processes, the would-be deleter tries to
-     * get an exclusive lock on the environment. This will not be possible if a
-     * read/only process exists.  File locks must be used for inter-process
-     * coordination. But note that file locks are not supported intra-process.
-     *
-     * 2) Synchronization on the protectedFileRanges field.  Elements are added
-     * to and removed from the protectedFileRanges collection by DbBackup.
-     * More than one backup may be occurring at once, hence a collection of
-     * protectedFileRanges is maintained, and the files protected are the range
-     * starting with the minimum value returned by the objects in that
-     * collection.
-     *
-     * 3) In a replicated environment, files are protected from deletion by the
-     * CBVLSN (CleanerBarrier VLSN). No file greater or equal to the CBVLSN
-     * file may be deleted.
-     *
-     * For case (2) and (3), all coordinated activities -- replication, backup
-     * and file deletion -- can only be carried out by a read-write process, so
-     * we know that all activities are occurring in the same process because
-     * there can only be one JE read-write process per environment.
-     *
-     * This method is synchronized to prevent multiple threads from requesting
-     * the environment lock or deleting the same files.
+     * read-only processes. Log file deletion is coordinated by the use of three
+     * mechanisms: 1) To guard against read/only processes, the would-be deleter
+     * tries to get an exclusive lock on the environment. This will not be
+     * possible if a read/only process exists. File locks must be used for
+     * inter-process coordination. But note that file locks are not supported
+     * intra-process. 2) Synchronization on the protectedFileRanges field.
+     * Elements are added to and removed from the protectedFileRanges collection
+     * by DbBackup. More than one backup may be occurring at once, hence a
+     * collection of protectedFileRanges is maintained, and the files protected
+     * are the range starting with the minimum value returned by the objects in
+     * that collection. 3) In a replicated environment, files are protected from
+     * deletion by the CBVLSN (CleanerBarrier VLSN). No file greater or equal to
+     * the CBVLSN file may be deleted. For case (2) and (3), all coordinated
+     * activities -- replication, backup and file deletion -- can only be
+     * carried out by a read-write process, so we know that all activities are
+     * occurring in the same process because there can only be one JE read-write
+     * process per environment. This method is synchronized to prevent multiple
+     * threads from requesting the environment lock or deleting the same files.
      */
     synchronized void deleteSafeToDeleteFiles() {
 
@@ -672,8 +626,7 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             return;
         }
 
-        final NavigableSet<Long> safeToDeleteFiles =
-            fileSelector.getSafeToDeleteFiles();
+        final NavigableSet<Long> safeToDeleteFiles = fileSelector.getSafeToDeleteFiles();
 
         if (safeToDeleteFiles.isEmpty()) {
             return; /* Nothing to do. */
@@ -682,14 +635,13 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
         final StringBuilder haMsg = new StringBuilder();
 
         /*
-         * Ask HA to filter the "safe to delete" file set to determine which
-         * are needed for HA purposes, and are protected.  We can safely assume
-         * that if a file is declared to be unprotected by HA, and eligible to
-         * delete, it will never be deemed on a later call to be protected.
-         * This lets us avoid any synchronization between cleaning and HA.
+         * Ask HA to filter the "safe to delete" file set to determine which are
+         * needed for HA purposes, and are protected. We can safely assume that
+         * if a file is declared to be unprotected by HA, and eligible to
+         * delete, it will never be deemed on a later call to be protected. This
+         * lets us avoid any synchronization between cleaning and HA.
          */
-        NavigableSet<Long> unprotectedFiles =
-            env.getUnprotectedFileSet(safeToDeleteFiles, haMsg);
+        NavigableSet<Long> unprotectedFiles = env.getUnprotectedFileSet(safeToDeleteFiles, haMsg);
 
         if (unprotectedFiles == null) {
 
@@ -702,39 +654,32 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
 
         if (unprotectedFiles.isEmpty()) {
             /* Leave a clue for analyzing log file deletion problems. */
-            logProtectedFiles(
-                "they are protected by replication", safeToDeleteFiles, haMsg);
+            logProtectedFiles("they are protected by replication", safeToDeleteFiles, haMsg);
             return; /* Nothing to do. */
         }
 
         /*
          * Truncate the entries in the VLSNIndex that reference VLSNs in the
-         * files to be deleted.  [#16566]
-         *
-         * This is done prior to deleting the files to ensure that the
-         * replicator removes the files from the VLSNIndex.  If we were to
-         * truncate after deleting a file, we may crash before the truncation
-         * and would have to "replay" the truncation later in
-         * UtilizationProfile.populateCache.  This would be more complex and
-         * the lastVLSN for the files would not be available.
-         *
-         * OTOH, if we crash after the truncation and before deleting a file,
-         * it is very likely that we will re-clean the zero utilization file
-         * and delete it later.  This will only cause a redundant truncation.
-         *
-         * This is done before locking the environment to minimize the interval
-         * during which the environment is locked and read-only processes are
-         * blocked.  We may unnecessarily truncate the VLSNIndex if we can't
-         * lock the environment, but that is a lesser priority.
-         *
-         * We intentionally do not honor the protected file ranges specified by
-         * DbBackups when truncating, because the VLSNIndex is protected only
-         * by the CBVLSN.  Luckily, this also means we do not need to
-         * synchronize on protectedFileRanges while truncating, and DbBackups
-         * will not be blocked by this potentially expensive operation.
+         * files to be deleted. [#16566] This is done prior to deleting the
+         * files to ensure that the replicator removes the files from the
+         * VLSNIndex. If we were to truncate after deleting a file, we may crash
+         * before the truncation and would have to "replay" the truncation later
+         * in UtilizationProfile.populateCache. This would be more complex and
+         * the lastVLSN for the files would not be available. OTOH, if we crash
+         * after the truncation and before deleting a file, it is very likely
+         * that we will re-clean the zero utilization file and delete it later.
+         * This will only cause a redundant truncation. This is done before
+         * locking the environment to minimize the interval during which the
+         * environment is locked and read-only processes are blocked. We may
+         * unnecessarily truncate the VLSNIndex if we can't lock the
+         * environment, but that is a lesser priority. We intentionally do not
+         * honor the protected file ranges specified by DbBackups when
+         * truncating, because the VLSNIndex is protected only by the CBVLSN.
+         * Luckily, this also means we do not need to synchronize on
+         * protectedFileRanges while truncating, and DbBackups will not be
+         * blocked by this potentially expensive operation.
          */
-        Long[] unprotectedFilesArray = unprotectedFiles.toArray(
-            new Long[unprotectedFiles.size()]);
+        Long[] unprotectedFilesArray = unprotectedFiles.toArray(new Long[unprotectedFiles.size()]);
 
         for (int i = unprotectedFilesArray.length - 1; i >= 0; i -= 1) {
             Long fileNum = unprotectedFilesArray[i];
@@ -758,8 +703,7 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
          */
         final FileManager fileManager = env.getFileManager();
         if (!fileManager.lockEnvironment(false, true)) {
-            logProtectedFiles(
-                "of read-only processes", safeToDeleteFiles, haMsg);
+            logProtectedFiles("of read-only processes", safeToDeleteFiles, haMsg);
             return;
         }
 
@@ -770,35 +714,30 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
 
                 /* Intersect the protected ranges for active DbBackups. */
                 if (!protectedFileRanges.isEmpty()) {
-                    final Long minRangeStart =
-                        Collections.min(protectedFileRanges);
+                    final Long minRangeStart = Collections.min(protectedFileRanges);
                     if (minRangeStart <= unprotectedFiles.first()) {
                         /*
-                         * Simply return, no files can be deleted. Other
-                         * threads may asynchronously change the
-                         * protectedFileRanges list as a way of temporarily
-                         * imposing a curb on cleaning. For example,
-                         * DiskOrderedScan and DbBackup can increase the
-                         * protectedFileRange to protect a scan or backup, and
-                         * there is no restriction on how much the range can be
-                         * increased. While the calculation of the
-                         * unprotectedFiles Set considers the
+                         * Simply return, no files can be deleted. Other threads
+                         * may asynchronously change the protectedFileRanges
+                         * list as a way of temporarily imposing a curb on
+                         * cleaning. For example, DiskOrderedScan and DbBackup
+                         * can increase the protectedFileRange to protect a scan
+                         * or backup, and there is no restriction on how much
+                         * the range can be increased. While the calculation of
+                         * the unprotectedFiles Set considers the
                          * protectedFileRange, check the protectedFileRange
                          * again while under synchronization to see if there
                          * have been any asynchronous changes since that
-                         * calculation, which might make have extended the
-                         * range and made it larger than the unprotectedFile
-                         * set.
+                         * calculation, which might make have extended the range
+                         * and made it larger than the unprotectedFile set.
                          */
                         return;
                     }
-                    unprotectedFiles =
-                        unprotectedFiles.headSet(minRangeStart, false);
+                    unprotectedFiles = unprotectedFiles.headSet(minRangeStart, false);
                 }
 
                 /* Delete the unprotected files. */
-                for (final Iterator<Long> iter = unprotectedFiles.iterator();
-                     iter.hasNext();) {
+                for (final Iterator<Long> iter = unprotectedFiles.iterator(); iter.hasNext();) {
                     final Long fileNum = iter.next();
                     final boolean deleted;
                     final String expungeLabel = expunge ? "delete" : "rename";
@@ -807,64 +746,55 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
                         if (expunge) {
                             deleted = fileManager.deleteFile(fileNum);
                         } else {
-                            final File newFile = fileManager.renameFile(
-                                fileNum, FileManager.DEL_SUFFIX,
-                                useDeletedDir ? DELETED_SUBDIR : null);
+                            final File newFile = fileManager.renameFile(fileNum, FileManager.DEL_SUFFIX,
+                                    useDeletedDir ? DELETED_SUBDIR : null);
 
                             if (newFile != null) {
-                                newFile.setLastModified(
-                                    System.currentTimeMillis());
+                                newFile.setLastModified(System.currentTimeMillis());
                             }
 
                             deleted = (newFile != null);
                         }
                     } catch (IOException e) {
-                        throw new EnvironmentFailureException
-                            (env, EnvironmentFailureReason.LOG_WRITE,
-                             "Unable to " + expungeLabel + " " + fileNum, e);
+                        throw new EnvironmentFailureException(env, EnvironmentFailureReason.LOG_WRITE,
+                                "Unable to " + expungeLabel + " " + fileNum, e);
                     }
                     if (deleted) {
 
                         /*
-                         * Deletion was successful.  Log a trace message for
+                         * Deletion was successful. Log a trace message for
                          * debugging of log cleaning behavior.
                          */
                         LoggerUtils.traceAndLog(logger, env, Level.FINE,
-                                                "Cleaner deleted file 0x" +
-                                                Long.toHexString(fileNum));
+                                "Cleaner deleted file 0x" + Long.toHexString(fileNum));
                     } else if (!fileManager.isFileValid(fileNum)) {
 
                         /*
-                         * Somehow the file was previously deleted.  This could
+                         * Somehow the file was previously deleted. This could
                          * indicate an internal state error, and therefore we
-                         * output a trace message.  But we should not
-                         * repeatedly attempt to delete it, so we do remove it
-                         * from the profile below.
+                         * output a trace message. But we should not repeatedly
+                         * attempt to delete it, so we do remove it from the
+                         * profile below.
                          */
-                        LoggerUtils.traceAndLog
-                            (logger, env, Level.SEVERE,
-                             "Cleaner deleteSafeToDeleteFiles Log file 0x" +
-                             Long.toHexString(fileNum) + " was previously " +
-                             expungedLabel + ".  State: " + fileSelector );
+                        LoggerUtils.traceAndLog(logger, env, Level.SEVERE,
+                                "Cleaner deleteSafeToDeleteFiles Log file 0x" + Long.toHexString(fileNum)
+                                        + " was previously " + expungedLabel + ".  State: " + fileSelector);
                     } else {
 
                         /*
                          * We will retry the deletion later if file still
-                         * exists.  The deletion could have failed on Windows
-                         * if the file was recently closed.  Remove the file
-                         * from unprotectedFiles. That way, we won't remove it
-                         * from the FileSelector's safe-to-delete set or the UP
+                         * exists. The deletion could have failed on Windows if
+                         * the file was recently closed. Remove the file from
+                         * unprotectedFiles. That way, we won't remove it from
+                         * the FileSelector's safe-to-delete set or the UP
                          * below, and we will retry the file deletion later.
                          */
                         iter.remove();
 
-                        LoggerUtils.traceAndLog
-                            (logger, env, Level.WARNING,
-                             "Cleaner deleteSafeToDeleteFiles Log file 0x" +
-                             Long.toHexString(fileNum) + " could not be " +
-                             expungedLabel + ". This operation will be " +
-                             "retried at the next checkpoint. State: " +
-                             fileSelector);
+                        LoggerUtils.traceAndLog(logger, env, Level.WARNING,
+                                "Cleaner deleteSafeToDeleteFiles Log file 0x" + Long.toHexString(fileNum)
+                                        + " could not be " + expungedLabel + ". This operation will be "
+                                        + "retried at the next checkpoint. State: " + fileSelector);
                     }
                 }
             }
@@ -873,26 +803,20 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
         }
 
         /*
-         * Now unprotectedFiles contains only the files we deleted above.  We
-         * can update the UP (and FileSelector) here outside of the
-         * synchronization block and without the environment locked.  That way,
-         * DbBackups and read-only processes will not be blocked by the
-         * expensive UP operation.
-         *
-         * We do not retry if an error occurs deleting the UP database entries
-         * below.  Retrying (when file deletion fails) is intended only to
-         * solve a problem on Windows where deleting a log file isn't always
-         * possible immediately after closing it.
-         *
-         * Remove the file from the UP before removing it from the
-         * FileSelector's safe-to-delete set.  If we remove in the reverse
-         * order, it may be selected for cleaning.  Always remove the file from
-         * the safe-to-delete set (in a finally block) so that we don't attempt
-         * to delete the file again.
+         * Now unprotectedFiles contains only the files we deleted above. We can
+         * update the UP (and FileSelector) here outside of the synchronization
+         * block and without the environment locked. That way, DbBackups and
+         * read-only processes will not be blocked by the expensive UP
+         * operation. We do not retry if an error occurs deleting the UP
+         * database entries below. Retrying (when file deletion fails) is
+         * intended only to solve a problem on Windows where deleting a log file
+         * isn't always possible immediately after closing it. Remove the file
+         * from the UP before removing it from the FileSelector's safe-to-delete
+         * set. If we remove in the reverse order, it may be selected for
+         * cleaning. Always remove the file from the safe-to-delete set (in a
+         * finally block) so that we don't attempt to delete the file again.
          */
-        profile.removePerDbMetadata(
-            unprotectedFiles,
-            fileSelector.getCleanedDatabases(unprotectedFiles));
+        profile.removePerDbMetadata(unprotectedFiles, fileSelector.getCleanedDatabases(unprotectedFiles));
 
         for (Long fileNum : unprotectedFiles) {
             try {
@@ -906,16 +830,13 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
 
         /* Leave a clue for analyzing log file deletion problems. */
         if (safeToDeleteFiles.size() > unprotectedFiles.size()) {
-            final List<Long> filesNotDeleted = new ArrayList<>(
-                safeToDeleteFiles.size() - unprotectedFiles.size());
+            final List<Long> filesNotDeleted = new ArrayList<>(safeToDeleteFiles.size() - unprotectedFiles.size());
             for (final Long file : safeToDeleteFiles) {
                 if (!unprotectedFiles.contains(file)) {
                     filesNotDeleted.add(file);
                 }
             }
-            logProtectedFiles(
-                "they are protected by DbBackup or replication",
-                new TreeSet<>(filesNotDeleted), haMsg);
+            logProtectedFiles("they are protected by DbBackup or replication", new TreeSet<>(filesNotDeleted), haMsg);
         }
     }
 
@@ -923,15 +844,11 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
      * Log a message describing files that were not deleted because they were
      * protected.
      */
-    private void logProtectedFiles(
-        final String reason,
-        final SortedSet<Long> filesNotDeleted,
-        final StringBuilder haMsg) {
+    private void logProtectedFiles(final String reason, final SortedSet<Long> filesNotDeleted,
+                                   final StringBuilder haMsg) {
 
-        final String msg = "Cleaner has " + filesNotDeleted.size() +
-            " files not deleted because " + reason +
-            ": " + FormatUtil.asString(filesNotDeleted) +
-            haMsg;
+        final String msg = "Cleaner has " + filesNotDeleted.size() + " files not deleted because " + reason + ": "
+                + FormatUtil.asString(filesNotDeleted) + haMsg;
 
         if (!filesNotDeleted.equals(lastProtectedFileSet)) {
 
@@ -950,22 +867,23 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     /**
      * Adds a range of log files to be protected from deletion during a backup
      * or similar procedures where log files must not be deleted.
-     *
-     * <p>This method is called automatically by the {@link
-     * com.sleepycat.je.util.DbBackup} utility and is provided here as a
-     * separate API for advanced applications that may implement a custom
-     * backup procedure.</p>
-     *
-     * <p><em>WARNING:</em> After calling this method, deletion of log files in
-     * the file range by the JE log cleaner will be disabled until {@link
-     * #removeProtectedFileRange} is called.  To prevent unbounded growth of
-     * disk usage, be sure to call {@link #removeProtectedFileRange} to
-     * re-enable log file deletion.</p>
+     * <p>
+     * This method is called automatically by the
+     * {@link com.sleepycat.je.util.DbBackup} utility and is provided here as a
+     * separate API for advanced applications that may implement a custom backup
+     * procedure.
+     * </p>
+     * <p>
+     * <em>WARNING:</em> After calling this method, deletion of log files in the
+     * file range by the JE log cleaner will be disabled until
+     * {@link #removeProtectedFileRange} is called. To prevent unbounded growth
+     * of disk usage, be sure to call {@link #removeProtectedFileRange} to
+     * re-enable log file deletion.
+     * </p>
      *
      * @param firstProtectedFile the number of the first file to be protected.
-     * The protected range is from this file number to the last (highest
-     * numbered) file in the log.
-     *
+     *            The protected range is from this file number to the last
+     *            (highest numbered) file in the log.
      * @since 4.0
      */
     public void addProtectedFileRange(long firstProtectedFile) {
@@ -975,24 +893,20 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     }
 
     /**
-     * Removes a range of log files to be protected after calling {@link
-     * #addProtectedFileRange}.
+     * Removes a range of log files to be protected after calling
+     * {@link #addProtectedFileRange}.
      *
-     * @param firstProtectedFile the value previously passed to {@link
-     * #addProtectedFileRange}.
-     *
+     * @param firstProtectedFile the value previously passed to
+     *            {@link #addProtectedFileRange}.
      * @throws EnvironmentFailureException if {@code firstProtectedFile} is not
-     * currently the start of a protected range.
-     *
+     *             currently the start of a protected range.
      * @since 4.0
      */
     public void removeProtectedFileRange(long firstProtectedFile) {
         synchronized (protectedFileRanges) {
             if (!protectedFileRanges.remove(firstProtectedFile)) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("File range starting with 0x" +
-                     Long.toHexString(firstProtectedFile) +
-                     " is not currently protected");
+                throw EnvironmentFailureException.unexpectedState("File range starting with 0x"
+                        + Long.toHexString(firstProtectedFile) + " is not currently protected");
             }
         }
     }
@@ -1000,10 +914,10 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     /**
      * Returns a copy of the cleaned and processed files at the time a
      * checkpoint starts.
-     *
-     * <p>If non-null is returned, the checkpoint should flush an extra level,
-     * and addCheckpointedFiles() should be called when the checkpoint is
-     * complete.</p>
+     * <p>
+     * If non-null is returned, the checkpoint should flush an extra level, and
+     * addCheckpointedFiles() should be called when the checkpoint is complete.
+     * </p>
      */
     public CheckpointStartCleanerState getFilesAtCheckpointStart() {
 
@@ -1014,35 +928,32 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     }
 
     /**
-     * When a checkpoint is complete, update the files that were returned at
-     * the beginning of the checkpoint.
+     * When a checkpoint is complete, update the files that were returned at the
+     * beginning of the checkpoint.
      */
     public void updateFilesAtCheckpointEnd(CheckpointStartCleanerState info) {
         fileSelector.updateFilesAtCheckpointEnd(info);
         deleteSafeToDeleteFiles();
 
         /*
-         * Periodically process completed expiration trackers. This is done
-         * here in case cleaner threads are disabled.
+         * Periodically process completed expiration trackers. This is done here
+         * in case cleaner threads are disabled.
          */
         expirationProfile.processCompletedTrackers();
     }
 
     /**
-     * If any LNs or databases are pending, process them.  This method should
-     * be called often enough to prevent the pending LN set from growing too
-     * large.
+     * If any LNs or databases are pending, process them. This method should be
+     * called often enough to prevent the pending LN set from growing too large.
      */
     void processPending() {
 
         /*
-         * This method is not synchronized because that would block cleaner
-         * and checkpointer threads unnecessarily.  However, we do prevent
-         * reentrancy, for two reasons:
-         * 1. It is wasteful for two threads to process the same pending
-         *    entries.
-         * 2. Many threads calling getDb may increase the liklihood of
-         *    livelock. [#20816]
+         * This method is not synchronized because that would block cleaner and
+         * checkpointer threads unnecessarily. However, we do prevent
+         * reentrancy, for two reasons: 1. It is wasteful for two threads to
+         * process the same pending entries. 2. Many threads calling getDb may
+         * increase the liklihood of livelock. [#20816]
          */
         if (!processPendingReentrancyGuard.compareAndSet(false, true)) {
             return;
@@ -1051,23 +962,19 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
         try {
             final DbTree dbMapTree = env.getDbTree();
 
-            final LockManager lockManager =
-                env.getTxnManager().getLockManager();
+            final LockManager lockManager = env.getTxnManager().getLockManager();
 
             final Map<Long, LNInfo> pendingLNs = fileSelector.getPendingLNs();
 
             if (pendingLNs != null) {
                 final TreeLocation location = new TreeLocation();
 
-                for (final Map.Entry<Long, LNInfo> entry :
-                     pendingLNs.entrySet()) {
+                for (final Map.Entry<Long, LNInfo> entry : pendingLNs.entrySet()) {
 
                     final long logLsn = entry.getKey();
                     final LNInfo info = entry.getValue();
 
-                    if (env.expiresWithin(
-                        info.getExpirationTime(),
-                        0 - env.getTtlLnPurgeDelay())) {
+                    if (env.expiresWithin(info.getExpirationTime(), 0 - env.getTtlLnPurgeDelay())) {
 
                         if (lockManager.isLockUncontended(logLsn)) {
                             fileSelector.removePendingLN(logLsn);
@@ -1087,7 +994,7 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
 
                         /* Evict before processing each entry. */
                         if (DO_CRITICAL_EVICTION) {
-                            env.daemonEviction(true /*backgroundIO*/);
+                            env.daemonEviction(true /* backgroundIO */);
                         }
 
                         processPendingLN(logLsn, db, key, location);
@@ -1120,17 +1027,14 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
      * Processes a pending LN, getting the lock first to ensure that the
      * overhead of retries is minimal.
      */
-    private void processPendingLN(
-        final long logLsn,
-        final DatabaseImpl db,
-        final byte[] keyFromLog,
-        final TreeLocation location) {
+    private void processPendingLN(final long logLsn, final DatabaseImpl db, final byte[] keyFromLog,
+                                  final TreeLocation location) {
 
-        boolean parentFound;          // We found the parent BIN.
+        boolean parentFound; // We found the parent BIN.
         boolean processedHere = true; // The LN was cleaned here.
-        boolean lockDenied = false;   // The LN lock was denied.
-        boolean obsolete = false;     // The LN is no longer in use.
-        boolean completed = false;    // This method completed.
+        boolean lockDenied = false; // The LN lock was denied.
+        boolean obsolete = false; // The LN is no longer in use.
+        boolean completed = false; // This method completed.
 
         BasicLocker locker = null;
         BIN bin = null;
@@ -1139,7 +1043,7 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             nPendingLNsProcessed.increment();
 
             /*
-             * If the DB is gone, this LN is obsolete.  If delete cleanup is in
+             * If the DB is gone, this LN is obsolete. If delete cleanup is in
              * progress, put the DB into the DB pending set; this LN will be
              * declared deleted after the delete cleanup is finished.
              */
@@ -1155,18 +1059,18 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             assert tree != null;
 
             /*
-             * Get a non-blocking read lock on the original log LSN.  If this
-             * fails, then the original LSN is still write-locked.  We may have
+             * Get a non-blocking read lock on the original log LSN. If this
+             * fails, then the original LSN is still write-locked. We may have
              * to lock again, if the LSN has changed in the BIN, but this
              * initial check prevents a Btree lookup in some cases.
              */
-            locker = BasicLocker.createBasicLocker(env, false /*noWait*/);
+            locker = BasicLocker.createBasicLocker(env, false /* noWait */);
 
             /* Don't allow this short-lived lock to be preempted/stolen. */
             locker.setPreemptable(false);
 
-            final LockResult lockRet = locker.nonBlockingLock(
-                logLsn, LockType.READ, false /*jumpAheadOfWaiters*/, db);
+            final LockResult lockRet = locker.nonBlockingLock(logLsn, LockType.READ, false /* jumpAheadOfWaiters */,
+                    db);
 
             if (lockRet.getLockGrant() == LockGrantType.DENIED) {
                 /* Try again later. */
@@ -1179,9 +1083,8 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             /*
              * Search down to the bottom most level for the parent of this LN.
              */
-            parentFound = tree.getParentBINForChildLN(
-                location, keyFromLog, false /*splitsAllowed*/,
-                false /*blindDeltaOps*/, UPDATE_GENERATION);
+            parentFound = tree.getParentBINForChildLN(location, keyFromLog, false /* splitsAllowed */,
+                    false /* blindDeltaOps */, UPDATE_GENERATION);
 
             bin = location.bin;
             final int index = location.index;
@@ -1196,16 +1099,14 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             /* Migrate an LN. */
             processedHere = false;
 
-            lockDenied =
-                migratePendingLN(db, logLsn, bin.getLsn(index), bin, index);
+            lockDenied = migratePendingLN(db, logLsn, bin.getLsn(index), bin, index);
 
             completed = true;
 
         } catch (RuntimeException e) {
             e.printStackTrace();
-            LoggerUtils.traceAndLogException(
-                env, "com.sleepycat.je.cleaner.Cleaner",
-                "processLN", "Exception thrown: ", e);
+            LoggerUtils.traceAndLogException(env, "com.sleepycat.je.cleaner.Cleaner", "processLN", "Exception thrown: ",
+                    e);
             throw e;
         } finally {
             if (bin != null) {
@@ -1222,39 +1123,34 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             }
 
             /*
-             * If migratePendingLN was not called above, perform tracing in
-             * this method.
+             * If migratePendingLN was not called above, perform tracing in this
+             * method.
              */
             if (processedHere) {
-                logFine(CLEAN_PENDING_LN, null /*node*/, DbLsn.NULL_LSN,
-                        completed, obsolete, false /*migrated*/);
+                logFine(CLEAN_PENDING_LN, null /* node */, DbLsn.NULL_LSN, completed, obsolete, false /* migrated */);
             }
         }
     }
 
     /**
-     * Migrate a pending LN in the given BIN entry, if it is not obsolete.  The
+     * Migrate a pending LN in the given BIN entry, if it is not obsolete. The
      * BIN must be latched on entry and is left latched by this method.
      *
      * @return whether migration could not be completed because the LN lock was
-     * denied.
+     *         denied.
      */
-    private boolean migratePendingLN(
-        final DatabaseImpl db,
-        final long logLsn,
-        final long treeLsn,
-        final BIN bin,
-        final int index) {
+    private boolean migratePendingLN(final DatabaseImpl db, final long logLsn, final long treeLsn, final BIN bin,
+                                     final int index) {
 
         /* Status variables are used to generate debug tracing info. */
-        boolean obsolete = false;    // The LN is no longer in use.
-        boolean migrated = false;    // The LN was in use and is migrated.
-        boolean completed = false;   // This method completed.
+        boolean obsolete = false; // The LN is no longer in use.
+        boolean migrated = false; // The LN was in use and is migrated.
+        boolean completed = false; // This method completed.
         boolean clearTarget = false; // Node was non-resident when called.
 
         /*
          * If wasCleaned is false we don't count statistics unless we migrate
-         * the LN.  This avoids double counting.
+         * the LN. This avoids double counting.
          */
         BasicLocker locker = null;
         LN ln = null;
@@ -1275,18 +1171,18 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             }
 
             /*
-             * Get a non-blocking read lock on the LN.  A pending node is
-             * already locked, but the original pending LSN may have changed.
-             * We must lock the current LSN to guard against aborts.
+             * Get a non-blocking read lock on the LN. A pending node is already
+             * locked, but the original pending LSN may have changed. We must
+             * lock the current LSN to guard against aborts.
              */
             if (logLsn != treeLsn) {
 
-                locker = BasicLocker.createBasicLocker(env, false /*noWait*/);
+                locker = BasicLocker.createBasicLocker(env, false /* noWait */);
                 /* Don't allow this short-lived lock to be preempted/stolen. */
                 locker.setPreemptable(false);
 
-                final LockResult lockRet = locker.nonBlockingLock(
-                    treeLsn, LockType.READ, false /*jumpAheadOfWaiters*/, db);
+                final LockResult lockRet = locker.nonBlockingLock(treeLsn, LockType.READ,
+                        false /* jumpAheadOfWaiters */, db);
 
                 if (lockRet.getLockGrant() == LockGrantType.DENIED) {
 
@@ -1305,16 +1201,15 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
                 }
 
             } else if (bin.isEmbeddedLN(index)) {
-                throw EnvironmentFailureException.unexpectedState(
-                    env,
-                    "LN is embedded although its associated logrec (at " +
-                    treeLsn + " does not have the embedded flag on");
+                throw EnvironmentFailureException.unexpectedState(env,
+                        "LN is embedded although its associated logrec (at " + treeLsn
+                                + " does not have the embedded flag on");
             }
 
             /*
-             * Get the ln so that we can log it to its new position.
-             * Notice that the fetchLN() call below will return null if the
-             * slot is defunct and the LN has been purged by the cleaner.
+             * Get the ln so that we can log it to its new position. Notice that
+             * the fetchLN() call below will return null if the slot is defunct
+             * and the LN has been purged by the cleaner.
              */
             ln = (LN) bin.getTarget(index);
             if (ln == null) {
@@ -1332,30 +1227,22 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
             }
 
             /*
-             * Migrate the LN.
-             *
-             * Do not pass a locker, because there is no need to lock the new
-             * LSN, as done for user operations.  Another locker cannot attempt
-             * to lock the new LSN until we're done, because we release the
-             * lock before we release the BIN latch.
+             * Migrate the LN. Do not pass a locker, because there is no need to
+             * lock the new LSN, as done for user operations. Another locker
+             * cannot attempt to lock the new LSN until we're done, because we
+             * release the lock before we release the BIN latch.
              */
-            final LogItem logItem = ln.log(
-                env, db, null /*locker*/, null /*writeLockInfo*/,
-                false /*newEmbeddedLN*/, bin.getKey(index),
-                bin.getExpiration(index), bin.isExpirationInHours(),
-                false /*currEmbeddedLN*/, treeLsn, bin.getLastLoggedSize(index),
-                false /*isInsertion*/, true /*backgroundIO*/,
-                getMigrationRepContext(ln));
+            final LogItem logItem = ln.log(env, db, null /* locker */, null /* writeLockInfo */,
+                    false /* newEmbeddedLN */, bin.getKey(index), bin.getExpiration(index), bin.isExpirationInHours(),
+                    false /* currEmbeddedLN */, treeLsn, bin.getLastLoggedSize(index), false /* isInsertion */,
+                    true /* backgroundIO */, getMigrationRepContext(ln));
 
-            bin.updateEntry(
-                index, logItem.lsn, ln.getVLSNSequence(),
-                logItem.size);
+            bin.updateEntry(index, logItem.lsn, ln.getVLSNSequence(), logItem.size);
 
             nLNsMigrated.increment();
 
             /* Lock new LSN on behalf of existing lockers. */
-            CursorImpl.lockAfterLsnChange(
-                db, treeLsn, logItem.lsn, null /*excludeLocker*/);
+            CursorImpl.lockAfterLsnChange(db, treeLsn, logItem.lsn, null /* excludeLocker */);
 
             migrated = true;
             completed = true;
@@ -1375,13 +1262,12 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
                 locker.operationEnd();
             }
 
-            logFine(
-                CLEAN_PENDING_LN, ln, treeLsn, completed, obsolete, migrated);
+            logFine(CLEAN_PENDING_LN, ln, treeLsn, completed, obsolete, migrated);
         }
     }
 
     /**
-     * Returns the ReplicationContext to use for migrating the given LN.  If
+     * Returns the ReplicationContext to use for migrating the given LN. If
      * VLSNs are preserved in this Environment then the VLSN is logically part
      * of the data record, and LN.getVLSNSequence will return the VLSN, which
      * should be included in the migrated LN.
@@ -1391,8 +1277,7 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
         if (vlsnSeq <= 0) {
             return ReplicationContext.NO_REPLICATE;
         }
-        return new ReplicationContext(new VLSN(vlsnSeq),
-                                      false /*inReplicationStream*/);
+        return new ReplicationContext(new VLSN(vlsnSeq), false /* inReplicationStream */);
     }
 
     /**
@@ -1403,8 +1288,7 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
         if (db != null && db.isDeleted() && !db.isDeleteFinished()) {
             DatabaseId id = db.getId();
             if (fileSelector.addPendingDB(id)) {
-                LoggerUtils.logMsg(logger, env, Level.FINE,
-                                   "CleanAddPendingDB " + id);
+                LoggerUtils.logMsg(logger, env, Level.FINE, "CleanAddPendingDB " + id);
             }
         }
     }
@@ -1414,12 +1298,7 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
      * alone to conditionalize whether we send this message, we don't even want
      * to construct the message if the level is not enabled.
      */
-    void logFine(String action,
-               Node node,
-               long logLsn,
-               boolean completed,
-               boolean obsolete,
-               boolean dirtiedMigrated) {
+    void logFine(String action, Node node, long logLsn, boolean completed, boolean obsolete, boolean dirtiedMigrated) {
 
         if (logger.isLoggable(Level.FINE)) {
             StringBuilder sb = new StringBuilder();
@@ -1439,8 +1318,8 @@ public class Cleaner implements DaemonRunner, EnvConfigObserver {
     }
 
     /**
-     * Release resources and update memory budget. Should only be called
-     * when this environment is closed and will never be accessed again.
+     * Release resources and update memory budget. Should only be called when
+     * this environment is closed and will never be accessed again.
      */
     public void close() {
         profile.close();

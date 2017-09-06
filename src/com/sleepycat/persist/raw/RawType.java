@@ -22,36 +22,37 @@ import com.sleepycat.persist.model.EntityMetadata;
 import com.sleepycat.persist.model.Persistent;
 
 /**
- * The type definition for a simple or complex persistent type, or an array
- * of persistent types.
- *
- * <p>{@code RawType} objects are thread-safe.  Multiple threads may safely
- * call the methods of a shared {@code RawType} object.</p>
+ * The type definition for a simple or complex persistent type, or an array of
+ * persistent types.
+ * <p>
+ * {@code RawType} objects are thread-safe. Multiple threads may safely call the
+ * methods of a shared {@code RawType} object.
+ * </p>
  *
  * @author Mark Hayes
  */
 public interface RawType {
 
     /**
-     * Returns the class name for this type in the format specified by {@link
-     * Class#getName}.
-     *
-     * <p>If this class currently exists (has not been removed or renamed) then
-     * the class name may be passed to {@link Class#forName} to get the current
-     * {@link Class} object.  However, if this raw type is not the current
+     * Returns the class name for this type in the format specified by
+     * {@link Class#getName}.
+     * <p>
+     * If this class currently exists (has not been removed or renamed) then the
+     * class name may be passed to {@link Class#forName} to get the current
+     * {@link Class} object. However, if this raw type is not the current
      * version of the class, this type information may differ from that of the
-     * current {@link Class}.</p>
+     * current {@link Class}.
+     * </p>
      *
      * @return the class name.
      */
     String getClassName();
 
     /**
-     * Returns the class version for this type.  For simple types, zero is
-     * always returned.
+     * Returns the class version for this type. For simple types, zero is always
+     * returned.
      *
      * @return the version.
-     *
      * @see Entity#version
      * @see Persistent#version
      */
@@ -65,17 +66,20 @@ public interface RawType {
     int getId();
 
     /**
-     * Returns whether this is a 
-     * <a href="{@docRoot}/com/sleepycat/persist/model/Entity.html#simpleTypes">simple type</a>:
-     * primitive, primitive wrapper, BigInteger, BigDecimal, String or Date.
-     *
-     * <p>If true is returned, {@link #isPrimitive} can be called for more
-     * information, and a raw value of this type is represented as a simple
-     * type object (not as a {@link RawObject}).</p>
-     *
-     * <p>If false is returned, this is a complex type, an array type (see
+     * Returns whether this is a <a href=
+     * "{@docRoot}/com/sleepycat/persist/model/Entity.html#simpleTypes">simple
+     * type</a>: primitive, primitive wrapper, BigInteger, BigDecimal, String or
+     * Date.
+     * <p>
+     * If true is returned, {@link #isPrimitive} can be called for more
+     * information, and a raw value of this type is represented as a simple type
+     * object (not as a {@link RawObject}).
+     * </p>
+     * <p>
+     * If false is returned, this is a complex type, an array type (see
      * {@link #isArray}), or an enum type, and a raw value of this type is
-     * represented as a {@link RawObject}.</p>
+     * represented as a {@link RawObject}.
+     * </p>
      *
      * @return whether this is a simple type.
      */
@@ -84,14 +88,15 @@ public interface RawType {
     /**
      * Returns whether this type is a Java primitive: char, byte, short, int,
      * long, float or double.
-     *
-     * <p>If true is returned, this is also a simple type.  In other words,
-     * primitive types are a subset of simple types.</p>
-     *
-     * <p>If true is returned, a raw value of this type is represented as a
-     * non-null instance of the primitive type's wrapper class.  For example,
-     * an <code>int</code> raw value is represented as an
-     * <code>Integer</code>.</p>
+     * <p>
+     * If true is returned, this is also a simple type. In other words,
+     * primitive types are a subset of simple types.
+     * </p>
+     * <p>
+     * If true is returned, a raw value of this type is represented as a
+     * non-null instance of the primitive type's wrapper class. For example, an
+     * <code>int</code> raw value is represented as an <code>Integer</code>.
+     * </p>
      *
      * @return whether this is a Java primitive.
      */
@@ -99,12 +104,14 @@ public interface RawType {
 
     /**
      * Returns whether this is an enum type.
-     *
-     * <p>If true is returned, a value of this type is a {@link RawObject} and
-     * the enum constant String is available via {@link RawObject#getEnum}.</p>
-     *
-     * <p>If false is returned, then this is a complex type, an array type (see
-     * {@link #isArray}), or a simple type (see {@link #isSimple}).</p>
+     * <p>
+     * If true is returned, a value of this type is a {@link RawObject} and the
+     * enum constant String is available via {@link RawObject#getEnum}.
+     * </p>
+     * <p>
+     * If false is returned, then this is a complex type, an array type (see
+     * {@link #isArray}), or a simple type (see {@link #isSimple}).
+     * </p>
      *
      * @return whether this is a enum type.
      */
@@ -119,15 +126,17 @@ public interface RawType {
     List<String> getEnumConstants();
 
     /**
-     * Returns whether this is an array type.  Raw value arrays are represented
+     * Returns whether this is an array type. Raw value arrays are represented
      * as {@link RawObject} instances.
-     *
-     * <p>If true is returned, the array component type is returned by {@link
-     * #getComponentType} and the number of array dimensions is returned by
-     * {@link #getDimensions}.</p>
-     *
-     * <p>If false is returned, then this is a complex type, an enum type (see
-     * {@link #isEnum}), or a simple type (see {@link #isSimple}).</p>
+     * <p>
+     * If true is returned, the array component type is returned by
+     * {@link #getComponentType} and the number of array dimensions is returned
+     * by {@link #getDimensions}.
+     * </p>
+     * <p>
+     * If false is returned, then this is a complex type, an enum type (see
+     * {@link #isEnum}), or a simple type (see {@link #isSimple}).
+     * </p>
      *
      * @return whether this is an array type.
      */
@@ -138,7 +147,7 @@ public interface RawType {
      * type.
      *
      * @return the number of array dimensions, or zero if this is not an array
-     * type.
+     *         type.
      */
     int getDimensions();
 
@@ -185,10 +194,10 @@ public interface RawType {
 
     /**
      * Returns whether this type has been deleted using a class {@code Deleter}
-     * mutation.  A deleted type may be returned by {@link
-     * com.sleepycat.persist.model.EntityModel#getRawTypeVersion
-     * EntityModel.getRawTypeVersion} or {@link
-     * com.sleepycat.persist.model.EntityModel#getAllRawTypeVersions
+     * mutation. A deleted type may be returned by
+     * {@link com.sleepycat.persist.model.EntityModel#getRawTypeVersion
+     * EntityModel.getRawTypeVersion} or
+     * {@link com.sleepycat.persist.model.EntityModel#getAllRawTypeVersions
      * EntityModel.getAllRawTypeVersions}.
      *
      * @return whether this type has been deleted.

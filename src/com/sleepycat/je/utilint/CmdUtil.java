@@ -31,8 +31,7 @@ public class CmdUtil {
     /**
      * @throws IllegalArgumentException via main
      */
-    public static String getArg(String[] argv, int whichArg)
-        throws IllegalArgumentException {
+    public static String getArg(String[] argv, int whichArg) throws IllegalArgumentException {
 
         if (whichArg < argv.length) {
             return argv[whichArg];
@@ -63,24 +62,20 @@ public class CmdUtil {
             return DbLsn.makeLsn(fileNum, 0);
         } else {
             long fileNum = readLongNumber(lsnVal.substring(0, slashOff));
-            long offset = CmdUtil.readLongNumber
-                (lsnVal.substring(slashOff + 1));
+            long offset = CmdUtil.readLongNumber(lsnVal.substring(slashOff + 1));
             return DbLsn.makeLsn(fileNum, offset);
         }
     }
 
-    private static final String printableChars =
-        "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-        "[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    private static final String printableChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            + "[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
-    public static void formatEntry(StringBuilder sb,
-                                   byte[] entryData,
-                                   boolean formatUsingPrintable) {
+    public static void formatEntry(StringBuilder sb, byte[] entryData, boolean formatUsingPrintable) {
         for (byte element : entryData) {
             int b = element & 0xff;
             if (formatUsingPrintable) {
                 if (isPrint(b)) {
-                    if (b == 0134) {  /* backslash */
+                    if (b == 0134) { /* backslash */
                         sb.append('\\');
                     }
                     sb.append(printableChars.charAt(b - 33));
@@ -107,32 +102,25 @@ public class CmdUtil {
     }
 
     /**
-     * Create an environment suitable for utilities. Utilities should in
-     * general send trace output to the console and not to the db log.
+     * Create an environment suitable for utilities. Utilities should in general
+     * send trace output to the console and not to the db log.
      */
-    public static EnvironmentImpl makeUtilityEnvironment(File envHome,
-                                                         boolean readOnly)
-        throws EnvironmentNotFoundException, EnvironmentLockedException {
+    public static EnvironmentImpl makeUtilityEnvironment(File envHome, boolean readOnly)
+            throws EnvironmentNotFoundException, EnvironmentLockedException {
 
         EnvironmentConfig config = new EnvironmentConfig();
         config.setReadOnly(readOnly);
 
         /* Don't debug log to the database log. */
-        config.setConfigParam(EnvironmentParams.JE_LOGGING_DBLOG.getName(),
-                              "false");
+        config.setConfigParam(EnvironmentParams.JE_LOGGING_DBLOG.getName(), "false");
 
         /* Don't run recovery. */
-        config.setConfigParam(EnvironmentParams.ENV_RECOVERY.getName(),
-                              "false");
+        config.setConfigParam(EnvironmentParams.ENV_RECOVERY.getName(), "false");
 
         /* Apply the configuration in the je.properties file. */
-        DbConfigManager.applyFileConfig
-            (envHome, DbInternal.getProps(config), false);
+        DbConfigManager.applyFileConfig(envHome, DbInternal.getProps(config), false);
 
-        EnvironmentImpl envImpl =
-            new EnvironmentImpl(envHome,
-                                config,
-                                null);
+        EnvironmentImpl envImpl = new EnvironmentImpl(envHome, config, null);
         envImpl.finishInit(config);
 
         return envImpl;
@@ -140,8 +128,8 @@ public class CmdUtil {
 
     /**
      * Returns a description of the java command for running a utility, without
-     * arguments.  For utilities the last name of the class name can be
-     * specified when "-jar je.jar" is used.
+     * arguments. For utilities the last name of the class name can be specified
+     * when "-jar je.jar" is used.
      */
     public static String getJavaCommand(Class<?> cls) {
 

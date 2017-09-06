@@ -16,30 +16,29 @@ package com.sleepycat.je.cleaner;
 import com.sleepycat.je.dbi.MemoryBudget;
 
 /**
- * Delta file summary info for a tracked file.  Tracked files are managed by
- * the UtilizationTracker.
- *
- * <p>The methods in this class for reading obsolete offsets may be used by
+ * Delta file summary info for a tracked file. Tracked files are managed by the
+ * UtilizationTracker.
+ * <p>
+ * The methods in this class for reading obsolete offsets may be used by
  * multiple threads without synchronization even while another thread is adding
- * offsets.  This is possible because elements are never deleted from the
- * lists.  The thread adding obsolete offsets does so under the log write
- * latch to prevent multiple threads from adding concurrently.</p>
+ * offsets. This is possible because elements are never deleted from the lists.
+ * The thread adding obsolete offsets does so under the log write latch to
+ * prevent multiple threads from adding concurrently.
+ * </p>
  */
 public class TrackedFileSummary extends FileSummary {
 
     private BaseUtilizationTracker tracker;
-    private long fileNum;
-    private OffsetList obsoleteOffsets;
-    private int memSize;
-    private boolean trackDetail;
-    private boolean allowFlush = true;
+    private long                   fileNum;
+    private OffsetList             obsoleteOffsets;
+    private int                    memSize;
+    private boolean                trackDetail;
+    private boolean                allowFlush = true;
 
     /**
      * Creates an empty tracked summary.
      */
-    TrackedFileSummary(BaseUtilizationTracker tracker,
-                       long fileNum,
-                       boolean trackDetail) {
+    TrackedFileSummary(BaseUtilizationTracker tracker, long fileNum, boolean trackDetail) {
         this.tracker = tracker;
         this.fileNum = fileNum;
         this.trackDetail = trackDetail;
@@ -47,7 +46,7 @@ public class TrackedFileSummary extends FileSummary {
 
     /**
      * Returns whether this summary is allowed or prohibited from being flushed
-     * or evicted during cleaning.  By default, flushing is allowed.
+     * or evicted during cleaning. By default, flushing is allowed.
      */
     public boolean getAllowFlush() {
         return allowFlush;
@@ -55,7 +54,7 @@ public class TrackedFileSummary extends FileSummary {
 
     /**
      * Allows or prohibits this summary from being flushed or evicted during
-     * cleaning.  By default, flushing is allowed.
+     * cleaning. By default, flushing is allowed.
      */
     void setAllowFlush(boolean allowFlush) {
         this.allowFlush = allowFlush;
@@ -69,9 +68,9 @@ public class TrackedFileSummary extends FileSummary {
     }
 
     /**
-     * Return the total memory size for this object.  We only bother to budget
-     * obsolete detail, not the overhead for this object, for two reasons:
-     * 1) The number of these objects is very small, and 2) unit tests disable
+     * Return the total memory size for this object. We only bother to budget
+     * obsolete detail, not the overhead for this object, for two reasons: 1)
+     * The number of these objects is very small, and 2) unit tests disable
      * detail tracking as a way to prevent budget adjustments here.
      */
     int getMemorySize() {
@@ -79,10 +78,11 @@ public class TrackedFileSummary extends FileSummary {
     }
 
     /**
-     * Overrides reset for a tracked file, and is called when a FileSummaryLN
-     * is written to the log.
-     *
-     * <p>Must be called under the log write latch.</p>
+     * Overrides reset for a tracked file, and is called when a FileSummaryLN is
+     * written to the log.
+     * <p>
+     * Must be called under the log write latch.
+     * </p>
      */
     @Override
     public void reset() {
@@ -101,8 +101,9 @@ public class TrackedFileSummary extends FileSummary {
 
     /**
      * Tracks the given offset as obsolete or non-obsolete.
-     *
-     * <p>Must be called under the log write latch.</p>
+     * <p>
+     * Must be called under the log write latch.
+     * </p>
      */
     void trackObsolete(long offset, boolean checkDupOffsets) {
 
@@ -145,8 +146,7 @@ public class TrackedFileSummary extends FileSummary {
                 /* Merge the other offsets into our list. */
                 if (obsoleteOffsets.merge(other.obsoleteOffsets)) {
                     /* There is one segment less as a result of the merge. */
-                    updateMemoryBudget
-                        (- MemoryBudget.TFS_LIST_SEGMENT_OVERHEAD);
+                    updateMemoryBudget(-MemoryBudget.TFS_LIST_SEGMENT_OVERHEAD);
                 }
             } else {
                 /* Adopt the other's offsets as our own. */
@@ -168,10 +168,9 @@ public class TrackedFileSummary extends FileSummary {
     }
 
     /**
-     * Returns whether the given offset is present in the tracked offsets.
-     * This does not indicate whether the offset is obsolete in general, but
-     * only if it is known to be obsolete in this version of the tracked
-     * information.
+     * Returns whether the given offset is present in the tracked offsets. This
+     * does not indicate whether the offset is obsolete in general, but only if
+     * it is known to be obsolete in this version of the tracked information.
      */
     boolean containsObsoleteOffset(long offset) {
 
@@ -194,7 +193,7 @@ public class TrackedFileSummary extends FileSummary {
      */
     void close() {
         assert tracker != null;
-        tracker.env.getMemoryBudget().updateAdminMemoryUsage(0-memSize);
+        tracker.env.getMemoryBudget().updateAdminMemoryUsage(0 - memSize);
         tracker = null;
         memSize = 0;
     }

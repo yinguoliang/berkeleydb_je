@@ -36,8 +36,8 @@ public class Trace extends BasicVersionedWriteLoggable {
     private static final int LAST_FORMAT_CHANGE = 8;
 
     /* Contents of a debug message. */
-    private Timestamp time;
-    private String msg;
+    private Timestamp        time;
+    private String           msg;
 
     /** Create a new debug record. */
     public Trace(String msg) {
@@ -65,10 +65,7 @@ public class Trace extends BasicVersionedWriteLoggable {
 
     /* Check to see if this Environment supports writing. */
     private static boolean isWritePermitted(EnvironmentImpl envImpl) {
-        if (envImpl == null ||
-            envImpl.isReadOnly() ||
-            envImpl.mayNotWrite() ||
-            envImpl.isDbLoggingDisabled()) {
+        if (envImpl == null || envImpl.isReadOnly() || envImpl.mayNotWrite() || envImpl.isDbLoggingDisabled()) {
             return false;
         }
 
@@ -83,25 +80,20 @@ public class Trace extends BasicVersionedWriteLoggable {
     /** Trace a trace object, unit tests only. */
     public static long trace(EnvironmentImpl envImpl, Trace traceMsg) {
         if (isWritePermitted(envImpl)) {
-            return envImpl.getLogManager().log(
-                new TraceLogEntry(traceMsg),
-                ReplicationContext.NO_REPLICATE);
+            return envImpl.getLogManager().log(new TraceLogEntry(traceMsg), ReplicationContext.NO_REPLICATE);
         }
 
-    	return DbLsn.NULL_LSN;
+        return DbLsn.NULL_LSN;
     }
 
     /**
      * Convenience method to create a log entry (lazily) containing this trace
-     * msg. Lazy tracing is used when tracing is desired, but the .jdb files
-     * are not initialized.
+     * msg. Lazy tracing is used when tracing is desired, but the .jdb files are
+     * not initialized.
      */
-    public static void traceLazily(EnvironmentImpl envImpl,
-                                   String message) {
+    public static void traceLazily(EnvironmentImpl envImpl, String message) {
         if (isWritePermitted(envImpl)) {
-            envImpl.getLogManager().logLazily(
-                new TraceLogEntry(new Trace(message)),
-                ReplicationContext.NO_REPLICATE);
+            envImpl.getLogManager().logLazily(new TraceLogEntry(new Trace(message)), ReplicationContext.NO_REPLICATE);
         }
     }
 
@@ -117,14 +109,11 @@ public class Trace extends BasicVersionedWriteLoggable {
 
     @Override
     public int getLogSize(final int logVersion, final boolean forReplication) {
-        return (LogUtils.getTimestampLogSize(time) +
-                LogUtils.getStringLogSize(msg));
+        return (LogUtils.getTimestampLogSize(time) + LogUtils.getStringLogSize(msg));
     }
 
     @Override
-    public void writeToLog(final ByteBuffer logBuffer,
-                           final int logVersion,
-                           final boolean forReplication) {
+    public void writeToLog(final ByteBuffer logBuffer, final int logVersion, final boolean forReplication) {
         LogUtils.writeTimestamp(logBuffer, time);
         LogUtils.writeString(logBuffer, msg);
     }
@@ -167,7 +156,7 @@ public class Trace extends BasicVersionedWriteLoggable {
     }
 
     /**
-     *  Just in case it's ever used as a hash key.
+     * Just in case it's ever used as a hash key.
      */
     @Override
     public int hashCode() {

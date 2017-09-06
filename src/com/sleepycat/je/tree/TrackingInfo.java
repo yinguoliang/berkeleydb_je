@@ -21,8 +21,8 @@ import com.sleepycat.je.utilint.DbLsn;
 public class TrackingInfo {
     public final long lsn;
     public final long nodeId;
-    public final int entries;
-    public int index;
+    public final int  entries;
+    public int        index;
 
     TrackingInfo(long lsn, long nodeId, int entries) {
         this.lsn = lsn;
@@ -43,9 +43,6 @@ public class TrackingInfo {
 
     @Override
     public String toString() {
-        return "lsn=" + DbLsn.getNoFormatString(lsn) +
-            " node=" + nodeId +
-            " entries=" + entries +
-            " index=" + index;
+        return "lsn=" + DbLsn.getNoFormatString(lsn) + " node=" + nodeId + " entries=" + entries + " index=" + index;
     }
 }

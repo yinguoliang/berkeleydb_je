@@ -25,15 +25,11 @@ import com.sleepycat.je.log.Loggable;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * A Log entry allows you to read, write and dump a database log entry.  Each
- * entry may be made up of one or more loggable items.
- *
- * The log entry on disk consists of
- *  a. a log header defined by LogManager
- *  b. a VLSN, if this entry type requires it, and replication is on.
- *  c. the specific contents of the log entry.
- *
- * This class encompasses (b and c).
+ * A Log entry allows you to read, write and dump a database log entry. Each
+ * entry may be made up of one or more loggable items. The log entry on disk
+ * consists of a. a log header defined by LogManager b. a VLSN, if this entry
+ * type requires it, and replication is on. c. the specific contents of the log
+ * entry. This class encompasses (b and c).
  *
  * @param <T> the type of the loggable items in this entry
  */
@@ -52,11 +48,11 @@ abstract class BaseEntry<T extends Loggable> implements LogEntry {
      * Attributes of the entry type may be used to conditionalizing the reading
      * and writing of the entry.
      */
-    LogEntryType entryType;
+    LogEntryType                 entryType;
 
     /**
-     * Constructor to read an entry. The logEntryType must be set later,
-     * through setLogType().
+     * Constructor to read an entry. The logEntryType must be set later, through
+     * setLogType().
      *
      * @param logClass the class for the contained loggable item or items
      */
@@ -64,8 +60,7 @@ abstract class BaseEntry<T extends Loggable> implements LogEntry {
         noArgsConstructor = getNoArgsConstructor(logClass);
     }
 
-    static <T extends Loggable> Constructor<T> getNoArgsConstructor(
-        final Class<T> logClass) {
+    static <T extends Loggable> Constructor<T> getNoArgsConstructor(final Class<T> logClass) {
         try {
             return logClass.getConstructor((Class<T>[]) null);
         } catch (SecurityException | NoSuchMethodException e) {
@@ -80,12 +75,11 @@ abstract class BaseEntry<T extends Loggable> implements LogEntry {
         return newInstanceOfType(noArgsConstructor);
     }
 
-    static <T extends Loggable> T newInstanceOfType(
-        final Constructor<T> noArgsConstructor) {
+    static <T extends Loggable> T newInstanceOfType(final Constructor<T> noArgsConstructor) {
         try {
             return noArgsConstructor.newInstance((Object[]) null);
-        } catch (IllegalAccessException | InstantiationException |
-                IllegalArgumentException | InvocationTargetException e) {
+        } catch (IllegalAccessException | InstantiationException | IllegalArgumentException
+                | InvocationTargetException e) {
             throw EnvironmentFailureException.unexpectedException(e);
         }
     }
@@ -98,15 +92,13 @@ abstract class BaseEntry<T extends Loggable> implements LogEntry {
     }
 
     /**
-     * Returns the class of the contained loggable item or items, or null if
-     * the instance was created to write an entry.
+     * Returns the class of the contained loggable item or items, or null if the
+     * instance was created to write an entry.
      *
      * @return the loggable class or null
      */
     public Class<T> getLogClass() {
-        return (noArgsConstructor != null) ?
-            noArgsConstructor.getDeclaringClass() :
-            null;
+        return (noArgsConstructor != null) ? noArgsConstructor.getDeclaringClass() : null;
     }
 
     /**
@@ -124,7 +116,7 @@ abstract class BaseEntry<T extends Loggable> implements LogEntry {
 
     /**
      * By default, this log entry is complete and does not require fetching
-     * additional entries.  This method is overridden by BINDeltaLogEntry.
+     * additional entries. This method is overridden by BINDeltaLogEntry.
      */
     @Override
     public Object getResolvedItem(DatabaseImpl dbImpl) {
@@ -144,18 +136,17 @@ abstract class BaseEntry<T extends Loggable> implements LogEntry {
     /**
      * Do any processing we need to do after logging, while under the logging
      * latch.
+     * 
      * @throws DatabaseException from subclasses.
      */
     @Override
     public void postLogWork(@SuppressWarnings("unused") LogEntryHeader header,
-                            @SuppressWarnings("unused") long justLoggedLsn,
-                            @SuppressWarnings("unused") VLSN vlsn) {
+                            @SuppressWarnings("unused") long justLoggedLsn, @SuppressWarnings("unused") VLSN vlsn) {
 
         /* by default, do nothing. */
     }
 
-    public void postFetchInit(@SuppressWarnings("unused")
-                              DatabaseImpl dbImpl) {
+    public void postFetchInit(@SuppressWarnings("unused") DatabaseImpl dbImpl) {
     }
 
     @Override

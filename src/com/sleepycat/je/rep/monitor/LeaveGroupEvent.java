@@ -16,14 +16,13 @@ package com.sleepycat.je.rep.monitor;
 import java.util.Date;
 
 /**
- * The event generated when a node leaves the group. A new instance of this 
- * event is generated each time a node leaves the group.
- *
- * The events is generated on a "best effort" basis. It may not be generated if
- * the node leaving the group dies before it has a chance to generate the
- * event, for example, if the process was killed, or the node was unable to
- * communicate with the monitor due to a network problem. The application must
- * be resilient in the face of such missing events.
+ * The event generated when a node leaves the group. A new instance of this
+ * event is generated each time a node leaves the group. The events is generated
+ * on a "best effort" basis. It may not be generated if the node leaving the
+ * group dies before it has a chance to generate the event, for example, if the
+ * process was killed, or the node was unable to communicate with the monitor
+ * due to a network problem. The application must be resilient in the face of
+ * such missing events.
  */
 public class LeaveGroupEvent extends MemberChangeEvent {
 
@@ -48,26 +47,22 @@ public class LeaveGroupEvent extends MemberChangeEvent {
         MASTER_SHUTDOWN_GROUP
     };
 
-    /** 
-     * The time when this node joins the group. 
+    /**
+     * The time when this node joins the group.
      */
-    private final long joinTime;
+    private final long        joinTime;
 
     /**
-     * The time when this node leaves the group. 
+     * The time when this node leaves the group.
      */
-    private final long leaveTime;
+    private final long        leaveTime;
 
-    /** 
-     * The reason why this node leaves the group. 
+    /**
+     * The reason why this node leaves the group.
      */
     private final LeaveReason leaveReason;
 
-    LeaveGroupEvent(String nodeName,
-                    String masterName,
-                    LeaveReason leaveReason, 
-                    long joinTime, 
-                    long leaveTime) {
+    LeaveGroupEvent(String nodeName, String masterName, LeaveReason leaveReason, long joinTime, long leaveTime) {
         super(nodeName, masterName);
         this.joinTime = joinTime;
         this.leaveTime = leaveTime;
@@ -81,7 +76,7 @@ public class LeaveGroupEvent extends MemberChangeEvent {
         return new Date(joinTime);
     }
 
-    /** 
+    /**
      * Returns the time at which the node left the group.
      */
     public Date getLeaveTime() {
@@ -94,10 +89,9 @@ public class LeaveGroupEvent extends MemberChangeEvent {
     public LeaveReason getLeaveReason() {
         return leaveReason;
     }
-    
+
     @Override
     public String toString() {
-        return "Node " + getNodeName() + " left at " + getLeaveTime() + 
-                " because of " + getLeaveReason();
+        return "Node " + getNodeName() + " left at " + getLeaveTime() + " because of " + getLeaveReason();
     }
 }

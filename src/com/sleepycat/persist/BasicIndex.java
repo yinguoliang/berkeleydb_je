@@ -38,9 +38,9 @@ import com.sleepycat.util.keyrange.KeyRange;
 import com.sleepycat.util.keyrange.RangeCursor;
 
 /**
- * Implements EntityIndex using a ValueAdapter.  This class is abstract and
- * does not implement get()/map()/sortedMap() because it doesn't have access
- * to the entity binding.
+ * Implements EntityIndex using a ValueAdapter. This class is abstract and does
+ * not implement get()/map()/sortedMap() because it doesn't have access to the
+ * entity binding.
  *
  * @author Mark Hayes
  */
@@ -52,29 +52,25 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
         NO_RETURN_ENTRY.setPartial(0, 0, true);
     }
 
-    Database db;
-    boolean transactional;
-    boolean sortedDups;
-    boolean locking;
-    boolean concurrentDB;
-    Class<K> keyClass;
-    EntryBinding keyBinding;
-    KeyRange emptyRange;
+    Database        db;
+    boolean         transactional;
+    boolean         sortedDups;
+    boolean         locking;
+    boolean         concurrentDB;
+    Class<K>        keyClass;
+    EntryBinding    keyBinding;
+    KeyRange        emptyRange;
     ValueAdapter<K> keyAdapter;
     ValueAdapter<E> entityAdapter;
 
-    BasicIndex(Database db,
-               Class<K> keyClass,
-               EntryBinding keyBinding,
-               ValueAdapter<E> entityAdapter)
-        throws DatabaseException {
+    BasicIndex(Database db, Class<K> keyClass, EntryBinding keyBinding, ValueAdapter<E> entityAdapter)
+            throws DatabaseException {
 
         this.db = db;
         DatabaseConfig config = db.getConfig();
         transactional = config.getTransactional();
         sortedDups = config.getSortedDuplicates();
-        locking =
-            DbCompat.getInitializeLocking(db.getEnvironment().getConfig());
+        locking = DbCompat.getInitializeLocking(db.getEnvironment().getConfig());
         Environment env = db.getEnvironment();
         concurrentDB = DbCompat.getInitializeCDB(env.getConfig());
         this.keyClass = keyClass;
@@ -94,14 +90,12 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
      * implemented here and therefore must be implemented by subclasses.
      */
 
-    public boolean contains(K key)
-        throws DatabaseException {
+    public boolean contains(K key) throws DatabaseException {
 
         return contains(null, key, null);
     }
 
-    public boolean contains(Transaction txn, K key, LockMode lockMode)
-        throws DatabaseException {
+    public boolean contains(Transaction txn, K key, LockMode lockMode) throws DatabaseException {
 
         DatabaseEntry keyEntry = new DatabaseEntry();
         DatabaseEntry dataEntry = NO_RETURN_ENTRY;
@@ -111,8 +105,7 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
         return (status == OperationStatus.SUCCESS);
     }
 
-    public long count()
-        throws DatabaseException {
+    public long count() throws DatabaseException {
 
         if (DbCompat.DATABASE_COUNT) {
             return DbCompat.getDatabaseCount(db);
@@ -120,8 +113,7 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
             long count = 0;
             DatabaseEntry key = NO_RETURN_ENTRY;
             DatabaseEntry data = NO_RETURN_ENTRY;
-            CursorConfig cursorConfig = locking ?
-                CursorConfig.READ_UNCOMMITTED : null;
+            CursorConfig cursorConfig = locking ? CursorConfig.READ_UNCOMMITTED : null;
             Cursor cursor = db.openCursor(null, cursorConfig);
             try {
                 OperationStatus status = cursor.getFirst(key, data, null);
@@ -142,22 +134,19 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
 
     /* <!-- begin JE only --> */
 
-    public long count(long memoryLimit)
-        throws DatabaseException {
+    public long count(long memoryLimit) throws DatabaseException {
 
         return db.count(memoryLimit);
     }
 
     /* <!-- end JE only --> */
 
-    public boolean delete(K key)
-        throws DatabaseException {
+    public boolean delete(K key) throws DatabaseException {
 
         return delete(null, key);
     }
 
-    public boolean delete(Transaction txn, K key)
-        throws DatabaseException {
+    public boolean delete(Transaction txn, K key) throws DatabaseException {
 
         /* <!-- begin JE only --> */
         if (DbCompat.IS_JE) {
@@ -173,8 +162,7 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
     }
 
     /* <!-- begin JE only --> */
-    public OperationResult delete(Transaction txn, K key, WriteOptions options)
-        throws DatabaseException {
+    public OperationResult delete(Transaction txn, K key, WriteOptions options) throws DatabaseException {
 
         DatabaseEntry keyEntry = new DatabaseEntry();
         keyBinding.objectToEntry(key, keyEntry);
@@ -183,79 +171,55 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
     }
     /* <!-- end JE only --> */
 
-    public EntityCursor<K> keys()
-        throws DatabaseException {
+    public EntityCursor<K> keys() throws DatabaseException {
 
         return keys(null, null);
     }
 
-    public EntityCursor<K> keys(Transaction txn, CursorConfig config)
-        throws DatabaseException {
+    public EntityCursor<K> keys(Transaction txn, CursorConfig config) throws DatabaseException {
 
         return cursor(txn, emptyRange, keyAdapter, config);
     }
 
-    public EntityCursor<E> entities()
-        throws DatabaseException {
+    public EntityCursor<E> entities() throws DatabaseException {
 
         return cursor(null, emptyRange, entityAdapter, null);
     }
 
-    public EntityCursor<E> entities(Transaction txn,
-                                    CursorConfig config)
-        throws DatabaseException {
+    public EntityCursor<E> entities(Transaction txn, CursorConfig config) throws DatabaseException {
 
         return cursor(txn, emptyRange, entityAdapter, config);
     }
 
-    public EntityCursor<K> keys(K fromKey, boolean fromInclusive,
-                                K toKey, boolean toInclusive)
-        throws DatabaseException {
+    public EntityCursor<K> keys(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive)
+            throws DatabaseException {
 
-        return cursor(null, fromKey, fromInclusive, toKey, toInclusive,
-                      keyAdapter, null);
+        return cursor(null, fromKey, fromInclusive, toKey, toInclusive, keyAdapter, null);
     }
 
-    public EntityCursor<K> keys(Transaction txn,
-                                K fromKey,
-                                boolean fromInclusive,
-                                K toKey,
-                                boolean toInclusive,
+    public EntityCursor<K> keys(Transaction txn, K fromKey, boolean fromInclusive, K toKey, boolean toInclusive,
                                 CursorConfig config)
-        throws DatabaseException {
+            throws DatabaseException {
 
-        return cursor(txn, fromKey, fromInclusive, toKey, toInclusive,
-                      keyAdapter, config);
+        return cursor(txn, fromKey, fromInclusive, toKey, toInclusive, keyAdapter, config);
     }
 
-    public EntityCursor<E> entities(K fromKey, boolean fromInclusive,
-                                    K toKey, boolean toInclusive)
-        throws DatabaseException {
+    public EntityCursor<E> entities(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive)
+            throws DatabaseException {
 
-        return cursor(null, fromKey, fromInclusive, toKey, toInclusive,
-                      entityAdapter, null);
+        return cursor(null, fromKey, fromInclusive, toKey, toInclusive, entityAdapter, null);
     }
 
-    public EntityCursor<E> entities(Transaction txn,
-                                    K fromKey,
-                                    boolean fromInclusive,
-                                    K toKey,
-                                    boolean toInclusive,
+    public EntityCursor<E> entities(Transaction txn, K fromKey, boolean fromInclusive, K toKey, boolean toInclusive,
                                     CursorConfig config)
-        throws DatabaseException {
+            throws DatabaseException {
 
-        return cursor(txn, fromKey, fromInclusive, toKey, toInclusive,
-                      entityAdapter, config);
+        return cursor(txn, fromKey, fromInclusive, toKey, toInclusive, entityAdapter, config);
     }
 
-    private <V> EntityCursor<V> cursor(Transaction txn,
-                                       K fromKey,
-                                       boolean fromInclusive,
-                                       K toKey,
-                                       boolean toInclusive,
-                                       ValueAdapter<V> adapter,
-                                       CursorConfig config)
-        throws DatabaseException {
+    private <V> EntityCursor<V> cursor(Transaction txn, K fromKey, boolean fromInclusive, K toKey, boolean toInclusive,
+                                       ValueAdapter<V> adapter, CursorConfig config)
+            throws DatabaseException {
 
         DatabaseEntry fromEntry = null;
         if (fromKey != null) {
@@ -267,20 +231,15 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
             toEntry = new DatabaseEntry();
             keyBinding.objectToEntry(toKey, toEntry);
         }
-        KeyRange range = emptyRange.subRange
-            (fromEntry, fromInclusive, toEntry, toInclusive);
+        KeyRange range = emptyRange.subRange(fromEntry, fromInclusive, toEntry, toInclusive);
         return cursor(txn, range, adapter, config);
     }
 
-    private <V> EntityCursor<V> cursor(Transaction txn,
-                                       KeyRange range,
-                                       ValueAdapter<V> adapter,
-                                       CursorConfig config)
-        throws DatabaseException {
+    private <V> EntityCursor<V> cursor(Transaction txn, KeyRange range, ValueAdapter<V> adapter, CursorConfig config)
+            throws DatabaseException {
 
         Cursor cursor = db.openCursor(txn, config);
-        RangeCursor rangeCursor =
-            new RangeCursor(range, null/*pkRange*/, sortedDups, cursor);
+        RangeCursor rangeCursor = new RangeCursor(range, null/* pkRange */, sortedDups, cursor);
         return new BasicCursor<V>(rangeCursor, adapter, isUpdateAllowed());
     }
 
@@ -290,8 +249,7 @@ abstract class BasicIndex<K, E> implements EntityIndex<K, E> {
     static void checkGetType(Get getType) {
 
         if (getType != Get.SEARCH) {
-            throw new IllegalArgumentException(
-                "getType not allowed: " + getType);
+            throw new IllegalArgumentException("getType not allowed: " + getType);
         }
     }
     /* <!-- end JE only --> */

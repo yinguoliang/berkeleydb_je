@@ -31,6 +31,6 @@ public class IntRunningTotalStat extends IntStat {
 
     @Override
     public void clear() {
-       /* Don't clear it because it's a running total. */
+        /* Don't clear it because it's a running total. */
     }
 }

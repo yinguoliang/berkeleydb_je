@@ -19,22 +19,20 @@ import java.util.HashMap;
 
 /**
  * Used as the main class for the manifest of the je.jar file, and so it is
- * executed when running: java -jar je.jar.  The first argument must be the
- * final part of the class name of a utility in the com.sleepycat.je.util
- * package, e.g., DbDump.  All following parameters are passed to the main
- * method of the utility and are processed as usual.
- *
- * Apart from the package, this class is ambivalent about the name of the
- * utility specified; the only requirement is that it must be a public static
- * class and must contain a public static main method.
+ * executed when running: java -jar je.jar. The first argument must be the final
+ * part of the class name of a utility in the com.sleepycat.je.util package,
+ * e.g., DbDump. All following parameters are passed to the main method of the
+ * utility and are processed as usual. Apart from the package, this class is
+ * ambivalent about the name of the utility specified; the only requirement is
+ * that it must be a public static class and must contain a public static main
+ * method.
  */
 public class JarMain {
 
-    private static final String USAGE = "usage: java <utility> [options...]";
+    private static final String            USAGE         = "usage: java <utility> [options...]";
 
     /* Use a HashMap to allow the utilities to live in multiple packages. */
-    private static HashMap<String, String> utilPrefixMap =
-        new HashMap<String, String>();
+    private static HashMap<String, String> utilPrefixMap = new HashMap<String, String>();
 
     /* Map each utility name to its package. */
     static {
@@ -53,8 +51,7 @@ public class JarMain {
         utilPrefixMap.put("DbVerifyLog", "com.sleepycat.je.util.");
 
         /* The utilities in directory com/sleepycat/je/rep/util. */
-        utilPrefixMap.put("DbEnableReplication",
-                          "com.sleepycat.je.rep.util.");
+        utilPrefixMap.put("DbEnableReplication", "com.sleepycat.je.rep.util.");
         utilPrefixMap.put("DbGroupAdmin", "com.sleepycat.je.rep.util.");
         utilPrefixMap.put("DbPing", "com.sleepycat.je.rep.util.");
         utilPrefixMap.put("LDiff", "com.sleepycat.je.rep.util.ldiff.");
@@ -95,8 +92,7 @@ public class JarMain {
 
             Class<?> cls = Class.forName(utilPrefix + args[0]);
 
-            Method mainMethod = cls.getMethod
-                ("main", new Class[] { String[].class });
+            Method mainMethod = cls.getMethod("main", new Class[] { String[].class });
 
             String[] mainArgs = new String[args.length - 1];
             System.arraycopy(args, 1, mainArgs, 0, mainArgs.length);

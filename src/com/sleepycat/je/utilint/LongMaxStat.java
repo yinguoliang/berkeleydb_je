@@ -15,8 +15,8 @@ package com.sleepycat.je.utilint;
 
 /**
  * A long stat which maintains a maximum value. It is initialized to
- * Long.MIN_VALUE. The setMax() methods assigns the counter to
- * MAX(counter, new value).
+ * Long.MIN_VALUE. The setMax() methods assigns the counter to MAX(counter, new
+ * value).
  */
 public class LongMaxStat extends LongStat {
     private static final long serialVersionUID = 1L;
@@ -26,9 +26,7 @@ public class LongMaxStat extends LongStat {
         clear();
     }
 
-    public LongMaxStat(StatGroup group,
-                       StatDefinition definition,
-                       long counter) {
+    public LongMaxStat(StatGroup group, StatDefinition definition, long counter) {
         super(group, definition);
         this.counter = counter;
     }
@@ -69,4 +67,3 @@ public class LongMaxStat extends LongStat {
         return Stat.FORMAT.format(counter);
     }
 }
-

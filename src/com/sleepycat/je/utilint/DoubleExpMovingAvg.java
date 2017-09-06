@@ -23,36 +23,34 @@ import java.text.DecimalFormat;
  * a specified time period of values supplied with associated times, to support
  * averaging values that are generated at irregular intervals.
  */
-public class DoubleExpMovingAvg
-        extends MapStatComponent<Double, DoubleExpMovingAvg> {
+public class DoubleExpMovingAvg extends MapStatComponent<Double, DoubleExpMovingAvg> {
 
-    private static final long serialVersionUID = 1L;
+    private static final long  serialVersionUID = 1L;
 
     /** Number format for output. */
-    static final DecimalFormat FORMAT =
-        new DecimalFormat("###,###,###,###,###,###,###.##");
+    static final DecimalFormat FORMAT           = new DecimalFormat("###,###,###,###,###,###,###.##");
 
     /** The name of this stat. */
-    private final String name;
+    private final String       name;
 
     /** The averaging period in milliseconds. */
-    private final long periodMillis;
+    private final long         periodMillis;
 
     /**
      * The time in milliseconds specified with the previous value, or 0 if no
-     * values have been provided.  Synchronize on this instance when accessing
+     * values have been provided. Synchronize on this instance when accessing
      * this field.
      */
-    private long prevTime;
+    private long               prevTime;
 
     /**
-     * The current average, or 0 if no values have been provided.  Synchronize
-     * on this instance when accessing this field.
+     * The current average, or 0 if no values have been provided. Synchronize on
+     * this instance when accessing this field.
      */
-    private double avg;
+    private double             avg;
 
     /**
-     * Creates an instance of this class.  The {@code periodMillis} represents
+     * Creates an instance of this class. The {@code periodMillis} represents
      * the time period in milliseconds over which values will be averaged.
      *
      * @param name the name of this stat
@@ -109,10 +107,10 @@ public class DoubleExpMovingAvg
             /*
              * Compute the exponential moving average, as described in:
              * http://en.wikipedia.org/wiki/
-             *   Moving_average#Application_to_measuring_computer_performance
+             * Moving_average#Application_to_measuring_computer_performance
              */
-            double m = Math.exp(-((time - prevTime)/((double) periodMillis)));
-            avg = ((1-m) * value) + (m * avg);
+            double m = Math.exp(-((time - prevTime) / ((double) periodMillis)));
+            avg = ((1 - m) * value) + (m * avg);
         }
         prevTime = time;
     }
@@ -172,25 +170,23 @@ public class DoubleExpMovingAvg
 
     @Override
     public synchronized boolean isNotSet() {
-       return prevTime == 0;
+        return prevTime == 0;
     }
 
     @Override
     public synchronized String toString() {
-        return "DoubleExpMovingAvg[name=" + name + ", avg=" + avg +
-            ", prevTime=" + prevTime + ", periodMillis=" + periodMillis + "]";
+        return "DoubleExpMovingAvg[name=" + name + ", avg=" + avg + ", prevTime=" + prevTime + ", periodMillis="
+                + periodMillis + "]";
     }
 
     /** Synchronize access to fields. */
-    private synchronized void readObject(ObjectInputStream in)
-        throws IOException, ClassNotFoundException {
+    private synchronized void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 
         in.defaultReadObject();
     }
 
     /** Synchronize access to fields. */
-    private synchronized void writeObject(ObjectOutputStream out)
-        throws IOException {
+    private synchronized void writeObject(ObjectOutputStream out) throws IOException {
 
         out.defaultWriteObject();
     }

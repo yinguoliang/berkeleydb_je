@@ -11,7 +11,6 @@
  * license and additional information.
  */
 
-
 package com.sleepycat.je.rep.subscription;
 
 import com.sleepycat.je.utilint.LongStat;
@@ -28,10 +27,10 @@ public class SubscriptionStat {
      * the feeder and can be equal to or earlier than the VLSN requested by the
      * client, which is specified in subscription configuration.
      */
-    private VLSN startVLSN;
+    private VLSN           startVLSN;
 
     /* the last VLSN that has been processed */
-    private VLSN highVLSN;
+    private VLSN           highVLSN;
 
     /* used by main thread: # of retries to insert msgs into input queue */
     private final LongStat nReplayQueueOverflow;
@@ -52,24 +51,16 @@ public class SubscriptionStat {
         startVLSN = VLSN.NULL_VLSN;
 
         /* initialize statistics */
-        StatGroup stats = new StatGroup("subscription",
-                                        "subscription " + "statistics");
-        nReplayQueueOverflow = new LongStat(stats,
-                SubscriptionStatDefinition.SUB_N_REPLAY_QUEUE_OVERFLOW, 0L);
-        nMsgReceived = new LongStat(stats,
-                SubscriptionStatDefinition.SUB_MSG_RECEIVED, 0L);
-        nMsgResponded = new LongStat(stats,
-                SubscriptionStatDefinition.SUB_MSG_RESPONDED, 0L);
-        maxPendingInput = new LongStat(stats,
-                SubscriptionStatDefinition.SUB_MAX_PENDING_INPUT, 0L);
+        StatGroup stats = new StatGroup("subscription", "subscription " + "statistics");
+        nReplayQueueOverflow = new LongStat(stats, SubscriptionStatDefinition.SUB_N_REPLAY_QUEUE_OVERFLOW, 0L);
+        nMsgReceived = new LongStat(stats, SubscriptionStatDefinition.SUB_MSG_RECEIVED, 0L);
+        nMsgResponded = new LongStat(stats, SubscriptionStatDefinition.SUB_MSG_RESPONDED, 0L);
+        maxPendingInput = new LongStat(stats, SubscriptionStatDefinition.SUB_MAX_PENDING_INPUT, 0L);
 
-        nOpsProcessed = new LongStat(stats,
-                SubscriptionStatDefinition.SUB_OPS_PROCESSED, 0L);
-        nTxnAborted = new LongStat(stats,
-                SubscriptionStatDefinition.SUB_TXN_ABORTED, 0L);
-        nTxnCommitted = new LongStat(stats,
-                SubscriptionStatDefinition.SUB_TXN_COMMITTED, 0L);
-        
+        nOpsProcessed = new LongStat(stats, SubscriptionStatDefinition.SUB_OPS_PROCESSED, 0L);
+        nTxnAborted = new LongStat(stats, SubscriptionStatDefinition.SUB_TXN_ABORTED, 0L);
+        nTxnCommitted = new LongStat(stats, SubscriptionStatDefinition.SUB_TXN_COMMITTED, 0L);
+
     }
 
     /*--------------*/
@@ -78,11 +69,11 @@ public class SubscriptionStat {
     public synchronized LongStat getNumReplayQueueOverflow() {
         return nReplayQueueOverflow;
     }
-    
+
     public synchronized LongStat getMaxPendingInput() {
         return maxPendingInput;
     }
-    
+
     public synchronized LongStat getNumMsgResponded() {
         return nMsgResponded;
     }

@@ -65,257 +65,167 @@ import com.sleepycat.je.utilint.VLSN;
  * A VLSN (Virtual LSN) is used to identify every log entry shared between
  * members of the replication group. Since a JE log is identified by LSNs, we
  * must have a way to map VLSN->LSNs in order to fetch a replicated log record
- * from the local log, using the VLSN.  The VLSNIndex implements those
- * mappings. The VLSNIndex has these responsibilities:
- *
- * Generating new VLSNs.
- *   Only masters need to generate VLSNs, but any node may have the potential
- *   to be a master. The VLSN sequence must ascend over time and across
- *   recoveries, so the VSLN id must be preserved much like the database, node
- *   and txn ids.
- * Maintaining the VLSN range.
- *   Although each node needs to receive and store each log entry from the
- *   replication stream, over time the part of the stream that is stored can be
- *   reduced, either by log cleaning, or by syncups which can truncate the
- *   replication stream. A node always holds a contiguous portion of the
- *   replication stream. The VLSN range identifies that portion by having the
- *   start and end VLSNs, as well as key landmarks such as the lastSync-able
- *   log entry and the last commit log entry. VLSN range information is used by
- *   elections and syncup.
- * Gatekeeper for waiting for the most recently logged entries.
- *   Feeders block upon the VLSNIndex when they are trying to fetch the most
- *   recently logged entries. These recent log entries are held in a two level
- *   cache within the VLSNIndex. A call to VLSNIndex.waitForLsn() goes through
- *   this sequence:
- *   1) check the log item stored in the vlsn wait latch, if the call did wait.
- *   2) check the log item cache
- *   If both fail, the FeederReader will fetch the required log entry from log
- *   buffers or disk
- * Providing the LSN mapping for a log record identified by its VLSN.
- *   The Feeders and the syncup protocol both need to retrieve log records
- *   by VLSN. To do that, we need an LSN mapping.
- *
- * Mappings are added to VLSNIndex when replicated log entries are written into
- * the local log.  Although all mappings are registered, the VLSNIndex does not
- * keep every one, in order to save on disk and in-memory storage. Only a
- * sparse set is kept. When searching for a log entry by VLSN, the caller uses
- * the closest available mapping and then scans the log looking for that entry.
- *
- * The VLSNIndex relies on the assumption that VLSN tagged log entries are
- * ordered and contiguous in the log. That is, the LSN for VLSN 1 is < the LSN
- * for VLSN 2 < LSN for VLSN 3, and there is never a gap in the VLSNs. However,
- * at node syncup, the replication stream may need to be truncated when rolling
- * back a non-committed log entry. We can't literally truncate the log files
- * because the JE logs contain intermingled transactional and non transactional
- * information. Instead, the truncation is done both logically by amending the
- * VLSNIndex, and physically by overmarking those entries in the JE
- * logs. Because of that, a physical dump of the log may show some VLSN tagged
- * entries as duplicate and/or out of order because they're abandoned log
- * entries that are not logically part of the replication stream any more
- * For example, the log can look like this:
- *  LSN 100, VLSN 1
- *  LSN 200, VLSN 2  <- overmarked
- *  LSN 300, VLSN 3  <- overmarked
- *   --- syncup, rollback to VLSN 1, restart at VLSN 2
- *  LSN 400, VLSN 2
- *  LSN 500, VLSN 3
- *
- * VLSN->LSN mappings are created under the log write latch, which ensures that
- * all VLSN tagged log entries are ordered in the logical replication stream in
- * the log. However, the mapping is added to the VLSNIndex outside the log
- * write latch, so the VLSNIndex database may have a momentary gap. For
- * example,
- *
- *  t0- thread 1 logs entry at VLSN=1, LSN=100, within log write latch
- *  t1- thread 2 logs entry at VLSN=2, LSN=150, within log write latch
- *  t2- thread 3 logs entry at VLSN=3, LSN=200, within log write latch
- *  t3- thread 1 calls VLSNIndex.put(VLSN=1/LSN=100)
- *  t4- thread 3 calls VLSNIndex.put(VLSN=3/LSN=200)
- *  t5- thread 2 calls VLSNIndex.put(VLSN=2/LSN=150)
- *
- * At t4, the VLSNIndex contains 1/100, 3/200, but not 2/150. However, we know
- * that the VLSNIndex always represents a contiguous range of VLSNs, so the
- * fact that 2/150 is not yet is handled, and is just like the case where
- * the VLSNIndex optimized away the mapping in order to keep the index sparse.
- *
- * We do guarantee that the start and end VLSNs in the range have mappings, in
- * order to always be able to provide a LTE and GTE mapping for all valid
- * VLSNs. Because of that, if a VLSN comes out of order, it does not update the
- * range. Care must be taken when truncating the VLSNIndex from the head or the
- * tail to ensure that the guaranteed existence of the start and end range
- * mapping remains valid.
- *
- * Cache and persistent storage:
- *
- *  The VLSN->LSN mappings in the range are grouped into instances of
- *  com.sleepycat.je.util.VLSNBucket. Each bucket knows the first and last VLSN
- *  within its mini-range. We observe these invariants
- *    - buckets are ordered by VLSN in the database and the bucket cache,
- *    - only the last bucket is the target of updates at any time,
- *    - a single bucket corresponds to a single file, but a single file may
- *  have multiple buckets covering it.
- *
- *  While it would be nice to also guarantee that there are no gaps between
- *  buckets, ie:
- *    bucket(N-1).last == bucket(N).first - 1
- *    bucket(N).last  ==  bucket(N-1).first - 1
- *  it is not possible to do so because we the put() call is not serialized
- *  because we don't want to add overhead to the log write latch. In order
- *  to permit out of order puts(), and to require that only the last bucket
- *  is updated, we must permit gaps between buckets.
- *
- *  Mappings start out being cached in VLSNBuckets held in memory by the
- *  VLSNTracker. As the tracker fills, the buckets are flushed to persistent
- *  storage in a internal, non-replicated database. Both the database and
- *  the tracker cache hold key/value pairs where
- *
- *    key = bucket.first
- *    data = bucket
- *
- * Since the first valid VLSN is 1, key = -1 is reserved for storage of the
- * VLSNRange.
- *
- * Buckets are filled up as new VLSNs arrive (either because they've been
- * generated by write operations on the master, or because they're incoming
- * operations on the replica). They're flushed to disk periodically rather than
- * with every new VLSN, because the update rate would have too much of a
- * performance impact. Since there is this level of caching happening, we must
- * be careful to write in-memory buckets to disk at well known points to
- * support recoverability. The flushing must be instigated by a third party
- * activity, such as checkpointing, rather than by the action of adding a new
- * mapping. That's because mappings are registered by the logging system, and
- * although we are not holding the log write latch at that point, it seems
- * inadvisable to recursively generate another logging call on behalf of the
- * flush.  Currently the VLSNIndex is flushed to disk at every checkpoint.  It
- * can also optionally happen more often, and (TODO) we may want to do so
- * because we've seen cases where checkpoints take a very long time. Perhaps we
- * should flush when we flip to a new log file?
- *
- * Once written to disk, the buckets are generally not updated. Updates can
- * happen when the range is truncated, such as for syncup rollback, but the
- * system is quiescent at that time, and there are no new mappings created. Log
- * cleaning can read the vlsnIndex and delete buckets, but will not modify
- * mappings. The VLSNRange does naturally change often, and that data record
- * does get updated.
- *
- * Recovery:
- *
+ * from the local log, using the VLSN. The VLSNIndex implements those mappings.
+ * The VLSNIndex has these responsibilities: Generating new VLSNs. Only masters
+ * need to generate VLSNs, but any node may have the potential to be a master.
+ * The VLSN sequence must ascend over time and across recoveries, so the VSLN id
+ * must be preserved much like the database, node and txn ids. Maintaining the
+ * VLSN range. Although each node needs to receive and store each log entry from
+ * the replication stream, over time the part of the stream that is stored can
+ * be reduced, either by log cleaning, or by syncups which can truncate the
+ * replication stream. A node always holds a contiguous portion of the
+ * replication stream. The VLSN range identifies that portion by having the
+ * start and end VLSNs, as well as key landmarks such as the lastSync-able log
+ * entry and the last commit log entry. VLSN range information is used by
+ * elections and syncup. Gatekeeper for waiting for the most recently logged
+ * entries. Feeders block upon the VLSNIndex when they are trying to fetch the
+ * most recently logged entries. These recent log entries are held in a two
+ * level cache within the VLSNIndex. A call to VLSNIndex.waitForLsn() goes
+ * through this sequence: 1) check the log item stored in the vlsn wait latch,
+ * if the call did wait. 2) check the log item cache If both fail, the
+ * FeederReader will fetch the required log entry from log buffers or disk
+ * Providing the LSN mapping for a log record identified by its VLSN. The
+ * Feeders and the syncup protocol both need to retrieve log records by VLSN. To
+ * do that, we need an LSN mapping. Mappings are added to VLSNIndex when
+ * replicated log entries are written into the local log. Although all mappings
+ * are registered, the VLSNIndex does not keep every one, in order to save on
+ * disk and in-memory storage. Only a sparse set is kept. When searching for a
+ * log entry by VLSN, the caller uses the closest available mapping and then
+ * scans the log looking for that entry. The VLSNIndex relies on the assumption
+ * that VLSN tagged log entries are ordered and contiguous in the log. That is,
+ * the LSN for VLSN 1 is < the LSN for VLSN 2 < LSN for VLSN 3, and there is
+ * never a gap in the VLSNs. However, at node syncup, the replication stream may
+ * need to be truncated when rolling back a non-committed log entry. We can't
+ * literally truncate the log files because the JE logs contain intermingled
+ * transactional and non transactional information. Instead, the truncation is
+ * done both logically by amending the VLSNIndex, and physically by overmarking
+ * those entries in the JE logs. Because of that, a physical dump of the log may
+ * show some VLSN tagged entries as duplicate and/or out of order because
+ * they're abandoned log entries that are not logically part of the replication
+ * stream any more For example, the log can look like this: LSN 100, VLSN 1 LSN
+ * 200, VLSN 2 <- overmarked LSN 300, VLSN 3 <- overmarked --- syncup, rollback
+ * to VLSN 1, restart at VLSN 2 LSN 400, VLSN 2 LSN 500, VLSN 3 VLSN->LSN
+ * mappings are created under the log write latch, which ensures that all VLSN
+ * tagged log entries are ordered in the logical replication stream in the log.
+ * However, the mapping is added to the VLSNIndex outside the log write latch,
+ * so the VLSNIndex database may have a momentary gap. For example, t0- thread 1
+ * logs entry at VLSN=1, LSN=100, within log write latch t1- thread 2 logs entry
+ * at VLSN=2, LSN=150, within log write latch t2- thread 3 logs entry at VLSN=3,
+ * LSN=200, within log write latch t3- thread 1 calls
+ * VLSNIndex.put(VLSN=1/LSN=100) t4- thread 3 calls
+ * VLSNIndex.put(VLSN=3/LSN=200) t5- thread 2 calls
+ * VLSNIndex.put(VLSN=2/LSN=150) At t4, the VLSNIndex contains 1/100, 3/200, but
+ * not 2/150. However, we know that the VLSNIndex always represents a contiguous
+ * range of VLSNs, so the fact that 2/150 is not yet is handled, and is just
+ * like the case where the VLSNIndex optimized away the mapping in order to keep
+ * the index sparse. We do guarantee that the start and end VLSNs in the range
+ * have mappings, in order to always be able to provide a LTE and GTE mapping
+ * for all valid VLSNs. Because of that, if a VLSN comes out of order, it does
+ * not update the range. Care must be taken when truncating the VLSNIndex from
+ * the head or the tail to ensure that the guaranteed existence of the start and
+ * end range mapping remains valid. Cache and persistent storage: The VLSN->LSN
+ * mappings in the range are grouped into instances of
+ * com.sleepycat.je.util.VLSNBucket. Each bucket knows the first and last VLSN
+ * within its mini-range. We observe these invariants - buckets are ordered by
+ * VLSN in the database and the bucket cache, - only the last bucket is the
+ * target of updates at any time, - a single bucket corresponds to a single
+ * file, but a single file may have multiple buckets covering it. While it would
+ * be nice to also guarantee that there are no gaps between buckets, ie:
+ * bucket(N-1).last == bucket(N).first - 1 bucket(N).last == bucket(N-1).first -
+ * 1 it is not possible to do so because we the put() call is not serialized
+ * because we don't want to add overhead to the log write latch. In order to
+ * permit out of order puts(), and to require that only the last bucket is
+ * updated, we must permit gaps between buckets. Mappings start out being cached
+ * in VLSNBuckets held in memory by the VLSNTracker. As the tracker fills, the
+ * buckets are flushed to persistent storage in a internal, non-replicated
+ * database. Both the database and the tracker cache hold key/value pairs where
+ * key = bucket.first data = bucket Since the first valid VLSN is 1, key = -1 is
+ * reserved for storage of the VLSNRange. Buckets are filled up as new VLSNs
+ * arrive (either because they've been generated by write operations on the
+ * master, or because they're incoming operations on the replica). They're
+ * flushed to disk periodically rather than with every new VLSN, because the
+ * update rate would have too much of a performance impact. Since there is this
+ * level of caching happening, we must be careful to write in-memory buckets to
+ * disk at well known points to support recoverability. The flushing must be
+ * instigated by a third party activity, such as checkpointing, rather than by
+ * the action of adding a new mapping. That's because mappings are registered by
+ * the logging system, and although we are not holding the log write latch at
+ * that point, it seems inadvisable to recursively generate another logging call
+ * on behalf of the flush. Currently the VLSNIndex is flushed to disk at every
+ * checkpoint. It can also optionally happen more often, and (TODO) we may want
+ * to do so because we've seen cases where checkpoints take a very long time.
+ * Perhaps we should flush when we flip to a new log file? Once written to disk,
+ * the buckets are generally not updated. Updates can happen when the range is
+ * truncated, such as for syncup rollback, but the system is quiescent at that
+ * time, and there are no new mappings created. Log cleaning can read the
+ * vlsnIndex and delete buckets, but will not modify mappings. The VLSNRange
+ * does naturally change often, and that data record does get updated. Recovery:
  * The VLSN database is restored at recovery time just as all other databases
  * are. However, there may be a portion of the VLSN range that was not flushed
  * to disk. At recovery, we piggyback onto the log scanning done and re-track
  * the any mappings found within the recovery range. Those mappings are merged
  * into those stored on disk, so that the VLSNIndex correctly reflects the
- * entire replication stream at startup. For example, suppose a log has:
- *
- * LSN
- * 100      firstActiveLSN
- * 200      Checkpoint start
- * 300      VLSN 78
- * 400      VLSNIndex flushed here
- * 500      Checkpoint end
- * 600      VLSN 79
- *
- * The VLSNIndex is initially populated with the version of the index found
- * at LSN 400. That doesn't include VLSN 79. A tracking pass is done from
- * checkpoint start -> end of log, which sweeps up VLSN 78 and VLSN 79 into
- * a temporary tracker. That tracker is merged in the VLSNIndex, to update
- * its mappings to VLSN 79.
- *
- * Note that the checkpoint VLSNIndex must encompass all vlsn mappings that are
- * prior to the checkpoint start of that recovery period. This follows the
- * general philosophy that checkpoint flushes all metadata, and recovery reads
- * from checkpoint start onewards to add on any neede extra data.
- * Retrieving mappings:
- *
- * Callers who need to retrieve mappings obtain a VLSNScanner, which acts as a
- * cursor over the VLSNIndex. A VLSNScanner finds and saves the applicable
- * VLSNBucket, and queries the bucket directly as long as it can provide
- * mappings. This reduces the level of contention between multiple readers
- * (feeders) and writers (application threads, or the replay thread)
- *
- * Synchronization hierarchy:
- *
- * To write a new mapping, you must have the mutex on the VLSIndex, and then
- * the tracker, which lets you obtain the correct bucket, and then you must
- * have a mutex on the bucket. To read a mapping, you must have the tracker
- * mutex to obtain the right bucket. If you already have the right bucket in
- * hand, you only need the bucket mutex.
- *
- * In truth, buckets which are not the "currentBucket" are not modified again,
- * so a future optimization would allow for reading a mapping on a finished
- * bucket without synchronization.
- *
- * The VLSNRange is updated as an atomic assignment to a volatile field after
- * taking the mutex on the current bucket. It is read without a mutex, by
- * looking at it as a volatile field.
- *
- * The hierarchy is
- *   VLSNIndex -> VLSNTracker -> VLSNBucket
- *   VLSNIndex -> VLSNTracker -> VLSNRange
- *   VLSNIndex -> VLSNIndex.mappingSynchronizer
- *   VLSNIndex.flushSynchronizer -> VLSNTracker
- *
- * Removing mappings vs reading mappings - sync on the range.
- *
- * We also need to consider that fact that callers of the VLSNIndex may be
- * holding other mutex, or IN latches, and that the VLSNIndex methods may do
- * database operations to read or write to the internal VLSN database. That can
- * result in a nested database operation, and we need to be careful to avoid
- * deadlocks. To be safe, we disable critical eviction [#18475]
- * VLSNBucket.writeDatabase().
- *
- * Writers
- * -------
- * Allocating a new VLSN: bump()
- *  - sync on log write latch
- *    Note that since there is no synchronization on the VLSNINdex itself,
- *    [allocating  new VLSN, logging its entry] and [flushing the vlsn index
- *     to disk] is not atomic. See awaitConsistency().
- *
- * Adding a mapping: put()
- *   - sync on VLSNIndex
- *        -sync on VLSNTracker to access the right bucket, and possibly
- *         create a new bucket. Atomically modify the VLSNRange.
- *
- * Flushing mappings to disk: writeToDatabase()
- *    - sync on VLSNIndex.flushSyncrhonizer -> VLSNTracker
- *
- * Replica side syncup truncates the VLSNIndex from the end:
- *    - no synchronization needed, the system is quiescent, and we can assume
- *      that VLSNs are neither read nor written by other threads.
- *
- * Log cleaning truncates the VLSNIndex from the beginning:
- *    We assume that the log cleaner is prohibited from deleting files that are
- *    being used for current feeding. We can also assume that the end of the
- *    log is not being deleted, and that we're not conflict with put(). We do
- *    have to worry about conflicting with backwards scans when executing
- *    syncup as a feeder, and with flushing mappings to disk. Shall we
- *    disable log file deletion at this point?
- *
- *   Steps to take:
- *
- *    First change the VLSNRange:
- *    - sync on VLSNIndex
- *           - atomically modify the VLSNRange to ensure that no readers or
- *             writers touch the buckets that will be deleted.
- *           - sync on VLSNTracker to delete any dead buckets. Do that before
- *             updating the on-disk database, so that we don't lose any
- *             buckets to writeToDatabase().
- *     - without synchronization, scan the database and non-transactionally
- *       delete any on-disk buckets that are <= the log cleaned file.
- *
- * Readers
- * -------
- * Active forward feeder checks if a mapping exists, and waits if necessary
- *    - read the current VLSNRange w/out a mutex. If not satisfactory
- *        - sync on VLSNIndex
- *              - sync on VLSNIndex.mappingSynchronizer
- *
- * Active forward feeder reads a mapping:
- *  first - getBucket()
- *     - sync on VLSNTracker to access the right bucket
- *  if bucket is in hand
- *    - sync on target bucket to read bucket
+ * entire replication stream at startup. For example, suppose a log has: LSN 100
+ * firstActiveLSN 200 Checkpoint start 300 VLSN 78 400 VLSNIndex flushed here
+ * 500 Checkpoint end 600 VLSN 79 The VLSNIndex is initially populated with the
+ * version of the index found at LSN 400. That doesn't include VLSN 79. A
+ * tracking pass is done from checkpoint start -> end of log, which sweeps up
+ * VLSN 78 and VLSN 79 into a temporary tracker. That tracker is merged in the
+ * VLSNIndex, to update its mappings to VLSN 79. Note that the checkpoint
+ * VLSNIndex must encompass all vlsn mappings that are prior to the checkpoint
+ * start of that recovery period. This follows the general philosophy that
+ * checkpoint flushes all metadata, and recovery reads from checkpoint start
+ * onewards to add on any neede extra data. Retrieving mappings: Callers who
+ * need to retrieve mappings obtain a VLSNScanner, which acts as a cursor over
+ * the VLSNIndex. A VLSNScanner finds and saves the applicable VLSNBucket, and
+ * queries the bucket directly as long as it can provide mappings. This reduces
+ * the level of contention between multiple readers (feeders) and writers
+ * (application threads, or the replay thread) Synchronization hierarchy: To
+ * write a new mapping, you must have the mutex on the VLSIndex, and then the
+ * tracker, which lets you obtain the correct bucket, and then you must have a
+ * mutex on the bucket. To read a mapping, you must have the tracker mutex to
+ * obtain the right bucket. If you already have the right bucket in hand, you
+ * only need the bucket mutex. In truth, buckets which are not the
+ * "currentBucket" are not modified again, so a future optimization would allow
+ * for reading a mapping on a finished bucket without synchronization. The
+ * VLSNRange is updated as an atomic assignment to a volatile field after taking
+ * the mutex on the current bucket. It is read without a mutex, by looking at it
+ * as a volatile field. The hierarchy is VLSNIndex -> VLSNTracker -> VLSNBucket
+ * VLSNIndex -> VLSNTracker -> VLSNRange VLSNIndex ->
+ * VLSNIndex.mappingSynchronizer VLSNIndex.flushSynchronizer -> VLSNTracker
+ * Removing mappings vs reading mappings - sync on the range. We also need to
+ * consider that fact that callers of the VLSNIndex may be holding other mutex,
+ * or IN latches, and that the VLSNIndex methods may do database operations to
+ * read or write to the internal VLSN database. That can result in a nested
+ * database operation, and we need to be careful to avoid deadlocks. To be safe,
+ * we disable critical eviction [#18475] VLSNBucket.writeDatabase(). Writers
+ * ------- Allocating a new VLSN: bump() - sync on log write latch Note that
+ * since there is no synchronization on the VLSNINdex itself, [allocating new
+ * VLSN, logging its entry] and [flushing the vlsn index to disk] is not atomic.
+ * See awaitConsistency(). Adding a mapping: put() - sync on VLSNIndex -sync on
+ * VLSNTracker to access the right bucket, and possibly create a new bucket.
+ * Atomically modify the VLSNRange. Flushing mappings to disk: writeToDatabase()
+ * - sync on VLSNIndex.flushSyncrhonizer -> VLSNTracker Replica side syncup
+ * truncates the VLSNIndex from the end: - no synchronization needed, the system
+ * is quiescent, and we can assume that VLSNs are neither read nor written by
+ * other threads. Log cleaning truncates the VLSNIndex from the beginning: We
+ * assume that the log cleaner is prohibited from deleting files that are being
+ * used for current feeding. We can also assume that the end of the log is not
+ * being deleted, and that we're not conflict with put(). We do have to worry
+ * about conflicting with backwards scans when executing syncup as a feeder, and
+ * with flushing mappings to disk. Shall we disable log file deletion at this
+ * point? Steps to take: First change the VLSNRange: - sync on VLSNIndex -
+ * atomically modify the VLSNRange to ensure that no readers or writers touch
+ * the buckets that will be deleted. - sync on VLSNTracker to delete any dead
+ * buckets. Do that before updating the on-disk database, so that we don't lose
+ * any buckets to writeToDatabase(). - without synchronization, scan the
+ * database and non-transactionally delete any on-disk buckets that are <= the
+ * log cleaned file. Readers ------- Active forward feeder checks if a mapping
+ * exists, and waits if necessary - read the current VLSNRange w/out a mutex. If
+ * not satisfactory - sync on VLSNIndex - sync on VLSNIndex.mappingSynchronizer
+ * Active forward feeder reads a mapping: first - getBucket() - sync on
+ * VLSNTracker to access the right bucket if bucket is in hand - sync on target
+ * bucket to read bucket
  */
 public class VLSNIndex {
 
@@ -323,84 +233,76 @@ public class VLSNIndex {
      * The length of time that a checkpoint will wait for the vlsn index to
      * contain all vlsn->lsn mappings before the checkpoint start.
      */
-    public static int AWAIT_CONSISTENCY_MS = 60000;
+    public static int             AWAIT_CONSISTENCY_MS = 60000;
 
     private final EnvironmentImpl envImpl;
 
     /*
-     * VLSN waiting: A Feeder may block waiting for the next available record
-     * in the replication stream.
-
-     * vlsnPutLatch -      Latch used to wait for the next VLSN put operation.
-     * putWaitVLSN -       The VLSN associated with the vlsnPutLatch, it's only
-     *                     meaningful in the presence of a latch.
+     * VLSN waiting: A Feeder may block waiting for the next available record in
+     * the replication stream. vlsnPutLatch - Latch used to wait for the next
+     * VLSN put operation. putWaitVLSN - The VLSN associated with the
+     * vlsnPutLatch, it's only meaningful in the presence of a latch.
      */
-    private VLSNAwaitLatch vlsnPutLatch = null;
-    private VLSN putWaitVLSN = null;
+    private VLSNAwaitLatch        vlsnPutLatch         = null;
+    private VLSN                  putWaitVLSN          = null;
 
     /*
      * Consider replacing the mapping synchronizer with a lower overhead and
      * multi-processor friendly CAS style nowait code sequence.
      */
-    private final Object mappingSynchronizer = new Object();
-    private final Object flushSynchronizer = new Object();
-    private final Logger logger;
+    private final Object          mappingSynchronizer  = new Object();
+    private final Object          flushSynchronizer    = new Object();
+    private final Logger          logger;
 
     /*
      * nextVLSNCounter is incremented under the log write latch, when used on
-     * the master. If this node transitions from replica to master, this
-     * counter must be initialized before write operations begin. It can also
-     * be used by both masters and replicas when checking vlsn consistency
-     * before checkpoints.
+     * the master. If this node transitions from replica to master, this counter
+     * must be initialized before write operations begin. It can also be used by
+     * both masters and replicas when checking vlsn consistency before
+     * checkpoints.
      */
-    private AtomicLong nextVLSNCounter;
+    private AtomicLong            nextVLSNCounter;
 
     /*
-     * For storing the persistent version of the VLSNIndex. For keys > 0,
-     * the key is the VLSN sequence number, data = VLSNBucket. Key = -1 has
-     * a special data item, which is the VLSNRange.
+     * For storing the persistent version of the VLSNIndex. For keys > 0, the
+     * key is the VLSN sequence number, data = VLSNBucket. Key = -1 has a
+     * special data item, which is the VLSNRange.
      */
-    private DatabaseImpl mappingDbImpl;
+    private DatabaseImpl          mappingDbImpl;
 
     /*
-     * The tracker handles the real mechanics of maintaining the VLSN range
-     * and mappings.
+     * The tracker handles the real mechanics of maintaining the VLSN range and
+     * mappings.
      */
-    private VLSNTracker tracker;
+    private VLSNTracker           tracker;
 
     /*
      * A wait-free cache of the most recent log items in the VLSN index. These
      * items are important since they are the ones needed by the feeders that
      * are responsible for supplying timely commit acknowledgments.
      */
-    private final LogItemCache logItemCache;
+    private final LogItemCache    logItemCache;
 
     /*
      * Statistics associated with the VLSN index
      */
-    private final StatGroup statistics;
+    private final StatGroup       statistics;
 
-    private final LongStat nHeadBucketsDeleted;
+    private final LongStat        nHeadBucketsDeleted;
 
-    private final LongStat nTailBucketsDeleted;
+    private final LongStat        nTailBucketsDeleted;
 
     /* For testing [#20726] flushToDatabase while getGTEBucket is executing */
-    private TestHook<?> searchGTEHook;
+    private TestHook<?>           searchGTEHook;
 
     /**
      * The mapping db's name is passed in as a parameter instead of the more
      * intuitive approach of defining it within the class to facilitate unit
      * testing of the VLSNIndex.
      */
-    public VLSNIndex(EnvironmentImpl envImpl,
-                     String mappingDbName,
-                     @SuppressWarnings("unused")
-                     NameIdPair nameIdPair,
-                     int vlsnStride,
-                     int vlsnMaxMappings,
-                     int vlsnMaxDistance,
-                     RecoveryInfo recoveryInfo)
-        throws DatabaseException {
+    public VLSNIndex(EnvironmentImpl envImpl, String mappingDbName, @SuppressWarnings("unused") NameIdPair nameIdPair,
+                     int vlsnStride, int vlsnMaxMappings, int vlsnMaxDistance, RecoveryInfo recoveryInfo)
+            throws DatabaseException {
 
         this.envImpl = envImpl;
 
@@ -410,24 +312,13 @@ public class VLSNIndex {
          */
         logger = LoggerUtils.getLogger(getClass());
 
-        statistics = new StatGroup(VLSNIndexStatDefinition.GROUP_NAME,
-                                   VLSNIndexStatDefinition.GROUP_DESC);
-        nHeadBucketsDeleted =
-            new LongStat(statistics,
-                         VLSNIndexStatDefinition.N_HEAD_BUCKETS_DELETED);
-        nTailBucketsDeleted =
-            new LongStat(statistics,
-                         VLSNIndexStatDefinition.N_TAIL_BUCKETS_DELETED);
+        statistics = new StatGroup(VLSNIndexStatDefinition.GROUP_NAME, VLSNIndexStatDefinition.GROUP_DESC);
+        nHeadBucketsDeleted = new LongStat(statistics, VLSNIndexStatDefinition.N_HEAD_BUCKETS_DELETED);
+        nTailBucketsDeleted = new LongStat(statistics, VLSNIndexStatDefinition.N_TAIL_BUCKETS_DELETED);
 
-        init(mappingDbName,
-             vlsnStride,
-             vlsnMaxMappings,
-             vlsnMaxDistance,
-             recoveryInfo);
+        init(mappingDbName, vlsnStride, vlsnMaxMappings, vlsnMaxDistance, recoveryInfo);
 
-        logItemCache = new LogItemCache(envImpl.getConfigManager().
-                                        getInt(RepParams.VLSN_LOG_CACHE_SIZE),
-                                        statistics);
+        logItemCache = new LogItemCache(envImpl.getConfigManager().getInt(RepParams.VLSN_LOG_CACHE_SIZE), statistics);
     }
 
     /**
@@ -447,27 +338,25 @@ public class VLSNIndex {
              * from 2 so that Replica would throw a LogRefreshRequiredException
              * and do a NetworkRestore to copy the master logs.
              */
-            nextVLSNCounter = envImpl.needRepConvert() ?
-                new AtomicLong(1) :
-                new AtomicLong(0);
+            nextVLSNCounter = envImpl.needRepConvert() ? new AtomicLong(1) : new AtomicLong(0);
         } else {
             nextVLSNCounter = new AtomicLong(last.getSequence());
         }
     }
 
     /**
-     * Initialize before this node begins working as a replica after being
-     * a master.
+     * Initialize before this node begins working as a replica after being a
+     * master.
      */
     public synchronized void initAsReplica() {
-       /**
+        /**
          * Clear the VLSN await mechanism, which is used for feeding and for
-         * checkpoint precondition checking. Used when this node transitions away
-         * from master status, to replica status.
+         * checkpoint precondition checking. Used when this node transitions
+         * away from master status, to replica status.
          */
         if (vlsnPutLatch != null) {
             vlsnPutLatch.terminate();
-           vlsnPutLatch = null;
+            vlsnPutLatch = null;
         }
 
         putWaitVLSN = null;
@@ -475,8 +364,8 @@ public class VLSNIndex {
     }
 
     /*
-     * Return the VLSN to use for tagging the next replicated log entry. Must
-     * be called within the log write latch.
+     * Return the VLSN to use for tagging the next replicated log entry. Must be
+     * called within the log write latch.
      */
     public VLSN bump() {
         return new VLSN(nextVLSNCounter.incrementAndGet());
@@ -487,13 +376,13 @@ public class VLSNIndex {
     }
 
     /*
-     * Register a new VLSN->LSN mapping.  This is called outside the log write
+     * Register a new VLSN->LSN mapping. This is called outside the log write
      * latch, but within the LogManager log() call. It must not cause any
      * logging of its own and should not cause I/O.
      */
     public void put(LogItem logItem) {
 
-        final VLSN vlsn  = logItem.header.getVLSN();
+        final VLSN vlsn = logItem.header.getVLSN();
         final long lsn = logItem.lsn;
         final byte entryType = logItem.header.getType();
 
@@ -510,8 +399,7 @@ public class VLSNIndex {
                  * may be awaiting VLSN 100, but the call to put(101) comes in
                  * before the call to put(100).
                  */
-                if ((vlsnPutLatch != null) &&
-                    vlsn.compareTo(putWaitVLSN) >= 0) {
+                if ((vlsnPutLatch != null) && vlsn.compareTo(putWaitVLSN) >= 0) {
                     vlsnPutLatch.setLogItem(logItem);
                     vlsnPutLatch.countDown();
                     vlsnPutLatch = null;
@@ -531,13 +419,11 @@ public class VLSNIndex {
      *
      * @throws InterruptedException
      * @throws WaitTimeOutException if the VLSN did not appear within waitTime
-     * or the latch was explicitly terminated.
-     *
-     * @return the LogItem associated with the vlsn, or null if the entry is
-     * now present in the log, but is not available in the LogItemCache.
+     *             or the latch was explicitly terminated.
+     * @return the LogItem associated with the vlsn, or null if the entry is now
+     *         present in the log, but is not available in the LogItemCache.
      */
-    public LogItem waitForVLSN(VLSN vlsn, int waitTime)
-        throws InterruptedException, WaitTimeOutException {
+    public LogItem waitForVLSN(VLSN vlsn, int waitTime) throws InterruptedException, WaitTimeOutException {
 
         /* First check the volatile range field, without synchronizing. */
         VLSNRange useRange = tracker.getRange();
@@ -562,34 +448,29 @@ public class VLSNIndex {
         }
 
         /*
-         * Do any waiting outside the synchronization section. If the
-         * waited-for VLSN has already arrived, the waitLatch will have been
-         * counted down, and we'll go through.
+         * Do any waiting outside the synchronization section. If the waited-for
+         * VLSN has already arrived, the waitLatch will have been counted down,
+         * and we'll go through.
          */
-        if (!waitLatch.await(waitTime, TimeUnit.MILLISECONDS) ||
-            waitLatch.isTerminated()) {
+        if (!waitLatch.await(waitTime, TimeUnit.MILLISECONDS) || waitLatch.isTerminated()) {
             /* Timed out waiting for an incoming VLSN, or was terminated. */
             throw new WaitTimeOutException();
         }
 
-        if (! (tracker.getRange().getLast().compareTo(vlsn) >= 0)) {
-            throw EnvironmentFailureException.
-            unexpectedState(envImpl, "Waited for vlsn:" + vlsn +
-                            " should be greater than last in range:" +
-                            tracker.getRange().getLast());
+        if (!(tracker.getRange().getLast().compareTo(vlsn) >= 0)) {
+            throw EnvironmentFailureException.unexpectedState(envImpl, "Waited for vlsn:" + vlsn
+                    + " should be greater than last in range:" + tracker.getRange().getLast());
         }
         LogItem logItem = waitLatch.getLogItem();
         /* If we waited successfully, logItem can't be null. */
-        return logItem.header.getVLSN().equals(vlsn) ?
-               logItem :
-               /*
-                * An out-of-order vlsn put, that is, a later VLSN arrived at
-                * the index before this one. We could look for it in the log
-                * item cache, but due to the very nature of the out of order
-                * put it's unlikely to be there and we would rather not incur
-                * the overhead of a failed lookup.
-                */
-               null;
+        return logItem.header.getVLSN().equals(vlsn) ? logItem :
+        /*
+         * An out-of-order vlsn put, that is, a later VLSN arrived at the index
+         * before this one. We could look for it in the log item cache, but due
+         * to the very nature of the out of order put it's unlikely to be there
+         * and we would rather not incur the overhead of a failed lookup.
+         */
+                null;
     }
 
     /**
@@ -609,10 +490,8 @@ public class VLSNIndex {
         } else {
             /* There can only be on possible VLSN to wait on. */
             if (!vlsn.equals(putWaitVLSN)) {
-                throw EnvironmentFailureException.unexpectedState
-                    (envImpl, "unexpected get for VLSN: " + vlsn +
-                     " already waiting for VLSN: " + putWaitVLSN +
-                     " current range=" + getRange());
+                throw EnvironmentFailureException.unexpectedState(envImpl, "unexpected get for VLSN: " + vlsn
+                        + " already waiting for VLSN: " + putWaitVLSN + " current range=" + getRange());
             }
         }
     }
@@ -620,34 +499,23 @@ public class VLSNIndex {
     /**
      * Remove all information from the VLSNIndex for VLSNs <= deleteEndpoint.
      * Used by log cleaning. To properly coordinate with readers of the
-     * VLSNIndex, we need to update the range before updating the buckets.
-     *
-     * We assume that deleteEnd is always the last vlsn in a file, and because
-     * of that, truncations will never split a bucket.
-     *
-     * A truncation may leave a gap at the head of the vlsn index though.
-     * This could occur if the buckets have a gap, due to out of order VLSNs.
-     * For example, it's possible that the index has these buckets:
-     *
-     * bucket A: firstVLSN = 10, lastVLSN = 20
-     * bucket B: firstVLSN = 22, lastVLSN = 30
-     *
-     * If we truncate the index at 20 (deleteEnd == 20), then the resulting
-     * start of the range is 21, but the first bucket value is 22. In this
-     * case, we need to insert a ghost bucket.
-     *
+     * VLSNIndex, we need to update the range before updating the buckets. We
+     * assume that deleteEnd is always the last vlsn in a file, and because of
+     * that, truncations will never split a bucket. A truncation may leave a gap
+     * at the head of the vlsn index though. This could occur if the buckets
+     * have a gap, due to out of order VLSNs. For example, it's possible that
+     * the index has these buckets: bucket A: firstVLSN = 10, lastVLSN = 20
+     * bucket B: firstVLSN = 22, lastVLSN = 30 If we truncate the index at 20
+     * (deleteEnd == 20), then the resulting start of the range is 21, but the
+     * first bucket value is 22. In this case, we need to insert a ghost bucket.
      * This method ensures that any changes are fsynced to disk before file
      * deletion occurs. [#20702]
      *
      * @throws DatabaseException
      */
-    public synchronized void truncateFromHead(VLSN deleteEnd,
-                                              long deleteFileNum)
-        throws DatabaseException {
+    public synchronized void truncateFromHead(VLSN deleteEnd, long deleteFileNum) throws DatabaseException {
 
-        LoggerUtils.fine(logger, envImpl,
-                         "head truncate called with " + deleteEnd +
-                         " delete file#:" + deleteFileNum);
+        LoggerUtils.fine(logger, envImpl, "head truncate called with " + deleteEnd + " delete file#:" + deleteFileNum);
 
         logItemCache.clear();
 
@@ -669,36 +537,33 @@ public class VLSNIndex {
         }
 
         if (currentRange.isEmpty()) {
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl, "Didn't expect current range to be empty. " +
-                 " End of delete range = " +  deleteEnd);
+            throw EnvironmentFailureException.unexpectedState(envImpl,
+                    "Didn't expect current range to be empty. " + " End of delete range = " + deleteEnd);
         }
 
-        if (!currentRange.getLastSync().equals(NULL_VLSN) &&
-            (deleteEnd.compareTo(currentRange.getLastSync()) > 0)) {
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl, "Can't log clean away last matchpoint. DeleteEnd= " +
-                 deleteEnd + " lastSync=" + currentRange.getLastSync());
+        if (!currentRange.getLastSync().equals(NULL_VLSN) && (deleteEnd.compareTo(currentRange.getLastSync()) > 0)) {
+            throw EnvironmentFailureException.unexpectedState(envImpl,
+                    "Can't log clean away last matchpoint. DeleteEnd= " + deleteEnd + " lastSync="
+                            + currentRange.getLastSync());
         }
 
         /*
          * Now that the sanity checks are over, update the in-memory, cached
-         * portion of the index. Since the range is the gatekeeper, update
-         * the tracker cache before the database, so that the range is
-         * adjusted first.
+         * portion of the index. Since the range is the gatekeeper, update the
+         * tracker cache before the database, so that the range is adjusted
+         * first.
          */
         tracker.truncateFromHead(deleteEnd, deleteFileNum);
 
         /*
-         * Be sure that the changes are fsynced before deleting any files.  The
+         * Be sure that the changes are fsynced before deleting any files. The
          * changed vlsn index must be persisted so that there are no references
          * to the deleted, cleaned files. Instead of using COMMIT_SYNC, use
          * COMMIT_NO_SYNC with an explicit environment flush and fsync, because
          * the latter ends the txn and releases locks sooner, and reduces
          * possible lock contention on the VLSNIndex. Both feeders and write
          * operations need to lock the VLSNIndex, so keeping lock contention
-         * minimal is essential.
-         * [#20702]
+         * minimal is essential. [#20702]
          */
         TransactionConfig config = new TransactionConfig();
         config.setDurability(Durability.COMMIT_NO_SYNC);
@@ -710,7 +575,7 @@ public class VLSNIndex {
                 flushToDatabase(txn);
             }
             txn.commit();
-            envImpl.flushLog(true /*fsync required*/);
+            envImpl.flushLog(true /* fsync required */);
             success = true;
         } finally {
             if (!success) {
@@ -722,12 +587,12 @@ public class VLSNIndex {
     /**
      * Remove all information from the VLSNIndex for VLSNs >= deleteStart Used
      * by replica side syncup, when the log is truncated. Assumes that the
-     * vlsnIndex is quiescent, and no writes are happening, although the
-     * cleaner may read the vlsnIndex.
+     * vlsnIndex is quiescent, and no writes are happening, although the cleaner
+     * may read the vlsnIndex.
+     * 
      * @throws DatabaseException
      */
-    public synchronized void truncateFromTail(VLSN deleteStart, long lastLsn)
-        throws DatabaseException {
+    public synchronized void truncateFromTail(VLSN deleteStart, long lastLsn) throws DatabaseException {
 
         logItemCache.clear();
         VLSNRange currentRange = tracker.getRange();
@@ -741,17 +606,17 @@ public class VLSNIndex {
         }
 
         /*
-         * The VLSNIndex has two parts -- the in-memory cache, and the
-         * database. Update the tracker, which holds the cache first, and then
-         * update the database.
+         * The VLSNIndex has two parts -- the in-memory cache, and the database.
+         * Update the tracker, which holds the cache first, and then update the
+         * database.
          */
         tracker.truncateFromTail(deleteStart, lastLsn);
 
         TransactionConfig config = new TransactionConfig();
 
         /*
-         * Be sure to commit synchronously so that changes to the vlsn index
-         * are persisted before the log is truncated. There are no feeders or
+         * Be sure to commit synchronously so that changes to the vlsn index are
+         * persisted before the log is truncated. There are no feeders or
          * repstream write operations at this time, so the use of COMMIT_SYNC
          * does not introduce any lock contention. [#20702]
          */
@@ -760,29 +625,27 @@ public class VLSNIndex {
         boolean success = false;
         try {
             /*
-             * The tracker knows the boundary between VLSNs that are on disk
-             * and VLSNs that are within its cache, and maintains that info
-             * as mappings are added, and as the tracker/cache is flushed.
-             * But since we're potentially truncating mappings that were on
-             * disk, we need to update the tracker's notion of where the flush
-             * boundary is.
+             * The tracker knows the boundary between VLSNs that are on disk and
+             * VLSNs that are within its cache, and maintains that info as
+             * mappings are added, and as the tracker/cache is flushed. But
+             * since we're potentially truncating mappings that were on disk, we
+             * need to update the tracker's notion of where the flush boundary
+             * is.
              */
             VLSN lastOnDisk = pruneDatabaseTail(deleteStart, lastLsn, txn);
             tracker.setLastOnDiskVLSN(lastOnDisk);
 
             /*
              * Because mappings can come out of order, it's possible that
-             * buckets are not completely contiguous, and that truncating
-             * will result in the loss of the mapping for the end of the range.
-             * For example, suppose the buckets are like this:
-             *  On disk: vlsn 13 -> bucket for vlsns 13-16
-             *  In tracker: vlsn 18 -> bucket for vlsns 18 -23
-             * Truncating the vlsnIndex at 18 will make the last VLSN become
-             * 17, and removing the vlsn 18 bucket will result in no mapping
-             * for the new end range, vlsn 17. If so, the tracker should
-             * create a new mapping, of vlsn 17 -> lastlsn, to cap off the
-             * range and ensure that there are mappings for the start and end
-             * lsns.
+             * buckets are not completely contiguous, and that truncating will
+             * result in the loss of the mapping for the end of the range. For
+             * example, suppose the buckets are like this: On disk: vlsn 13 ->
+             * bucket for vlsns 13-16 In tracker: vlsn 18 -> bucket for vlsns 18
+             * -23 Truncating the vlsnIndex at 18 will make the last VLSN become
+             * 17, and removing the vlsn 18 bucket will result in no mapping for
+             * the new end range, vlsn 17. If so, the tracker should create a
+             * new mapping, of vlsn 17 -> lastlsn, to cap off the range and
+             * ensure that there are mappings for the start and end lsns.
              */
             tracker.ensureRangeEndIsMapped(deleteStart.getPrev(), lastLsn);
             flushToDatabase(txn);
@@ -797,9 +660,9 @@ public class VLSNIndex {
 
     /**
      * All range points (first, last, etc) ought to be seen as one consistent
-     * group. Because of that, VLSNIndex doesn't offer getLastVLSN,
-     * getFirstVLSN type methods, to discourage the possibility of retrieving
-     * range points across two different range sets.
+     * group. Because of that, VLSNIndex doesn't offer getLastVLSN, getFirstVLSN
+     * type methods, to discourage the possibility of retrieving range points
+     * across two different range sets.
      */
     public VLSNRange getRange() {
         return tracker.getRange();
@@ -816,13 +679,13 @@ public class VLSNIndex {
 
     /**
      * Return the nearest file number <= the log file that houses this VLSN.
-     * This method is meant to be efficient and will not incur I/O. If
-     * there is no available, it does an approximation. The requested VLSN
-     * must be within the VLSNIndex range.
+     * This method is meant to be efficient and will not incur I/O. If there is
+     * no available, it does an approximation. The requested VLSN must be within
+     * the VLSNIndex range.
+     * 
      * @throws DatabaseException
      */
-    public long getLTEFileNumber(VLSN vlsn)
-        throws DatabaseException {
+    public long getLTEFileNumber(VLSN vlsn) throws DatabaseException {
 
         VLSNBucket bucket = getLTEBucket(vlsn);
         return bucket.getLTEFileNumber();
@@ -832,17 +695,16 @@ public class VLSNIndex {
      * The caller must ensure that the requested VLSN is within the VLSNIndex
      * range; we assume that there is a valid bucket.
      */
-     public long getGTEFileNumber(VLSN vlsn)
-        throws DatabaseException {
+    public long getGTEFileNumber(VLSN vlsn) throws DatabaseException {
 
         VLSNBucket bucket = getGTEBucket(vlsn, null);
         return bucket.getGTEFileNumber();
     }
 
-     /**
-      * The requested VLSN must be within the VLSNIndex range; we assume that
-      * there is a valid bucket.
-      */
+    /**
+     * The requested VLSN must be within the VLSNIndex range; we assume that
+     * there is a valid bucket.
+     */
     public long getGTELsn(VLSN vlsn) {
         VLSNBucket bucket = getGTEBucket(vlsn, null);
         return bucket.getGTELsn(vlsn);
@@ -850,24 +712,22 @@ public class VLSNIndex {
 
     /**
      * Get the vlsnBucket that owns this VLSN. If there is no such bucket, get
-     * the bucket that follows this VLSN. Must always return a bucket.
+     * the bucket that follows this VLSN. Must always return a bucket. Because
+     * this is unsynchronized, there is actually a remote chance that this call
+     * could view the VLSNIndex while a truncateFromTail() is going on, and see
+     * the index while it is logically inconsistent, should there be
+     * non-contiguous buckets in the vlsnIndex.. In that case, the caller will
+     * get an EnvironmentFailureException. Because the window is exceedingly
+     * small, requiring log cleaning and a rollback to collide in a very
+     * particular way, and because it is unpalatable to create synchronization
+     * hierarchy complexity for this tiny window, and because the problem is
+     * transient, this method is not synchronized. [#23491]
      *
-     * Because this is unsynchronized, there is actually a remote chance that
-     * this call could view the VLSNIndex while a truncateFromTail() is going
-     * on, and see the index while it is logically inconsistent, should
-     * there be non-contiguous buckets in the vlsnIndex.. In that case,
-     * the caller will get an EnvironmentFailureException. Because the window
-     * is exceedingly small, requiring log cleaning and a rollback to collide
-     * in a very particular way, and because it is unpalatable to create
-     * synchronization hierarchy complexity for this tiny window, and because
-     * the problem is transient, this method is not synchronized. [#23491]
-     *
-     * @param currentBucketInUse is used only for debugging, to add to the
-     * error message if the GTEBucketFromDatabase fails.
+     * @param currentBucketInUse is used only for debugging, to add to the error
+     *            message if the GTEBucketFromDatabase fails.
      * @throws DatabaseException
      */
-    public VLSNBucket getGTEBucket(VLSN vlsn, VLSNBucket currentBucketInUse)
-        throws DatabaseException {
+    public VLSNBucket getGTEBucket(VLSN vlsn, VLSNBucket currentBucketInUse) throws DatabaseException {
 
         VLSNBucket bucket = tracker.getGTEBucket(vlsn);
 
@@ -881,10 +741,10 @@ public class VLSNIndex {
     /**
      * Get the vlsnBucket that owns this VLSN. If there is no such bucket, get
      * the bucket that precedes this VLSN. Must always return a bucket.
+     * 
      * @throws DatabaseException
      */
-    VLSNBucket getLTEBucket(VLSN vlsn)
-        throws DatabaseException {
+    VLSNBucket getLTEBucket(VLSN vlsn) throws DatabaseException {
 
         VLSNBucket bucket = tracker.getLTEBucket(vlsn);
         if (bucket == null) {
@@ -894,29 +754,26 @@ public class VLSNIndex {
     }
 
     /**
-     * @return true if the status and key value indicate that this
-     * cursor is pointing at a valid bucket. Recall that the VLSNRange is
-     * stored in the same database at entry -1.
+     * @return true if the status and key value indicate that this cursor is
+     *         pointing at a valid bucket. Recall that the VLSNRange is stored
+     *         in the same database at entry -1.
      */
-    private boolean isValidBucket(OperationStatus status,
-                                  DatabaseEntry key) {
+    private boolean isValidBucket(OperationStatus status, DatabaseEntry key) {
 
-        return ((status == OperationStatus.SUCCESS)  &&
-                (LongBinding.entryToLong(key) != VLSNRange.RANGE_KEY));
+        return ((status == OperationStatus.SUCCESS) && (LongBinding.entryToLong(key) != VLSNRange.RANGE_KEY));
     }
 
     /*
      * Get the bucket that matches this VLSN. If this vlsn is Y, then we want
-     * bucket at key X where X <= Y. If this method is called, we guarantee
-     * that a non-null bucket will be returned.
+     * bucket at key X where X <= Y. If this method is called, we guarantee that
+     * a non-null bucket will be returned.
      */
-    public VLSNBucket getLTEBucketFromDatabase(VLSN vlsn)
-        throws DatabaseException {
+    public VLSNBucket getLTEBucketFromDatabase(VLSN vlsn) throws DatabaseException {
 
         Cursor cursor = null;
         Locker locker = null;
         DatabaseEntry key = new DatabaseEntry();
-        DatabaseEntry data= new DatabaseEntry();
+        DatabaseEntry data = new DatabaseEntry();
         try {
             locker = BasicLocker.createBasicLocker(envImpl);
             cursor = makeCursor(locker);
@@ -926,9 +783,8 @@ public class VLSNIndex {
             }
 
             /* Shouldn't get here. */
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl, "Couldn't find bucket for LTE VLSN " + vlsn +
-                 " in database. tracker=" + tracker);
+            throw EnvironmentFailureException.unexpectedState(envImpl,
+                    "Couldn't find bucket for LTE VLSN " + vlsn + " in database. tracker=" + tracker);
         } finally {
             if (cursor != null) {
                 cursor.close();
@@ -941,36 +797,25 @@ public class VLSNIndex {
     }
 
     /**
-     * Return the bucket that holds a mapping >= this VLSN.  If this method is
-     * called, we guarantee that a non-null bucket will be returned.
-     *
-     * At this point, we are sure that the target vlsn is within the range of
-     * vlsns held in the database. However, note that there is no explicit
-     * synchronization between this database search, and the
-     * VLSNTracker.flushToDatabase, which might be writing additional buckets
-     * to this database. This may affect the cases when the cursor search
-     * does not return a equality match on a bucket. [#20726]
-     *
-     * For example, suppose the database looks like this:
-     * key=vlsn 10, data = bucket: vlsn 10 -> lsn 0x10/100
-     *                             vlsn 15 -> lsn 0x10/150
-     * key=vlsn 20, data = bucket: vlsn 20 -> lsn 0x11/100
-     *                             vlsn 25 -> lsn 0x11/150
-     * If we are looking for a bucket for vlsn 22, there will not be a match
-     * from the call to cursor.getSearchKeyRange(key=22). The code that
-     * accounts for that will need to consider that new buckets may be flushed
-     * to the database while the search for a new bucket is going on. For
-     * example,
-     *
-     * key=vlsn 30, data = bucket: vlsn 30 -> lsn 0x12/100
-     *                             vlsn 35 -> lsn 0x12/150
-     *
-     * may be written to the database while we are searching for a bucket that
-     * owns vlsn 22.
+     * Return the bucket that holds a mapping >= this VLSN. If this method is
+     * called, we guarantee that a non-null bucket will be returned. At this
+     * point, we are sure that the target vlsn is within the range of vlsns held
+     * in the database. However, note that there is no explicit synchronization
+     * between this database search, and the VLSNTracker.flushToDatabase, which
+     * might be writing additional buckets to this database. This may affect the
+     * cases when the cursor search does not return a equality match on a
+     * bucket. [#20726] For example, suppose the database looks like this:
+     * key=vlsn 10, data = bucket: vlsn 10 -> lsn 0x10/100 vlsn 15 -> lsn
+     * 0x10/150 key=vlsn 20, data = bucket: vlsn 20 -> lsn 0x11/100 vlsn 25 ->
+     * lsn 0x11/150 If we are looking for a bucket for vlsn 22, there will not
+     * be a match from the call to cursor.getSearchKeyRange(key=22). The code
+     * that accounts for that will need to consider that new buckets may be
+     * flushed to the database while the search for a new bucket is going on.
+     * For example, key=vlsn 30, data = bucket: vlsn 30 -> lsn 0x12/100 vlsn 35
+     * -> lsn 0x12/150 may be written to the database while we are searching for
+     * a bucket that owns vlsn 22.
      */
-    private VLSNBucket getGTEBucketFromDatabase(VLSN target,
-                                                VLSNBucket currentBucketInUse)
-        throws DatabaseException {
+    private VLSNBucket getGTEBucketFromDatabase(VLSN target, VLSNBucket currentBucketInUse) throws DatabaseException {
 
         Cursor cursor = null;
         Locker locker = null;
@@ -990,28 +835,20 @@ public class VLSNIndex {
             /*
              * We're here because we did not find a bucket >= target. Let's
              * examine the last bucket in this database. We know that it will
-             * either be:
-             *
-             * 1) a bucket that's < target, but owns the mapping
-             * 2) if the index was appended to by VLSNTracker.flushToDatabase
-             *    while the search is going on, the last bucket may be one
-             *    that is > or >= target.
-             * Using the example above, the last bucket could be case 1:
-             *
-             * a bucket that is < target 22:
-             *    key=vlsn 20, data = bucket: vlsn 20 -> lsn 0x11/100
-             *                                vlsn 25 -> lsn 0x11/150
-             *
-             * or case 2, a bucket that is >= target 22, because the index grew
-             *    key=vlsn 30, data = bucket: vlsn 30 -> lsn 0x12/100
-             *                                vlsn 35 -> lsn 0x12/150
+             * either be: 1) a bucket that's < target, but owns the mapping 2)
+             * if the index was appended to by VLSNTracker.flushToDatabase while
+             * the search is going on, the last bucket may be one that is > or
+             * >= target. Using the example above, the last bucket could be case
+             * 1: a bucket that is < target 22: key=vlsn 20, data = bucket: vlsn
+             * 20 -> lsn 0x11/100 vlsn 25 -> lsn 0x11/150 or case 2, a bucket
+             * that is >= target 22, because the index grew key=vlsn 30, data =
+             * bucket: vlsn 30 -> lsn 0x12/100 vlsn 35 -> lsn 0x12/150
              */
-            assert(TestHookExecute.doHookIfSet(searchGTEHook));
+            assert (TestHookExecute.doHookIfSet(searchGTEHook));
             VLSNBucket endBucket = null;
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
-            OperationStatus status = cursor.getLast(key, data,
-                                                    LockMode.DEFAULT);
+            OperationStatus status = cursor.getLast(key, data, LockMode.DEFAULT);
             if (isValidBucket(status, key)) {
                 endBucket = VLSNBucket.readFromDatabase(data);
                 if (endBucket.owns(target)) {
@@ -1021,8 +858,8 @@ public class VLSNIndex {
                 /*
                  * If this end bucket is not the owner of the target VLSN, we
                  * expect it to be a greaterThan bucket which was inserted
-                 * because of a concurrent VLSNTracker.flushToDatabase call
-                 * that did not exist when we did the previous
+                 * because of a concurrent VLSNTracker.flushToDatabase call that
+                 * did not exist when we did the previous
                  * cursor.getKeyRangeSearch (case 2), In that case, we can
                  * search again for the owning bucket.
                  */
@@ -1059,13 +896,11 @@ public class VLSNIndex {
                 status = cursor.getNext(key, data, LockMode.DEFAULT);
             }
 
-            LoggerUtils.severe(logger, envImpl, "VLSNIndex Dump: " +
-                               sb.toString());
+            LoggerUtils.severe(logger, envImpl, "VLSNIndex Dump: " + sb.toString());
 
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl, "Couldn't find bucket for GTE VLSN " + target +
-                 " in database. EndBucket=" + endBucket + "currentBucket=" +
-                 currentBucketInUse + " tracker = " + tracker);
+            throw EnvironmentFailureException.unexpectedState(envImpl,
+                    "Couldn't find bucket for GTE VLSN " + target + " in database. EndBucket=" + endBucket
+                            + "currentBucket=" + currentBucketInUse + " tracker = " + tracker);
         } finally {
             if (cursor != null) {
                 cursor.close();
@@ -1078,8 +913,9 @@ public class VLSNIndex {
     }
 
     /**
-     * Find a bucket that is GTE the target, and sees if that bucket is
-     * the owner. If it is not the owner look at the previous bucket.
+     * Find a bucket that is GTE the target, and sees if that bucket is the
+     * owner. If it is not the owner look at the previous bucket.
+     * 
      * @return null if no GTE bucket was found.
      */
     private VLSNBucket examineGTEBucket(VLSN target, Cursor cursor) {
@@ -1088,8 +924,7 @@ public class VLSNIndex {
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         LongBinding.longToEntry(target.getSequence(), key);
-        OperationStatus status =
-            cursor.getSearchKeyRange(key, data, LockMode.DEFAULT);
+        OperationStatus status = cursor.getSearchKeyRange(key, data, LockMode.DEFAULT);
 
         if (status == OperationStatus.SUCCESS) {
             VLSNBucket bucket = VLSNBucket.readFromDatabase(data);
@@ -1098,8 +933,8 @@ public class VLSNIndex {
             }
 
             /*
-             * The bucket we found is > than our target. Look at the
-             * previous one.
+             * The bucket we found is > than our target. Look at the previous
+             * one.
              */
             status = cursor.getPrev(key, data, LockMode.DEFAULT);
             if (isValidBucket(status, key)) {
@@ -1110,8 +945,7 @@ public class VLSNIndex {
             }
 
             /*
-             * There is no bucket that owns this target, return the greater
-             * one.
+             * There is no bucket that owns this target, return the greater one.
              */
             return bucket;
         }
@@ -1120,23 +954,19 @@ public class VLSNIndex {
         return null;
     }
 
-   /*
-    * Position this cursor at the largest value bucket which is <= the
-    * target VLSN.
-    * @return true if there is a bucket that fits this criteria,
-    */
-    private boolean positionBeforeOrEqual(Cursor cursor,
-                                          VLSN vlsn,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data)
-        throws DatabaseException {
+    /*
+     * Position this cursor at the largest value bucket which is <= the target
+     * VLSN.
+     * @return true if there is a bucket that fits this criteria,
+     */
+    private boolean positionBeforeOrEqual(Cursor cursor, VLSN vlsn, DatabaseEntry key, DatabaseEntry data)
+            throws DatabaseException {
 
         LongBinding.longToEntry(vlsn.getSequence(), key);
         VLSNBucket bucket = null;
 
         /* getSearchKeyRange will give us a bucket >= Y. */
-        OperationStatus status =
-            cursor.getSearchKeyRange(key, data, LockMode.DEFAULT);
+        OperationStatus status = cursor.getSearchKeyRange(key, data, LockMode.DEFAULT);
 
         if (status == OperationStatus.SUCCESS) {
             bucket = VLSNBucket.readFromDatabase(data);
@@ -1154,10 +984,10 @@ public class VLSNIndex {
             return false;
         }
         /*
-         * There was no bucket >= Y. Let's find the last bucket in this
-         * database then. It should be a bucket that's < Y.
+         * There was no bucket >= Y. Let's find the last bucket in this database
+         * then. It should be a bucket that's < Y.
          */
-        status =  cursor.getLast(key, data, LockMode.DEFAULT);
+        status = cursor.getLast(key, data, LockMode.DEFAULT);
         if (isValidBucket(status, key)) {
             return true;
         }
@@ -1165,23 +995,19 @@ public class VLSNIndex {
         return false;
     }
 
-   /*
-    * Position this cursor at the smallest value bucket which is >= the
-    * target VLSN.
-    * @return true if there is a bucket that fits this criteria,
-    */
-    private boolean positionAfterOrEqual(Cursor cursor,
-                                         VLSN vlsn,
-                                         DatabaseEntry key,
-                                         DatabaseEntry data)
-        throws DatabaseException {
+    /*
+     * Position this cursor at the smallest value bucket which is >= the target
+     * VLSN.
+     * @return true if there is a bucket that fits this criteria,
+     */
+    private boolean positionAfterOrEqual(Cursor cursor, VLSN vlsn, DatabaseEntry key, DatabaseEntry data)
+            throws DatabaseException {
 
         LongBinding.longToEntry(vlsn.getSequence(), key);
         VLSNBucket bucket = null;
 
         /* getSearchKeyRange will give us a bucket >= Y. */
-        OperationStatus status =
-            cursor.getSearchKeyRange(key, data, LockMode.DEFAULT);
+        OperationStatus status = cursor.getSearchKeyRange(key, data, LockMode.DEFAULT);
 
         if (status == OperationStatus.SUCCESS) {
             bucket = VLSNBucket.readFromDatabase(data);
@@ -1190,12 +1016,11 @@ public class VLSNIndex {
             }
 
             /*
-             * This bucket is > our VLSN. Check the bucket before.
-             *  - It might be a bucket that owns this VLSN
-             *  - the prevbucket might precede this VLSN.
-             *  - the record before might be the range.
-             * One way or another, there should always be a record before
-             * any bucket -- it's the range.
+             * This bucket is > our VLSN. Check the bucket before. - It might be
+             * a bucket that owns this VLSN - the prevbucket might precede this
+             * VLSN. - the record before might be the range. One way or another,
+             * there should always be a record before any bucket -- it's the
+             * range.
              */
             status = cursor.getPrev(key, data, LockMode.DEFAULT);
             assert status == OperationStatus.SUCCESS;
@@ -1215,10 +1040,10 @@ public class VLSNIndex {
             return true;
         }
         /*
-         * There was no bucket >= Y. Let's find the last bucket in this
-         * database then. It should be a bucket that's < Y.
+         * There was no bucket >= Y. Let's find the last bucket in this database
+         * then. It should be a bucket that's < Y.
          */
-        status =  cursor.getLast(key, data, LockMode.DEFAULT);
+        status = cursor.getLast(key, data, LockMode.DEFAULT);
         if (isValidBucket(status, key)) {
             bucket = VLSNBucket.readFromDatabase(data);
             if (bucket.owns(vlsn)) {
@@ -1232,10 +1057,7 @@ public class VLSNIndex {
     /*
      * Remove all VLSN->LSN mappings <= deleteEnd
      */
-    private void pruneDatabaseHead(VLSN deleteEnd,
-                                   long deleteFileNum,
-                                   Txn txn)
-        throws DatabaseException {
+    private void pruneDatabaseHead(VLSN deleteEnd, long deleteFileNum, Txn txn) throws DatabaseException {
         Cursor cursor = null;
 
         try {
@@ -1266,24 +1088,20 @@ public class VLSNIndex {
 
                 deleteCount++;
                 if (status != OperationStatus.SUCCESS) {
-                    throw EnvironmentFailureException.unexpectedState
-                        (envImpl, "Couldn't delete, got status of " + status +
-                         " for delete of bucket " + keyValue + " deleteEnd=" +
-                         deleteEnd);
+                    throw EnvironmentFailureException.unexpectedState(envImpl, "Couldn't delete, got status of "
+                            + status + " for delete of bucket " + keyValue + " deleteEnd=" + deleteEnd);
                 }
-            } while (cursor.getPrev(key, noData, LockMode.DEFAULT) ==
-                     OperationStatus.SUCCESS);
+            } while (cursor.getPrev(key, noData, LockMode.DEFAULT) == OperationStatus.SUCCESS);
 
             nHeadBucketsDeleted.add(deleteCount);
 
             /*
-             * Check the first real bucket, and see if we need to insert
-             * a ghost bucket.
+             * Check the first real bucket, and see if we need to insert a ghost
+             * bucket.
              */
             VLSN newStart = deleteEnd.getNext();
             LongBinding.longToEntry(1, key);
-            OperationStatus status =
-                cursor.getSearchKeyRange(key, data, LockMode.DEFAULT);
+            OperationStatus status = cursor.getSearchKeyRange(key, data, LockMode.DEFAULT);
 
             /* No real buckets, nothing to adjust. */
             if (status != OperationStatus.SUCCESS) {
@@ -1297,22 +1115,17 @@ public class VLSNIndex {
             }
 
             if (firstBucket.getFirst().compareTo(newStart) < 0) {
-                throw EnvironmentFailureException.unexpectedState
-                    (envImpl, "newStart " + newStart +
-                     " should be < first bucket:" + firstBucket);
+                throw EnvironmentFailureException.unexpectedState(envImpl,
+                        "newStart " + newStart + " should be < first bucket:" + firstBucket);
             }
 
             /*
-             * Add a ghost bucket so that there is a bucket to match the
-             * first item in the range.
+             * Add a ghost bucket so that there is a bucket to match the first
+             * item in the range.
              */
-            long nextFile = envImpl.getFileManager().
-                getFollowingFileNum(deleteFileNum,
-                                    true /* forward */);
+            long nextFile = envImpl.getFileManager().getFollowingFileNum(deleteFileNum, true /* forward */);
             long lastPossibleLsn = firstBucket.getLsn(firstBucket.getFirst());
-            VLSNBucket placeholder =
-                new GhostBucket(newStart, DbLsn.makeLsn(nextFile, 0),
-                                                     lastPossibleLsn);
+            VLSNBucket placeholder = new GhostBucket(newStart, DbLsn.makeLsn(nextFile, 0), lastPossibleLsn);
             placeholder.writeToDatabase(envImpl, cursor);
 
         } finally {
@@ -1323,11 +1136,10 @@ public class VLSNIndex {
     }
 
     /*
-     * Remove all VLSN->LSN mappings >= deleteStart.  Recall that the
-     * mappingDb is keyed by the first VLSN in the bucket. The replication
-     * stream will be quiescent when this is called. The caller must be
-     * sure that there are buckets in the database that cover deleteStart.
-     *
+     * Remove all VLSN->LSN mappings >= deleteStart. Recall that the mappingDb
+     * is keyed by the first VLSN in the bucket. The replication stream will be
+     * quiescent when this is called. The caller must be sure that there are
+     * buckets in the database that cover deleteStart.
      * @param lastLsn is the location, if known, of the vlsn at deleteStart -1.
      * If the location is not know, NULL_LSN is used. In that case the pruning
      * may need to delete mappings < deleteSTart, in order to keep the bucket
@@ -1337,12 +1149,11 @@ public class VLSNIndex {
      * end range.
      * @return lastVLSN left on disk.
      */
-    VLSN pruneDatabaseTail(VLSN deleteStart, long lastLsn, Txn txn)
-        throws DatabaseException {
+    VLSN pruneDatabaseTail(VLSN deleteStart, long lastLsn, Txn txn) throws DatabaseException {
 
         /*
-         * At this point, the tracker is accurate as to which vlsn is last
-         * on disk.
+         * At this point, the tracker is accurate as to which vlsn is last on
+         * disk.
          */
         VLSN lastOnDiskVLSN = tracker.getLastOnDisk();
         Cursor cursor = null;
@@ -1355,15 +1166,15 @@ public class VLSNIndex {
 
             if (!positionAfterOrEqual(cursor, deleteStart, key, data)) {
                 /*
-                 * No bucket that matches this criteria, everything on disk is
-                 * < deleteStart, nothing to do.
+                 * No bucket that matches this criteria, everything on disk is <
+                 * deleteStart, nothing to do.
                  */
                 return lastOnDiskVLSN;
             }
 
             /*
-             * Does this bucket straddle deleteStart? Then prune off part of
-             * the bucket.
+             * Does this bucket straddle deleteStart? Then prune off part of the
+             * bucket.
              */
             VLSNBucket bucket = VLSNBucket.readFromDatabase(data);
 
@@ -1375,8 +1186,7 @@ public class VLSNIndex {
                 OperationStatus status = cursor.putCurrent(data);
 
                 if (status != OperationStatus.SUCCESS) {
-                    throw EnvironmentFailureException.unexpectedState
-                        (envImpl, "Couldn't update " + bucket);
+                    throw EnvironmentFailureException.unexpectedState(envImpl, "Couldn't update " + bucket);
                 }
 
                 status = cursor.getNext(key, data, LockMode.DEFAULT);
@@ -1396,14 +1206,12 @@ public class VLSNIndex {
                 OperationStatus status = cursor.delete();
 
                 if (status != OperationStatus.SUCCESS) {
-                    throw EnvironmentFailureException.unexpectedState
-                        (envImpl, "Couldn't delete after vlsn " + deleteStart +
-                         " status=" + status);
+                    throw EnvironmentFailureException.unexpectedState(envImpl,
+                            "Couldn't delete after vlsn " + deleteStart + " status=" + status);
                 }
                 deleteCount++;
 
-            } while (cursor.getNext(key, noData, LockMode.DEFAULT) ==
-                     OperationStatus.SUCCESS);
+            } while (cursor.getNext(key, noData, LockMode.DEFAULT) == OperationStatus.SUCCESS);
 
             nTailBucketsDeleted.add(deleteCount);
 
@@ -1414,8 +1222,7 @@ public class VLSNIndex {
              * tracker cache. This last mapping may not be exactly
              * deleteStart-1, if there is a gap in the mappings.
              */
-            OperationStatus status = cursor.getLast(key, data,
-                                                    LockMode.DEFAULT);
+            OperationStatus status = cursor.getLast(key, data, LockMode.DEFAULT);
 
             if (isValidBucket(status, key)) {
                 /* A valid bucket was returned */
@@ -1423,9 +1230,8 @@ public class VLSNIndex {
                 lastOnDiskVLSN = bucket.getLast();
             } else {
                 /*
-                 * No mappings in the database -- either there is nothing in
-                 * the database, or we only have the special range record at
-                 * key=-1
+                 * No mappings in the database -- either there is nothing in the
+                 * database, or we only have the special range record at key=-1
                  */
                 lastOnDiskVLSN = NULL_VLSN;
             }
@@ -1439,46 +1245,32 @@ public class VLSNIndex {
     }
 
     /**
-     * At startup, we need to
-     * - get a handle onto the internal database which stores the VLSN index
-     * - read the latest on-disk version to initialize the tracker
-     * - find any VLSN->LSN mappings which were not saved in the on-disk
-     *   version, and merge them in. Thse mappings weren't flushed because
-     *   they occurred after the checkpoint end. They're found by the recovery
-     *   procedure, and are added in now.
-     *
-     * This method will execute when the map is quiescent, and needs no
-     * synchronization.
+     * At startup, we need to - get a handle onto the internal database which
+     * stores the VLSN index - read the latest on-disk version to initialize the
+     * tracker - find any VLSN->LSN mappings which were not saved in the on-disk
+     * version, and merge them in. Thse mappings weren't flushed because they
+     * occurred after the checkpoint end. They're found by the recovery
+     * procedure, and are added in now. This method will execute when the map is
+     * quiescent, and needs no synchronization.
      */
-    private void init(String mappingDbName,
-                      int vlsnStride,
-                      int vlsnMaxMappings,
-                      int vlsnMaxDistance,
+    private void init(String mappingDbName, int vlsnStride, int vlsnMaxMappings, int vlsnMaxDistance,
                       RecoveryInfo recoveryInfo)
-        throws DatabaseException {
+            throws DatabaseException {
 
         openMappingDatabase(mappingDbName);
-        tracker = new VLSNTracker(envImpl, mappingDbImpl, vlsnStride,
-                                  vlsnMaxMappings, vlsnMaxDistance,
-                                  statistics);
+        tracker = new VLSNTracker(envImpl, mappingDbImpl, vlsnStride, vlsnMaxMappings, vlsnMaxDistance, statistics);
 
         /*
          * Put any in-memory mappings discovered during the recovery process
-         * into the fileMapperDb. That way, we'll preserve mappings that
-         * precede this recovery's checkpoint.
-         *
-         * For example, suppose the log looks like this:
-         *
-         * VLSN1
-         * VLSN2
-         * checkpoint start for this recovery, for the instantiation of the
-         *          replicator
-         * checkpoint end for this recovery
-         * <- at this point in time, after the env comes up, we'll create
-         * the VLSN index. VLSN1 and VLSN2 were discovered during recovery and
-         * are recorded in memory. Normally a checkpoint flushes the VLSNIndex
-         * but the VLSNIndex isn't instantiated yet, because the VLSNIndex
-         * needs an initialized environment.
+         * into the fileMapperDb. That way, we'll preserve mappings that precede
+         * this recovery's checkpoint. For example, suppose the log looks like
+         * this: VLSN1 VLSN2 checkpoint start for this recovery, for the
+         * instantiation of the replicator checkpoint end for this recovery <-
+         * at this point in time, after the env comes up, we'll create the VLSN
+         * index. VLSN1 and VLSN2 were discovered during recovery and are
+         * recorded in memory. Normally a checkpoint flushes the VLSNIndex but
+         * the VLSNIndex isn't instantiated yet, because the VLSNIndex needs an
+         * initialized environment.
          */
         merge((VLSNRecoveryTracker) recoveryInfo.vlsnProxy);
     }
@@ -1486,22 +1278,14 @@ public class VLSNIndex {
     /*
      * Update this index, which was initialized with what's on disk, with
      * mappings found during recovery. These mappings ought to either overlap
-     * what's on disk, or cover the range immediately after what's on disk.  If
+     * what's on disk, or cover the range immediately after what's on disk. If
      * it doesn't, the recovery mechanism, which flushes the mapping db at
-     * checkpoint is faulty and we've lost mappings.
-     *
-     * In other words, if this tracker holds the VLSN range a -> c, then the
-     * recovery tracker will have the VLSN range b -> d, where
-     *
-     *   a <= b
-     *   c <= d
-     *   if c < b, then b == c+1
-     *
-     * This method must be called when the index and tracker are quiescent, and
-     * there are no calls to track().
-     *
-     * The recoveryTracker is the authoritative voice on what should be in the
-     * VLSN index.
+     * checkpoint is faulty and we've lost mappings. In other words, if this
+     * tracker holds the VLSN range a -> c, then the recovery tracker will have
+     * the VLSN range b -> d, where a <= b c <= d if c < b, then b == c+1 This
+     * method must be called when the index and tracker are quiescent, and there
+     * are no calls to track(). The recoveryTracker is the authoritative voice
+     * on what should be in the VLSN index.
      */
     void merge(VLSNRecoveryTracker recoveryTracker) {
 
@@ -1514,17 +1298,15 @@ public class VLSNIndex {
 
             /*
              * Even though the recovery tracker has no mappings, it may have
-             * seen a rollback start that indicates that the VLSNIndex should
-             * be truncated. Setup the recovery tracker so it looks like
-             * it has a single mapping -- the matchpoint VLSN and LSN and
-             * proceed. Take this approach, rather than truncating the index,
-             * because we may need that matchpoint mapping to cap off the
-             * VLSN range.
-             *
-             * For example, suppose an index has mappings for VLSN 1, 5, 10,
-             * and the rollback is going to matchpoint 7. A pure truncation
-             * would lop off VLSN 10, making VLSN 5 the last mapping. We
-             * would then need to add on VLSN 7.
+             * seen a rollback start that indicates that the VLSNIndex should be
+             * truncated. Setup the recovery tracker so it looks like it has a
+             * single mapping -- the matchpoint VLSN and LSN and proceed. Take
+             * this approach, rather than truncating the index, because we may
+             * need that matchpoint mapping to cap off the VLSN range. For
+             * example, suppose an index has mappings for VLSN 1, 5, 10, and the
+             * rollback is going to matchpoint 7. A pure truncation would lop
+             * off VLSN 10, making VLSN 5 the last mapping. We would then need
+             * to add on VLSN 7.
              */
             VLSN lastMatchpointVLSN = recoveryTracker.getLastMatchpointVLSN();
             if (lastMatchpointVLSN.isNull()) {
@@ -1534,45 +1316,39 @@ public class VLSNIndex {
             /*
              * Use a MATCHPOINT log entry to indicate that this is a syncable
              * entry. This purposefully leaves the recovery tracker's range's
-             * lastTxnEnd null, so it will not overwrite the on disk
-             * tracker. This assumes that we will never rollback past the last
-             * txn end.
+             * lastTxnEnd null, so it will not overwrite the on disk tracker.
+             * This assumes that we will never rollback past the last txn end.
              */
-            recoveryTracker.track(lastMatchpointVLSN,
-                                  recoveryTracker.getLastMatchpointLsn(),
-                                  LogEntryType.LOG_MATCHPOINT.getTypeNum());
+            recoveryTracker.track(lastMatchpointVLSN, recoveryTracker.getLastMatchpointLsn(),
+                    LogEntryType.LOG_MATCHPOINT.getTypeNum());
         }
 
         /*
          * The mappings held in the recoveryTracker must either overlap what's
-         * on disk or immediately follow the last mapping on disk. If there
-         * is a gap between what is on disk and the recovery tracker, something
-         * went awry with the checkpoint scheme, which flushes the VLSN index
-         * at each checkpoint. We're in danger of losing some mappings. Most
+         * on disk or immediately follow the last mapping on disk. If there is a
+         * gap between what is on disk and the recovery tracker, something went
+         * awry with the checkpoint scheme, which flushes the VLSN index at each
+         * checkpoint. We're in danger of losing some mappings. Most
          * importantly, the last txnEnd VLSN in the range might not be right.
-         *
          * The one exception is when the Environment has been converted from
          * non-replicated and there are no VLSN entries in the VLSNIndex. In
-         * that case, it's valid that the entries seen from the recovery
-         * tracker may have a gap in VLSNs. For example, in a newly converted
+         * that case, it's valid that the entries seen from the recovery tracker
+         * may have a gap in VLSNs. For example, in a newly converted
          * environment, the VLSN index range has NULL_VLSN as its last entry,
-         * but the first replicated log entry will start with 2.
-         *
-         * Note: EnvironmentImpl.needRepConvert() would more accurately convey
-         * the fact that this is the very first recovery following a
-         * conversion.  But needRepConvert() on a replica is never true, and we
-         * need to disable this check on the replica's first recovery too.
+         * but the first replicated log entry will start with 2. Note:
+         * EnvironmentImpl.needRepConvert() would more accurately convey the
+         * fact that this is the very first recovery following a conversion. But
+         * needRepConvert() on a replica is never true, and we need to disable
+         * this check on the replica's first recovery too.
          */
         VLSN persistentLast = tracker.getRange().getLast();
         VLSN recoveryFirst = recoveryTracker.getRange().getFirst();
-        if ((!(envImpl.isRepConverted() && persistentLast.isNull()) ||
-             !envImpl.isRepConverted()) &&
-            recoveryFirst.compareTo(persistentLast.getNext()) > 0) {
+        if ((!(envImpl.isRepConverted() && persistentLast.isNull()) || !envImpl.isRepConverted())
+                && recoveryFirst.compareTo(persistentLast.getNext()) > 0) {
 
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl, "recoveryTracker should overlap or follow on disk " +
-                 "last VLSN of " + persistentLast + " recoveryFirst= " +
-                 recoveryFirst);
+            throw EnvironmentFailureException.unexpectedState(envImpl,
+                    "recoveryTracker should overlap or follow on disk " + "last VLSN of " + persistentLast
+                            + " recoveryFirst= " + recoveryFirst);
         }
 
         VLSNRange currentRange = tracker.getRange();
@@ -1593,8 +1369,7 @@ public class VLSNIndex {
         boolean success = false;
         VLSN lastOnDiskVLSN;
         try {
-            lastOnDiskVLSN = pruneDatabaseTail(recoveryFirst, DbLsn.NULL_LSN,
-                                               txn);
+            lastOnDiskVLSN = pruneDatabaseTail(recoveryFirst, DbLsn.NULL_LSN, txn);
             tracker.merge(lastOnDiskVLSN, recoveryTracker);
             flushToDatabase(txn);
             txn.commit();
@@ -1606,23 +1381,18 @@ public class VLSNIndex {
         }
     }
 
-    private void openMappingDatabase(String mappingDbName)
-        throws DatabaseException {
+    private void openMappingDatabase(String mappingDbName) throws DatabaseException {
 
-        final Locker locker =
-            Txn.createLocalAutoTxn(envImpl, new TransactionConfig());
+        final Locker locker = Txn.createLocalAutoTxn(envImpl, new TransactionConfig());
 
         try {
             DbTree dbTree = envImpl.getDbTree();
-            DatabaseImpl db = dbTree.getDb(locker,
-                                           mappingDbName,
-                                           null /* databaseHandle */,
-                                           false);
+            DatabaseImpl db = dbTree.getDb(locker, mappingDbName, null /* databaseHandle */, false);
             if (db == null) {
                 if (envImpl.isReadOnly()) {
                     /* This should have been caught earlier. */
-                    throw EnvironmentFailureException.unexpectedState
-                       ("A replicated environment can't be opened read only.");
+                    throw EnvironmentFailureException
+                            .unexpectedState("A replicated environment can't be opened read only.");
                 }
                 DatabaseConfig dbConfig = new DatabaseConfig();
                 dbConfig.setReplicated(false);
@@ -1642,8 +1412,7 @@ public class VLSNIndex {
         close(false);
     }
 
-    public void close(boolean doFlush)
-        throws DatabaseException {
+    public void close(boolean doFlush) throws DatabaseException {
 
         try {
             if (doFlush) {
@@ -1658,9 +1427,7 @@ public class VLSNIndex {
                  * this fact.
                  */
                 vlsnPutLatch.terminate();
-                LoggerUtils.fine
-                    (logger, envImpl,
-                     "Outstanding VLSN put latch cleared at close");
+                LoggerUtils.fine(logger, envImpl, "Outstanding VLSN put latch cleared at close");
             }
         } finally {
             if (mappingDbImpl != null) {
@@ -1698,8 +1465,7 @@ public class VLSNIndex {
     /**
      * Mappings are flushed to disk at close, and at checkpoints.
      */
-    private void flushToDatabase(Txn txn)
-        throws DatabaseException {
+    private void flushToDatabase(Txn txn) throws DatabaseException {
         synchronized (flushSynchronizer) {
             tracker.flushToDatabase(mappingDbImpl, txn);
         }
@@ -1707,6 +1473,7 @@ public class VLSNIndex {
 
     /**
      * For debugging and unit tests
+     * 
      * @throws DatabaseException
      */
     public Map<VLSN, Long> dumpDb(boolean display) {
@@ -1731,8 +1498,7 @@ public class VLSNIndex {
              * items are VLSNBuckets.
              */
             int count = 0;
-            while (cursor.getNext(key, data, LockMode.DEFAULT) ==
-                   OperationStatus.SUCCESS) {
+            while (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
 
                 Long keyValue = LongBinding.entryToLong(key);
 
@@ -1747,9 +1513,7 @@ public class VLSNIndex {
                     }
                 } else {
                     VLSNBucket bucket = VLSNBucket.readFromDatabase(data);
-                    for (long i = bucket.getFirst().getSequence();
-                         i <= bucket.getLast().getSequence();
-                         i++) {
+                    for (long i = bucket.getFirst().getSequence(); i <= bucket.getLast().getSequence(); i++) {
                         VLSN v = new VLSN(i);
                         long lsn = bucket.getLsn(v);
 
@@ -1778,20 +1542,17 @@ public class VLSNIndex {
     }
 
     /**
-     * For DbStreamVerify utility. Verify the on-disk database, disregarding
-     * the cached tracker.
+     * For DbStreamVerify utility. Verify the on-disk database, disregarding the
+     * cached tracker.
+     * 
      * @throws DatabaseException
      */
     @SuppressWarnings("null")
-    public static void verifyDb(Environment env,
-                                PrintStream out,
-                                boolean verbose)
-        throws DatabaseException {
+    public static void verifyDb(Environment env, PrintStream out, boolean verbose) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setReadOnly(true);
-        Database db = env.openDatabase
-            (null, DbType.VLSN_MAP.getInternalName(), dbConfig);
+        Database db = env.openDatabase(null, DbType.VLSN_MAP.getInternalName(), dbConfig);
         Cursor cursor = null;
         try {
             if (verbose) {
@@ -1813,8 +1574,7 @@ public class VLSNIndex {
             Long lastKey = null;
             VLSN firstVLSNSeen = VLSN.NULL_VLSN;
             VLSN lastVLSNSeen = VLSN.NULL_VLSN;
-            while (cursor.getNext(key, data, null) ==
-                   OperationStatus.SUCCESS) {
+            while (cursor.getNext(key, data, null) == OperationStatus.SUCCESS) {
 
                 Long keyValue = LongBinding.entryToLong(key);
 
@@ -1834,13 +1594,10 @@ public class VLSNIndex {
                     }
 
                     if (lastBucket != null) {
-                        if (lastBucket.getLast().compareTo(bucket.getFirst())
-                            >= 0) {
+                        if (lastBucket.getLast().compareTo(bucket.getFirst()) >= 0) {
                             out.println("Buckets out of order.");
-                            out.println("Last = " + lastKey + "/" +
-                                        lastBucket);
-                            out.println("Current = " + keyValue + "/" +
-                                        bucket);
+                            out.println("Last = " + lastKey + "/" + lastBucket);
+                            out.println("Current = " + keyValue + "/" + bucket);
                         }
                     }
 
@@ -1860,13 +1617,11 @@ public class VLSNIndex {
             }
 
             if (firstVLSNSeen.compareTo(range.getFirst()) != 0) {
-                out.println("First VLSN in bucket = " + firstVLSNSeen +
-                            " and doesn't match range " + range.getFirst());
+                out.println("First VLSN in bucket = " + firstVLSNSeen + " and doesn't match range " + range.getFirst());
             }
 
             if (lastVLSNSeen.compareTo(range.getLast()) != 0) {
-                out.println("Last VLSN in bucket = " + lastVLSNSeen +
-                            " and doesn't match range " + range.getLast());
+                out.println("Last VLSN in bucket = " + lastVLSNSeen + " and doesn't match range " + range.getLast());
             }
 
         } finally {
@@ -1880,13 +1635,11 @@ public class VLSNIndex {
 
     /* For unit test support. Index needs to be quiescent */
     @SuppressWarnings("null")
-    public synchronized boolean verify(boolean verbose)
-        throws DatabaseException {
+    public synchronized boolean verify(boolean verbose) throws DatabaseException {
 
         if (!tracker.verify(verbose)) {
             return false;
         }
-
 
         VLSNRange dbRange = null;
         ArrayList<VLSN> firstVLSN = new ArrayList<VLSN>();
@@ -1895,14 +1648,14 @@ public class VLSNIndex {
         Cursor cursor = null;
 
         /*
-         * Synchronize so we don't try to verify while the checkpointer
-         * thread is calling flushToDatabase on the vlsnIndex.
+         * Synchronize so we don't try to verify while the checkpointer thread
+         * is calling flushToDatabase on the vlsnIndex.
          */
         synchronized (flushSynchronizer) {
             /*
-             * Read the on-disk range and buckets.
-             * -The tracker and the database buckets should not intersect.
-             * -The on-disk range should be a subset of the tracker range.
+             * Read the on-disk range and buckets. -The tracker and the database
+             * buckets should not intersect. -The on-disk range should be a
+             * subset of the tracker range.
              */
             try {
                 cursor = makeCursor(locker);
@@ -1913,15 +1666,13 @@ public class VLSNIndex {
                 /*
                  * Read the on-disk range and all the buckets.
                  */
-                OperationStatus status =
-                    cursor.getFirst(key, data, LockMode.DEFAULT);
+                OperationStatus status = cursor.getFirst(key, data, LockMode.DEFAULT);
                 if (status == OperationStatus.SUCCESS) {
                     VLSNRangeBinding rangeBinding = new VLSNRangeBinding();
                     dbRange = rangeBinding.entryToObject(data);
 
-                    /* Collect info about the  buckets. */
-                    while (cursor.getNext(key, data, LockMode.DEFAULT) ==
-                           OperationStatus.SUCCESS) {
+                    /* Collect info about the buckets. */
+                    while (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
 
                         VLSNBucket bucket = VLSNBucket.readFromDatabase(data);
 
@@ -1958,7 +1709,7 @@ public class VLSNIndex {
         VLSN lastOnDisk = null;
         if (firstVLSN.size() > 0) {
             /* There are buckets in the database. */
-            lastOnDisk =  lastVLSN.get(lastVLSN.size()-1);
+            lastOnDisk = lastVLSN.get(lastVLSN.size() - 1);
             firstOnDisk = firstVLSN.get(0);
 
             if (!VLSNTracker.verifyBucketBoundaries(firstVLSN, lastVLSN)) {
@@ -1967,29 +1718,22 @@ public class VLSNIndex {
 
             /*
              * A VLSNIndex invariant is that there is always a mapping for the
-             * first and last VLSN in the range.  However, if the log cleaner
+             * first and last VLSN in the range. However, if the log cleaner
              * lops off the head of the index, leaving a bucket gap at the
              * beginning of the index, we break this invariant. For example,
-             * suppose the index has
-             *
-             * bucketA - VLSNs 10
-             * no bucket, due to out of order mapping - VLSN 11, 12
-             * bucket B - VLSNs 13-15
-             *
-             * If the cleaner deletes VLSN 10->11, VLSN 12 will be the start
-             * of the range, and needs a bucket. We'll do this by adding a
-             * bucket placeholder.
+             * suppose the index has bucketA - VLSNs 10 no bucket, due to out of
+             * order mapping - VLSN 11, 12 bucket B - VLSNs 13-15 If the cleaner
+             * deletes VLSN 10->11, VLSN 12 will be the start of the range, and
+             * needs a bucket. We'll do this by adding a bucket placeholder.
              */
             if (dbRange.getFirst().compareTo(firstOnDisk) != 0) {
-                dumpMsg(verbose, "Range doesn't match buckets " +
-                        dbRange + " firstOnDisk = " + firstOnDisk);
+                dumpMsg(verbose, "Range doesn't match buckets " + dbRange + " firstOnDisk = " + firstOnDisk);
                 return false;
             }
 
             /* The tracker should know what the last VLSN on disk is. */
             if (!lastOnDisk.equals(tracker.getLastOnDisk())) {
-                dumpMsg(verbose, "lastOnDisk=" + lastOnDisk +
-                        " tracker=" + tracker.getLastOnDisk());
+                dumpMsg(verbose, "lastOnDisk=" + lastOnDisk + " tracker=" + tracker.getLastOnDisk());
                 return false;
             }
 
@@ -1999,8 +1743,7 @@ public class VLSNIndex {
                  * The last bucket VLSN should precede the first tracker VLSN.
                  */
                 if (firstTracked.compareTo(lastOnDisk.getNext()) < 0) {
-                    dumpMsg(verbose, "lastOnDisk=" + lastOnDisk +
-                            " firstTracked=" + firstTracked);
+                    dumpMsg(verbose, "lastOnDisk=" + lastOnDisk + " firstTracked=" + firstTracked);
                     return false;
                 }
             }
@@ -2015,8 +1758,8 @@ public class VLSNIndex {
     }
 
     /*
-     * For unit test support only. Can only be called when replication stream
-     * is quiescent.
+     * For unit test support only. Can only be called when replication stream is
+     * quiescent.
      */
     public boolean isFlushedToDisk() {
         return tracker.isFlushedToDisk();
@@ -2024,44 +1767,35 @@ public class VLSNIndex {
 
     /**
      * Ensure that the in-memory vlsn index encompasses all logged entries
-     * before it is flushed to disk. A No-Op for non-replicated systems.
-     *
-     * The problem is in the interaction of logging and VLSN
-     * tracking. Allocating an new VLSN and logging a replicated log entry is
-     * done within the log write latch, without any VLSNINdex
-     * synchronization. That must be done to keep the log write latch critical
-     * section as small as possible, and to avoid any lock hiearchy issues.
-     *
-     * The VLSNIndex is updated after the log write latch critical section. The
-     * VLSNIndex is flushed to disk by checkpoint, and it is assumed that this
-     * persistent version of the index encompasses all VLSN entries prior to
-     * checkpoint start. Since the logging of a new VLSN, and the flushing of
-     * the index are not atomic, it's possible that the checkpointer may start
-     * the flush of the vlsnIndex before the last vlsn's mapping is recorded
-     * in the index. To obey the requirement that the checkpointed vlsn index
-     * encompass all mappings < checkpoint start, check that the vlsn index
-     * is up to date before the flush.
-     * [#19754]
-     *
+     * before it is flushed to disk. A No-Op for non-replicated systems. The
+     * problem is in the interaction of logging and VLSN tracking. Allocating an
+     * new VLSN and logging a replicated log entry is done within the log write
+     * latch, without any VLSNINdex synchronization. That must be done to keep
+     * the log write latch critical section as small as possible, and to avoid
+     * any lock hiearchy issues. The VLSNIndex is updated after the log write
+     * latch critical section. The VLSNIndex is flushed to disk by checkpoint,
+     * and it is assumed that this persistent version of the index encompasses
+     * all VLSN entries prior to checkpoint start. Since the logging of a new
+     * VLSN, and the flushing of the index are not atomic, it's possible that
+     * the checkpointer may start the flush of the vlsnIndex before the last
+     * vlsn's mapping is recorded in the index. To obey the requirement that the
+     * checkpointed vlsn index encompass all mappings < checkpoint start, check
+     * that the vlsn index is up to date before the flush. [#19754]
      * awaitConsistency() works by using the same waitForVLSN() method used by
      * the Feeders. WaitForVLSN asserts that all feeders are waiting on single
      * vlsn, to assure that no feeders are left in limbo, awaiting a vlsn that
      * has gone by. This contract is valid for the feeders, because they wait
      * for vlsns sequentially, consuming each one by one. However, this ckpter
      * awaitConsistency functionality uses the nextVLSNCounter, which can
-     * leapfrog ahead arbitrarily, in this case:
-     *
-     *    vlsn range holds 1 -> N-1
-     *    Feeder is present, awaiting vlsn N
-     *    thread A bumps vlsn to N  and writes record under log write latch
-     *    thread B bumps vlsn to N + 1 and writes record under log write latch
-     *    ckpter awaits consistency, using N+1, while feeders are awaiting N
-     *    thread A puts VLSN N outside log write latch
-     *    thread B puts VLSN N+1 outside log write latch
-     *
-     * Because of this, the ckpter must distinguish between what it is really
-     * waiting on (VLSN N+1) and what is can next wait on to fulfil the
-     * feeder waiting contract (VLSN N)
+     * leapfrog ahead arbitrarily, in this case: vlsn range holds 1 -> N-1
+     * Feeder is present, awaiting vlsn N thread A bumps vlsn to N and writes
+     * record under log write latch thread B bumps vlsn to N + 1 and writes
+     * record under log write latch ckpter awaits consistency, using N+1, while
+     * feeders are awaiting N thread A puts VLSN N outside log write latch
+     * thread B puts VLSN N+1 outside log write latch Because of this, the
+     * ckpter must distinguish between what it is really waiting on (VLSN N+1)
+     * and what is can next wait on to fulfil the feeder waiting contract (VLSN
+     * N)
      */
     public void awaitConsistency() {
 
@@ -2075,19 +1809,17 @@ public class VLSNIndex {
         while (true) {
 
             /*
-             * If we retry, get a fresh VLSN value if and only if the
-             * previously determined vlsnAllocatedBeforeCkpt was decremented
-             * due to a logging failure.
+             * If we retry, get a fresh VLSN value if and only if the previously
+             * determined vlsnAllocatedBeforeCkpt was decremented due to a
+             * logging failure.
              */
             if (vlsnAllocatedBeforeCkpt == null) {
                 vlsnAllocatedBeforeCkpt = new VLSN(getLatestAllocatedVal());
             } else {
                 VLSN latestAllocated = new VLSN(getLatestAllocatedVal());
                 if (latestAllocated.compareTo(vlsnAllocatedBeforeCkpt) < 0) {
-                    LoggerUtils.info(logger, envImpl,
-                                     "Reducing awaitConsistency VLSN from " +
-                                     vlsnAllocatedBeforeCkpt + " to " +
-                                     latestAllocated);
+                    LoggerUtils.info(logger, envImpl, "Reducing awaitConsistency VLSN from " + vlsnAllocatedBeforeCkpt
+                            + " to " + latestAllocated);
                     vlsnAllocatedBeforeCkpt = latestAllocated;
                 }
             }
@@ -2095,9 +1827,9 @@ public class VLSNIndex {
             /*
              * [#20165] Since the await is based on the nextVLSNCounter, it's
              * possible that a feeder is already waiting on earlier VLSN.
-             * Safeguard against that by only waiting for one more than
-             * the end of the range, to avoid conflict with feeders.
-             * See method comments.
+             * Safeguard against that by only waiting for one more than the end
+             * of the range, to avoid conflict with feeders. See method
+             * comments.
              */
             endOfRangePlusOne = tracker.getRange().getLast().getNext();
             if (vlsnAllocatedBeforeCkpt.compareTo(endOfRangePlusOne) < 0) {
@@ -2106,12 +1838,11 @@ public class VLSNIndex {
                  * range.
                  */
                 break;
-                }
+            }
 
             if (logger.isLoggable(Level.FINE)) {
-                LoggerUtils.fine(logger, envImpl, "awaitConsistency target=" +
-                                 endOfRangePlusOne + " allocatedBeforeCkpt=" +
-                                 vlsnAllocatedBeforeCkpt);
+                LoggerUtils.fine(logger, envImpl, "awaitConsistency target=" + endOfRangePlusOne
+                        + " allocatedBeforeCkpt=" + vlsnAllocatedBeforeCkpt);
             }
 
             try {
@@ -2128,24 +1859,19 @@ public class VLSNIndex {
                  */
             } catch (WaitTimeOutException e) {
                 LoggerUtils.severe(logger, envImpl,
-                                   "Retrying for vlsn index consistency " +
-                                   " before checkpoint, awaiting vlsn " +
-                                   endOfRangePlusOne +
-                                   " with ckpt consistency target of " +
-                                   vlsnAllocatedBeforeCkpt);
+                        "Retrying for vlsn index consistency " + " before checkpoint, awaiting vlsn "
+                                + endOfRangePlusOne + " with ckpt consistency target of " + vlsnAllocatedBeforeCkpt);
             } catch (InterruptedException e) {
                 LoggerUtils.severe(logger, envImpl,
-                                   "Interrupted while awaiting vlsn index " +
-                                   "consistency before checkpoint, awaiting " +
-                                   "vlsn " +  endOfRangePlusOne +
-                                   " with ckpt consistency target of " +
-                                   vlsnAllocatedBeforeCkpt +  ", will retry");
+                        "Interrupted while awaiting vlsn index " + "consistency before checkpoint, awaiting " + "vlsn "
+                                + endOfRangePlusOne + " with ckpt consistency target of " + vlsnAllocatedBeforeCkpt
+                                + ", will retry");
             }
 
             /*
              * If the environment was invalidated by other activity, get out of
-             * this loop because the vlsn we are waiting for may never
-             * come. Re-throw the invalidating exception to indicate that the
+             * this loop because the vlsn we are waiting for may never come.
+             * Re-throw the invalidating exception to indicate that the
              * checkpoint did not succeed. [#20919]
              */
             envImpl.checkIfInvalid();
@@ -2160,14 +1886,14 @@ public class VLSNIndex {
      * A cursor over the VLSNIndex.
      */
     private abstract static class VLSNScanner {
-        VLSNBucket currentBucket;
+        VLSNBucket      currentBucket;
         final VLSNIndex vlsnIndex;
 
         /*
          * This is purely for assertions. The VLSNScanner assumes that
          * getStartingLsn() is called once before getLsn() is called.
          */
-        int startingLsnInvocations;
+        int             startingLsnInvocations;
 
         VLSNScanner(VLSNIndex vlsnIndex) {
             this.vlsnIndex = vlsnIndex;
@@ -2179,8 +1905,8 @@ public class VLSNIndex {
         /**
          * @param vlsn We're requesting a LSN mapping for this vlsn
          * @return If there is a mapping for this VLSN, return it, else return
-         * NULL_LSN. We assume that we checked that this VLSN is in the
-         * VLSNIndex's range.
+         *         NULL_LSN. We assume that we checked that this VLSN is in the
+         *         VLSNIndex's range.
          */
         public abstract long getPreciseLsn(VLSN vlsn);
     }
@@ -2196,9 +1922,9 @@ public class VLSNIndex {
         }
 
         /*
-         * Use the >= mapping for the requested VLSN to find the starting lsn
-         * to use for a scan. This can only be used on a VLSN that is known to
-         * be in the range.
+         * Use the >= mapping for the requested VLSN to find the starting lsn to
+         * use for a scan. This can only be used on a VLSN that is known to be
+         * in the range.
          */
         @Override
         public long getStartingLsn(VLSN vlsn) {
@@ -2213,14 +1939,13 @@ public class VLSNIndex {
          */
         @Override
         public long getPreciseLsn(VLSN vlsn) {
-            assert startingLsnInvocations == 1 : "startingLsns() called " +
-                startingLsnInvocations + " times";
+            assert startingLsnInvocations == 1 : "startingLsns() called " + startingLsnInvocations + " times";
 
             /*
-             * Ideally, we have a bucket that has the mappings for this VLSN.
-             * If we don't, we attempt to get the next applicable bucket.
+             * Ideally, we have a bucket that has the mappings for this VLSN. If
+             * we don't, we attempt to get the next applicable bucket.
              */
-            if (currentBucket != null)  {
+            if (currentBucket != null) {
                 if (!currentBucket.owns(vlsn)) {
 
                     /*
@@ -2235,8 +1960,7 @@ public class VLSNIndex {
                     }
 
                     /*
-                     * Case B: We've walked off the end of the current
-                     * bucket.
+                     * Case B: We've walked off the end of the current bucket.
                      */
                     currentBucket = null;
                 }
@@ -2250,17 +1974,16 @@ public class VLSNIndex {
                 currentBucket = vlsnIndex.getLTEBucket(vlsn);
 
                 /*
-                 * The next bucket doesn't own this vlsn, which means that
-                 * we're in a gap between two buckets.  Note:
-                 * vlsnIndex.LTEBucket guards against returning null.
+                 * The next bucket doesn't own this vlsn, which means that we're
+                 * in a gap between two buckets. Note: vlsnIndex.LTEBucket
+                 * guards against returning null.
                  */
                 if (!currentBucket.owns(vlsn)) {
                     return DbLsn.NULL_LSN;
                 }
             }
 
-            assert currentBucket.owns(vlsn) : "vlsn = " + vlsn +
-                " currentBucket=" + currentBucket;
+            assert currentBucket.owns(vlsn) : "vlsn = " + vlsn + " currentBucket=" + currentBucket;
 
             /* We're in the right bucket. */
             return currentBucket.getLsn(vlsn);
@@ -2273,9 +1996,7 @@ public class VLSNIndex {
      * that are in a loop asynchronously.
      */
     private Cursor makeCursor(Locker locker) {
-        Cursor cursor = DbInternal.makeCursor(mappingDbImpl,
-                                              locker,
-                                              CursorConfig.DEFAULT);
+        Cursor cursor = DbInternal.makeCursor(mappingDbImpl, locker, CursorConfig.DEFAULT);
         DbInternal.getCursorImpl(cursor).setAllowEviction(false);
         return cursor;
     }
@@ -2285,14 +2006,13 @@ public class VLSNIndex {
      */
     public static class ForwardVLSNScanner extends VLSNScanner {
 
-
         public ForwardVLSNScanner(VLSNIndex vlsnIndex) {
             super(vlsnIndex);
         }
 
         /**
          * Use the <= mapping to the requested VLSN to find the starting lsn to
-         * use for a scan.  This can only be used on a VLSN that is known to be
+         * use for a scan. This can only be used on a VLSN that is known to be
          * in the range.
          */
         @Override
@@ -2302,7 +2022,6 @@ public class VLSNIndex {
             currentBucket = vlsnIndex.getLTEBucket(vlsn);
             return currentBucket.getLTELsn(vlsn);
         }
-
 
         /**
          * @see VLSNScanner#getPreciseLsn
@@ -2314,26 +2033,19 @@ public class VLSNIndex {
 
         /**
          * When doing an approximate search, the target vlsn may be a non-mapped
-         * vlsn within a bucket, or it may be between two different buckets.
-         * For example, suppose we have two buckets:
-         *
-         * vlsn 1 -> lsn 10
-         * vlsn 5 -> lsn 50
-         * vlsn 7 -> lsn 70
-         *
-         * vlsn 20 -> lsn 120
-         * vlsn 25 -> lsn 125
-         *
-         * If the vlsn we are looking for is 4, the LTE lsn for an approximate
-         * return value will be vlsn 1-> lsn 10, in the same bucket. If we are
-         * looking for vlsn 9, the LTE lsn for an approximate return value will
-         * be vlsn 7->lsn 70, which is the last mapping in an earlier bucket.
+         * vlsn within a bucket, or it may be between two different buckets. For
+         * example, suppose we have two buckets: vlsn 1 -> lsn 10 vlsn 5 -> lsn
+         * 50 vlsn 7 -> lsn 70 vlsn 20 -> lsn 120 vlsn 25 -> lsn 125 If the vlsn
+         * we are looking for is 4, the LTE lsn for an approximate return value
+         * will be vlsn 1-> lsn 10, in the same bucket. If we are looking for
+         * vlsn 9, the LTE lsn for an approximate return value will be vlsn
+         * 7->lsn 70, which is the last mapping in an earlier bucket.
          *
          * @param vlsn We're requesting a LSN mapping for this vlsn
          * @return If there is a mapping for this VLSN, return it. If it does
-         * not exist, return the nearest non-null mapping, where nearest the
-         * <= LSN. We assume that we checked that this VLSN is in the
-         * VLSNIndex's range.
+         *         not exist, return the nearest non-null mapping, where nearest
+         *         the <= LSN. We assume that we checked that this VLSN is in
+         *         the VLSNIndex's range.
          */
         public long getApproximateLsn(VLSN vlsn) {
             return getLsn(vlsn, true /* approximate */);
@@ -2341,15 +2053,14 @@ public class VLSNIndex {
 
         private long getLsn(VLSN vlsn, boolean approximate) {
 
-            assert startingLsnInvocations == 1 : "startingLsns() called " +
-                startingLsnInvocations + " times";
+            assert startingLsnInvocations == 1 : "startingLsns() called " + startingLsnInvocations + " times";
             VLSNBucket debugBucket = currentBucket;
 
             /*
-             * Ideally, we have a bucket that has the mappings for this VLSN.
-             * If we don't, we attempt to get the next applicable bucket.
+             * Ideally, we have a bucket that has the mappings for this VLSN. If
+             * we don't, we attempt to get the next applicable bucket.
              */
-            if (currentBucket != null)  {
+            if (currentBucket != null) {
                 if (!currentBucket.owns(vlsn)) {
 
                     /*
@@ -2361,8 +2072,7 @@ public class VLSNIndex {
                      */
                     if (currentBucket.follows(vlsn)) {
                         /* Case A: No bucket available for this VLSN. */
-                        return approximate ?
-                                findPrevLsn(vlsn) : DbLsn.NULL_LSN;
+                        return approximate ? findPrevLsn(vlsn) : DbLsn.NULL_LSN;
                     }
 
                     /* Case B: We've walked off the end of the bucket. */
@@ -2378,24 +2088,23 @@ public class VLSNIndex {
                 currentBucket = vlsnIndex.getGTEBucket(vlsn, debugBucket);
 
                 /*
-                 * The next bucket doesn't own this vlsn, which means that
-                 * we're in a gap between two buckets. Note:
-                 * vlsnIndex.getGTEBucket guards against returning null.
+                 * The next bucket doesn't own this vlsn, which means that we're
+                 * in a gap between two buckets. Note: vlsnIndex.getGTEBucket
+                 * guards against returning null.
                  */
                 if (!currentBucket.owns(vlsn)) {
                     return approximate ? findPrevLsn(vlsn) : DbLsn.NULL_LSN;
                 }
             }
 
-            assert currentBucket.owns(vlsn) : "vlsn = " + vlsn +
-                " currentBucket=" + currentBucket;
+            assert currentBucket.owns(vlsn) : "vlsn = " + vlsn + " currentBucket=" + currentBucket;
 
             if (approximate) {
 
                 /*
-                 * We're in the right bucket, and it owns this
-                 * VLSN. Nevertheless, the bucket may or may not contain a
-                 * mapping for this VLSN, so return the LTE version mapping.
+                 * We're in the right bucket, and it owns this VLSN.
+                 * Nevertheless, the bucket may or may not contain a mapping for
+                 * this VLSN, so return the LTE version mapping.
                  */
                 return currentBucket.getLTELsn(vlsn);
             }
@@ -2404,14 +2113,14 @@ public class VLSNIndex {
         }
 
         /*
-         * Find the lsn mapping that precedes the target. This assumes that
-         * no bucket owns the target vlsn -- that it's a vlsn that falls
-         * between buckets.
+         * Find the lsn mapping that precedes the target. This assumes that no
+         * bucket owns the target vlsn -- that it's a vlsn that falls between
+         * buckets.
          */
         private long findPrevLsn(VLSN target) {
             VLSNBucket prevBucket = vlsnIndex.getLTEBucket(target);
-            assert !prevBucket.owns(target) : "target=" + target +
-              "prevBucket=" + prevBucket + " currentBucket=" + currentBucket;
+            assert !prevBucket.owns(target) : "target=" + target + "prevBucket=" + prevBucket + " currentBucket="
+                    + currentBucket;
             return prevBucket.getLastLsn();
         }
     }
@@ -2422,7 +2131,7 @@ public class VLSNIndex {
      */
     public static class VLSNAwaitLatch extends CountDownLatch {
         /* The LogItem whose addition to the VLSN released the latch. */
-        private LogItem logItem = null;
+        private LogItem logItem    = null;
         private boolean terminated = false;
 
         public VLSNAwaitLatch() {
@@ -2446,7 +2155,7 @@ public class VLSNIndex {
          * meaningful after the latch has been released.
          *
          * @return log item or null if the latch timed out or it's wait was
-         * terminated
+         *         terminated
          */
         public LogItem getLogItem() {
             return logItem;
@@ -2464,14 +2173,16 @@ public class VLSNIndex {
     }
 
     /*
-     * An exception primarily intended to implement non-local control flow
-     * upon a vlsn wait latch timeout.
+     * An exception primarily intended to implement non-local control flow upon
+     * a vlsn wait latch timeout.
      */
     @SuppressWarnings("serial")
     static public class WaitTimeOutException extends Exception {
 
         @Override
         /* Eliminate unnecessary overhead. */
-        public synchronized Throwable fillInStackTrace(){return null;}
+        public synchronized Throwable fillInStackTrace() {
+            return null;
+        }
     }
 }

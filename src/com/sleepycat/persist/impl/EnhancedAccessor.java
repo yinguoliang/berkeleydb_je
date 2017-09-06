@@ -29,22 +29,21 @@ import com.sleepycat.compat.DbCompat;
  */
 public class EnhancedAccessor implements Accessor {
 
-    private static final Map<String, Enhanced> classRegistry =
-        Collections.synchronizedMap(new HashMap<String, Enhanced>());
+    private static final Map<String, Enhanced> classRegistry   = Collections
+            .synchronizedMap(new HashMap<String, Enhanced>());
 
     /* Is public for unit tests. */
-    public static final boolean EXPECT_ENHANCED =
-        "true".equals(System.getProperty("expectEnhanced"));
+    public static final boolean                EXPECT_ENHANCED = "true".equals(System.getProperty("expectEnhanced"));
 
-    private Enhanced prototype;
-    private Format priKeyFormat;
-    private Format[] compositeKeyFormats; 
-    private Class type;
+    private Enhanced                           prototype;
+    private Format                             priKeyFormat;
+    private Format[]                           compositeKeyFormats;
+    private Class                              type;
 
     /**
      * Registers a prototype instance, and should be called during
-     * initialization of the prototype class.  The prototype may be null for
-     * an abstract class.
+     * initialization of the prototype class. The prototype may be null for an
+     * abstract class.
      */
     public static void registerClass(String className, Enhanced prototype) {
         classRegistry.put(className, prototype);
@@ -56,9 +55,8 @@ public class EnhancedAccessor implements Accessor {
     static boolean isEnhanced(Class type) {
         boolean enhanced = classRegistry.containsKey(type.getName());
         if (!enhanced && EXPECT_ENHANCED) {
-            throw new IllegalStateException
-                ("Test was run with expectEnhanced=true but class " +
-                 type.getName() + " is not enhanced");
+            throw new IllegalStateException(
+                    "Test was run with expectEnhanced=true but class " + type.getName() + " is not enhanced");
         }
         return enhanced;
     }
@@ -99,8 +97,7 @@ public class EnhancedAccessor implements Accessor {
         final int nFields = fieldInfos.size();
         compositeKeyFormats = new Format[nFields];
         for (int i = 0; i < nFields; i += 1) {
-            compositeKeyFormats[i] =
-                catalog.getFormat(fieldInfos.get(i).getClassName());
+            compositeKeyFormats[i] = catalog.getFormat(fieldInfos.get(i).getClassName());
         }
     }
 
@@ -122,93 +119,67 @@ public class EnhancedAccessor implements Accessor {
 
     public boolean isPriKeyFieldNullOrZero(Object o) {
         if (priKeyFormat == null) {
-            throw DbCompat.unexpectedState
-                ("No primary key: " + o.getClass().getName());
+            throw DbCompat.unexpectedState("No primary key: " + o.getClass().getName());
         }
         return ((Enhanced) o).bdbIsPriKeyFieldNullOrZero();
     }
 
-    public void writePriKeyField(Object o, EntityOutput output)
-        throws RefreshException {
+    public void writePriKeyField(Object o, EntityOutput output) throws RefreshException {
 
         if (priKeyFormat == null) {
-            throw DbCompat.unexpectedState
-                ("No primary key: " + o.getClass().getName());
+            throw DbCompat.unexpectedState("No primary key: " + o.getClass().getName());
         }
         ((Enhanced) o).bdbWritePriKeyField(output, priKeyFormat);
     }
 
-    public void readPriKeyField(Object o, EntityInput input)
-        throws RefreshException {
+    public void readPriKeyField(Object o, EntityInput input) throws RefreshException {
 
         if (priKeyFormat == null) {
-            throw DbCompat.unexpectedState
-                ("No primary key: " + o.getClass().getName());
+            throw DbCompat.unexpectedState("No primary key: " + o.getClass().getName());
         }
         ((Enhanced) o).bdbReadPriKeyField(input, priKeyFormat);
     }
 
-    public void writeSecKeyFields(Object o, EntityOutput output)
-        throws RefreshException {
+    public void writeSecKeyFields(Object o, EntityOutput output) throws RefreshException {
 
         ((Enhanced) o).bdbWriteSecKeyFields(output);
     }
 
-    public void readSecKeyFields(Object o,
-                                 EntityInput input,
-                                 int startField,
-                                 int endField,
-                                 int superLevel)
-        throws RefreshException {
+    public void readSecKeyFields(Object o, EntityInput input, int startField, int endField, int superLevel)
+            throws RefreshException {
 
-        ((Enhanced) o).bdbReadSecKeyFields
-            (input, startField, endField, superLevel);
+        ((Enhanced) o).bdbReadSecKeyFields(input, startField, endField, superLevel);
     }
 
-    public void writeNonKeyFields(Object o, EntityOutput output)
-        throws RefreshException {
+    public void writeNonKeyFields(Object o, EntityOutput output) throws RefreshException {
 
         ((Enhanced) o).bdbWriteNonKeyFields(output);
     }
 
-    public void readNonKeyFields(Object o,
-                                 EntityInput input,
-                                 int startField,
-                                 int endField,
-                                 int superLevel)
-        throws RefreshException {
+    public void readNonKeyFields(Object o, EntityInput input, int startField, int endField, int superLevel)
+            throws RefreshException {
 
-        ((Enhanced) o).bdbReadNonKeyFields
-            (input, startField, endField, superLevel);
+        ((Enhanced) o).bdbReadNonKeyFields(input, startField, endField, superLevel);
     }
 
-    public void writeCompositeKeyFields(Object o, EntityOutput output)
-        throws RefreshException {
+    public void writeCompositeKeyFields(Object o, EntityOutput output) throws RefreshException {
 
         ((Enhanced) o).bdbWriteCompositeKeyFields(output, compositeKeyFormats);
     }
 
-    public void readCompositeKeyFields(Object o, EntityInput input)
-        throws RefreshException {
+    public void readCompositeKeyFields(Object o, EntityInput input) throws RefreshException {
 
         ((Enhanced) o).bdbReadCompositeKeyFields(input, compositeKeyFormats);
     }
 
-    public Object getField(Object o,
-                           int field,
-                           int superLevel,
-                           boolean isSecField) {
+    public Object getField(Object o, int field, int superLevel, boolean isSecField) {
         return ((Enhanced) o).bdbGetField(o, field, superLevel, isSecField);
     }
 
-    public void setField(Object o,
-                         int field,
-                         int superLevel,
-                         boolean isSecField,
-                         Object value) {
+    public void setField(Object o, int field, int superLevel, boolean isSecField, Object value) {
         ((Enhanced) o).bdbSetField(o, field, superLevel, isSecField, value);
     }
-    
+
     public void setPriField(Object o, Object value) {
         ((Enhanced) o).bdbSetPriField(o, value);
     }

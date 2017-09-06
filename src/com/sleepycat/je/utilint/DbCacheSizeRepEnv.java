@@ -21,11 +21,9 @@ import com.sleepycat.je.EnvironmentConfig;
 
 /**
  * Interface for opening a ReplicatedEnvironment from a JE standalone utility,
- * DbCacheSize.  Implemented by com.sleepycat.je.rep.utilint.DbCacheSizeRepEnv,
+ * DbCacheSize. Implemented by com.sleepycat.je.rep.utilint.DbCacheSizeRepEnv,
  * which must be instantiated from standalone JE using Class.forName.
  */
 public interface DbCacheSizeRepEnv {
-    public Environment open(File envHome,
-                            EnvironmentConfig envConfig,
-                            Map<String, String> repParams);
+    public Environment open(File envHome, EnvironmentConfig envConfig, Map<String, String> repParams);
 }

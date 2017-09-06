@@ -29,19 +29,18 @@ import javax.net.ssl.X509ExtendedKeyManager;
 public class AliasKeyManager extends X509ExtendedKeyManager {
 
     private final X509ExtendedKeyManager delegateKeyManager;
-    private final String serverAlias;
-    private final String clientAlias;
+    private final String                 serverAlias;
+    private final String                 clientAlias;
 
     /**
      * Constructor.
+     * 
      * @param delegateKeyManager the underlying key manager to fulfill key
-     * retrieval requests
+     *            retrieval requests
      * @param serverAlias the alias to return for server context requests
      * @param clientAlias the alias to return for client context requests
      */
-    public AliasKeyManager(X509ExtendedKeyManager delegateKeyManager,
-                           String serverAlias,
-                           String clientAlias) {
+    public AliasKeyManager(X509ExtendedKeyManager delegateKeyManager, String serverAlias, String clientAlias) {
         this.delegateKeyManager = delegateKeyManager;
         this.serverAlias = serverAlias;
         this.clientAlias = clientAlias;
@@ -49,12 +48,11 @@ public class AliasKeyManager extends X509ExtendedKeyManager {
 
     @Override
     public String[] getClientAliases(String keyType, Principal[] issuers) {
-    	return delegateKeyManager.getClientAliases(keyType, issuers);
+        return delegateKeyManager.getClientAliases(keyType, issuers);
     }
 
     @Override
-    public String chooseClientAlias(
-        String[] keyType, Principal[] issuers, Socket socket) {
+    public String chooseClientAlias(String[] keyType, Principal[] issuers, Socket socket) {
         if (clientAlias != null) {
             return clientAlias;
         }
@@ -68,8 +66,7 @@ public class AliasKeyManager extends X509ExtendedKeyManager {
     }
 
     @Override
-    public String chooseServerAlias(
-        String keyType, Principal[] issuers, Socket socket) {
+    public String chooseServerAlias(String keyType, Principal[] issuers, Socket socket) {
 
         if (serverAlias != null) {
             return serverAlias;
@@ -89,24 +86,18 @@ public class AliasKeyManager extends X509ExtendedKeyManager {
     }
 
     @Override
-    public String chooseEngineClientAlias(String[] keyType,
-                                          Principal[] issuers,
-                                          SSLEngine engine) {
+    public String chooseEngineClientAlias(String[] keyType, Principal[] issuers, SSLEngine engine) {
         if (clientAlias != null) {
             return clientAlias;
         }
-        return delegateKeyManager.
-            chooseEngineClientAlias(keyType, issuers, engine);
+        return delegateKeyManager.chooseEngineClientAlias(keyType, issuers, engine);
     }
 
     @Override
-    public String chooseEngineServerAlias(String keyType,
-                                          Principal[] issuers,
-                                          SSLEngine engine) {
+    public String chooseEngineServerAlias(String keyType, Principal[] issuers, SSLEngine engine) {
         if (serverAlias != null) {
             return serverAlias;
         }
-        return delegateKeyManager.
-            chooseEngineServerAlias(keyType, issuers, engine);
+        return delegateKeyManager.chooseEngineServerAlias(keyType, issuers, engine);
     }
 }

@@ -28,10 +28,10 @@ import com.sleepycat.je.utilint.LoggerUtils;
 public class MasterChangeListener implements Learner.Listener {
 
     /* The Value that is "current" for this Node. */
-    private Value currentValue = null;
+    private Value         currentValue = null;
 
     private final RepNode repNode;
-    private final Logger logger;
+    private final Logger  logger;
 
     public MasterChangeListener(RepNode repNode) {
         this.repNode = repNode;
@@ -50,24 +50,18 @@ public class MasterChangeListener implements Learner.Listener {
             /* We have a new proposal, is it truly different? */
             if (value.equals(currentValue)) {
                 LoggerUtils.fine(logger, repNode.getRepImpl(),
-                                 "Master change listener -- no value change." +
-                                 "Proposal: " + proposal + " Value: " + value);
+                        "Master change listener -- no value change." + "Proposal: " + proposal + " Value: " + value);
                 return;
             }
 
             MasterValue masterValue = ((MasterValue) value);
 
             LoggerUtils.fine(logger, repNode.getRepImpl(),
-                    "Master change listener notified. Proposal:" +
-                    proposal + " Value: " + value);
-            LoggerUtils.info(logger, repNode.getRepImpl(),
-                    "Master changed to " +
-                     masterValue.getNameId().getName());
+                    "Master change listener notified. Proposal:" + proposal + " Value: " + value);
+            LoggerUtils.info(logger, repNode.getRepImpl(), "Master changed to " + masterValue.getNameId().getName());
 
-            repNode.getMasterStatus().setGroupMaster
-                (masterValue.getHostName(),
-                 masterValue.getPort(),
-                 masterValue.getNameId());
+            repNode.getMasterStatus().setGroupMaster(masterValue.getHostName(), masterValue.getPort(),
+                    masterValue.getNameId());
 
             /* Propagate the information to any monitors. */
             repNode.getElections().asyncInformMonitors(proposal, value);

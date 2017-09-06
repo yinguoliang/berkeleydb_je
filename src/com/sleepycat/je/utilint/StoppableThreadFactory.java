@@ -23,24 +23,20 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
  * StoppableThreads. Like StoppableThreads, if an environment is provided, the
  * threads will invalidate if an exception is not handled, and are registered
  * with the exception listener.If a logger is provided, StoppableThreads log
- * exception information.
- *
- * This factory is used in conjunction with the ExecutorService and
- * ThreadExecutorPool models.
+ * exception information. This factory is used in conjunction with the
+ * ExecutorService and ThreadExecutorPool models.
  */
 public class StoppableThreadFactory implements ThreadFactory {
 
-    private final String threadName;
-    private final Logger logger;
+    private final String          threadName;
+    private final Logger          logger;
     private final EnvironmentImpl envImpl;
 
     /**
      * This kind of StoppableThreadFactory will cause invalidation if an
      * unhandled exception occurs.
      */
-    public StoppableThreadFactory(EnvironmentImpl envImpl,
-                                  String threadName,
-                                  Logger logger) {
+    public StoppableThreadFactory(EnvironmentImpl envImpl, String threadName, Logger logger) {
         this.threadName = threadName;
         this.logger = logger;
         this.envImpl = envImpl;
@@ -59,16 +55,13 @@ public class StoppableThreadFactory implements ThreadFactory {
     }
 
     /*
-     * A fairly plain implementation of the abstract StoppableThread class,
-     * for use by the factory.
+     * A fairly plain implementation of the abstract StoppableThread class, for
+     * use by the factory.
      */
     private static class StoppablePoolThread extends StoppableThread {
         private final Logger logger;
 
-        StoppablePoolThread(EnvironmentImpl envImpl,
-                            Runnable runnable,
-                            String threadName,
-                            Logger logger) {
+        StoppablePoolThread(EnvironmentImpl envImpl, Runnable runnable, String threadName, Logger logger) {
             super(envImpl, null, runnable, threadName);
             this.logger = logger;
         }
@@ -79,4 +72,3 @@ public class StoppableThreadFactory implements ThreadFactory {
         }
     }
 }
-

@@ -33,10 +33,10 @@ public class FileHeader implements Loggable {
      * fileNum is the number of file, starting at 0. An unsigned int, so stored
      * in a long in memory, but in 4 bytes on disk
      */
-    private long fileNum;
-    private long lastEntryInPrevFileOffset;
+    private long      fileNum;
+    private long      lastEntryInPrevFileOffset;
     private Timestamp time;
-    private int logVersion;
+    private int       logVersion;
 
     FileHeader(long fileNum, long lastEntryInPrevFileOffset) {
         this.fileNum = fileNum;
@@ -59,24 +59,17 @@ public class FileHeader implements Loggable {
     /**
      * @return file header log version.
      */
-    int validate(EnvironmentImpl envImpl,
-                 String fileName,
-                 long expectedFileNum)
-        throws DatabaseException {
+    int validate(EnvironmentImpl envImpl, String fileName, long expectedFileNum) throws DatabaseException {
 
         if (logVersion > LogEntryType.LOG_VERSION) {
-            throw new VersionMismatchException
-                (envImpl,
-                 "Expected log version " + LogEntryType.LOG_VERSION +
-                 " or earlier but found " + logVersion);
+            throw new VersionMismatchException(envImpl,
+                    "Expected log version " + LogEntryType.LOG_VERSION + " or earlier but found " + logVersion);
         }
 
         if (fileNum != expectedFileNum) {
-            throw new EnvironmentFailureException
-                (envImpl, EnvironmentFailureReason.LOG_INTEGRITY,
-                 "Wrong filenum in header for file " +
-                 fileName + " expected " +
-                 expectedFileNum + " got " + fileNum);
+            throw new EnvironmentFailureException(envImpl, EnvironmentFailureReason.LOG_INTEGRITY,
+                    "Wrong filenum in header for file " + fileName + " expected " + expectedFileNum + " got "
+                            + fileNum);
         }
 
         return logVersion;
@@ -97,11 +90,10 @@ public class FileHeader implements Loggable {
      * A header is always a known size.
      */
     public static int entrySize() {
-        return
-            LogUtils.LONG_BYTES +                // time
-            LogUtils.UNSIGNED_INT_BYTES +        // file number
-            LogUtils.LONG_BYTES +                // lastEntryInPrevFileOffset
-            LogUtils.INT_BYTES;                  // logVersion
+        return LogUtils.LONG_BYTES + // time
+                LogUtils.UNSIGNED_INT_BYTES + // file number
+                LogUtils.LONG_BYTES + // lastEntryInPrevFileOffset
+                LogUtils.INT_BYTES; // logVersion
     }
 
     /**
@@ -113,9 +105,8 @@ public class FileHeader implements Loggable {
     }
 
     /**
-     * @see Loggable#writeToLog
-     * Serialize this object into the buffer. Update cksum with all
-     * the bytes used by this object
+     * @see Loggable#writeToLog Serialize this object into the buffer. Update
+     *      cksum with all the bytes used by this object
      * @param logBuffer is the destination buffer
      */
     public void writeToLog(ByteBuffer logBuffer) {
@@ -126,20 +117,20 @@ public class FileHeader implements Loggable {
     }
 
     /**
-     * @see Loggable#readFromLog
-     * Initialize this object from the data in itemBuf.
+     * @see Loggable#readFromLog Initialize this object from the data in
+     *      itemBuf.
      * @param itemBuf the source buffer
      */
     public void readFromLog(ByteBuffer logBuffer, int unusableEntryVersion) {
 
         /* Timestamp is always unpacked. */
-        time = LogUtils.readTimestamp(logBuffer, true/*unpacked*/);
+        time = LogUtils.readTimestamp(logBuffer, true/* unpacked */);
         fileNum = LogUtils.readUnsignedInt(logBuffer);
         lastEntryInPrevFileOffset = LogUtils.readLong(logBuffer);
         logVersion = LogUtils.readInt(logBuffer);
 
         /*
-         * The log version is unknown until reading it.  If there are
+         * The log version is unknown until reading it. If there are
          * version-specific fields in this entry, they must follow the log
          * version and use it, not the entryVersion param, for conditionals.
          */
@@ -169,8 +160,8 @@ public class FileHeader implements Loggable {
     }
 
     /**
-     * @see Loggable#logicalEquals
-     * Always return false, this item should never be compared.
+     * @see Loggable#logicalEquals Always return false, this item should never
+     *      be compared.
      */
     public boolean logicalEquals(Loggable other) {
         return false;

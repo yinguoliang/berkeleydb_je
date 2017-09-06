@@ -15,58 +15,62 @@ package com.sleepycat.persist.impl;
 
 /**
  * Interface implemented by a persistent class via bytecode enhancement.
- *
- * <p>See {@link Accessor} for method documentation.  {@link EnhancedAccessor}
- * implements Accessor and forwards all calls to methods in the Enhanced
- * class.</p>
- *
- * <p>Each class that implements this interface (including its subclasses and
+ * <p>
+ * See {@link Accessor} for method documentation. {@link EnhancedAccessor}
+ * implements Accessor and forwards all calls to methods in the Enhanced class.
+ * </p>
+ * <p>
+ * Each class that implements this interface (including its subclasses and
  * superclasses except for Object) must also implement a static block that
- * registers a prototype instance by calling
- * EnhancedAccessor.registerPrototype.  Other instances are created from the
- * protype instance using {@link #bdbNewInstance}.</p>
- *
- * <pre>static { EnhancedAccessor.registerPrototype(new Xxx()); }</pre>
- *
- * <p>An example of the generated code for reading and writing fields is shown
- * below.</p>
+ * registers a prototype instance by calling EnhancedAccessor.registerPrototype.
+ * Other instances are created from the protype instance using
+ * {@link #bdbNewInstance}.
+ * </p>
  *
  * <pre>
- *  private int f1;
- *  private String f2;
- *  private MyClass f3;
+ * static {
+ *     EnhancedAccessor.registerPrototype(new Xxx());
+ * }
+ * </pre>
+ * <p>
+ * An example of the generated code for reading and writing fields is shown
+ * below.
+ * </p>
  *
- *  public void bdbWriteNonKeyFields(EntityOutput output) {
+ * <pre>
+ * private int f1;
+ * private String f2;
+ * private MyClass f3;
  *
- *      super.bdbWriteNonKeyFields(output);
+ * public void bdbWriteNonKeyFields(EntityOutput output) {
  *
- *      output.writeInt(f1);
- *      output.writeObject(f2, null);
- *      output.writeObject(f3, null);
- *  }
+ *     super.bdbWriteNonKeyFields(output);
  *
- *  public void bdbReadNonKeyFields(EntityInput input,
- *                                  int startField,
- *                                  int endField,
- *                                  int superLevel) {
+ *     output.writeInt(f1);
+ *     output.writeObject(f2, null);
+ *     output.writeObject(f3, null);
+ * }
  *
- *      if (superLevel != 0) {
- *          super.bdbReadNonKeyFields(input, startField, endField,
- *                                    superLevel - 1);
- *      }
- *      if (superLevel &lt;= 0) {
- *          switch (startField) {
- *          case 0:
- *              f1 = input.readInt();
- *              if (endField == 0) break;
- *          case 1:
- *              f2 = (String) input.readObject();
- *              if (endField == 1) break;
- *          case 2:
- *              f3 = (MyClass) input.readObject();
- *          }
- *      }
- *  }
+ * public void bdbReadNonKeyFields(EntityInput input, int startField, int endField, int superLevel) {
+ *
+ *     if (superLevel != 0) {
+ *         super.bdbReadNonKeyFields(input, startField, endField, superLevel - 1);
+ *     }
+ *     if (superLevel &lt;= 0) {
+ *         switch (startField) {
+ *             case 0:
+ *                 f1 = input.readInt();
+ *                 if (endField == 0)
+ *                     break;
+ *             case 1:
+ *                 f2 = (String) input.readObject();
+ *                 if (endField == 1)
+ *                     break;
+ *             case 2:
+ *                 f3 = (MyClass) input.readObject();
+ *         }
+ *     }
+ * }
  * </pre>
  *
  * @author Mark Hayes
@@ -97,8 +101,7 @@ public interface Enhanced {
      *
      * @see Accessor#writePriKeyField
      */
-    void bdbWritePriKeyField(EntityOutput output, Format format)
-        throws RefreshException;
+    void bdbWritePriKeyField(EntityOutput output, Format format) throws RefreshException;
 
     /**
      * Calls the super class method if this class does not contain the primary
@@ -106,68 +109,48 @@ public interface Enhanced {
      *
      * @see Accessor#readPriKeyField
      */
-    void bdbReadPriKeyField(EntityInput input, Format format)
-        throws RefreshException;
+    void bdbReadPriKeyField(EntityInput input, Format format) throws RefreshException;
 
     /**
      * @see Accessor#writeSecKeyFields
      */
-    void bdbWriteSecKeyFields(EntityOutput output)
-        throws RefreshException;
+    void bdbWriteSecKeyFields(EntityOutput output) throws RefreshException;
 
     /**
      * @see Accessor#readSecKeyFields
      */
-    void bdbReadSecKeyFields(EntityInput input,
-                             int startField,
-                             int endField,
-                             int superLevel)
-        throws RefreshException;
+    void bdbReadSecKeyFields(EntityInput input, int startField, int endField, int superLevel) throws RefreshException;
 
     /**
      * @see Accessor#writeNonKeyFields
      */
-    void bdbWriteNonKeyFields(EntityOutput output)
-        throws RefreshException;
+    void bdbWriteNonKeyFields(EntityOutput output) throws RefreshException;
 
     /**
      * @see Accessor#readNonKeyFields
      */
-    void bdbReadNonKeyFields(EntityInput input,
-                             int startField,
-                             int endField,
-                             int superLevel)
-        throws RefreshException;
+    void bdbReadNonKeyFields(EntityInput input, int startField, int endField, int superLevel) throws RefreshException;
 
     /**
      * @see Accessor#writeCompositeKeyFields
      */
-    void bdbWriteCompositeKeyFields(EntityOutput output, Format[] formats)
-        throws RefreshException;
+    void bdbWriteCompositeKeyFields(EntityOutput output, Format[] formats) throws RefreshException;
 
     /**
      * @see Accessor#readCompositeKeyFields
      */
-    void bdbReadCompositeKeyFields(EntityInput input, Format[] formats)
-        throws RefreshException;
+    void bdbReadCompositeKeyFields(EntityInput input, Format[] formats) throws RefreshException;
 
     /**
      * @see Accessor#getField
      */
-    Object bdbGetField(Object o,
-                       int field,
-                       int superLevel,
-                       boolean isSecField);
+    Object bdbGetField(Object o, int field, int superLevel, boolean isSecField);
 
     /**
      * @see Accessor#setField
      */
-    void bdbSetField(Object o,
-                     int field,
-                     int superLevel,
-                     boolean isSecField,
-                     Object value);
-    
+    void bdbSetField(Object o, int field, int superLevel, boolean isSecField, Object value);
+
     /**
      * @see Accessor#setPriField
      */

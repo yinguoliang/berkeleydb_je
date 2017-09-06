@@ -13,7 +13,6 @@
 
 package com.sleepycat.je.utilint;
 
-
 /**
  * Some internal inconsistency exception.
  */

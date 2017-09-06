@@ -22,16 +22,16 @@ import com.sleepycat.je.log.LogEntryType;
 import com.sleepycat.je.log.Loggable;
 
 /**
- * This class embodies log entries that have a single loggable item.
- * On disk, an entry contains:
+ * This class embodies log entries that have a single loggable item. On disk, an
+ * entry contains:
+ * 
  * <pre>
  *     the Loggable item
  * </pre>
  *
  * @param <T> the type of the Loggable item
  */
-public class SingleItemEntry<T extends Loggable> extends BaseEntry<T>
-        implements LogEntry {
+public class SingleItemEntry<T extends Loggable> extends BaseEntry<T> implements LogEntry {
 
     /*
      * Persistent fields in a SingleItemEntry.
@@ -41,8 +41,7 @@ public class SingleItemEntry<T extends Loggable> extends BaseEntry<T>
     /**
      * Construct a log entry for reading.
      */
-    public static <T extends Loggable> SingleItemEntry<T> create(
-        final Class<T> logClass) {
+    public static <T extends Loggable> SingleItemEntry<T> create(final Class<T> logClass) {
 
         return new SingleItemEntry<T>(logClass);
     }
@@ -57,8 +56,7 @@ public class SingleItemEntry<T extends Loggable> extends BaseEntry<T>
     /**
      * Construct a log entry for writing.
      */
-    public static <T extends Loggable> SingleItemEntry<T> create(
-        final LogEntryType entryType, final T item) {
+    public static <T extends Loggable> SingleItemEntry<T> create(final LogEntryType entryType, final T item) {
 
         return new SingleItemEntry<T>(entryType, item);
     }
@@ -72,17 +70,14 @@ public class SingleItemEntry<T extends Loggable> extends BaseEntry<T>
     }
 
     @Override
-    public void readEntry(EnvironmentImpl envImpl,
-                          LogEntryHeader header,
-                          ByteBuffer entryBuffer) {
+    public void readEntry(EnvironmentImpl envImpl, LogEntryHeader header, ByteBuffer entryBuffer) {
 
         item = newInstanceOfType();
         item.readFromLog(entryBuffer, header.getVersion());
     }
 
     @Override
-    public StringBuilder dumpEntry(final StringBuilder sb,
-                                   final boolean verbose) {
+    public StringBuilder dumpEntry(final StringBuilder sb, final boolean verbose) {
         item.dumpLog(sb, verbose);
         return sb;
     }

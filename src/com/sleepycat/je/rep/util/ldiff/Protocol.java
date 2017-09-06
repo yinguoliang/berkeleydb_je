@@ -23,94 +23,65 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * Protocol used by LDiff to request the blocks associated with a database and
- * do the record level analysis.
- *
- * BLOCK LEVEL ANALYSIS
- * =========================================
- * The request response sequence for a block list request is:
- *
- * EnvDiff -> EnvInfo -> DbBlocks -> BlockListStart [BlockInfo]+ BlockListEnd
- *
- * A DbMismatch response is sent back if the database does not exist, or if the
- * database has different persistent attributes associated with it.
- *
- * Note that this request is designed to maximize overlap. That is, the
- * responder could be working on block n, while the requester is working on
- * blocks n+1 and beyond (to the end of the database).
- *
- * The above is the minimal set of messages, biased for performance when the
- * databases are expected to match.
- *
- * RECORD LEVEL ANALYSIS
- * =========================================
- * User can configure LDiff to do record level analysis by setting 
- * LDiffConfig.setDiffAnalysis(true), it can help you find out which records 
- * are different between two databases.
- *
- * The request response sequence for record level analysis is: 
- *
- * RemoteDiffRequest -> DiffAreaStart|Error [RemoteRecord] DiffAreaEnd -> Done 
- *
- * The local Environment would send out a RemoteDiffRequest to the remote 
- * Environment, the remote Environment can get all the records of a different 
- * area: 
- *    1. If there exists exceptions during the fetching process, remote 
- *       Environment would send back an Error message, local Environment would 
- *       throw out a LDiffRecordRequestException and exit.
- *    2. If the fetching process is correct, remote Environment would send a 
- *       DiffAreaStart message to the local Environment to notify that it now
- *       transfers RemoteRecords of a different area. 
- *    3. After all the records of a different area are transferred, remote 
- *       Environment would send out a DiffAreaEnd message, which specifies 
- *       transferring a different area is finished. 
- *    4. When all the RemoteDiffRequest are processed, local Environment would
- *       send a Done message to presents the record level analysis is done.
- *
- * TODO: 1) Protocol version matching 2) Block granularity sync request. 3)
- * Protocol to narrow a diff down to a specific set of key inserts, updates and
- * deletes.
+ * do the record level analysis. BLOCK LEVEL ANALYSIS
+ * ========================================= The request response sequence for a
+ * block list request is: EnvDiff -> EnvInfo -> DbBlocks -> BlockListStart
+ * [BlockInfo]+ BlockListEnd A DbMismatch response is sent back if the database
+ * does not exist, or if the database has different persistent attributes
+ * associated with it. Note that this request is designed to maximize overlap.
+ * That is, the responder could be working on block n, while the requester is
+ * working on blocks n+1 and beyond (to the end of the database). The above is
+ * the minimal set of messages, biased for performance when the databases are
+ * expected to match. RECORD LEVEL ANALYSIS
+ * ========================================= User can configure LDiff to do
+ * record level analysis by setting LDiffConfig.setDiffAnalysis(true), it can
+ * help you find out which records are different between two databases. The
+ * request response sequence for record level analysis is: RemoteDiffRequest ->
+ * DiffAreaStart|Error [RemoteRecord] DiffAreaEnd -> Done The local Environment
+ * would send out a RemoteDiffRequest to the remote Environment, the remote
+ * Environment can get all the records of a different area: 1. If there exists
+ * exceptions during the fetching process, remote Environment would send back an
+ * Error message, local Environment would throw out a
+ * LDiffRecordRequestException and exit. 2. If the fetching process is correct,
+ * remote Environment would send a DiffAreaStart message to the local
+ * Environment to notify that it now transfers RemoteRecords of a different
+ * area. 3. After all the records of a different area are transferred, remote
+ * Environment would send out a DiffAreaEnd message, which specifies
+ * transferring a different area is finished. 4. When all the RemoteDiffRequest
+ * are processed, local Environment would send a Done message to presents the
+ * record level analysis is done. TODO: 1) Protocol version matching 2) Block
+ * granularity sync request. 3) Protocol to narrow a diff down to a specific set
+ * of key inserts, updates and deletes.
  */
 public class Protocol extends BinaryProtocol {
 
-    static public final int VERSION = 2;
+    static public final int       VERSION             = 2;
 
-    public final static MessageOp DB_BLOCKS =
-        new MessageOp((short) 1, DbBlocks.class);
+    public final static MessageOp DB_BLOCKS           = new MessageOp((short) 1, DbBlocks.class);
 
-    public final static MessageOp DB_MISMATCH =
-        new MessageOp((short) 2, DbMismatch.class);
+    public final static MessageOp DB_MISMATCH         = new MessageOp((short) 2, DbMismatch.class);
 
-    public final static MessageOp BLOCK_LIST_START =
-        new MessageOp((short) 3, BlockListStart.class);
+    public final static MessageOp BLOCK_LIST_START    = new MessageOp((short) 3, BlockListStart.class);
 
-    public final static MessageOp BLOCK_INFO =
-        new MessageOp((short) 4, BlockInfo.class);
+    public final static MessageOp BLOCK_INFO          = new MessageOp((short) 4, BlockInfo.class);
 
-    public final static MessageOp BLOCK_LIST_END =
-        new MessageOp((short) 5, BlockListEnd.class);
+    public final static MessageOp BLOCK_LIST_END      = new MessageOp((short) 5, BlockListEnd.class);
 
-    public final static MessageOp ENV_DIFF =
-        new MessageOp((short) 6, EnvDiff.class);
+    public final static MessageOp ENV_DIFF            = new MessageOp((short) 6, EnvDiff.class);
 
-    public final static MessageOp ENV_INFO =
-        new MessageOp((short) 7, EnvInfo.class);
+    public final static MessageOp ENV_INFO            = new MessageOp((short) 7, EnvInfo.class);
 
-    public final static MessageOp REMOTE_DIFF_REQUEST =
-        new MessageOp((short) 8, RemoteDiffRequest.class);
+    public final static MessageOp REMOTE_DIFF_REQUEST = new MessageOp((short) 8, RemoteDiffRequest.class);
 
-    public final static MessageOp REMOTE_RECORD =
-        new MessageOp((short) 9, RemoteRecord.class);
+    public final static MessageOp REMOTE_RECORD       = new MessageOp((short) 9, RemoteRecord.class);
 
-    public final static MessageOp DIFF_AREA_START =
-        new MessageOp((short) 10, DiffAreaStart.class);
+    public final static MessageOp DIFF_AREA_START     = new MessageOp((short) 10, DiffAreaStart.class);
 
-    public final static MessageOp DIFF_AREA_END =
-        new MessageOp((short) 11, DiffAreaEnd.class);
+    public final static MessageOp DIFF_AREA_END       = new MessageOp((short) 11, DiffAreaEnd.class);
 
-    public final static MessageOp DONE = new MessageOp((short) 12, Done.class);
+    public final static MessageOp DONE                = new MessageOp((short) 12, Done.class);
 
-    public final static MessageOp ERROR = 
-        new MessageOp((short) 13, Error.class);
+    public final static MessageOp ERROR               = new MessageOp((short) 13, Error.class);
 
     public Protocol(NameIdPair nameIdPair, EnvironmentImpl envImpl) {
 
@@ -120,11 +91,8 @@ public class Protocol extends BinaryProtocol {
          */
         super(nameIdPair, VERSION, VERSION, envImpl);
 
-        initializeMessageOps(new MessageOp[]
-            { DB_BLOCKS, DB_MISMATCH, BLOCK_LIST_START,
-              BLOCK_INFO, BLOCK_LIST_END, ENV_DIFF, ENV_INFO, 
-              REMOTE_DIFF_REQUEST, REMOTE_RECORD, DIFF_AREA_START, 
-              DIFF_AREA_END, DONE, ERROR });
+        initializeMessageOps(new MessageOp[] { DB_BLOCKS, DB_MISMATCH, BLOCK_LIST_START, BLOCK_INFO, BLOCK_LIST_END,
+                ENV_DIFF, ENV_INFO, REMOTE_DIFF_REQUEST, REMOTE_RECORD, DIFF_AREA_START, DIFF_AREA_END, DONE, ERROR });
     }
 
     /**
@@ -134,7 +102,7 @@ public class Protocol extends BinaryProtocol {
      */
     public class DbBlocks extends SimpleMessage {
         final String dbName;
-        final int blockSize;
+        final int    blockSize;
 
         // TODO: add all the persistent properties of the database, so they can
         // be checked.
@@ -191,7 +159,7 @@ public class Protocol extends BinaryProtocol {
     }
 
     /**
-     * Denotes the start of the list of blocks. 
+     * Denotes the start of the list of blocks.
      */
     public class BlockListStart extends SimpleMessage {
 
@@ -200,7 +168,7 @@ public class Protocol extends BinaryProtocol {
         }
 
         @SuppressWarnings("unused")
-            public BlockListStart(ByteBuffer buffer) {
+        public BlockListStart(ByteBuffer buffer) {
             super();
         }
 
@@ -211,7 +179,7 @@ public class Protocol extends BinaryProtocol {
     }
 
     /**
-     * Denotes the end of the list of blocks. 
+     * Denotes the end of the list of blocks.
      */
     public class BlockListEnd extends SimpleMessage {
 
@@ -220,7 +188,7 @@ public class Protocol extends BinaryProtocol {
         }
 
         @SuppressWarnings("unused")
-            public BlockListEnd(ByteBuffer buffer) {
+        public BlockListEnd(ByteBuffer buffer) {
             super();
         }
 
@@ -231,7 +199,7 @@ public class Protocol extends BinaryProtocol {
     }
 
     /**
-     * Supplies the properties of an individual block. 
+     * Supplies the properties of an individual block.
      */
     public class BlockInfo extends SimpleMessage {
         /* The block associated with the request */
@@ -253,9 +221,8 @@ public class Protocol extends BinaryProtocol {
 
         @Override
         public ByteBuffer wireFormat() {
-            return wireFormat(block.getBlockId(), block.getBeginKey(),
-                              block.getBeginData(), block.getMd5Hash(),
-                              block.getRollingChksum());
+            return wireFormat(block.getBlockId(), block.getBeginKey(), block.getBeginData(), block.getMd5Hash(),
+                    block.getRollingChksum());
         }
 
         @Override
@@ -269,8 +236,8 @@ public class Protocol extends BinaryProtocol {
     }
 
     /**
-     * Message used to present that an Environment is requesting to do a 
-     * LDiff with another Environment.
+     * Message used to present that an Environment is requesting to do a LDiff
+     * with another Environment.
      */
     public class EnvDiff extends SimpleMessage {
         public EnvDiff() {
@@ -289,7 +256,7 @@ public class Protocol extends BinaryProtocol {
     }
 
     /**
-     * Message used to present how many databases in a compared Environment. 
+     * Message used to present how many databases in a compared Environment.
      */
     public class EnvInfo extends SimpleMessage {
         final int numDBs;
@@ -326,7 +293,7 @@ public class Protocol extends BinaryProtocol {
     public class RemoteDiffRequest extends SimpleMessage {
         final byte[] key;
         final byte[] data;
-        final long diffSize;
+        final long   diffSize;
 
         public RemoteDiffRequest(MismatchedRegion region) {
             super();
@@ -371,7 +338,7 @@ public class Protocol extends BinaryProtocol {
     public class RemoteRecord extends SimpleMessage {
         final byte[] key;
         final byte[] data;
-        final VLSN vlsn;
+        final VLSN   vlsn;
 
         public RemoteRecord(Record record) {
             super();

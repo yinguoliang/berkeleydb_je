@@ -19,35 +19,33 @@ import com.sleepycat.je.log.entry.ReplicableLogEntry;
 import com.sleepycat.je.utilint.DbLsn;
 
 /**
- * Values returned when a item is logged.
- *
- * This class is used as a simple struct for returning multiple values, and
- * does not need getters and setters.
+ * Values returned when a item is logged. This class is used as a simple struct
+ * for returning multiple values, and does not need getters and setters.
  */
 public class LogItem {
 
     /**
-     * LSN of the new log entry.  Is NULL_LSN if a BIN-delta is logged.  If
-     * not NULL_LSN for a tree node, is typically used to update the slot in
-     * the parent IN.
+     * LSN of the new log entry. Is NULL_LSN if a BIN-delta is logged. If not
+     * NULL_LSN for a tree node, is typically used to update the slot in the
+     * parent IN.
      */
-    public long lsn = DbLsn.NULL_LSN;
+    public long                        lsn         = DbLsn.NULL_LSN;
 
     /**
-     * Size of the new log entry.  Is used to update the LN slot in the BIN.
+     * Size of the new log entry. Is used to update the LN slot in the BIN.
      */
-    public int size = 0;
+    public int                         size        = 0;
 
     /**
      * The header of the new log entry. Used by HA to do VLSN tracking and
      * implement a tip cache.
      */
-    public LogEntryHeader header = null;
+    public LogEntryHeader              header      = null;
 
     /**
      * The bytes of new log entry. Used by HA to implement a tip cache.
      */
-    public ByteBuffer buffer = null;
+    public ByteBuffer                  buffer      = null;
 
     /**
      * Used for saving the materialized form of the buffer in LogItemCache.

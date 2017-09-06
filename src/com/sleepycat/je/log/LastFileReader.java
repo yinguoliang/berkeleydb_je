@@ -35,17 +35,17 @@ import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
  * LastFileReader traverses the last log file, doing checksums and looking for
- * the end of the log. Different log types can be registered with it and it
- * will remember the last occurrence of targeted entry types.
+ * the end of the log. Different log types can be registered with it and it will
+ * remember the last occurrence of targeted entry types.
  */
 public class LastFileReader extends FileReader {
 
     /* Log entry types to track. */
-    private Set<LogEntryType> trackableEntries;
+    private Set<LogEntryType>       trackableEntries;
 
-    private long nextUnprovenOffset;
-    private long lastValidOffset;
-    private LogEntryType entryType;
+    private long                    nextUnprovenOffset;
+    private long                    lastValidOffset;
+    private LogEntryType            entryType;
 
     /*
      * Last LSN seen for tracked types. Key = LogEntryType, data is the offset
@@ -55,32 +55,27 @@ public class LastFileReader extends FileReader {
 
     /*
      * A marker log entry used to indicate that the log is physically or
-     * semantically corrupt and can't be recovered. A restore of some form must 
+     * semantically corrupt and can't be recovered. A restore of some form must
      * take place.
      */
-    private RestoreRequired restoreRequired;
+    private RestoreRequired         restoreRequired;
 
     /**
-     * This file reader is always positioned at the last file.
-     *
-     * If no valid files exist (and invalid files do not contain data and can
-     * be moved away), we will not throw an exception.  We will return false
-     * from the first call (all calls) to readNextEntry.
+     * This file reader is always positioned at the last file. If no valid files
+     * exist (and invalid files do not contain data and can be moved away), we
+     * will not throw an exception. We will return false from the first call
+     * (all calls) to readNextEntry.
      *
      * @throws DatabaseException if the last file contains data and is invalid.
      */
-    public LastFileReader(EnvironmentImpl envImpl,
-                          int readBufferSize)
-        throws DatabaseException {
+    public LastFileReader(EnvironmentImpl envImpl, int readBufferSize) throws DatabaseException {
 
-        super(envImpl, readBufferSize, true, DbLsn.NULL_LSN, Long.valueOf(-1),
-              DbLsn.NULL_LSN, DbLsn.NULL_LSN);
+        super(envImpl, readBufferSize, true, DbLsn.NULL_LSN, Long.valueOf(-1), DbLsn.NULL_LSN, DbLsn.NULL_LSN);
 
         try {
-            startAtLastGoodFile(null /*singleFileNum*/);
+            startAtLastGoodFile(null /* singleFileNum */);
         } catch (ChecksumException e) {
-            throw new EnvironmentFailureException
-                (envImpl, EnvironmentFailureReason.LOG_CHECKSUM, e);
+            throw new EnvironmentFailureException(envImpl, EnvironmentFailureReason.LOG_CHECKSUM, e);
         }
 
         trackableEntries = new HashSet<LogEntryType>();
@@ -92,20 +87,17 @@ public class LastFileReader extends FileReader {
 
     /**
      * Ctor which allows passing in the file number we want to read to the end
-     * of.  This is used by the ScavengerFileReader when it encounters a bad
-     * log record in the middle of a file.
+     * of. This is used by the ScavengerFileReader when it encounters a bad log
+     * record in the middle of a file.
      *
      * @throws ChecksumException rather than wrapping it, to allow
-     * ScavengerFileReader to handle it specially -- we should not invalidate
-     * the environment with EnvironmentFailureException.
+     *             ScavengerFileReader to handle it specially -- we should not
+     *             invalidate the environment with EnvironmentFailureException.
      */
-    LastFileReader(EnvironmentImpl envImpl,
-                   int readBufferSize,
-                   Long specificFileNumber)
-        throws ChecksumException, DatabaseException {
+    LastFileReader(EnvironmentImpl envImpl, int readBufferSize, Long specificFileNumber)
+            throws ChecksumException, DatabaseException {
 
-        super(envImpl, readBufferSize, true, DbLsn.NULL_LSN,
-              specificFileNumber, DbLsn.NULL_LSN, DbLsn.NULL_LSN);
+        super(envImpl, readBufferSize, true, DbLsn.NULL_LSN, specificFileNumber, DbLsn.NULL_LSN, DbLsn.NULL_LSN);
 
         startAtLastGoodFile(specificFileNumber);
 
@@ -117,11 +109,10 @@ public class LastFileReader extends FileReader {
     }
 
     /**
-     * Initialize starting position to the last file with a complete header
-     * with a valid checksum.
+     * Initialize starting position to the last file with a complete header with
+     * a valid checksum.
      */
-    private void startAtLastGoodFile(Long singleFileNum)
-        throws ChecksumException {
+    private void startAtLastGoodFile(Long singleFileNum) throws ChecksumException {
 
         eof = false;
         window.initAtFileStart(DbLsn.makeLsn(0, 0));
@@ -130,10 +121,8 @@ public class LastFileReader extends FileReader {
          * Start at what seems like the last file. If it doesn't exist, we're
          * done.
          */
-        Long lastNum = ((singleFileNum != null) &&
-                        (singleFileNum.longValue() >= 0)) ?
-            singleFileNum :
-            fileManager.getLastFileNum();
+        Long lastNum = ((singleFileNum != null) && (singleFileNum.longValue() >= 0)) ? singleFileNum
+                : fileManager.getLastFileNum();
         FileHandle fileHandle = null;
 
         long fileLen = 0;
@@ -152,13 +141,11 @@ public class LastFileReader extends FileReader {
                          * backup to the next "last" file unless this is the
                          * only file in the log. Note that an incomplete header
                          * will end up throwing a checksum exception, but a 0
-                         * length file will open successfully in read only
-                         * mode.
+                         * length file will open successfully in read only mode.
                          */
                         fileLen = fileHandle.getFile().length();
                         if (fileLen <= FileManager.firstLogEntryOffset()) {
-                            lastNum = fileManager.getFollowingFileNum
-                                (lastNum, false);
+                            lastNum = fileManager.getFollowingFileNum(lastNum, false);
                             if (lastNum != null) {
                                 fileHandle.release();
                                 fileHandle = null;
@@ -176,8 +163,7 @@ public class LastFileReader extends FileReader {
                         }
                     }
                 } catch (IOException e) {
-                    throw new EnvironmentFailureException
-                        (envImpl, EnvironmentFailureReason.LOG_READ, e);
+                    throw new EnvironmentFailureException(envImpl, EnvironmentFailureReason.LOG_READ, e);
                 }
             }
         }
@@ -194,23 +180,18 @@ public class LastFileReader extends FileReader {
      *
      * @param cause is a DatabaseException or ChecksumException.
      */
-    private Long attemptToMoveBadFile(Exception cause)
-        throws IOException, ChecksumException, DatabaseException {
+    private Long attemptToMoveBadFile(Exception cause) throws IOException, ChecksumException, DatabaseException {
 
-        String fileName = 
-            fileManager.getFullFileNames(window.currentFileNum())[0];
+        String fileName = fileManager.getFullFileNames(window.currentFileNum())[0];
         File problemFile = new File(fileName);
 
         if (problemFile.length() <= FileManager.firstLogEntryOffset()) {
             fileManager.clear(); // close all existing files
             /* Move this file aside. */
-            Long lastNum = fileManager.getFollowingFileNum
-                (window.currentFileNum(), false);
-            if (!fileManager.renameFile(window.currentFileNum(),
-                                        FileManager.BAD_SUFFIX)) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("Could not rename file: 0x" +
-                      Long.toHexString(window.currentFileNum()));
+            Long lastNum = fileManager.getFollowingFileNum(window.currentFileNum(), false);
+            if (!fileManager.renameFile(window.currentFileNum(), FileManager.BAD_SUFFIX)) {
+                throw EnvironmentFailureException
+                        .unexpectedState("Could not rename file: 0x" + Long.toHexString(window.currentFileNum()));
             }
 
             return lastNum;
@@ -225,11 +206,9 @@ public class LastFileReader extends FileReader {
         throw EnvironmentFailureException.unexpectedException(cause);
     }
 
-    public void setEndOfFile()
-        throws IOException, DatabaseException {
+    public void setEndOfFile() throws IOException, DatabaseException {
 
-        fileManager.truncateSingleFile
-            (window.currentFileNum(), nextUnprovenOffset);
+        fileManager.truncateSingleFile(window.currentFileNum(), nextUnprovenOffset);
     }
 
     /**
@@ -264,23 +243,22 @@ public class LastFileReader extends FileReader {
     public long getLastSeen(LogEntryType type) {
         Long typeNumber = lastOffsetSeen.get(type);
         if (typeNumber != null) {
-            return DbLsn.makeLsn(window.currentFileNum(), 
-                                 typeNumber.longValue());
+            return DbLsn.makeLsn(window.currentFileNum(), typeNumber.longValue());
         } else {
             return DbLsn.NULL_LSN;
         }
     }
 
     /**
-     * Validate the checksum on each entry, see if we should remember the LSN
-     * of this entry.
+     * Validate the checksum on each entry, see if we should remember the LSN of
+     * this entry.
      */
     protected boolean processEntry(ByteBuffer entryBuffer) {
 
-        /* 
-         * If we're supposed to remember this LSN, record it. Although LSN 
-         * recording is currently done for test purposes only, still do get a 
-         * valid logEntyType, so it can be used for reading in a log entry 
+        /*
+         * If we're supposed to remember this LSN, record it. Although LSN
+         * recording is currently done for test purposes only, still do get a
+         * valid logEntyType, so it can be used for reading in a log entry
          * further in this method.
          */
         entryType = LogEntryType.findType(currentEntryHeader.getType());
@@ -289,17 +267,15 @@ public class LastFileReader extends FileReader {
         }
 
         /*
-         * If this is a RestoreRequired entry, read it and
-         * deserialize. Otherwise, skip over the data, we're not doing anything
-         * with it.
+         * If this is a RestoreRequired entry, read it and deserialize.
+         * Otherwise, skip over the data, we're not doing anything with it.
          */
         if (entryType.equals(LogEntryType.LOG_RESTORE_REQUIRED)) {
             LogEntry logEntry = entryType.getSharedLogEntry();
             logEntry.readEntry(envImpl, currentEntryHeader, entryBuffer);
             restoreRequired = (RestoreRequired) logEntry.getMainItem();
         } else {
-            entryBuffer.position(entryBuffer.position() +
-                                 currentEntryHeader.getItemSize());
+            entryBuffer.position(entryBuffer.position() + currentEntryHeader.getItemSize());
         }
 
         return true;
@@ -307,6 +283,7 @@ public class LastFileReader extends FileReader {
 
     /**
      * readNextEntry will stop at a bad entry.
+     * 
      * @return true if an element has been read.
      */
     @Override
@@ -317,88 +294,72 @@ public class LastFileReader extends FileReader {
         try {
 
             /*
-             * At this point,
-             *  currentEntryOffset is the entry we just read.
-             *  nextEntryOffset is the entry we're about to read.
-             *  currentEntryPrevOffset is 2 entries ago.
-             * Note that readNextEntry() moves all the offset pointers up.
+             * At this point, currentEntryOffset is the entry we just read.
+             * nextEntryOffset is the entry we're about to read.
+             * currentEntryPrevOffset is 2 entries ago. Note that
+             * readNextEntry() moves all the offset pointers up.
              */
 
             foundEntry = super.readNextEntryAllowExceptions();
 
             /*
              * Note that initStartingPosition() makes sure that the file header
-             * entry is valid.  So by the time we get to this method, we know
+             * entry is valid. So by the time we get to this method, we know
              * we're at a file with a valid file header entry.
              */
             lastValidOffset = currentEntryOffset;
             nextUnprovenOffset = nextEntryOffset;
         } catch (FileNotFoundException e) {
-            throw new EnvironmentFailureException
-                (envImpl,
-                 EnvironmentFailureReason.LOG_FILE_NOT_FOUND, e);
+            throw new EnvironmentFailureException(envImpl, EnvironmentFailureReason.LOG_FILE_NOT_FOUND, e);
         } catch (ChecksumException e) {
-            LoggerUtils.fine
-                (logger, envImpl,  
-                 "Found checksum exception while searching for end of log. " +
-                 "Last valid entry is at " + DbLsn.toString
-                 (DbLsn.makeLsn(window.currentFileNum(), lastValidOffset)) +
-                 " Bad entry is at " +
-                 DbLsn.makeLsn(window.currentFileNum(), nextUnprovenOffset));
-                 
+            LoggerUtils.fine(logger, envImpl,
+                    "Found checksum exception while searching for end of log. " + "Last valid entry is at "
+                            + DbLsn.toString(DbLsn.makeLsn(window.currentFileNum(), lastValidOffset))
+                            + " Bad entry is at " + DbLsn.makeLsn(window.currentFileNum(), nextUnprovenOffset));
+
             DbConfigManager configManager = envImpl.getConfigManager();
-            boolean findCommitTxn = 
-                configManager.getBoolean
-                (EnvironmentParams.HALT_ON_COMMIT_AFTER_CHECKSUMEXCEPTION);
-                
+            boolean findCommitTxn = configManager.getBoolean(EnvironmentParams.HALT_ON_COMMIT_AFTER_CHECKSUMEXCEPTION);
+
             /* Find the committed transactions at the rest the log file. */
             if (findCommitTxn) {
-                boolean committedTxnFound = findCommittedTxn();  
+                boolean committedTxnFound = findCommittedTxn();
                 /* If we have found a committed txn. */
                 if (committedTxnFound) {
-                    throw new EnvironmentFailureException
-                        (envImpl, EnvironmentFailureReason.FOUND_COMMITTED_TXN, 
-                         "Find committed txn after the corruption point");
+                    throw new EnvironmentFailureException(envImpl, EnvironmentFailureReason.FOUND_COMMITTED_TXN,
+                            "Find committed txn after the corruption point");
                 }
             }
         }
         return foundEntry;
     }
-    
-    /* 
-     * [#18307] Find the committed transaction after the corrupted log entry 
-     * log file.
-     *
-     * Suppose we have LSN 1000, and the log entry there has a checksum 
-     * exception.
-     * Case 1. if the header at LSN 1000 is bad, findCommittedTxn() will not be
-     *         called, and just truncate the log.
-     * Case 2. if the header at LSN 1000 says the log entry size is N, we 
-     *         skip N bytes, which may let us go to the next log entry. If the 
-     *         next log entry also has a checksum exception (because size N is 
-     *         wrong, or because it really has a checksum problem), return 
-     *         false, and truncate the log.
-     * Case 3. if we manage to read past LSN 1000, but then hit a second 
-     *         checksum exception, return false and truncate the log at the 
-     *         first exception.
-     * Case 4. if we manage to read past LSN 1000, and do not see any checksum 
-     *         exceptions, and do not see any commits, return false and 
-     *         truncate the log.
-     * Case 5. if we manage to read past LSN 1000, and do not see any checksum 
-     *         exceptions, but do see a txn commit, return true and throw 
-     *         EnvironmentFailureException.
+
+    /*
+     * [#18307] Find the committed transaction after the corrupted log entry log
+     * file. Suppose we have LSN 1000, and the log entry there has a checksum
+     * exception. Case 1. if the header at LSN 1000 is bad, findCommittedTxn()
+     * will not be called, and just truncate the log. Case 2. if the header at
+     * LSN 1000 says the log entry size is N, we skip N bytes, which may let us
+     * go to the next log entry. If the next log entry also has a checksum
+     * exception (because size N is wrong, or because it really has a checksum
+     * problem), return false, and truncate the log. Case 3. if we manage to
+     * read past LSN 1000, but then hit a second checksum exception, return
+     * false and truncate the log at the first exception. Case 4. if we manage
+     * to read past LSN 1000, and do not see any checksum exceptions, and do not
+     * see any commits, return false and truncate the log. Case 5. if we manage
+     * to read past LSN 1000, and do not see any checksum exceptions, but do see
+     * a txn commit, return true and throw EnvironmentFailureException.
      */
     private boolean findCommittedTxn() {
         try {
-        
-            /* 
+
+            /*
              * First we skip over the bad log entry, according to the item size
              * we get from the log entry's header.
              */
             skipData(currentEntryHeader.getItemSize());
-            
-            /* 
-             * Begin searching for the committed txn from the next log entry to 
+
+            /*
+             * Begin searching for the committed txn from the next log entry to
              * the end of the log file.
              */
             while (super.readNextEntryAllowExceptions()) {
@@ -409,19 +370,15 @@ public class LastFileReader extends FileReader {
             }
         } catch (EOFException e) {
         } catch (FileNotFoundException e) {
-            throw new EnvironmentFailureException
-                (envImpl, EnvironmentFailureReason.LOG_FILE_NOT_FOUND, e);
+            throw new EnvironmentFailureException(envImpl, EnvironmentFailureReason.LOG_FILE_NOT_FOUND, e);
         } catch (ChecksumException e) {
             /* Case 2 and 3. */
-            LoggerUtils.fine
-                (logger, envImpl,  
-                 "Found checksum exception while searching for end of log. " +
-                 "Last valid entry is at " + DbLsn.toString
-                 (DbLsn.makeLsn(window.currentFileNum(), lastValidOffset)) + 
-                 " Bad entry is at " +
-                 DbLsn.makeLsn(window.currentFileNum(), nextUnprovenOffset));
+            LoggerUtils.fine(logger, envImpl,
+                    "Found checksum exception while searching for end of log. " + "Last valid entry is at "
+                            + DbLsn.toString(DbLsn.makeLsn(window.currentFileNum(), lastValidOffset))
+                            + " Bad entry is at " + DbLsn.makeLsn(window.currentFileNum(), nextUnprovenOffset));
         }
-        
+
         /* Case 4. */
         return false;
     }

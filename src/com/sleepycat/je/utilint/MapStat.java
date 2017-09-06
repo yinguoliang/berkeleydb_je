@@ -32,18 +32,22 @@ import com.sleepycat.je.utilint.StatDefinition.StatType;
  * @param <T> the value type of the individual statistics
  * @param <C> the class of the individual statistics
  */
-public abstract class MapStat<T, C extends MapStatComponent<T, C>>
-        extends Stat<String> {
-    private static final long serialVersionUID = 1L;
+public abstract class MapStat<T, C extends MapStatComponent<T, C>> extends Stat<String> {
+    private static final long      serialVersionUID = 1L;
 
     /**
-     * Maps keys to individual statistics.  Synchronize on the MapStat instance
+     * Maps keys to individual statistics. Synchronize on the MapStat instance
      * when accessing this field.
      */
-    protected final Map<String, C> statMap =
+    protected final Map<String, C> statMap          =
 
-        /* Use a sorted map so that the output is sorted */
-        new TreeMap<>();
+                                                               /*
+                                                                * Use a sorted
+                                                                * map so that
+                                                                * the output is
+                                                                * sorted
+                                                                */
+            new TreeMap<>();
 
     /**
      * Creates an instance of this class.
@@ -56,7 +60,7 @@ public abstract class MapStat<T, C extends MapStatComponent<T, C>>
     }
 
     /**
-     * Creates an instance of this class as a copy of another instance.  This
+     * Creates an instance of this class as a copy of another instance. This
      * instance should be a new instance to avoid lock ordering concerns.
      *
      * @param other the instance to copy
@@ -107,8 +111,9 @@ public abstract class MapStat<T, C extends MapStatComponent<T, C>>
     }
 
     /**
-     * Returns the map as a string in the format returned by {@link
-     * #getFormattedValue}, but with values presented without using commas.
+     * Returns the map as a string in the format returned by
+     * {@link #getFormattedValue}, but with values presented without using
+     * commas.
      */
     @Override
     public String get() {
@@ -147,10 +152,9 @@ public abstract class MapStat<T, C extends MapStatComponent<T, C>>
                 first = false;
             }
             sb.append(entry.getKey()).append('=');
-            final String formattedValue =
-                value.getFormattedValue(useCommas);
-            assert useCommas || (formattedValue.indexOf(',') == -1)
-                : "Formatted value doesn't obey useCommas: " + formattedValue;
+            final String formattedValue = value.getFormattedValue(useCommas);
+            assert useCommas || (formattedValue.indexOf(',') == -1) : "Formatted value doesn't obey useCommas: "
+                    + formattedValue;
             sb.append(formattedValue);
         }
         return sb.toString();
@@ -169,15 +173,13 @@ public abstract class MapStat<T, C extends MapStatComponent<T, C>>
     /** @throws UnsupportedOperationException always */
     @Override
     public void set(String value) {
-        throw new UnsupportedOperationException(
-            "The set method is not supported");
+        throw new UnsupportedOperationException("The set method is not supported");
     }
 
     /** @throws UnsupportedOperationException always */
     @Override
     public void add(Stat<String> other) {
-        throw new UnsupportedOperationException(
-            "The add method is not supported");
+        throw new UnsupportedOperationException("The add method is not supported");
     }
 
     /** This implementation adds synchronization. */
@@ -187,15 +189,13 @@ public abstract class MapStat<T, C extends MapStatComponent<T, C>>
     }
 
     /** Synchronize access to fields. */
-    private synchronized void readObject(ObjectInputStream in)
-        throws IOException, ClassNotFoundException {
+    private synchronized void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 
         in.defaultReadObject();
     }
 
     /** Synchronize access to fields. */
-    private synchronized void writeObject(ObjectOutputStream out)
-        throws IOException {
+    private synchronized void writeObject(ObjectOutputStream out) throws IOException {
 
         out.defaultWriteObject();
     }

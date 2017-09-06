@@ -29,56 +29,54 @@ import com.sleepycat.je.rep.utilint.HostPortPair;
  * <p>
  * The following properties identify the target group.
  * <ul>
- * <li>groupName: the name of the replication group being monitored. </li>
- * <li>nodeName: the group-wide unique name associated with this
- * monitor node.</li>
- * <li>nodeHost: the hostname and port associated with this Monitor. Used
- * by group members to contact the Monitor.</li>
- * <li>helperHosts: the list of replication nodes which the Monitor uses to
- * register itself so it can receive notifications about group status
- * changes.</li>
- * </ul>
- * The following properties configure the daemon ping thread implemented
- * within the Monitor. This daemon thread lets the Monitor proactively find
- * status changes that occur when the Monitor is down or has lost network
- * connectivity.
- * <ul>
- * <li>numRetries: number of times the ping thread attempts to contact a
- * node before deeming is unreachable. </li>
- * <li>retryInterval: number of milliseconds between ping thread retries.
+ * <li>groupName: the name of the replication group being monitored.</li>
+ * <li>nodeName: the group-wide unique name associated with this monitor node.
  * </li>
- * <li>timeout: socketConnection timeout, in milliseconds, specified
- * when the ping thread attempts to establish a connection with a replication
- * node. </li>
+ * <li>nodeHost: the hostname and port associated with this Monitor. Used by
+ * group members to contact the Monitor.</li>
+ * <li>helperHosts: the list of replication nodes which the Monitor uses to
+ * register itself so it can receive notifications about group status changes.
+ * </li>
  * </ul>
+ * The following properties configure the daemon ping thread implemented within
+ * the Monitor. This daemon thread lets the Monitor proactively find status
+ * changes that occur when the Monitor is down or has lost network connectivity.
+ * <ul>
+ * <li>numRetries: number of times the ping thread attempts to contact a node
+ * before deeming is unreachable.</li>
+ * <li>retryInterval: number of milliseconds between ping thread retries.</li>
+ * <li>timeout: socketConnection timeout, in milliseconds, specified when the
+ * ping thread attempts to establish a connection with a replication node.</li>
+ * </ul>
+ * 
  * @since JE 5.0
  */
 public class MonitorConfig implements Cloneable {
 
     /**
-     * An instance created using the default constructor is initialized with
-     * the default settings.
+     * An instance created using the default constructor is initialized with the
+     * default settings.
      */
-    public static final MonitorConfig DEFAULT = new MonitorConfig();
+    public static final MonitorConfig DEFAULT              = new MonitorConfig();
 
     /*
      * Since the MonitorConfig and ReplicationConfig have lots of common
      * properties, it uses lots of properties defined in RepParams.
      */
-    private Properties props;
-    private final boolean validateParams = true;
+    private Properties                props;
+    private final boolean             validateParams       = true;
 
     /* These properties are mutable for a Monitor. */
-    private int numRetries = 5;
-    private long retryInterval = 1000;
-    private int socketConnectTimeout = 10000;
+    private int                       numRetries           = 5;
+    private long                      retryInterval        = 1000;
+    private int                       socketConnectTimeout = 10000;
 
     /* The replication net configuration */
-    private ReplicationNetworkConfig repNetConfig;
+    private ReplicationNetworkConfig  repNetConfig;
 
     /**
-     * An instance created using the default constructor is initialized with
-     * the default settings.
+     * An instance created using the default constructor is initialized with the
+     * default settings.
      */
     public MonitorConfig() {
         props = new Properties();
@@ -95,36 +93,30 @@ public class MonitorConfig implements Cloneable {
         setHelperHosts(repConfig.getHelperHosts());
 
         if (!repConfig.getNodeType().isMonitor()) {
-            throw new IllegalArgumentException
-                ("The configured node type was: " + repConfig.getNodeType() +
-                 " instead of: " + NodeType.MONITOR);
+            throw new IllegalArgumentException(
+                    "The configured node type was: " + repConfig.getNodeType() + " instead of: " + NodeType.MONITOR);
         }
     }
 
     /**
-     * Sets the name for the replication group. The name must be made up of
-     * just alpha numeric characters and must not be zero length.
+     * Sets the name for the replication group. The name must be made up of just
+     * alpha numeric characters and must not be zero length.
      *
      * @param groupName the alpha numeric string representing the name.
-     *
      * @throws IllegalArgumentException if the string name is not valid.
      */
-    public MonitorConfig setGroupName(String groupName)
-        throws IllegalArgumentException {
+    public MonitorConfig setGroupName(String groupName) throws IllegalArgumentException {
 
         setGroupNameVoid(groupName);
         return this;
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
-    public void setGroupNameVoid(String groupName)
-        throws IllegalArgumentException {
+    public void setGroupNameVoid(String groupName) throws IllegalArgumentException {
 
-        DbConfigManager.setVal
-            (props, RepParams.GROUP_NAME, groupName, validateParams);
+        DbConfigManager.setVal(props, RepParams.GROUP_NAME, groupName, validateParams);
     }
 
     /**
@@ -137,31 +129,26 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * Sets the name to be associated with this <code>monitor</code>. It must
-     * be unique within the group. When the <code>monitor</code> is
-     * instantiated and joins the replication group, a check is done to ensure
-     * that the name is unique, and a
-     * {@link com.sleepycat.je.rep.RestartRequiredException} is thrown if it is
-     * not.
+     * Sets the name to be associated with this <code>monitor</code>. It must be
+     * unique within the group. When the <code>monitor</code> is instantiated
+     * and joins the replication group, a check is done to ensure that the name
+     * is unique, and a {@link com.sleepycat.je.rep.RestartRequiredException} is
+     * thrown if it is not.
      *
      * @param nodeName the name of this monitor.
      */
-    public MonitorConfig setNodeName(String nodeName)
-        throws IllegalArgumentException {
+    public MonitorConfig setNodeName(String nodeName) throws IllegalArgumentException {
 
         setNodeNameVoid(nodeName);
         return this;
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
-    public void setNodeNameVoid(String nodeName)
-        throws IllegalArgumentException {
+    public void setNodeNameVoid(String nodeName) throws IllegalArgumentException {
 
-        DbConfigManager.setVal
-            (props, RepParams.NODE_NAME, nodeName, validateParams);
+        DbConfigManager.setVal(props, RepParams.NODE_NAME, nodeName, validateParams);
     }
 
     /**
@@ -174,13 +161,15 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * Sets the hostname and port associated with this monitor. The hostname
-     * and port combination are denoted by a string of the form:
+     * Sets the hostname and port associated with this monitor. The hostname and
+     * port combination are denoted by a string of the form:
+     * 
      * <pre>
      *  hostname[:port]
      * </pre>
-     * The port must be outside the range of "Well Known Ports"
-     * (zero through 1023).
+     * 
+     * The port must be outside the range of "Well Known Ports" (zero through
+     * 1023).
      *
      * @param hostPort the string containing the hostname and port as above.
      */
@@ -190,17 +179,16 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setNodeHostPortVoid(String hostPort) {
-        DbConfigManager.setVal
-            (props, RepParams.NODE_HOST_PORT, hostPort, validateParams);
+        DbConfigManager.setVal(props, RepParams.NODE_HOST_PORT, hostPort, validateParams);
     }
 
     /**
-     * Returns the hostname and port associated with this node. The hostname
-     * and port combination are denoted by a string of the form:
+     * Returns the hostname and port associated with this node. The hostname and
+     * port combination are denoted by a string of the form:
+     * 
      * <pre>
      *  hostname:port
      * </pre>
@@ -214,6 +202,7 @@ public class MonitorConfig implements Cloneable {
     /**
      * Identify one or more helpers nodes by their host and port pairs in this
      * format:
+     * 
      * <pre>
      * hostname[:port][,hostname[:port]]*
      * </pre>
@@ -226,17 +215,16 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setHelperHostsVoid(String helperHosts) {
-        DbConfigManager.setVal
-            (props, RepParams.HELPER_HOSTS, helperHosts, validateParams);
+        DbConfigManager.setVal(props, RepParams.HELPER_HOSTS, helperHosts, validateParams);
     }
 
     /**
      * Returns the string identifying one or more helper host and port pairs in
      * this format:
+     * 
      * <pre>
      * hostname[:port][,hostname[:port]]*
      * </pre>
@@ -248,14 +236,10 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * @hidden
-     *
-     * For internal use only: Internal convenience method.
-     *
-     * Returns the set of sockets associated with helper nodes.
-     *
+     * @hidden For internal use only: Internal convenience method. Returns the
+     *         set of sockets associated with helper nodes.
      * @return the set of helper sockets, returns an empty set if there are no
-     * helpers.
+     *         helpers.
      */
     public Set<InetSocketAddress> getHelperSockets() {
         return HostPortPair.getSockets(getHelperHosts());
@@ -270,8 +254,7 @@ public class MonitorConfig implements Cloneable {
         String hostAndPort = getNodeHostPort();
         int colonToken = hostAndPort.indexOf(":");
 
-        return (colonToken >= 0) ?
-               hostAndPort.substring(0, colonToken) : hostAndPort;
+        return (colonToken >= 0) ? hostAndPort.substring(0, colonToken) : hostAndPort;
     }
 
     /**
@@ -283,20 +266,16 @@ public class MonitorConfig implements Cloneable {
         String hostAndPort = getNodeHostPort();
         int colonToken = hostAndPort.indexOf(":");
 
-        String portString = (colonToken >= 0) ?
-            hostAndPort.substring(colonToken + 1) :
-            DbConfigManager.getVal(props, RepParams.DEFAULT_PORT);
+        String portString = (colonToken >= 0) ? hostAndPort.substring(colonToken + 1)
+                : DbConfigManager.getVal(props, RepParams.DEFAULT_PORT);
 
         return Integer.parseInt(portString);
     }
 
     /**
-     * @hidden
-     * Internal use only.
-     *
-     * This method should only be used when the configuration object is known
-     * to have an authoritative value for its socket value.
-     *
+     * @hidden Internal use only. This method should only be used when the
+     *         configuration object is known to have an authoritative value for
+     *         its socket value.
      * @return the InetSocketAddress used by this monitor
      */
     public InetSocketAddress getNodeSocketAddress() {
@@ -304,9 +283,8 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * Sets the number of times a ping thread attempts to contact a node
-     * before deeming it unreachable.
-     * The default value is 5.
+     * Sets the number of times a ping thread attempts to contact a node before
+     * deeming it unreachable. The default value is 5.
      */
     public MonitorConfig setNumRetries(final int numRetries) {
         setNumRetriesVoid(numRetries);
@@ -314,8 +292,7 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setNumRetriesVoid(final int numRetries) {
         validate(numRetries, "numRetries");
@@ -340,8 +317,7 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setRetryIntervalVoid(final long retryInterval) {
         validate(retryInterval, "retryInterval");
@@ -356,9 +332,9 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * Sets the socketConnection timeout, in milliseconds, used
-     * when the ping thread attempts to establish a connection with a
-     * replication node. The default value is 10,000.
+     * Sets the socketConnection timeout, in milliseconds, used when the ping
+     * thread attempts to establish a connection with a replication node. The
+     * default value is 10,000.
      */
     public MonitorConfig setSocketConnectTimeout(final int socketConnectTimeout) {
         setSocketConnectTimeoutVoid(socketConnectTimeout);
@@ -366,8 +342,7 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * @hidden
-     * The void return setter for use by Bean editors.
+     * @hidden The void return setter for use by Bean editors.
      */
     public void setSocketConnectTimeoutVoid(final int socketConnectTimeout) {
         validate(socketConnectTimeout, "socketConnectTimeout");
@@ -375,9 +350,8 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * Returns the socketConnection timeout, in milliseconds, used
-     * when the ping thread attempts to establish a connection with a
-     * replication node.
+     * Returns the socketConnection timeout, in milliseconds, used when the ping
+     * thread attempts to establish a connection with a replication node.
      */
     public int getSocketConnectTimeout() {
         return socketConnectTimeout;
@@ -385,8 +359,7 @@ public class MonitorConfig implements Cloneable {
 
     private void validate(Number number, String param) {
         if (number.longValue() <= 0) {
-            throw new IllegalArgumentException
-                ("Parameter: " + param + " should be a positive number.");
+            throw new IllegalArgumentException("Parameter: " + param + " should be a positive number.");
         }
     }
 
@@ -407,33 +380,28 @@ public class MonitorConfig implements Cloneable {
     }
 
     /**
-     * @hidden SSL deferred
-     * Get the replication service net configuration associated with
-     * this MonitorConfig.
+     * @hidden SSL deferred Get the replication service net configuration
+     *         associated with this MonitorConfig.
      */
     public ReplicationNetworkConfig getRepNetConfig() {
         return repNetConfig;
     }
 
     /**
-     * @hidden SSL deferred
-     * Set the replication service net configuration associated with
-     * this MonitorConfig.
-     *
-     * @param netConfig the new ReplicationNetworkConfig to be associated
-     * with this MonitorConfig.  This must not be null.
-     *
+     * @hidden SSL deferred Set the replication service net configuration
+     *         associated with this MonitorConfig.
+     * @param netConfig the new ReplicationNetworkConfig to be associated with
+     *            this MonitorConfig. This must not be null.
      * @throws IllegalArgumentException if the netConfig is null
      */
-    public MonitorConfig setRepNetConfig(
-        ReplicationNetworkConfig netConfig) {
+    public MonitorConfig setRepNetConfig(ReplicationNetworkConfig netConfig) {
 
         setRepNetConfigVoid(netConfig);
         return this;
     }
+
     /**
-     * @hidden
-     * For bean editors
+     * @hidden For bean editors
      */
     public void setRepNetConfigVoid(ReplicationNetworkConfig netConfig) {
         if (netConfig == null) {

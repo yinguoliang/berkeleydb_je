@@ -14,19 +14,18 @@
 package com.sleepycat.je.tree;
 
 /**
- * Error to indicate that a bottom level BIN has cursors on it during a
- * delete subtree operation.
+ * Error to indicate that a bottom level BIN has cursors on it during a delete
+ * subtree operation.
  */
 public class CursorsExistException extends Exception {
 
-    private static final long serialVersionUID = 1051296202L;
+    private static final long                 serialVersionUID = 1051296202L;
 
     /*
-     * Throw this static instance, in order to reduce the cost of
-     * fill in the stack trace.
+     * Throw this static instance, in order to reduce the cost of fill in the
+     * stack trace.
      */
-    public static final CursorsExistException CURSORS_EXIST =
-        new CursorsExistException();
+    public static final CursorsExistException CURSORS_EXIST    = new CursorsExistException();
 
     /* Make the constructor public for serializability testing. */
     public CursorsExistException() {

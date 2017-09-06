@@ -19,9 +19,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 
 /**
- * An implementation of {@link FileStoreInfo} that uses Java 7 facilities.
- * Until we require Java 7, this class should only be referenced via
- * reflection.
+ * An implementation of {@link FileStoreInfo} that uses Java 7 facilities. Until
+ * we require Java 7, this class should only be referenced via reflection.
  */
 class Java7FileStoreInfo extends FileStoreInfo {
 
@@ -31,10 +30,11 @@ class Java7FileStoreInfo extends FileStoreInfo {
     /** The associated Factory. */
     static class Java7Factory implements Factory {
         @Override
-        public void factoryCheckSupported() { }
+        public void factoryCheckSupported() {
+        }
+
         @Override
-        public FileStoreInfo factoryGetInfo(final String file)
-            throws IOException {
+        public FileStoreInfo factoryGetInfo(final String file) throws IOException {
 
             return new Java7FileStoreInfo(file);
         }
@@ -47,8 +47,7 @@ class Java7FileStoreInfo extends FileStoreInfo {
      * @throws IllegalArgumentException if the argument is {@code null}
      * @throws IOException if there is an I/O error
      */
-    Java7FileStoreInfo(final String file)
-        throws IOException {
+    Java7FileStoreInfo(final String file) throws IOException {
 
         if (file == null) {
             throw new IllegalArgumentException("The file must not be null");
@@ -57,15 +56,13 @@ class Java7FileStoreInfo extends FileStoreInfo {
     }
 
     @Override
-    public long getTotalSpace()
-        throws IOException {
+    public long getTotalSpace() throws IOException {
 
         return fileStore.getTotalSpace();
     }
 
     @Override
-    public long getUsableSpace()
-        throws IOException {
+    public long getUsableSpace() throws IOException {
 
         return fileStore.getUsableSpace();
     }

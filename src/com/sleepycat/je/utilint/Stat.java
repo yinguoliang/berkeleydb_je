@@ -20,20 +20,17 @@ import com.sleepycat.je.EnvironmentFailureException;
 /**
  * Base class for all JE statistics. A single Stat embodies a value and
  * definition. See StatGroup for a description of how to create and display
- * statistics.
- *
- * Note that Stat intentionally does not contain the statistics value itself.
- * Instead, the concrete subclass will implement the value as the appropriate
- * primitive type. That's done to avoid wrapper classes like Integer and Long,
- * and to  keep the overhead of statistics low.
+ * statistics. Note that Stat intentionally does not contain the statistics
+ * value itself. Instead, the concrete subclass will implement the value as the
+ * appropriate primitive type. That's done to avoid wrapper classes like Integer
+ * and Long, and to keep the overhead of statistics low.
  */
 public abstract class Stat<T> extends BaseStat<T> implements Cloneable {
-    private static final long serialVersionUID = 1L;
+    private static final long         serialVersionUID = 1L;
 
-    public static final DecimalFormat FORMAT =
-        new DecimalFormat("###,###,###,###,###,###,###");
+    public static final DecimalFormat FORMAT           = new DecimalFormat("###,###,###,###,###,###,###");
 
-    protected final StatDefinition definition;
+    protected final StatDefinition    definition;
 
     /**
      * A stat registers itself with an owning group.
@@ -115,7 +112,6 @@ public abstract class Stat<T> extends BaseStat<T> implements Cloneable {
      * Includes the per-stat description in the output string.
      */
     public String toStringVerbose() {
-        return definition.getName() + "=" + getFormattedValue() +
-            "\n\t\t" + definition.getDescription();
+        return definition.getName() + "=" + getFormattedValue() + "\n\t\t" + definition.getDescription();
     }
 }

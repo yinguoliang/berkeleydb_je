@@ -23,13 +23,13 @@ import java.beans.PropertyDescriptor;
  */
 public class TransactionConfigBeanInfo extends ConfigBeanInfoBase {
 
-	@Override
-	public BeanDescriptor getBeanDescriptor() {
-		return getBdescriptor(TransactionConfig.class);
-	}
+    @Override
+    public BeanDescriptor getBeanDescriptor() {
+        return getBdescriptor(TransactionConfig.class);
+    }
 
-	@Override
-	public PropertyDescriptor[] getPropertyDescriptors() {
-		return getPdescriptor(TransactionConfig.class);
-	}
+    @Override
+    public PropertyDescriptor[] getPropertyDescriptors() {
+        return getPdescriptor(TransactionConfig.class);
+    }
 }

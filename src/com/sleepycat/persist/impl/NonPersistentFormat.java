@@ -20,8 +20,8 @@ import com.sleepycat.compat.DbCompat;
 import com.sleepycat.persist.model.EntityModel;
 
 /**
- * Format for a non-persistent class that is only used for declared field
- * types and arrays.  Currently used only for Object and interface types.
+ * Format for a non-persistent class that is only used for declared field types
+ * and arrays. Currently used only for Object and interface types.
  *
  * @author Mark Hayes
  */
@@ -38,8 +38,7 @@ class NonPersistentFormat extends Format {
     }
 
     @Override
-    void collectRelatedFormats(Catalog catalog,
-                               Map<String, Format> newFormats) {
+    void collectRelatedFormats(Catalog catalog, Map<String, Format> newFormats) {
     }
 
     @Override
@@ -49,8 +48,7 @@ class NonPersistentFormat extends Format {
 
     @Override
     public Object newInstance(EntityInput input, boolean rawAccess) {
-        throw DbCompat.unexpectedState
-            ("Cannot instantiate non-persistent class: " + getClassName());
+        throw DbCompat.unexpectedState("Cannot instantiate non-persistent class: " + getClassName());
     }
 
     @Override

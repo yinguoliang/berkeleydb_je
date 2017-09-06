@@ -17,10 +17,9 @@ import com.sleepycat.persist.impl.PersistCatalog;
 
 /**
  * <!-- begin JE only -->
- * @hidden
- * <!-- end JE only -->
- * Internal access class that should not be used by applications.
- *
+ * 
+ * @hidden <!-- end JE only --> Internal access class that should not be used by
+ *         applications.
  * @author Mark Hayes
  */
 public class ModelInternal {

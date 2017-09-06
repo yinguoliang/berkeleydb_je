@@ -16,9 +16,9 @@ package com.sleepycat.persist;
 import com.sleepycat.je.OperationFailureException;
 
 /**
- * Thrown by the {@link EntityStore} constructor when the {@link
- * StoreConfig#setExclusiveCreate ExclusiveCreate} configuration parameter is
- * true and the store's internal catalog database already exists.
+ * Thrown by the {@link EntityStore} constructor when the
+ * {@link StoreConfig#setExclusiveCreate ExclusiveCreate} configuration
+ * parameter is true and the store's internal catalog database already exists.
  *
  * @author Mark Hayes
  */
@@ -26,11 +26,10 @@ public class StoreExistsException extends OperationFailureException {
 
     private static final long serialVersionUID = 1;
 
-    /** 
-     * For internal use only.
-     * <!-- begin JE only -->
-     * @hidden 
-     * <!-- end JE only -->
+    /**
+     * For internal use only. <!-- begin JE only -->
+     * 
+     * @hidden <!-- end JE only -->
      */
     public StoreExistsException(String message) {
         super(message);
@@ -38,18 +37,19 @@ public class StoreExistsException extends OperationFailureException {
 
     /* <!-- begin JE only --> */
 
-    /** 
+    /**
      * For internal use only.
-     * @hidden 
+     * 
+     * @hidden
      */
-    private StoreExistsException(String message,
-                                 OperationFailureException cause) {
+    private StoreExistsException(String message, OperationFailureException cause) {
         super(message, cause);
     }
 
-    /** 
+    /**
      * For internal use only.
-     * @hidden 
+     * 
+     * @hidden
      */
     @Override
     public OperationFailureException wrapSelf(String msg) {

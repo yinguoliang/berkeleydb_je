@@ -34,8 +34,7 @@ public class RepConfigManager extends DbConfigManager {
      */
     private final boolean validateParams;
 
-    public RepConfigManager(EnvironmentConfig envConfig,
-                            RepConfigProxy repConfigProxy) {
+    public RepConfigManager(EnvironmentConfig envConfig, RepConfigProxy repConfigProxy) {
         super(envConfig);
         checkEnvConfig(envConfig);
         ReplicationConfig repConfig = (ReplicationConfig) repConfigProxy;
@@ -49,27 +48,22 @@ public class RepConfigManager extends DbConfigManager {
      * environment.
      *
      * @param envConfig the environment config being checked.
-     *
      * @throws IllegalArgumentException via ReplicatedEnvironment ctor.
      */
-    private static void checkEnvConfig(EnvironmentConfig envConfig)
-        throws IllegalArgumentException {
+    private static void checkEnvConfig(EnvironmentConfig envConfig) throws IllegalArgumentException {
 
         if (!envConfig.getTransactional()) {
-            throw new IllegalArgumentException
-                ("A replicated environment must be transactional");
+            throw new IllegalArgumentException("A replicated environment must be transactional");
         }
-        String logMemOnly = envConfig.getConfigParam
-                            (EnvironmentParams.LOG_MEMORY_ONLY.getName());
+        String logMemOnly = envConfig.getConfigParam(EnvironmentParams.LOG_MEMORY_ONLY.getName());
         if (Boolean.parseBoolean(logMemOnly)) {
-            throw new IllegalArgumentException
-                ("A replicated environment must not log to memory");
+            throw new IllegalArgumentException("A replicated environment must not log to memory");
         }
     }
 
     /**
-     * Create a new ReplicationConfig for use in creating Replicator handles.
-     * Be sure to only pick out replication related properties.
+     * Create a new ReplicationConfig for use in creating Replicator handles. Be
+     * sure to only pick out replication related properties.
      */
     public ReplicationConfig makeReplicationConfig() {
 
@@ -87,17 +81,15 @@ public class RepConfigManager extends DbConfigManager {
         while (propNames.hasMoreElements()) {
             String name = (String) propNames.nextElement();
             /* Is this a valid property name? */
-            ConfigParam param =
-                EnvironmentParams.SUPPORTED_PARAMS.get(name);
+            ConfigParam param = EnvironmentParams.SUPPORTED_PARAMS.get(name);
 
             if (param == null) {
                 /* See if the parameter is an multi-value parameter. */
                 String mvParamName = ConfigParam.multiValueParamName(name);
                 param = EnvironmentParams.SUPPORTED_PARAMS.get(mvParamName);
                 if (param == null) {
-                    throw EnvironmentFailureException.unexpectedState
-                        (name +
-                         " is not a valid BDBJE environment configuration");
+                    throw EnvironmentFailureException
+                            .unexpectedState(name + " is not a valid BDBJE environment configuration");
                 }
             }
 
@@ -106,7 +98,6 @@ public class RepConfigManager extends DbConfigManager {
             }
         }
 
-        return RepInternal.makeReplicationConfig
-            (repProperties, validateParams);
+        return RepInternal.makeReplicationConfig(repProperties, validateParams);
     }
 }

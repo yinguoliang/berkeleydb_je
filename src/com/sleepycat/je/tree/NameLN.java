@@ -33,15 +33,15 @@ import com.sleepycat.je.txn.Txn;
 public final class NameLN extends LN {
 
     private static final String BEGIN_TAG = "<nameLN>";
-    private static final String END_TAG = "</nameLN>";
+    private static final String END_TAG   = "</nameLN>";
 
-    private DatabaseId id;
-    private boolean deleted;
+    private DatabaseId          id;
+    private boolean             deleted;
 
     /**
-     * In the ideal world, we'd have a base LN class so that this NameLN
-     * doesn't have a superfluous data field, but we want to optimize the LN
-     * class for size and speed right now.
+     * In the ideal world, we'd have a base LN class so that this NameLN doesn't
+     * have a superfluous data field, but we want to optimize the LN class for
+     * size and speed right now.
      */
     public NameLN(DatabaseId id) {
         super(new byte[0]);
@@ -119,32 +119,24 @@ public final class NameLN extends LN {
      * transactional.
      */
     @Override
-    protected LogEntryType getLogType(boolean isInsert,
-                                      boolean isTransactional) {
-        return isTransactional ? LogEntryType.LOG_NAMELN_TRANSACTIONAL : 
-                                 LogEntryType.LOG_NAMELN;
+    protected LogEntryType getLogType(boolean isInsert, boolean isTransactional) {
+        return isTransactional ? LogEntryType.LOG_NAMELN_TRANSACTIONAL : LogEntryType.LOG_NAMELN;
     }
 
     @Override
     public Collection<VersionedWriteLoggable> getEmbeddedLoggables() {
-        final Collection<VersionedWriteLoggable> list =
-            new ArrayList<>(super.getEmbeddedLoggables());
+        final Collection<VersionedWriteLoggable> list = new ArrayList<>(super.getEmbeddedLoggables());
         list.add(new DatabaseId());
         return list;
     }
 
     @Override
     public int getLogSize(final int logVersion, final boolean forReplication) {
-        return
-            super.getLogSize(logVersion, forReplication) +
-            id.getLogSize(logVersion, forReplication) +
-            1;               // deleted flag
+        return super.getLogSize(logVersion, forReplication) + id.getLogSize(logVersion, forReplication) + 1; // deleted flag
     }
 
     @Override
-    public void writeToLog(final ByteBuffer logBuffer,
-                           final int logVersion,
-                           final boolean forReplication) {
+    public void writeToLog(final ByteBuffer logBuffer, final int logVersion, final boolean forReplication) {
         super.writeToLog(logBuffer, logVersion, forReplication);
         id.writeToLog(logBuffer, logVersion, forReplication);
         byte booleans = (byte) (deleted ? 1 : 0);
@@ -194,34 +186,15 @@ public final class NameLN extends LN {
     }
 
     /*
-     * Each LN knows what kind of log entry it uses to log itself. Overridden
-     * by subclasses.
+     * Each LN knows what kind of log entry it uses to log itself. Overridden by
+     * subclasses.
      */
     @Override
-    LNLogEntry<?> createLogEntry(
-        LogEntryType entryType,
-        DatabaseImpl dbImpl,
-        Txn txn,
-        long abortLsn,
-        boolean abortKD,
-        byte[] abortKey,
-        byte[] abortData,
-        long abortVLSN,
-        int abortExpiration,
-        boolean abortExpirationInHours,
-        byte[] newKey,
-        boolean newEmbeddedLN,
-        int newExpiration,
-        boolean newExpirationInHours,
-        ReplicationContext repContext) {
+    LNLogEntry<?> createLogEntry(LogEntryType entryType, DatabaseImpl dbImpl, Txn txn, long abortLsn, boolean abortKD,
+                                 byte[] abortKey, byte[] abortData, long abortVLSN, int abortExpiration,
+                                 boolean abortExpirationInHours, byte[] newKey, boolean newEmbeddedLN,
+                                 int newExpiration, boolean newExpirationInHours, ReplicationContext repContext) {
 
-        return new NameLNLogEntry(entryType,
-                                  dbImpl.getId(),
-                                  txn,
-                                  abortLsn,
-                                  abortKD,
-                                  newKey,
-                                  this,
-                                  repContext);
+        return new NameLNLogEntry(entryType, dbImpl.getId(), txn, abortLsn, abortKD, newKey, this, repContext);
     }
 }

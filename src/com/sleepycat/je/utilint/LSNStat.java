@@ -18,7 +18,7 @@ import com.sleepycat.je.EnvironmentFailureException;
 /**
  * A long JE stat.
  */
-public class LSNStat extends LongStat{
+public class LSNStat extends LongStat {
     private static final long serialVersionUID = 1L;
 
     public LSNStat(StatGroup group, StatDefinition definition) {
@@ -32,8 +32,7 @@ public class LSNStat extends LongStat{
 
     @Override
     public void add(Stat<Long> other) {
-        throw EnvironmentFailureException.unexpectedState(
-            "LongArrayStat doesn't support the add operation.");
+        throw EnvironmentFailureException.unexpectedState("LongArrayStat doesn't support the add operation.");
     }
 
     @Override

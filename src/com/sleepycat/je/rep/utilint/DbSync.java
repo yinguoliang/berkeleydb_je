@@ -33,55 +33,46 @@ import com.sleepycat.je.rep.StateChangeListener;
 import com.sleepycat.je.utilint.CmdUtil;
 
 /**
- * DbSync is a utility for ensuring that a group of replication nodes have
- * fully caught up on the replication stream. The target use case is
- * testing. If a replication group has crashed abruptly, nodes may have closed
- * without finishing the full replay of the replication stream and the
- * environments might not have the same contents. This makes it impossible to
- * compare the contents of the environments for correctness.
+ * DbSync is a utility for ensuring that a group of replication nodes have fully
+ * caught up on the replication stream. The target use case is testing. If a
+ * replication group has crashed abruptly, nodes may have closed without
+ * finishing the full replay of the replication stream and the environments
+ * might not have the same contents. This makes it impossible to compare the
+ * contents of the environments for correctness.
  * <p>
  * DbSync assumes that all nodes are down. The utility is invoked for each node
  * in the group. The node will come up and rejoin the group, causing the whole
  * group to reach the same point in the replication stream. If the node becomes
- * the master, it will issue a shutdown request. Otherwise, a node is a
- * replica, and will wait for the shutdown message to come, and will then
- * close.
+ * the master, it will issue a shutdown request. Otherwise, a node is a replica,
+ * and will wait for the shutdown message to come, and will then close.
  */
 public class DbSync {
-    public static final String DBSYNC_ENV = "-env";
-    public static final String DBSYNC_GROUP_NAME = "-groupName";
-    public static final String DBSYNC_NODE_NAME = "-nodeName";
-    public static final String DBSYNC_NODE_HOST = "-nodeHost";
-    public static final String DBSYNC_HELPER_HOST = "-helperHost";
-    public static final String DBSYNC_TIMEOUT = "-timeout";
-    public static final String DBSYNC_NET_PROPS = "-netProps";
-    private static final String FORMAT = "%1$-15s";
+    public static final String  DBSYNC_ENV         = "-env";
+    public static final String  DBSYNC_GROUP_NAME  = "-groupName";
+    public static final String  DBSYNC_NODE_NAME   = "-nodeName";
+    public static final String  DBSYNC_NODE_HOST   = "-nodeHost";
+    public static final String  DBSYNC_HELPER_HOST = "-helperHost";
+    public static final String  DBSYNC_TIMEOUT     = "-timeout";
+    public static final String  DBSYNC_NET_PROPS   = "-netProps";
+    private static final String FORMAT             = "%1$-15s";
 
-    private String envHome;
-    private ReplicationConfig repConfig;
-    private EnvironmentConfig envConfig;
-    private String helperHost;
+    private String              envHome;
+    private ReplicationConfig   repConfig;
+    private EnvironmentConfig   envConfig;
+    private String              helperHost;
 
     /* The group shutdown timeout value, in milliseconds. */
-    private long timeout;
+    private long                timeout;
 
-    private static final String usageString =
-        "usage: " + CmdUtil.getJavaCommand(DbSync.class) + "\n" +
-        String.format(FORMAT, DBSYNC_ENV) +
-        "# environment home directory for the node\n" +
-        String.format(FORMAT, DBSYNC_GROUP_NAME) +
-        "# name of the replication group\n" +
-        String.format(FORMAT, DBSYNC_NODE_NAME) +
-        "# name of the node in the group\n" +
-        String.format(FORMAT, DBSYNC_NODE_HOST) +
-        "# host name or IP address and port number for the node\n" +
-        String.format(FORMAT, DBSYNC_HELPER_HOST) +
-        "# helperHost for the node\n" +
-        String.format(FORMAT, DBSYNC_TIMEOUT) +
-        "# time for the node to catch up with master, in milliseconds\n";
+    private static final String usageString        = "usage: " + CmdUtil.getJavaCommand(DbSync.class) + "\n"
+            + String.format(FORMAT, DBSYNC_ENV) + "# environment home directory for the node\n"
+            + String.format(FORMAT, DBSYNC_GROUP_NAME) + "# name of the replication group\n"
+            + String.format(FORMAT, DBSYNC_NODE_NAME) + "# name of the node in the group\n"
+            + String.format(FORMAT, DBSYNC_NODE_HOST) + "# host name or IP address and port number for the node\n"
+            + String.format(FORMAT, DBSYNC_HELPER_HOST) + "# helperHost for the node\n"
+            + String.format(FORMAT, DBSYNC_TIMEOUT) + "# time for the node to catch up with master, in milliseconds\n";
 
-    public static void main(String[] args)
-        throws Exception {
+    public static void main(String[] args) throws Exception {
 
         DbSync syncup = new DbSync();
         syncup.parseArgs(args);
@@ -94,8 +85,7 @@ public class DbSync {
         System.exit(-1);
     }
 
-    private void parseArgs(String[] args)
-        throws Exception {
+    private void parseArgs(String[] args) throws Exception {
 
         int argc = 0;
         int nArgs = args.length;
@@ -183,18 +173,14 @@ public class DbSync {
             printUsage("Host and Port pair for this node is illegal.");
         }
 
-        ReplicationNetworkConfig repNetConfig =
-            ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig repNetConfig = ReplicationNetworkConfig.createDefault();
         if (netPropsName != null) {
             try {
-                repNetConfig =
-                    ReplicationNetworkConfig.create(new File(netPropsName));
+                repNetConfig = ReplicationNetworkConfig.create(new File(netPropsName));
             } catch (FileNotFoundException fnfe) {
-                printUsage("The netProps file " + netPropsName +
-                           " does not exist.");
+                printUsage("The netProps file " + netPropsName + " does not exist.");
             } catch (IllegalArgumentException iae) {
-                printUsage("The net properties file " + netPropsName +
-                           " is not valid: " + iae.getMessage());
+                printUsage("The net properties file " + netPropsName + " is not valid: " + iae.getMessage());
             }
         }
 
@@ -222,12 +208,9 @@ public class DbSync {
      * @param envHome The Environment home directories of this replica.
      * @param helperHost The helper host for this replica.
      * @param timeout The permitted time period, in milliseconds, for the
-     * replica to catch up with master.
+     *            replica to catch up with master.
      */
-    public DbSync(String envHome,
-                  EnvironmentConfig envConfig,
-                  ReplicationConfig repConfig,
-                  String helperHost,
+    public DbSync(String envHome, EnvironmentConfig envConfig, ReplicationConfig repConfig, String helperHost,
                   long timeout) {
 
         this.envHome = envHome;
@@ -241,17 +224,14 @@ public class DbSync {
      * Open this replication node. Block until the node has opened, synced up,
      * and closed.
      */
-    public void sync()
-        throws Exception {
+    public void sync() throws Exception {
 
         /*
          * Set the ReplicaAckPolicy to ALL, so that all the replicas can get
          * into a same sync point.
          */
-        Durability durability =
-            new Durability(Durability.SyncPolicy.WRITE_NO_SYNC,
-                           Durability.SyncPolicy.WRITE_NO_SYNC,
-                           Durability.ReplicaAckPolicy.ALL);
+        Durability durability = new Durability(Durability.SyncPolicy.WRITE_NO_SYNC, Durability.SyncPolicy.WRITE_NO_SYNC,
+                Durability.ReplicaAckPolicy.ALL);
 
         envConfig.setDurability(durability);
         repConfig.setHelperHosts(helperHost);
@@ -260,15 +240,10 @@ public class DbSync {
         StatusListener listener = new StatusListener();
         ReplicatedEnvironment repEnv = null;
         try {
-            repEnv = new ReplicatedEnvironment(new File(envHome),
-                                               repConfig,
-                                               envConfig,
-                                               null,
-                                               QuorumPolicy.ALL);
+            repEnv = new ReplicatedEnvironment(new File(envHome), repConfig, envConfig, null, QuorumPolicy.ALL);
             repEnv.setStateChangeListener(listener);
         } catch (Exception e) {
-            System.err.println("Can't successfully initialize " +
-                               repConfig.getNodeName() + " because of " + e);
+            System.err.println("Can't successfully initialize " + repConfig.getNodeName() + " because of " + e);
             System.exit(-1);
         }
 
@@ -292,9 +267,9 @@ public class DbSync {
                 try {
 
                     /*
-                     * The replica will throw a GroupShutdownException if it
-                     * has received and processed the group close command from
-                     * the master.
+                     * The replica will throw a GroupShutdownException if it has
+                     * received and processed the group close command from the
+                     * master.
                      */
                     repEnv.getState();
                     Thread.sleep(1000);
@@ -315,24 +290,20 @@ public class DbSync {
         CountDownLatch activeLatch = new CountDownLatch(1);
 
         @Override
-        public void stateChange(StateChangeEvent stateChangeEvent)
-            throws RuntimeException {
+        public void stateChange(StateChangeEvent stateChangeEvent) throws RuntimeException {
 
             switch (stateChangeEvent.getState()) {
-            case MASTER:
-            case REPLICA:
-                activeLatch.countDown();
-                break;
-            default:
-                System.err.println
-                    (repConfig.getNodeName() +
-                     " is disconnected from group.");
-                break;
+                case MASTER:
+                case REPLICA:
+                    activeLatch.countDown();
+                    break;
+                default:
+                    System.err.println(repConfig.getNodeName() + " is disconnected from group.");
+                    break;
             }
         }
 
-        public void awaitActiveState()
-            throws InterruptedException {
+        public void awaitActiveState() throws InterruptedException {
 
             activeLatch.await();
         }

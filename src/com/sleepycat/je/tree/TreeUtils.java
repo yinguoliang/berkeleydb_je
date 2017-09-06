@@ -18,11 +18,8 @@ package com.sleepycat.je.tree;
  */
 public class TreeUtils {
 
-    static private final String SPACES =
-        "                                " +
-        "                                " +
-        "                                " +
-        "                                ";
+    static private final String SPACES = "                                " + "                                "
+            + "                                " + "                                ";
 
     /**
      * For tree dumper.

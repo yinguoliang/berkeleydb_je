@@ -28,16 +28,14 @@ public interface FeederFilter {
     /**
      * The execute method that invoked before a record is sent to the replica.
      * If the filter returns null, the feeder will not send the record to the
-     * replica as part of the replication stream, since it's not of interest
-     * to the replica. It can for example be used to filter out tables that
-     * are not of interest to the replica.
+     * replica as part of the replication stream, since it's not of interest to
+     * the replica. It can for example be used to filter out tables that are not
+     * of interest to the replica.
      *
      * @param record the record to be filtered
      * @param repImpl repImpl of the RN where the filter is executed
-     *
      * @return the original input record if it is to be sent to the replica.
-     * null if it's to be skipped.
+     *         null if it's to be skipped.
      */
-    OutputWireRecord execute(final OutputWireRecord record,
-                             final RepImpl repImpl);
+    OutputWireRecord execute(final OutputWireRecord record, final RepImpl repImpl);
 }

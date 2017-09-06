@@ -46,49 +46,49 @@ public class Label {
      * an exception handler. It can be safely ignored in control flow graph
      * analysis algorithms (for optimization purposes).
      */
-    static final int DEBUG = 1;
+    static final int DEBUG      = 1;
 
     /**
      * Indicates if the position of this label is known.
      */
-    static final int RESOLVED = 2;
+    static final int RESOLVED   = 2;
 
     /**
      * Indicates if this label has been updated, after instruction resizing.
      */
-    static final int RESIZED = 4;
+    static final int RESIZED    = 4;
 
     /**
      * Indicates if this basic block has been pushed in the basic block stack.
      * See {@link MethodWriter#visitMaxs visitMaxs}.
      */
-    static final int PUSHED = 8;
+    static final int PUSHED     = 8;
 
     /**
      * Indicates if this label is the target of a jump instruction, or the start
      * of an exception handler.
      */
-    static final int TARGET = 16;
+    static final int TARGET     = 16;
 
     /**
      * Indicates if a stack map frame must be stored for this label.
      */
-    static final int STORE = 32;
+    static final int STORE      = 32;
 
     /**
      * Indicates if this label corresponds to a reachable basic block.
      */
-    static final int REACHABLE = 64;
+    static final int REACHABLE  = 64;
 
     /**
      * Indicates if this basic block ends with a JSR instruction.
      */
-    static final int JSR = 128;
+    static final int JSR        = 128;
 
     /**
      * Indicates if this basic block ends with a RET instruction.
      */
-    static final int RET = 256;
+    static final int RET        = 256;
 
     /**
      * Indicates if this basic block is the start of a subroutine.
@@ -99,13 +99,13 @@ public class Label {
      * Indicates if this subroutine basic block has been visited by a
      * visitSubroutine(null, ...) call.
      */
-    static final int VISITED = 1024;
+    static final int VISITED    = 1024;
 
     /**
      * Indicates if this subroutine basic block has been visited by a
      * visitSubroutine(!null, ...) call.
      */
-    static final int VISITED2 = 2048;
+    static final int VISITED2   = 2048;
 
     /**
      * Field used to associate user information to a label. Warning: this field
@@ -113,7 +113,7 @@ public class Label {
      * package you must override the
      * {@link org.objectweb.asm.tree.MethodNode#getLabelNode} method.
      */
-    public Object info;
+    public Object    info;
 
     /**
      * Flags that indicate the status of this label.
@@ -128,22 +128,22 @@ public class Label {
      * @see #JSR
      * @see #RET
      */
-    int status;
+    int              status;
 
     /**
      * The line number corresponding to this label, if known.
      */
-    int line;
+    int              line;
 
     /**
      * The position of this label in the code, if known.
      */
-    int position;
+    int              position;
 
     /**
      * Number of forward references to this label, times two.
      */
-    private int referenceCount;
+    private int      referenceCount;
 
     /**
      * Informations about forward references. Each forward reference is
@@ -158,7 +158,7 @@ public class Label {
      * forward references have been resolved. Hence the same array can be used
      * for both purposes without problems.
      */
-    private int[] srcAndRefPositions;
+    private int[]    srcAndRefPositions;
 
     // ------------------------------------------------------------------------
 
@@ -169,55 +169,50 @@ public class Label {
      * from one basic block to another. Each node (i.e., each basic block) is
      * represented by the Label object that corresponds to the first instruction
      * of this basic block. Each node also stores the list of its successors in
-     * the graph, as a linked list of Edge objects.
-     * 
-     * The control flow analysis algorithms used to compute the maximum stack
-     * size or the stack map frames are similar and use two steps. The first
-     * step, during the visit of each instruction, builds information about the
-     * state of the local variables and the operand stack at the end of each
-     * basic block, called the "output frame", <i>relatively</i> to the frame
-     * state at the beginning of the basic block, which is called the "input
-     * frame", and which is <i>unknown</i> during this step. The second step, in
-     * {@link MethodWriter#visitMaxs}, is a fix point algorithm that computes
+     * the graph, as a linked list of Edge objects. The control flow analysis
+     * algorithms used to compute the maximum stack size or the stack map frames
+     * are similar and use two steps. The first step, during the visit of each
+     * instruction, builds information about the state of the local variables
+     * and the operand stack at the end of each basic block, called the
+     * "output frame", <i>relatively</i> to the frame state at the beginning of
+     * the basic block, which is called the "input frame", and which is
+     * <i>unknown</i> during this step. The second step, in {@link
+     * MethodWriter#visitMaxs}, is a fix point algorithm that computes
      * information about the input frame of each basic block, from the input
      * state of the first basic block (known from the method signature), and by
-     * the using the previously computed relative output frames.
-     * 
-     * The algorithm used to compute the maximum stack size only computes the
-     * relative output and absolute input stack heights, while the algorithm
-     * used to compute stack map frames computes relative output frames and
-     * absolute input frames.
+     * the using the previously computed relative output frames. The algorithm
+     * used to compute the maximum stack size only computes the relative output
+     * and absolute input stack heights, while the algorithm used to compute
+     * stack map frames computes relative output frames and absolute input
+     * frames.
      */
 
     /**
      * Start of the output stack relatively to the input stack. The exact
-     * semantics of this field depends on the algorithm that is used.
-     * 
-     * When only the maximum stack size is computed, this field is the number of
-     * elements in the input stack.
-     * 
-     * When the stack map frames are completely computed, this field is the
-     * offset of the first output stack element relatively to the top of the
-     * input stack. This offset is always negative or null. A null offset means
-     * that the output stack must be appended to the input stack. A -n offset
-     * means that the first n output stack elements must replace the top n input
-     * stack elements, and that the other elements must be appended to the input
-     * stack.
+     * semantics of this field depends on the algorithm that is used. When only
+     * the maximum stack size is computed, this field is the number of elements
+     * in the input stack. When the stack map frames are completely computed,
+     * this field is the offset of the first output stack element relatively to
+     * the top of the input stack. This offset is always negative or null. A
+     * null offset means that the output stack must be appended to the input
+     * stack. A -n offset means that the first n output stack elements must
+     * replace the top n input stack elements, and that the other elements must
+     * be appended to the input stack.
      */
-    int inputStackTop;
+    int              inputStackTop;
 
     /**
      * Maximum height reached by the output stack, relatively to the top of the
      * input stack. This maximum is always positive or null.
      */
-    int outputStackMax;
+    int              outputStackMax;
 
     /**
      * Information about the input and output stack map frames of this basic
      * block. This field is only used when {@link ClassWriter#COMPUTE_FRAMES}
      * option is used.
      */
-    Frame frame;
+    Frame            frame;
 
     /**
      * The successor of this label, in the order they are visited. This linked
@@ -226,14 +221,14 @@ public class Label {
      * does not contain successive labels that denote the same bytecode position
      * (in this case only the first label appears in this list).
      */
-    Label successor;
+    Label            successor;
 
     /**
      * The successors of this node in the control flow graph. These successors
      * are stored in a linked list of {@link Edge Edge} objects, linked to each
      * other by their {@link Edge#next} field.
      */
-    Edge successors;
+    Edge             successors;
 
     /**
      * The next basic block in the basic block stack. This stack is used in the
@@ -243,7 +238,7 @@ public class Label {
      * 
      * @see MethodWriter#visitMaxs
      */
-    Label next;
+    Label            next;
 
     // ------------------------------------------------------------------------
     // Constructor
@@ -266,13 +261,11 @@ public class Label {
      * generators or adapters.</i>
      * 
      * @return the offset corresponding to this label.
-     * @throws IllegalStateException
-     *             if this label is not resolved yet.
+     * @throws IllegalStateException if this label is not resolved yet.
      */
     public int getOffset() {
         if ((status & RESOLVED) == 0) {
-            throw new IllegalStateException(
-                    "Label offset position has not been resolved yet");
+            throw new IllegalStateException("Label offset position has not been resolved yet");
         }
         return position;
     }
@@ -283,21 +276,16 @@ public class Label {
      * directly. Otherwise, a null offset is written and a new forward reference
      * is declared for this label.
      * 
-     * @param owner
-     *            the code writer that calls this method.
-     * @param out
-     *            the bytecode of the method.
-     * @param source
-     *            the position of first byte of the bytecode instruction that
+     * @param owner the code writer that calls this method.
+     * @param out the bytecode of the method.
+     * @param source the position of first byte of the bytecode instruction that
      *            contains this label.
-     * @param wideOffset
-     *            <tt>true</tt> if the reference must be stored in 4 bytes, or
-     *            <tt>false</tt> if it must be stored with 2 bytes.
-     * @throws IllegalArgumentException
-     *             if this label has not been created by the given code writer.
+     * @param wideOffset <tt>true</tt> if the reference must be stored in 4
+     *            bytes, or <tt>false</tt> if it must be stored with 2 bytes.
+     * @throws IllegalArgumentException if this label has not been created by
+     *             the given code writer.
      */
-    void put(final MethodWriter owner, final ByteVector out, final int source,
-            final boolean wideOffset) {
+    void put(final MethodWriter owner, final ByteVector out, final int source, final boolean wideOffset) {
         if ((status & RESOLVED) == 0) {
             if (wideOffset) {
                 addReference(-1 - source, out.length);
@@ -321,22 +309,19 @@ public class Label {
      * yet. For backward references, the offset of the reference can be, and
      * must be, computed and stored directly.
      * 
-     * @param sourcePosition
-     *            the position of the referencing instruction. This position
-     *            will be used to compute the offset of this forward reference.
-     * @param referencePosition
-     *            the position where the offset for this forward reference must
-     *            be stored.
+     * @param sourcePosition the position of the referencing instruction. This
+     *            position will be used to compute the offset of this forward
+     *            reference.
+     * @param referencePosition the position where the offset for this forward
+     *            reference must be stored.
      */
-    private void addReference(final int sourcePosition,
-            final int referencePosition) {
+    private void addReference(final int sourcePosition, final int referencePosition) {
         if (srcAndRefPositions == null) {
             srcAndRefPositions = new int[6];
         }
         if (referenceCount >= srcAndRefPositions.length) {
             int[] a = new int[srcAndRefPositions.length + 6];
-            System.arraycopy(srcAndRefPositions, 0, a, 0,
-                    srcAndRefPositions.length);
+            System.arraycopy(srcAndRefPositions, 0, a, 0, srcAndRefPositions.length);
             srcAndRefPositions = a;
         }
         srcAndRefPositions[referenceCount++] = sourcePosition;
@@ -349,12 +334,9 @@ public class Label {
      * position becomes known. This method fills in the blanks that where left
      * in the bytecode by each forward reference previously added to this label.
      * 
-     * @param owner
-     *            the code writer that calls this method.
-     * @param position
-     *            the position of this label in the bytecode.
-     * @param data
-     *            the bytecode of the method.
+     * @param owner the code writer that calls this method.
+     * @param position the position of this label in the bytecode.
+     * @param data the bytecode of the method.
      * @return <tt>true</tt> if a blank that was left for this label was to
      *         small to store the offset. In such a case the corresponding jump
      *         instruction is replaced with a pseudo instruction (using unused
@@ -362,12 +344,10 @@ public class Label {
      *         instructions will need to be replaced with true instructions with
      *         wider offsets (4 bytes instead of 2). This is done in
      *         {@link MethodWriter#resizeInstructions}.
-     * @throws IllegalArgumentException
-     *             if this label has already been resolved, or if it has not
-     *             been created by the given code writer.
+     * @throws IllegalArgumentException if this label has already been resolved,
+     *             or if it has not been created by the given code writer.
      */
-    boolean resolve(final MethodWriter owner, final int position,
-            final byte[] data) {
+    boolean resolve(final MethodWriter owner, final int position, final byte[] data) {
         boolean needUpdate = false;
         this.status |= RESOLVED;
         this.position = position;
@@ -430,8 +410,7 @@ public class Label {
     /**
      * Returns true is this basic block belongs to the given subroutine.
      * 
-     * @param id
-     *            a subroutine id.
+     * @param id a subroutine id.
      * @return true is this basic block belongs to the given subroutine.
      */
     boolean inSubroutine(final long id) {
@@ -445,8 +424,7 @@ public class Label {
      * Returns true if this basic block and the given one belong to a common
      * subroutine.
      * 
-     * @param block
-     *            another basic block.
+     * @param block another basic block.
      * @return true if this basic block and the given one belong to a common
      *         subroutine.
      */
@@ -465,10 +443,8 @@ public class Label {
     /**
      * Marks this basic block as belonging to the given subroutine.
      * 
-     * @param id
-     *            a subroutine id.
-     * @param nbSubroutines
-     *            the total number of subroutines in the method.
+     * @param id a subroutine id.
+     * @param nbSubroutines the total number of subroutines in the method.
      */
     void addToSubroutine(final long id, final int nbSubroutines) {
         if ((status & VISITED) == 0) {
@@ -484,14 +460,11 @@ public class Label {
      * flow graph to find all the blocks that are reachable from the current
      * block WITHOUT following any JSR target.
      * 
-     * @param JSR
-     *            a JSR block that jumps to this subroutine. If this JSR is not
+     * @param JSR a JSR block that jumps to this subroutine. If this JSR is not
      *            null it is added to the successor of the RET blocks found in
      *            the subroutine.
-     * @param id
-     *            the id of this subroutine.
-     * @param nbSubroutines
-     *            the total number of subroutines in the method.
+     * @param id the id of this subroutine.
+     * @param nbSubroutines the total number of subroutines in the method.
      */
     void visitSubroutine(final Label JSR, final long id, final int nbSubroutines) {
         // user managed stack of labels, to avoid using a recursive method

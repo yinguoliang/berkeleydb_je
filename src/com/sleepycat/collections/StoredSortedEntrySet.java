@@ -24,17 +24,19 @@ import com.sleepycat.je.OperationFailureException; // for javadoc
 import com.sleepycat.util.RuntimeExceptionWrapper;
 
 /**
- * The SortedSet returned by Map.entrySet().  This class may not be
- * instantiated directly.  Contrary to what is stated by {@link Map#entrySet}
- * this class does support the {@link #add} and {@link #addAll} methods.
- *
- * <p>The {@link java.util.Map.Entry#setValue} method of the Map.Entry objects
- * that are returned by this class and its iterators behaves just as the {@link
- * StoredIterator#set} method does.</p>
- *
- * <p>In addition to the standard SortedSet methods, this class provides the
- * following methods for stored sorted sets only.  Note that the use of these
- * methods is not compatible with the standard Java collections interface.</p>
+ * The SortedSet returned by Map.entrySet(). This class may not be instantiated
+ * directly. Contrary to what is stated by {@link Map#entrySet} this class does
+ * support the {@link #add} and {@link #addAll} methods.
+ * <p>
+ * The {@link java.util.Map.Entry#setValue} method of the Map.Entry objects that
+ * are returned by this class and its iterators behaves just as the
+ * {@link StoredIterator#set} method does.
+ * </p>
+ * <p>
+ * In addition to the standard SortedSet methods, this class provides the
+ * following methods for stored sorted sets only. Note that the use of these
+ * methods is not compatible with the standard Java collections interface.
+ * </p>
  * <ul>
  * <li>{@link #headSet(Map.Entry, boolean)}</li>
  * <li>{@link #tailSet(Map.Entry, boolean)}</li>
@@ -43,9 +45,7 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  *
  * @author Mark Hayes
  */
-public class StoredSortedEntrySet<K, V>
-    extends StoredEntrySet<K, V>
-    implements SortedSet<Map.Entry<K, V>> {
+public class StoredSortedEntrySet<K, V> extends StoredEntrySet<K, V> implements SortedSet<Map.Entry<K, V>> {
 
     StoredSortedEntrySet(DataView mapView) {
 
@@ -53,11 +53,10 @@ public class StoredSortedEntrySet<K, V>
     }
 
     /**
-     * Returns null since comparators are not supported.  The natural ordering
-     * of a stored collection is data byte order, whether the data classes
-     * implement the {@link java.lang.Comparable} interface or not.
-     * This method does not conform to the {@link SortedSet#comparator}
-     * interface.
+     * Returns null since comparators are not supported. The natural ordering of
+     * a stored collection is data byte order, whether the data classes
+     * implement the {@link java.lang.Comparable} interface or not. This method
+     * does not conform to the {@link SortedSet#comparator} interface.
      *
      * @return null.
      */
@@ -67,22 +66,17 @@ public class StoredSortedEntrySet<K, V>
     }
 
     /**
-     * Returns the first (lowest) element currently in this sorted set.
-     * This method conforms to the {@link SortedSet#first} interface.
+     * Returns the first (lowest) element currently in this sorted set. This
+     * method conforms to the {@link SortedSet#first} interface.
      *
-     * @return the first element.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * @return the first element. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
     public Map.Entry<K, V> first() {
 
@@ -90,22 +84,17 @@ public class StoredSortedEntrySet<K, V>
     }
 
     /**
-     * Returns the last (highest) element currently in this sorted set.
-     * This method conforms to the {@link SortedSet#last} interface.
+     * Returns the last (highest) element currently in this sorted set. This
+     * method conforms to the {@link SortedSet#last} interface.
      *
-     * @return the last element.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * @return the last element. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
     public Map.Entry<K, V> last() {
 
@@ -114,18 +103,17 @@ public class StoredSortedEntrySet<K, V>
 
     /**
      * Returns a view of the portion of this sorted set whose elements are
-     * strictly less than toMapEntry.
-     * This method conforms to the {@link SortedSet#headSet} interface.
-     *
-     * <p>Note that the return value is a StoredCollection and must be treated
-     * as such; for example, its iterators must be explicitly closed.</p>
+     * strictly less than toMapEntry. This method conforms to the
+     * {@link SortedSet#headSet} interface.
+     * <p>
+     * Note that the return value is a StoredCollection and must be treated as
+     * such; for example, its iterators must be explicitly closed.
+     * </p>
      *
      * @param toMapEntry the upper bound.
-     *
      * @return the subset.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
     public SortedSet<Map.Entry<K, V>> headSet(Map.Entry<K, V> toMapEntry) {
 
@@ -134,41 +122,37 @@ public class StoredSortedEntrySet<K, V>
 
     /**
      * Returns a view of the portion of this sorted set whose elements are
-     * strictly less than toMapEntry, optionally including toMapEntry.
-     * This method does not exist in the standard {@link SortedSet} interface.
-     *
-     * <p>Note that the return value is a StoredCollection and must be treated
-     * as such; for example, its iterators must be explicitly closed.</p>
+     * strictly less than toMapEntry, optionally including toMapEntry. This
+     * method does not exist in the standard {@link SortedSet} interface.
+     * <p>
+     * Note that the return value is a StoredCollection and must be treated as
+     * such; for example, its iterators must be explicitly closed.
+     * </p>
      *
      * @param toMapEntry is the upper bound.
-     *
      * @param toInclusive is true to include toMapEntry.
-     *
      * @return the subset.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
-    public SortedSet<Map.Entry<K, V>> headSet(Map.Entry<K, V> toMapEntry,
-                                              boolean toInclusive) {
+    public SortedSet<Map.Entry<K, V>> headSet(Map.Entry<K, V> toMapEntry, boolean toInclusive) {
 
         return subSet(null, false, toMapEntry, toInclusive);
     }
 
     /**
      * Returns a view of the portion of this sorted set whose elements are
-     * greater than or equal to fromMapEntry.
-     * This method conforms to the {@link SortedSet#tailSet} interface.
-     *
-     * <p>Note that the return value is a StoredCollection and must be treated
-     * as such; for example, its iterators must be explicitly closed.</p>
+     * greater than or equal to fromMapEntry. This method conforms to the
+     * {@link SortedSet#tailSet} interface.
+     * <p>
+     * Note that the return value is a StoredCollection and must be treated as
+     * such; for example, its iterators must be explicitly closed.
+     * </p>
      *
      * @param fromMapEntry is the lower bound.
-     *
      * @return the subset.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
     public SortedSet<Map.Entry<K, V>> tailSet(Map.Entry<K, V> fromMapEntry) {
 
@@ -179,44 +163,38 @@ public class StoredSortedEntrySet<K, V>
      * Returns a view of the portion of this sorted set whose elements are
      * strictly greater than fromMapEntry, optionally including fromMapEntry.
      * This method does not exist in the standard {@link SortedSet} interface.
-     *
-     * <p>Note that the return value is a StoredCollection and must be treated
-     * as such; for example, its iterators must be explicitly closed.</p>
+     * <p>
+     * Note that the return value is a StoredCollection and must be treated as
+     * such; for example, its iterators must be explicitly closed.
+     * </p>
      *
      * @param fromMapEntry is the lower bound.
-     *
      * @param fromInclusive is true to include fromMapEntry.
-     *
      * @return the subset.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
-    public SortedSet<Map.Entry<K, V>> tailSet(Map.Entry<K, V> fromMapEntry,
-                                             boolean fromInclusive) {
+    public SortedSet<Map.Entry<K, V>> tailSet(Map.Entry<K, V> fromMapEntry, boolean fromInclusive) {
 
         return subSet(fromMapEntry, fromInclusive, null, false);
     }
 
     /**
      * Returns a view of the portion of this sorted set whose elements range
-     * from fromMapEntry, inclusive, to toMapEntry, exclusive.
-     * This method conforms to the {@link SortedSet#subSet} interface.
-     *
-     * <p>Note that the return value is a StoredCollection and must be treated
-     * as such; for example, its iterators must be explicitly closed.</p>
+     * from fromMapEntry, inclusive, to toMapEntry, exclusive. This method
+     * conforms to the {@link SortedSet#subSet} interface.
+     * <p>
+     * Note that the return value is a StoredCollection and must be treated as
+     * such; for example, its iterators must be explicitly closed.
+     * </p>
      *
      * @param fromMapEntry is the lower bound.
-     *
      * @param toMapEntry is the upper bound.
-     *
      * @return the subset.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
-    public SortedSet<Map.Entry<K, V>> subSet(Map.Entry<K, V> fromMapEntry,
-                                             Map.Entry<K, V> toMapEntry) {
+    public SortedSet<Map.Entry<K, V>> subSet(Map.Entry<K, V> fromMapEntry, Map.Entry<K, V> toMapEntry) {
 
         return subSet(fromMapEntry, true, toMapEntry, false);
     }
@@ -224,35 +202,28 @@ public class StoredSortedEntrySet<K, V>
     /**
      * Returns a view of the portion of this sorted set whose elements are
      * strictly greater than fromMapEntry and strictly less than toMapEntry,
-     * optionally including fromMapEntry and toMapEntry.
-     * This method does not exist in the standard {@link SortedSet} interface.
-     *
-     * <p>Note that the return value is a StoredCollection and must be treated
-     * as such; for example, its iterators must be explicitly closed.</p>
+     * optionally including fromMapEntry and toMapEntry. This method does not
+     * exist in the standard {@link SortedSet} interface.
+     * <p>
+     * Note that the return value is a StoredCollection and must be treated as
+     * such; for example, its iterators must be explicitly closed.
+     * </p>
      *
      * @param fromMapEntry is the lower bound.
-     *
      * @param fromInclusive is true to include fromMapEntry.
-     *
      * @param toMapEntry is the upper bound.
-     *
      * @param toInclusive is true to include toMapEntry.
-     *
      * @return the subset.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C edition).
+     *             including a {@code DatabaseException} on BDB (C edition).
      */
-    public SortedSet<Map.Entry<K, V>> subSet(Map.Entry<K, V> fromMapEntry,
-                                             boolean fromInclusive,
-                                             Map.Entry<K, V> toMapEntry,
-                                             boolean toInclusive) {
+    public SortedSet<Map.Entry<K, V>> subSet(Map.Entry<K, V> fromMapEntry, boolean fromInclusive,
+                                             Map.Entry<K, V> toMapEntry, boolean toInclusive) {
 
         Object fromKey = (fromMapEntry != null) ? fromMapEntry.getKey() : null;
         Object toKey = (toMapEntry != null) ? toMapEntry.getKey() : null;
         try {
-            return new StoredSortedEntrySet<K, V>(
-               view.subView(fromKey, fromInclusive, toKey, toInclusive, null));
+            return new StoredSortedEntrySet<K, V>(view.subView(fromKey, fromInclusive, toKey, toInclusive, null));
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         }

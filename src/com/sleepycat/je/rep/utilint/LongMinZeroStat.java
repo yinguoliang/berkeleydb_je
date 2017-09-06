@@ -11,7 +11,6 @@
  * license and additional information.
  */
 
-
 package com.sleepycat.je.rep.utilint;
 
 import com.sleepycat.je.utilint.LongMinStat;

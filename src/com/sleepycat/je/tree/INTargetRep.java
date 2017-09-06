@@ -19,28 +19,30 @@ import com.sleepycat.je.evictor.Evictor;
 import com.sleepycat.je.utilint.SizeofMarker;
 
 /**
- * The abstract class that defines the various representations used to
- * represent an array of target pointers to children of an IN node. These
- * arrays can be sparse, so the non-default representations are designed to
- * make efficient representations for the sparse cases. Each specialized
- * representation is a subclass of INTargetReps.
- *
- * A new IN node starts out with the None representation and grows through a
- * sparse into the full default representation. Subsequently, the default
- * representation can be <i>compacted</i> into a Sparse or None representation
- * whenever an IN is stripped. Note that representations do not currently move
- * to more compact forms when entries are nulled to minimize the possibility of
- * tansitionary representation changes, since each representation change has
- * a cpu cost and a gc cost associated with it.
+ * The abstract class that defines the various representations used to represent
+ * an array of target pointers to children of an IN node. These arrays can be
+ * sparse, so the non-default representations are designed to make efficient
+ * representations for the sparse cases. Each specialized representation is a
+ * subclass of INTargetReps. A new IN node starts out with the None
+ * representation and grows through a sparse into the full default
+ * representation. Subsequently, the default representation can be
+ * <i>compacted</i> into a Sparse or None representation whenever an IN is
+ * stripped. Note that representations do not currently move to more compact
+ * forms when entries are nulled to minimize the possibility of tansitionary
+ * representation changes, since each representation change has a cpu cost and a
+ * gc cost associated with it.
  */
-public abstract class INTargetRep
-    extends INArrayRep<INTargetRep, INTargetRep.Type, Node> {
+public abstract class INTargetRep extends INArrayRep<INTargetRep, INTargetRep.Type, Node> {
 
     /* Single instance used for None rep. */
     public static final None NONE = new None();
 
     /* Enumeration for the different types of supported representations. */
-    public enum Type { DEFAULT, SPARSE, NONE }
+    public enum Type {
+        DEFAULT,
+        SPARSE,
+        NONE
+    }
 
     public INTargetRep() {
     }
@@ -100,8 +102,7 @@ public abstract class INTargetRep
                 }
             }
 
-            if ((count > Sparse.MAX_ENTRIES) ||
-                (targets.length > Sparse.MAX_INDEX)) {
+            if ((count > Sparse.MAX_ENTRIES) || (targets.length > Sparse.MAX_INDEX)) {
                 return this;
             }
 
@@ -110,7 +111,7 @@ public abstract class INTargetRep
                 newRep = NONE;
             } else {
                 newRep = new Sparse(targets.length);
-                for (int i=0; i < targets.length; i++) {
+                for (int i = 0; i < targets.length; i++) {
                     if (targets[i] != null) {
                         newRep.set(i, targets[i], parent);
                     }
@@ -123,25 +124,22 @@ public abstract class INTargetRep
 
         @Override
         public long calculateMemorySize() {
-            return MemoryBudget.DEFAULT_TARGET_ENTRY_OVERHEAD +
-                   MemoryBudget.objectArraySize(targets.length);
+            return MemoryBudget.DEFAULT_TARGET_ENTRY_OVERHEAD + MemoryBudget.objectArraySize(targets.length);
         }
 
         @Override
-        public void updateCacheStats(@SuppressWarnings("unused")
-                                     boolean increment,
-                                     @SuppressWarnings("unused")
-                                     Evictor evictor) {
+        public void updateCacheStats(@SuppressWarnings("unused") boolean increment,
+                                     @SuppressWarnings("unused") Evictor evictor) {
             /* No stats for this default rep. */
         }
     }
 
     /**
-     * Representation used when 1-4 children are cached. Note that the IN
-     * itself may have more children, but they are not currently cached.
-     * The INArrayRep is represented by two parallel arrays: an array of
-     * indices (idxs) and an array of values (targets). All elements that are
-     * not explicitly represented are null.
+     * Representation used when 1-4 children are cached. Note that the IN itself
+     * may have more children, but they are not currently cached. The INArrayRep
+     * is represented by two parallel arrays: an array of indices (idxs) and an
+     * array of values (targets). All elements that are not explicitly
+     * represented are null.
      */
     public static class Sparse extends INTargetRep {
 
@@ -149,13 +147,13 @@ public abstract class INTargetRep
         public static final int MAX_ENTRIES = 4;
 
         /* The maximum index that can be represented. */
-        public static final int MAX_INDEX = Short.MAX_VALUE;
+        public static final int MAX_INDEX   = Short.MAX_VALUE;
 
         /*
          * The parallel arrays implementing the INArrayRep.
          */
-        final short idxs[] = new short[MAX_ENTRIES];
-        final Node targets[] = new Node[MAX_ENTRIES];
+        final short             idxs[]      = new short[MAX_ENTRIES];
+        final Node              targets[]   = new Node[MAX_ENTRIES];
 
         public Sparse(int capacity) {
 
@@ -203,7 +201,7 @@ public abstract class INTargetRep
             assert (j >= 0) && (j <= MAX_INDEX);
 
             int slot = -1;
-            for (int i=0; i < targets.length; i++) {
+            for (int i = 0; i < targets.length; i++) {
 
                 if (idxs[i] == j) {
                     targets[i] = node;
@@ -211,7 +209,7 @@ public abstract class INTargetRep
                 }
 
                 if ((slot < 0) && (targets[i] == null)) {
-                   slot = i;
+                    slot = i;
                 }
             }
 
@@ -222,7 +220,7 @@ public abstract class INTargetRep
             /* Have a free slot, use it. */
             if (slot >= 0) {
                 targets[slot] = node;
-                idxs[slot] = (short)j;
+                idxs[slot] = (short) j;
                 return this;
             }
 
@@ -230,7 +228,7 @@ public abstract class INTargetRep
             Default fe = new Default(parent.getMaxEntries());
             noteRepChange(fe, parent);
 
-            for (int i=0; i < targets.length; i++) {
+            for (int i = 0; i < targets.length; i++) {
                 if (targets[i] != null) {
                     fe.set(idxs[i], targets[i], parent);
                 }
@@ -337,10 +335,8 @@ public abstract class INTargetRep
         }
 
         @Override
-        public INTargetRep copy(@SuppressWarnings("unused") int from,
-                                @SuppressWarnings("unused") int to,
-                                @SuppressWarnings("unused") int n,
-                                @SuppressWarnings("unused") IN parent) {
+        public INTargetRep copy(@SuppressWarnings("unused") int from, @SuppressWarnings("unused") int to,
+                                @SuppressWarnings("unused") int n, @SuppressWarnings("unused") IN parent) {
             /* Nothing to copy. */
             return this;
         }

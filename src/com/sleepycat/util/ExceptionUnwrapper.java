@@ -14,10 +14,10 @@
 package com.sleepycat.util;
 
 /**
- * Unwraps nested exceptions by calling the {@link
- * ExceptionWrapper#getCause()} method for exceptions that implement the
- * {@link ExceptionWrapper} interface.  Does not currently support the Java 1.4
- * <code>Throwable.getCause()</code> method.
+ * Unwraps nested exceptions by calling the {@link ExceptionWrapper#getCause()}
+ * method for exceptions that implement the {@link ExceptionWrapper} interface.
+ * Does not currently support the Java 1.4 <code>Throwable.getCause()</code>
+ * method.
  *
  * @author Mark Hayes
  */
@@ -28,13 +28,10 @@ public class ExceptionUnwrapper {
      * Error if the underlying Throwable is an Error.
      *
      * @param e is the Exception to unwrap.
-     *
      * @return the underlying Exception.
-     *
      * @throws Error if the underlying Throwable is an Error.
-     *
      * @throws IllegalArgumentException if the underlying Throwable is not an
-     * Exception or an Error.
+     *             Exception or an Error.
      */
     public static Exception unwrap(Exception e) {
 
@@ -52,7 +49,6 @@ public class ExceptionUnwrapper {
      * Unwraps an Exception and returns the underlying Throwable.
      *
      * @param e is the Exception to unwrap.
-     *
      * @return the underlying Throwable.
      */
     public static Throwable unwrapAny(Throwable e) {

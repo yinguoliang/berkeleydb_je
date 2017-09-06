@@ -27,35 +27,33 @@ import com.sleepycat.je.rep.ReplicatedEnvironment;
  * associated with each type of event, so they can respond with some
  * application-specific course of action.
  * <p>
- * See {@link <a href="{@docRoot}/../ReplicationGuide/monitors.html"
- * target="_blank">Replication Guide, Writing Monitor Nodes</a>}
+ * See {@link <a href="{@docRoot}/../ReplicationGuide/monitors.html" target=
+ * "_blank">Replication Guide, Writing Monitor Nodes</a>}
  */
 public interface MonitorChangeListener {
 
     /**
      * The method is invoked whenever there is new master associated with the
-     * replication group.
-     *
-     * If the method throws an exception, JE will log the exception as a trace
-     * message, which will be propagated through the usual channels.
+     * replication group. If the method throws an exception, JE will log the
+     * exception as a trace message, which will be propagated through the usual
+     * channels.
      *
      * @param newMasterEvent the event that resulted in the notify. It
-     * identifies the new master.
+     *            identifies the new master.
      */
     public void notify(NewMasterEvent newMasterEvent);
 
     /**
      * The method is invoked whenever there is a change in the composition of
-     * the replication group. That is, a new node has been added to the group
-     * or an existing member has been removed from the group. Note that
-     * SECONDARY nodes do not produce these events.
-     *
-     * If the method throws an exception, JE will log the exception as a trace
-     * message, which will be propagated through the usual channels.
+     * the replication group. That is, a new node has been added to the group or
+     * an existing member has been removed from the group. Note that SECONDARY
+     * nodes do not produce these events. If the method throws an exception, JE
+     * will log the exception as a trace message, which will be propagated
+     * through the usual channels.
      *
      * @param groupChangeEvent the event that resulted in the notify. It
-     * describes the new group composition and identifies the node that
-     * provoked the change.
+     *            describes the new group composition and identifies the node
+     *            that provoked the change.
      */
     /*
      * TODO: EXTERNAL is hidden for now. The doc need updated to include
@@ -65,11 +63,11 @@ public interface MonitorChangeListener {
 
     /**
      * The method is invoked whenever a node joins the group, by successfully
-     * opening its first
-     * {@link ReplicatedEnvironment ReplicatedEnvironment} handle.
+     * opening its first {@link ReplicatedEnvironment ReplicatedEnvironment}
+     * handle.
      *
      * @param joinGroupEvent the event that resulted in the notify. It
-     * identifies the node that joined the group.
+     *            identifies the node that joined the group.
      */
     public void notify(JoinGroupEvent joinGroupEvent);
 
@@ -78,7 +76,7 @@ public interface MonitorChangeListener {
      * last {@link ReplicatedEnvironment ReplicatedEnvironment} handle.
      *
      * @param leaveGroupEvent the event that resulted in the notify. It
-     * identifies the node that left the group.
+     *            identifies the node that left the group.
      */
     public void notify(LeaveGroupEvent leaveGroupEvent);
 }

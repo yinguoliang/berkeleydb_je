@@ -22,33 +22,30 @@ import java.util.logging.Logger;
 
 /**
  * Tracks the number of operations begun, as a way of measuring level of
- * activity. Is capable of displaying thread dumps if the activity level
- * reaches a specified ceiling
+ * activity. Is capable of displaying thread dumps if the activity level reaches
+ * a specified ceiling
  */
 public class ActivityCounter {
 
-    private final AtomicInteger activeCount;
-    private final AtomicBoolean threadDumpInProgress;
-    private volatile long lastThreadDumpTime;
-    private volatile int numCompletedDumps;
-    private final int activeThreshold;
-    private final int  maxNumDumps;
-    private final AtomicInteger maxActivity;
+    private final AtomicInteger   activeCount;
+    private final AtomicBoolean   threadDumpInProgress;
+    private volatile long         lastThreadDumpTime;
+    private volatile int          numCompletedDumps;
+    private final int             activeThreshold;
+    private final int             maxNumDumps;
+    private final AtomicInteger   maxActivity;
 
     /*
      * Thread dumps can only happen this many milliseconds apart, to avoid
      * overwhelming the system.
      */
-    private final long requiredIntervalMillis;
+    private final long            requiredIntervalMillis;
 
-    private final Logger logger;
+    private final Logger          logger;
 
     private final ExecutorService dumper;
 
-    public ActivityCounter(int activeThreshold,
-                           long requiredIntervalMillis,
-                           int maxNumDumps,
-                           Logger logger) {
+    public ActivityCounter(int activeThreshold, long requiredIntervalMillis, int maxNumDumps, Logger logger) {
 
         activeCount = new AtomicInteger(0);
         threadDumpInProgress = new AtomicBoolean(false);
@@ -88,9 +85,9 @@ public class ActivityCounter {
     }
 
     /**
-     * If the activity level is above a threshold, there is no other thread
-     * that is dumping now, and a dump hasn't happened for a while, dump
-     * thread stack traces.
+     * If the activity level is above a threshold, there is no other thread that
+     * is dumping now, and a dump hasn't happened for a while, dump thread stack
+     * traces.
      */
     private void check(int numActive) {
 
@@ -137,8 +134,8 @@ public class ActivityCounter {
             }
 
             if (!threadDumpInProgress.compareAndSet(false, true)) {
-                logger.warning("Unexpected: ActivityCounter stack trace " +
-                               "dumper saw threadDumpInProgress flag set.");
+                logger.warning(
+                        "Unexpected: ActivityCounter stack trace " + "dumper saw threadDumpInProgress flag set.");
                 return;
             }
 
@@ -156,14 +153,11 @@ public class ActivityCounter {
 
             int whichDump = numCompletedDumps;
 
-            logger.info("[Dump " + whichDump +
-                        " --Dumping stack traces for all threads]");
+            logger.info("[Dump " + whichDump + " --Dumping stack traces for all threads]");
 
-            Map<Thread, StackTraceElement[]> stackTraces =
-                Thread.getAllStackTraces();
+            Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
 
-            for (Map.Entry<Thread, StackTraceElement[]> stme :
-                     stackTraces.entrySet()) {
+            for (Map.Entry<Thread, StackTraceElement[]> stme : stackTraces.entrySet()) {
                 if (stme.getKey() == Thread.currentThread()) {
                     continue;
                 }
@@ -177,4 +171,3 @@ public class ActivityCounter {
         }
     }
 }
-

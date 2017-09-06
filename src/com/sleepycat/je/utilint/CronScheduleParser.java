@@ -18,72 +18,67 @@ import java.util.Calendar;
 import com.sleepycat.je.EnvironmentConfig;
 
 /**
- * This class aims to parser {@link EnvironmentConfig#VERIFY_SCHEDULE} which
- * is a cron-style expression.
- * 
- * <p>The cron-style expression can be very complicate, for example containing
- * *, ?, / and so on. But now we only handle the simplest situation. We will
- * continually add the code to handle more complicated situations if needed
- * in the future.</p>
- *
- * <p>Constraint for current version:
- * <li>The standard string should be "* * * * *", i.e. there are 5 fields and
- *     4 blank space
+ * This class aims to parser {@link EnvironmentConfig#VERIFY_SCHEDULE} which is
+ * a cron-style expression.
+ * <p>
+ * The cron-style expression can be very complicate, for example containing *,
+ * ?, / and so on. But now we only handle the simplest situation. We will
+ * continually add the code to handle more complicated situations if needed in
+ * the future.
+ * </p>
+ * <p>
+ * Constraint for current version:
+ * <li>The standard string should be "* * * * *", i.e. there are 5 fields and 4
+ * blank space
  * <li>Each filed can only be an int value or *.
  * <li>Can not specify dayOfMonth and dayOfWeek simultaneously
  * <li>Can not specify dayOfMonth or month. Because if so, we will need to
- *     consider the days of that month and furthermore whether that year is
- *     leap year for February. The difference of the number of days for
- *     each month make it complicate to calculate the delay and the interval.
- * <li>If the field is an int value, then the value should be in
- *     the correct range, i.e. minute(0-59), hour(0-23), dayOfWeek(0-6),
- *     where dayOfMonth(1-31) and month(1-12) can not be specified.
- * <li>If dayOfWeek is a concrete value, then minute or hour can not be '*'.
- *      For example, we can not use "0 * * * 5", i.e. we can not specify that
- *      we want the verifier to run every hour only on Friday. Because it may
- *      be complicate to calculate the stop time point and at least we need
- *      to add a variable.
+ * consider the days of that month and furthermore whether that year is leap
+ * year for February. The difference of the number of days for each month make
+ * it complicate to calculate the delay and the interval.
+ * <li>If the field is an int value, then the value should be in the correct
+ * range, i.e. minute(0-59), hour(0-23), dayOfWeek(0-6), where dayOfMonth(1-31)
+ * and month(1-12) can not be specified.
+ * <li>If dayOfWeek is a concrete value, then minute or hour can not be '*'. For
+ * example, we can not use "0 * * * 5", i.e. we can not specify that we want the
+ * verifier to run every hour only on Friday. Because it may be complicate to
+ * calculate the stop time point and at least we need to add a variable.
  * <li>The same reason, if hour is a concrete value, minute can not be '*'.
  * </p>
  */
 public class CronScheduleParser {
-    private static String errorMess =
-        "The style of " + EnvironmentConfig.VERIFY_SCHEDULE +
-        " is not right. ";
-    private static int spaceNum = 4;
-    private static int fieldNum = 5;
+    private static String        errorMess      = "The style of " + EnvironmentConfig.VERIFY_SCHEDULE
+            + " is not right. ";
+    private static int           spaceNum       = 4;
+    private static int           fieldNum       = 5;
 
-    public static String nullCons = "The argument should not be null.";
-    public static String cons1 =
-        "The standard string should be '* * * * *', i.e. there are " +
-        fieldNum + "fields and " + spaceNum + "blank space.";
-    public static String cons2 = "Each filed can only be a int value or *.";
-    public static String cons3 =
-        "Can not specify dayOfWeek and dayOfMonth simultaneously.";
-    public static String cons4 = "Can not specify dayOfMonth or month.";
-    public static String cons5 = "Range Error: ";
-    public static String cons6 =
-        "If the day of the week is a concrete day, then the minute and the" +
-        "hour should also be concrete.";
-    public static String cons7 =
-        "If the hour is a concrete day, then minute should also be concrete";
+    public static String         nullCons       = "The argument should not be null.";
+    public static String         cons1          = "The standard string should be '* * * * *', i.e. there are "
+            + fieldNum + "fields and " + spaceNum + "blank space.";
+    public static String         cons2          = "Each filed can only be a int value or *.";
+    public static String         cons3          = "Can not specify dayOfWeek and dayOfMonth simultaneously.";
+    public static String         cons4          = "Can not specify dayOfMonth or month.";
+    public static String         cons5          = "Range Error: ";
+    public static String         cons6          = "If the day of the week is a concrete day, then the minute and the"
+            + "hour should also be concrete.";
+    public static String         cons7          = "If the hour is a concrete day, then minute should also be concrete";
 
-    private static long millsOneDay = 24 * 60 * 60 * 1000;
-    private static long millsOneHour = 60 * 60 * 1000;
-    private static long millsOneMinute = 60 * 1000;
+    private static long          millsOneDay    = 24 * 60 * 60 * 1000;
+    private static long          millsOneHour   = 60 * 60 * 1000;
+    private static long          millsOneMinute = 60 * 1000;
 
-    private long delay;
-    private long interval;
+    private long                 delay;
+    private long                 interval;
 
-    public static Calendar curCal;
+    public static Calendar       curCal;
     public static TestHook<Void> setCurCalHook;
 
     /**
-     * The construction function will first validate the cron-style string
-     * and then parser the string to get the interval of the cron-style task
-     * represented by the string and to get the wait-time(delay) to first
-     * time start the cron-style task.
-     *  
+     * The construction function will first validate the cron-style string and
+     * then parser the string to get the interval of the cron-style task
+     * represented by the string and to get the wait-time(delay) to first time
+     * start the cron-style task.
+     * 
      * @param cronSchedule The cron-style string.
      */
     public CronScheduleParser(String cronSchedule) {
@@ -92,23 +87,20 @@ public class CronScheduleParser {
     }
 
     /**
-     * Check whether two cron-style strings are same, i.e. both are null or
-     * the content of the two strings are same.
+     * Check whether two cron-style strings are same, i.e. both are null or the
+     * content of the two strings are same.
      *
      * @param cronvSchedule1 The first cron-style string.
      * @param cronSchedule2 The second cron-style string.
-     *
      * @return true if the two cron-style strings are same.
      */
-    public static boolean checkSame(
-        final String cronvSchedule1,
-        final String cronSchedule2) {
+    public static boolean checkSame(final String cronvSchedule1, final String cronSchedule2) {
 
-        if (cronvSchedule1 == null && cronSchedule2 ==null) {
+        if (cronvSchedule1 == null && cronSchedule2 == null) {
             return true;
         }
 
-        if (cronvSchedule1 == null || cronSchedule2 ==null) {
+        if (cronvSchedule1 == null || cronSchedule2 == null) {
             return false;
         }
 
@@ -121,7 +113,7 @@ public class CronScheduleParser {
 
     /**
      * @return delay The wait-time to first time start the cron-style task
-     *               represented by the cron-style string.
+     *         represented by the cron-style string.
      */
     public long getDelayTime() {
         return delay;
@@ -129,15 +121,14 @@ public class CronScheduleParser {
 
     /**
      * @return interval The interval of the cron-style task represented by the
-     *                  cron-style string.
+     *         cron-style string.
      */
     public long getInterval() {
         return interval;
     }
 
     private void assertDelay() {
-        assert delay >= 0 :
-            "Delay is: " + delay + "; interval is: " + interval;
+        assert delay >= 0 : "Delay is: " + delay + "; interval is: " + interval;
     }
 
     private void parser(final String cronSchedule) {
@@ -168,10 +159,8 @@ public class CronScheduleParser {
             scheduleCal.set(Calendar.HOUR_OF_DAY, tmpHour);
             scheduleCal.set(Calendar.MINUTE, tmpMinute);
 
-            if (tmpDayOfWeek < curDayOfWeek ||
-                (tmpDayOfWeek == curDayOfWeek && tmpHour < curHour) ||
-                (tmpDayOfWeek == curDayOfWeek && tmpHour == curHour &&
-                tmpMinute < curMinute)) {
+            if (tmpDayOfWeek < curDayOfWeek || (tmpDayOfWeek == curDayOfWeek && tmpHour < curHour)
+                    || (tmpDayOfWeek == curDayOfWeek && tmpHour == curHour && tmpMinute < curMinute)) {
                 /* add 7 days to set next week */
                 scheduleCal.add(Calendar.DATE, 7);
             }
@@ -194,8 +183,7 @@ public class CronScheduleParser {
             scheduleCal.set(Calendar.HOUR_OF_DAY, tmpHour);
             scheduleCal.set(Calendar.MINUTE, tmpMinute);
 
-            if (tmpHour < curHour ||
-                (tmpHour == curHour && tmpMinute < curMinute)) {
+            if (tmpHour < curHour || (tmpHour == curHour && tmpMinute < curMinute)) {
                 /* to set next day */
                 scheduleCal.add(Calendar.DATE, 1);
             }
@@ -242,18 +230,17 @@ public class CronScheduleParser {
         }
 
         /*
-         * Constraint 1: The standard string should be "* * * * *", i.e.
-         * there are 5 fields and 4 blank space.
+         * Constraint 1: The standard string should be "* * * * *", i.e. there
+         * are 5 fields and 4 blank space.
          */
         int spaceCount = 0;
         for (int i = 0; i < cronSchedule.length(); i++) {
             char c = cronSchedule.charAt(i);
-            if (c == 32 ) {  /* The ASCII value of ' ' is 32. */
+            if (c == 32) { /* The ASCII value of ' ' is 32. */
                 spaceCount++;
             }
         }
-        if (spaceCount != spaceNum ||
-            cronSchedule.split(" ").length != fieldNum) {
+        if (spaceCount != spaceNum || cronSchedule.split(" ").length != fieldNum) {
             throw new IllegalArgumentException(errorMess + cons1);
         }
 
@@ -276,48 +263,44 @@ public class CronScheduleParser {
          * simultaneously.
          */
         if (!timeArray[2].equals("*") && !timeArray[4].equals("*")) {
-            throw new IllegalArgumentException(errorMess + cons3);            
+            throw new IllegalArgumentException(errorMess + cons3);
         }
 
         /*
          * Constraint 4: Can not specify dayOfMonth or month.
          */
         if (!timeArray[2].equals("*") || !timeArray[3].equals("*")) {
-            throw new IllegalArgumentException(errorMess + cons4);             
+            throw new IllegalArgumentException(errorMess + cons4);
         }
 
         /*
-         * Constraint 5: If the field is a int value, then the value should
-         * be in the correct range.
+         * Constraint 5: If the field is a int value, then the value should be
+         * in the correct range.
          */
         if (!timeArray[0].equals("*")) {
             int min = Integer.valueOf(timeArray[0]);
             if (min < 0 || min > 59) {
-                throw new IllegalArgumentException
-                    (errorMess + cons5 + "The minute should be (0-59).");
+                throw new IllegalArgumentException(errorMess + cons5 + "The minute should be (0-59).");
             }
         }
 
         if (!timeArray[1].equals("*")) {
             int hour = Integer.valueOf(timeArray[1]);
             if (hour < 0 || hour > 23) {
-                throw new IllegalArgumentException
-                    (errorMess + cons5 + "The hour should be (0-23).");
+                throw new IllegalArgumentException(errorMess + cons5 + "The hour should be (0-23).");
             }
         }
 
         if (!timeArray[4].equals("*")) {
             int dayOfWeek = Integer.valueOf(timeArray[4]);
             if (dayOfWeek < 0 || dayOfWeek > 6) {
-                throw new IllegalArgumentException
-                    (errorMess + cons5 + "The day of the week should" +
-                    "be (0-6).");
+                throw new IllegalArgumentException(errorMess + cons5 + "The day of the week should" + "be (0-6).");
             }
         }
 
         /*
-         * Constraint 6: If dayOfWeek is a concrete value, then minute or
-         * hour can not be '*'.
+         * Constraint 6: If dayOfWeek is a concrete value, then minute or hour
+         * can not be '*'.
          */
         if (!timeArray[4].equals("*")) {
             if (timeArray[0].equals("*") || timeArray[1].equals("*")) {
@@ -335,11 +318,9 @@ public class CronScheduleParser {
         }
 
         /*
-        if (timeArray[0].equals("*")) {
-            throw new IllegalArgumentException
-                (errorMes + "User specify the verifier to run every minute." +
-                "This is too frequent.");
-        }
-        */
+         * if (timeArray[0].equals("*")) { throw new IllegalArgumentException
+         * (errorMes + "User specify the verifier to run every minute." +
+         * "This is too frequent."); }
+         */
     }
 }

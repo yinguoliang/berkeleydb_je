@@ -36,27 +36,24 @@ import com.sleepycat.je.utilint.StatGroup;
 public class LatchWithStatsImpl extends ReentrantLock implements Latch {
 
     private final LatchContext context;
-    private OwnerInfo lastOwnerInfo;
-    private final StatGroup stats;
-    private final IntStat nAcquiresNoWaiters;
-    private final IntStat nAcquiresSelfOwned;
-    private final IntStat nAcquiresWithContention;
-    private final IntStat nAcquiresNoWaitSuccessful;
-    private final IntStat nAcquiresNoWaitUnsuccessful;
-    private final IntStat nReleases;
+    private OwnerInfo          lastOwnerInfo;
+    private final StatGroup    stats;
+    private final IntStat      nAcquiresNoWaiters;
+    private final IntStat      nAcquiresSelfOwned;
+    private final IntStat      nAcquiresWithContention;
+    private final IntStat      nAcquiresNoWaitSuccessful;
+    private final IntStat      nAcquiresNoWaitUnsuccessful;
+    private final IntStat      nReleases;
 
     LatchWithStatsImpl(final LatchContext context) {
         this.context = context;
 
-        stats = new StatGroup(
-            LatchStatDefinition.GROUP_NAME,
-            LatchStatDefinition.GROUP_DESC);
+        stats = new StatGroup(LatchStatDefinition.GROUP_NAME, LatchStatDefinition.GROUP_DESC);
         nAcquiresNoWaiters = new IntStat(stats, LATCH_NO_WAITERS);
         nAcquiresSelfOwned = new IntStat(stats, LATCH_SELF_OWNED);
         nAcquiresWithContention = new IntStat(stats, LATCH_CONTENTION);
         nAcquiresNoWaitSuccessful = new IntStat(stats, LATCH_NOWAIT_SUCCESS);
-        nAcquiresNoWaitUnsuccessful =
-            new IntStat(stats, LATCH_NOWAIT_UNSUCCESS);
+        nAcquiresNoWaitUnsuccessful = new IntStat(stats, LATCH_NOWAIT_UNSUCCESS);
         nReleases = new IntStat(stats, LATCH_RELEASES);
     }
 
@@ -69,9 +66,7 @@ public class LatchWithStatsImpl extends ReentrantLock implements Latch {
 
         if (isHeldByCurrentThread()) {
             nAcquiresSelfOwned.increment();
-            throw unexpectedState(
-                context.getEnvImplForFatalException(),
-                "Latch already held: " + debugString());
+            throw unexpectedState(context.getEnvImplForFatalException(), "Latch already held: " + debugString());
         }
 
         if (isLocked()) {
@@ -82,13 +77,11 @@ public class LatchWithStatsImpl extends ReentrantLock implements Latch {
 
         if (LatchSupport.INTERRUPTIBLE_WITH_TIMEOUT) {
             try {
-                if (!tryLock(
-                    context.getLatchTimeoutMs(), TimeUnit.MILLISECONDS)) {
+                if (!tryLock(context.getLatchTimeoutMs(), TimeUnit.MILLISECONDS)) {
                     throw LatchSupport.handleTimeout(this, context);
                 }
             } catch (InterruptedException e) {
-                throw new ThreadInterruptedException(
-                    context.getEnvImplForFatalException(), e);
+                throw new ThreadInterruptedException(context.getEnvImplForFatalException(), e);
             }
         } else {
             lock();
@@ -108,9 +101,7 @@ public class LatchWithStatsImpl extends ReentrantLock implements Latch {
 
         if (isHeldByCurrentThread()) {
             nAcquiresSelfOwned.increment();
-            throw unexpectedState(
-                context.getEnvImplForFatalException(),
-                "Latch already held: " + debugString());
+            throw unexpectedState(context.getEnvImplForFatalException(), "Latch already held: " + debugString());
         }
 
         if (!tryLock()) {
@@ -133,9 +124,7 @@ public class LatchWithStatsImpl extends ReentrantLock implements Latch {
     @Override
     public void release() {
         if (!isHeldByCurrentThread()) {
-            throw unexpectedState(
-                context.getEnvImplForFatalException(),
-                "Latch not held: " + debugString());
+            throw unexpectedState(context.getEnvImplForFatalException(), "Latch not held: " + debugString());
         }
         if (LatchSupport.TRACK_LATCHES) {
             LatchSupport.trackRelease(this, context);

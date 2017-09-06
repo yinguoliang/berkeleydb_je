@@ -23,53 +23,44 @@ import java.text.DecimalFormat;
  * for the collection of values held in a LatencyStat.
  */
 public class Latency implements Serializable, Cloneable {
-    private static final long serialVersionUID = 1L;
+    private static final long          serialVersionUID = 1L;
 
-    private static final DecimalFormat FORMAT = 
-        new DecimalFormat("###,###,###,###,###,###,###.##");
+    private static final DecimalFormat FORMAT           = new DecimalFormat("###,###,###,###,###,###,###.##");
 
-    private int maxTrackedLatencyMillis;
-    private int min;
-    private int max;
-    private float avg;
-    private int totalOps;
-    private int percent95;
-    private int percent99;
-
-    /*
-     * This field should be called requestsOverflow, but is left opsOverflow
-     * for serialization compatibility with JE 5.0.69 and earlier.
-     */
-    private int opsOverflow;
+    private int                        maxTrackedLatencyMillis;
+    private int                        min;
+    private int                        max;
+    private float                      avg;
+    private int                        totalOps;
+    private int                        percent95;
+    private int                        percent99;
 
     /*
-     * The totalRequests field was added in JE 5.0.70.  When an object
-     * serialized by JE 5.0.69 or earler is deserialized here, this field is
-     * initialized here to 0 by Java and then set equal to totalOps by
-     * readObject.  Setting totalRequests to totalOps is accurate for
-     * single-op-per-request stats.  It is inaccurate for
-     * multiple-op-per-request stats, but the best we can do with the
-     * information we have available.
+     * This field should be called requestsOverflow, but is left opsOverflow for
+     * serialization compatibility with JE 5.0.69 and earlier.
      */
-    private int totalRequests;
+    private int                        opsOverflow;
+
+    /*
+     * The totalRequests field was added in JE 5.0.70. When an object serialized
+     * by JE 5.0.69 or earler is deserialized here, this field is initialized
+     * here to 0 by Java and then set equal to totalOps by readObject. Setting
+     * totalRequests to totalOps is accurate for single-op-per-request stats. It
+     * is inaccurate for multiple-op-per-request stats, but the best we can do
+     * with the information we have available.
+     */
+    private int                        totalRequests;
 
     /**
-     * Creates a Latency with a maxTrackedLatencyMillis and all fields with
-     * zero values.
+     * Creates a Latency with a maxTrackedLatencyMillis and all fields with zero
+     * values.
      */
     public Latency(int maxTrackedLatencyMillis) {
         this.maxTrackedLatencyMillis = maxTrackedLatencyMillis;
     }
 
-    public Latency(int maxTrackedLatencyMillis,
-                   int minMillis,
-                   int maxMillis,
-                   float avg,
-                   int totalOps,
-                   int totalRequests,
-                   int percent95,
-                   int percent99,
-                   int requestsOverflow) {
+    public Latency(int maxTrackedLatencyMillis, int minMillis, int maxMillis, float avg, int totalOps,
+                   int totalRequests, int percent95, int percent99, int requestsOverflow) {
         this.maxTrackedLatencyMillis = maxTrackedLatencyMillis;
         this.min = minMillis;
         this.max = maxMillis;
@@ -82,8 +73,7 @@ public class Latency implements Serializable, Cloneable {
     }
 
     /* See totalRequests field. */
-    private void readObject(ObjectInputStream in)
-        throws IOException, ClassNotFoundException {
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 
         in.defaultReadObject();
 
@@ -101,23 +91,17 @@ public class Latency implements Serializable, Cloneable {
             throw new IllegalStateException(e);
         }
     }
-    
+
     @Override
     public String toString() {
         if (totalOps == 0) {
             return "No operations";
         }
-        
-        return "maxTrackedLatencyMillis=" + 
-               FORMAT.format(maxTrackedLatencyMillis) +
-               " totalOps=" + FORMAT.format(totalOps) + 
-               " totalReq=" + FORMAT.format(totalRequests) + 
-               " reqOverflow=" + FORMAT.format(opsOverflow) +
-               " min=" + FORMAT.format(min) +
-               " max=" + FORMAT.format(max) +
-               " avg=" + FORMAT.format(avg) +
-               " 95%=" + FORMAT.format(percent95) +
-               " 99%=" + FORMAT.format(percent99);
+
+        return "maxTrackedLatencyMillis=" + FORMAT.format(maxTrackedLatencyMillis) + " totalOps="
+                + FORMAT.format(totalOps) + " totalReq=" + FORMAT.format(totalRequests) + " reqOverflow="
+                + FORMAT.format(opsOverflow) + " min=" + FORMAT.format(min) + " max=" + FORMAT.format(max) + " avg="
+                + FORMAT.format(avg) + " 95%=" + FORMAT.format(percent95) + " 99%=" + FORMAT.format(percent99);
     }
 
     /**
@@ -183,22 +167,19 @@ public class Latency implements Serializable, Cloneable {
         return percent99;
     }
 
-    /** 
+    /**
      * Add the measurements from "other" and recalculate the min, max, and
-     * average values. The 95th and 99th percentile are not recalculated, 
+     * average values. The 95th and 99th percentile are not recalculated,
      * because the histogram from LatencyStatis not available, and those values
      * can't be generated.
      */
     public void rollup(Latency other) {
         if (other == null || other.totalOps == 0 || other.totalRequests == 0) {
-            throw new IllegalStateException
-                ("Can't rollup a Latency that doesn't have any data");
+            throw new IllegalStateException("Can't rollup a Latency that doesn't have any data");
         }
 
         if (maxTrackedLatencyMillis != other.maxTrackedLatencyMillis) {
-            throw new IllegalStateException
-                ("Can't rollup a Latency whose maxTrackedLatencyMillis is " +
-                 "different");
+            throw new IllegalStateException("Can't rollup a Latency whose maxTrackedLatencyMillis is " + "different");
         }
 
         if (min > other.min) {
@@ -209,8 +190,7 @@ public class Latency implements Serializable, Cloneable {
             max = other.max;
         }
 
-        avg = ((totalRequests * avg) + (other.totalRequests * other.avg)) / 
-              (totalRequests + other.totalRequests);
+        avg = ((totalRequests * avg) + (other.totalRequests * other.avg)) / (totalRequests + other.totalRequests);
 
         /* Clear out 95th and 99th. They have become invalid. */
         percent95 = 0;

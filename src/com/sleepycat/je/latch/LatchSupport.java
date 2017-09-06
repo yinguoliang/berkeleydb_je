@@ -24,40 +24,33 @@ import com.sleepycat.je.utilint.DatabaseUtil;
 import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
- * Supports latch debugging.
- *
- * In JE test mode (when the JE_TEST system property is set), TRACK_LATCHES
- * will be true and related debugging methods may be used to check the number
- * of Btree latches held.
- *
- * CAPTURE_OWNER is also set to true if the system property
- * JE_CAPTURE_LATCH_OWNER is defined to true.  This will capture a stack trace
- * when a latch is acquired exclusively, and the stack trace will be included
- * in all error messages.  Capturing the stack trace is expensive so this is
- * off by default for unit testing.
+ * Supports latch debugging. In JE test mode (when the JE_TEST system property
+ * is set), TRACK_LATCHES will be true and related debugging methods may be used
+ * to check the number of Btree latches held. CAPTURE_OWNER is also set to true
+ * if the system property JE_CAPTURE_LATCH_OWNER is defined to true. This will
+ * capture a stack trace when a latch is acquired exclusively, and the stack
+ * trace will be included in all error messages. Capturing the stack trace is
+ * expensive so this is off by default for unit testing.
  */
 public class LatchSupport {
 
-    public static final boolean TRACK_LATCHES = DatabaseUtil.TEST;
+    public static final boolean    TRACK_LATCHES              = DatabaseUtil.TEST;
 
-    static final boolean CAPTURE_OWNER =
-        Boolean.getBoolean("JE_CAPTURE_LATCH_OWNER");
+    static final boolean           CAPTURE_OWNER              = Boolean.getBoolean("JE_CAPTURE_LATCH_OWNER");
 
     /*
      * Indicates whether to use tryLock() with a timeout, instead of a simple
-     * lock() that waits forever and is uninterruptible.  We would like to
-     * always use timeouts and interruptible latches, but these are new
-     * features and this boolean allows reverting to the old behavior.
+     * lock() that waits forever and is uninterruptible. We would like to always
+     * use timeouts and interruptible latches, but these are new features and
+     * this boolean allows reverting to the old behavior.
      */
-    static final boolean INTERRUPTIBLE_WITH_TIMEOUT = true;
+    static final boolean           INTERRUPTIBLE_WITH_TIMEOUT = true;
 
     /* Used for Btree latches. */
-    public final static LatchTable btreeLatchTable =
-        TRACK_LATCHES ? (new LatchTable()) : null;
+    public final static LatchTable btreeLatchTable            = TRACK_LATCHES ? (new LatchTable()) : null;
 
     /* Used for all other latches. */
-    public final static LatchTable otherLatchTable =
-        TRACK_LATCHES ? (new LatchTable()) : null;
+    public final static LatchTable otherLatchTable            = TRACK_LATCHES ? (new LatchTable()) : null;
 
     public static void expectBtreeLatchesHeld(final int expectNLatches) {
         expectBtreeLatchesHeld(expectNLatches, "");
@@ -69,29 +62,30 @@ public class LatchSupport {
         public int getLatchTimeoutMs() {
             return 0;
         }
+
         @Override
         public String getLatchName() {
             return null;
         }
+
         @Override
         public LatchTable getLatchTable() {
             return null;
         }
+
         @Override
         public EnvironmentImpl getEnvImplForFatalException() {
             return null;
         }
     };
 
-    public static void expectBtreeLatchesHeld(final int expectNLatches,
-                                              final String msg) {
+    public static void expectBtreeLatchesHeld(final int expectNLatches, final String msg) {
         final int nHeld = btreeLatchTable.nLatchesHeld();
         if (nHeld == expectNLatches) {
             return;
         }
-        throw unexpectedState(String.format(
-            "Expected %d Btree latches held but got %d. %s\nLatch table: %s\n",
-            expectNLatches, nHeld, msg, btreeLatchesHeldToString()));
+        throw unexpectedState(String.format("Expected %d Btree latches held but got %d. %s\nLatch table: %s\n",
+                expectNLatches, nHeld, msg, btreeLatchesHeldToString()));
     }
 
     public static int nBtreeLatchesHeld() {
@@ -127,8 +121,7 @@ public class LatchSupport {
             return;
         }
         if (!latchTable.add(latch)) {
-            throw unexpectedState(
-                "Latch already held." + latch.debugString());
+            throw unexpectedState("Latch already held." + latch.debugString());
         }
     }
 
@@ -142,27 +135,20 @@ public class LatchSupport {
             return;
         }
         if (!latchTable.remove(latch)) {
-            throw unexpectedState(
-                "Latch not held." + latch.debugString());
+            throw unexpectedState("Latch not held." + latch.debugString());
         }
     }
 
-    static String toString(final Latch latch,
-                           final LatchContext context,
-                           final OwnerInfo lastOwnerInfo) {
+    static String toString(final Latch latch, final LatchContext context, final OwnerInfo lastOwnerInfo) {
         final StringBuilder builder = new StringBuilder();
-        builder.append(context.getLatchName()).
-            append(" exclusiveOwner: ").
-            append(latch.getExclusiveOwner());
+        builder.append(context.getLatchName()).append(" exclusiveOwner: ").append(latch.getExclusiveOwner());
         if (lastOwnerInfo != null) {
             lastOwnerInfo.toString(builder);
         }
         return builder.toString();
     }
 
-    static String debugString(final Latch latch,
-                              final LatchContext context,
-                              final OwnerInfo lastOwnerInfo) {
+    static String debugString(final Latch latch, final LatchContext context, final OwnerInfo lastOwnerInfo) {
 
         final StringBuilder builder = new StringBuilder(500);
         builder.append(context.getLatchName());
@@ -194,22 +180,17 @@ public class LatchSupport {
         return builder.toString();
     }
 
-    static EnvironmentFailureException handleTimeout(
-        final Latch latch,
-        final LatchContext context) {
+    static EnvironmentFailureException handleTimeout(final Latch latch, final LatchContext context) {
 
         final EnvironmentImpl envImpl = context.getEnvImplForFatalException();
         final Logger logger = envImpl.getLogger();
         final String msg = latch.debugString();
 
-        LoggerUtils.logMsg(
-            logger, envImpl, Level.SEVERE,
-            "Thread dump follows for latch timeout: " + msg);
+        LoggerUtils.logMsg(logger, envImpl, Level.SEVERE, "Thread dump follows for latch timeout: " + msg);
 
         LoggerUtils.fullThreadDump(logger, envImpl, Level.SEVERE);
 
-        return unexpectedState(
-            envImpl, "Latch timeout. " + msg);
+        return unexpectedState(envImpl, "Latch timeout. " + msg);
 
     }
 }

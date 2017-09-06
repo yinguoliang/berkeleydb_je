@@ -27,12 +27,12 @@ import java.util.logging.LogRecord;
  */
 public class TracerFormatter extends Formatter {
 
-    private static final String FORMAT = "yyyy-MM-dd HH:mm:ss.SSS z";
+    private static final String   FORMAT   = "yyyy-MM-dd HH:mm:ss.SSS z";
     private static final TimeZone TIMEZONE = TimeZone.getTimeZone("UTC");
 
-    private final Date date;
-    private final DateFormat formatter;
-    private String envName;
+    private final Date            date;
+    private final DateFormat      formatter;
+    private String                envName;
 
     public TracerFormatter() {
         date = new Date();
@@ -45,7 +45,7 @@ public class TracerFormatter extends Formatter {
     }
 
     /**
-     * Return a formatted date for the specified time.  Use this method for
+     * Return a formatted date for the specified time. Use this method for
      * thread safety, since Date and DateFormat are not thread safe.
      *
      * @param millis the time in milliseconds
@@ -58,8 +58,9 @@ public class TracerFormatter extends Formatter {
     }
 
     /**
-     * Format the log record in this form:
-     *   <short date> <short time> <message level> <message>
+     * Format the log record in this form: <short date> <short time> <message
+     * level> <message>
+     * 
      * @param record the log record to be formatted.
      * @return a formatted log record
      */

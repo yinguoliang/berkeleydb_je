@@ -22,7 +22,5 @@ import com.sleepycat.je.log.entry.LogEntry;
  */
 public interface VLSNRecoveryProxy {
 
-    public void trackMapping(long lsn, 
-                             LogEntryHeader currentEntryHeader,
-                             LogEntry logEntry);
+    public void trackMapping(long lsn, LogEntryHeader currentEntryHeader, LogEntry logEntry);
 }

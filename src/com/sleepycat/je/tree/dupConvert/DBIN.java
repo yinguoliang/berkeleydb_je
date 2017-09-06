@@ -27,18 +27,17 @@ import com.sleepycat.je.tree.TreeUtils;
 import com.sleepycat.je.utilint.SizeofMarker;
 
 /**
- * A DBIN represents an Duplicate Bottom Internal Node in the JE tree.
- *
- * Obsolete in log version 8, only used by DupConvert and some log readers.
+ * A DBIN represents an Duplicate Bottom Internal Node in the JE tree. Obsolete
+ * in log version 8, only used by DupConvert and some log readers.
  */
 public final class DBIN extends BIN implements Loggable {
     private static final String BEGIN_TAG = "<dbin>";
-    private static final String END_TAG = "</dbin>";
+    private static final String END_TAG   = "</dbin>";
 
     /**
      * Full key for this set of duplicates.
      */
-    private byte[] dupKey;
+    private byte[]              dupKey;
 
     public DBIN() {
         super();
@@ -59,8 +58,8 @@ public final class DBIN extends BIN implements Loggable {
     }
 
     /**
-     * @return true if this node is a duplicate-bearing node type, false
-     * if otherwise.
+     * @return true if this node is a duplicate-bearing node type, false if
+     *         otherwise.
      */
     @Override
     public boolean containsDuplicates() {
@@ -84,6 +83,7 @@ public final class DBIN extends BIN implements Loggable {
 
     /**
      * For unit test support:
+     * 
      * @return a string that dumps information about this IN, without
      */
     @Override
@@ -93,7 +93,7 @@ public final class DBIN extends BIN implements Loggable {
         sb.append(beginTag());
         sb.append('\n');
 
-        sb.append(TreeUtils.indent(nSpaces+2));
+        sb.append(TreeUtils.indent(nSpaces + 2));
         sb.append("<dupkey>");
         sb.append(dupKey == null ? "" : Key.dumpString(dupKey, 0));
         sb.append("</dupkey>");

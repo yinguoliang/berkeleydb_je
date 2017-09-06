@@ -28,28 +28,27 @@ import com.sleepycat.je.utilint.Adler32;
  * A rolling window of key/data pairs used by the ldiff algorithm.
  */
 public class Window {
-    private final Cursor cursor;
-    private List<byte[]> window;
+    private final Cursor        cursor;
+    private List<byte[]>        window;
     private final MessageDigest md;
-    private final int windowSize;
-    private long chksum;
+    private final int           windowSize;
+    private long                chksum;
 
     /* The begin key/data pair of a window. */
-    private byte[] beginKey;
-    private byte[] beginData;
+    private byte[]              beginKey;
+    private byte[]              beginData;
     /* The size of a different area. */
-    private long diffSize;
+    private long                diffSize;
 
     /**
-     * Create a window of the given size, starting at the next record pointed
-     * at by the Cursor.
+     * Create a window of the given size, starting at the next record pointed at
+     * by the Cursor.
      * 
      * @param cursor an open cursor on the database being diff'd
      * @param windowSize the number of records to include in the window
      * @throws Exception
      */
-    public Window(Cursor cursor, int windowSize)
-        throws Exception {
+    public Window(Cursor cursor, int windowSize) throws Exception {
 
         this.cursor = cursor;
         this.windowSize = windowSize;
@@ -67,18 +66,14 @@ public class Window {
     /**
      * Roll a window forward by one key. The rolling checksum is adjusted to
      * account for this move past one key/value pair. Note that the md5 hash
-     * associated with the window is computed on demand and is not updated
-     * here.
+     * associated with the window is computed on demand and is not updated here.
      */
-    public void rollWindow()
-        throws Exception {
+    public void rollWindow() throws Exception {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
-        if (cursor.getNext(key, data, LockMode.DEFAULT) ==
-            OperationStatus.SUCCESS) {
-            byte[] keyValue = LDiffUtil.concatByteArray(key.getData(),
-                                                        data.getData());
+        if (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
+            byte[] keyValue = LDiffUtil.concatByteArray(key.getData(), data.getData());
             int removeXi = LDiffUtil.getXi(window.remove(0));
             window.add(keyValue);
             int addXi = LDiffUtil.getXi(keyValue);
@@ -102,15 +97,12 @@ public class Window {
         diffSize = 0;
 
         /* Please pay attention to the check order in while loop. */
-        while ((i < windowSize) &&
-                (cursor.getNext(key, data, LockMode.DEFAULT) ==
-                 OperationStatus.SUCCESS)) {
+        while ((i < windowSize) && (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS)) {
             if (i == 0) {
                 beginKey = key.getData();
                 beginData = data.getData();
             }
-            window.add(LDiffUtil.concatByteArray(key.getData(),
-                                                 data.getData()));
+            window.add(LDiffUtil.concatByteArray(key.getData(), data.getData()));
             i++;
         }
 
@@ -167,14 +159,11 @@ public class Window {
 
     /**
      * We use the rsync rolling checksum algorithm with the following changes:
-     * 
      * 1. Each byte (Xi in the tech report) is replaced by a 32 bit Adler
      * checksum of the bytes representing the concatenation of the key/value
-     * pair.
-     * 
-     * 2. The value for M is 64 instead of 32 to reduce the chances of false
-     * collisions on the rolling checksum, given our adaptation of the original
-     * algorithm to logically use 32 bit bytes.
+     * pair. 2. The value for M is 64 instead of 32 to reduce the chances of
+     * false collisions on the rolling checksum, given our adaptation of the
+     * original algorithm to logically use 32 bit bytes.
      */
     private void setChecksum() {
 
@@ -197,10 +186,8 @@ public class Window {
      * Update the checksum by removing removeXi and adding addXi, according to
      * the rsync algorithm.
      * 
-     * @param removeXi
-     *            the value to remove from the checksum
-     * @param addXi
-     *            the value to add to the checksum
+     * @param removeXi the value to remove from the checksum
+     * @param addXi the value to add to the checksum
      */
     private void rollChecksum(int removeXi, int addXi) {
         final int a = (int) chksum - removeXi + addXi;

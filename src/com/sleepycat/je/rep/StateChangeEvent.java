@@ -24,34 +24,33 @@ import com.sleepycat.je.rep.impl.node.NameIdPair;
  * <p>
  * Each event instance may have zero or more state change related exceptions
  * associated with it. The exceptions are of type {@link StateChangeException}.
- * {@link StateChangeException} has a method called {@link
- * StateChangeException#getEvent()} that can be used to associate an event with
- * an exception.
+ * {@link StateChangeException} has a method called
+ * {@link StateChangeException#getEvent()} that can be used to associate an
+ * event with an exception.
+ * 
  * @see StateChangeListener
  */
 public class StateChangeEvent implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long                 serialVersionUID = 1L;
 
     final private ReplicatedEnvironment.State state;
-    final private NameIdPair masterNameId;
+    final private NameIdPair                  masterNameId;
 
     /* Records the time associated with the event. */
-    final private long eventTime = System.currentTimeMillis();
+    final private long                        eventTime        = System.currentTimeMillis();
 
     /**
-     * @hidden
-     * For internal use only.
-     * Creates a StateChangeEvent identifying the new state and the new master
-     * if there is a master in the new state.
-     *
+     * @hidden For internal use only. Creates a StateChangeEvent identifying the
+     *         new state and the new master if there is a master in the new
+     *         state.
      * @param state the new state
      * @param masterNameId the new master or <code>NULL</code> if there isn't
-     * one.
+     *            one.
      */
     public StateChangeEvent(State state, NameIdPair masterNameId) {
-        assert((masterNameId.getId() == NameIdPair.NULL_NODE_ID) ||
-               ((state == State.MASTER) || (state == State.REPLICA))):
-                "state=" + state + " masterId=" + masterNameId.getId();
+        assert ((masterNameId.getId() == NameIdPair.NULL_NODE_ID)
+                || ((state == State.MASTER) || (state == State.REPLICA))) : "state=" + state + " masterId="
+                        + masterNameId.getId();
         this.state = state;
         this.masterNameId = masterNameId;
     }
@@ -79,16 +78,13 @@ public class StateChangeEvent implements Serializable {
      * Returns the node name identifying the master at the time of the event.
      *
      * @return the master node name
-     *
-     * @throws IllegalStateException if the node is in the
-     *  <code>DETACHED</code> or <code>UNKNOWN</code> state.
+     * @throws IllegalStateException if the node is in the <code>DETACHED</code>
+     *             or <code>UNKNOWN</code> state.
      */
-    public String getMasterNodeName()
-        throws IllegalStateException {
+    public String getMasterNodeName() throws IllegalStateException {
         if ((state == State.MASTER) || (state == State.REPLICA)) {
             return masterNameId.getName();
         }
-        throw new IllegalStateException("No current master in state: " +
-                                        state);
+        throw new IllegalStateException("No current master in state: " + state);
     }
 }

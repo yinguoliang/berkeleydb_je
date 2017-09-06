@@ -27,19 +27,18 @@ import com.sleepycat.persist.model.EntityModel;
 import com.sleepycat.persist.raw.RawObject;
 
 /**
- * Format for all enum types.
- *
- * In this class we resort to using reflection to allocate arrays of enums.
- * If there is a need for it, reflection could be avoided in the future by
- * generating code as new array formats are encountered.
+ * Format for all enum types. In this class we resort to using reflection to
+ * allocate arrays of enums. If there is a need for it, reflection could be
+ * avoided in the future by generating code as new array formats are
+ * encountered.
  *
  * @author Mark Hayes
  */
 public class EnumFormat extends Format {
 
-    private static final long serialVersionUID = 1069833955604373538L;
+    private static final long  serialVersionUID = 1069833955604373538L;
 
-    private String[] names;
+    private String[]           names;
     private transient Object[] values;
 
     EnumFormat(Catalog catalog, Class type) {
@@ -77,8 +76,7 @@ public class EnumFormat extends Format {
     }
 
     @Override
-    void collectRelatedFormats(Catalog catalog,
-                               Map<String, Format> newFormats) {
+    void collectRelatedFormats(Catalog catalog, Map<String, Format> newFormats) {
     }
 
     @Override
@@ -96,9 +94,8 @@ public class EnumFormat extends Format {
                 try {
                     values[i] = Enum.valueOf(cls, names[i]);
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException
-                        ("Deletion and renaming of enum values is not " +
-                         "supported: " + names[i], e);
+                    throw new IllegalArgumentException(
+                            "Deletion and renaming of enum values is not " + "supported: " + names[i], e);
                 }
             }
         }
@@ -147,10 +144,7 @@ public class EnumFormat extends Format {
     }
 
     @Override
-    Object convertRawObject(Catalog catalog,
-                            boolean rawAccess,
-                            RawObject rawObject,
-                            IdentityHashMap converted) {
+    Object convertRawObject(Catalog catalog, boolean rawAccess, RawObject rawObject, IdentityHashMap converted) {
         String name = rawObject.getEnum();
         for (int i = 0; i < names.length; i += 1) {
             if (names[i].equals(name)) {
@@ -159,8 +153,7 @@ public class EnumFormat extends Format {
                 return o;
             }
         }
-        throw new IllegalArgumentException
-            ("Enum constant is not defined: " + name);
+        throw new IllegalArgumentException("Enum constant is not defined: " + name);
     }
 
     @Override
@@ -171,24 +164,20 @@ public class EnumFormat extends Format {
     @Override
     void copySecKey(RecordInput input, RecordOutput output) {
         int len = input.getPackedIntByteLength();
-        output.writeFast
-            (input.getBufferBytes(), input.getBufferOffset(), len);
+        output.writeFast(input.getBufferBytes(), input.getBufferOffset(), len);
         input.skipFast(len);
     }
 
     @Override
     boolean evolve(Format newFormatParam, Evolver evolver) {
         if (!(newFormatParam instanceof EnumFormat)) {
-            evolver.addEvolveError
-                (this, newFormatParam,
-                 "Incompatible enum type changed detected",
-                 "An enum class may not be changed to a non-enum type");
-            /* For future:
-            evolver.addMissingMutation
-                (this, newFormatParam,
-                 "Converter is required when an enum class is changed to " +
-                 "a non-enum type");
-            */
+            evolver.addEvolveError(this, newFormatParam, "Incompatible enum type changed detected",
+                    "An enum class may not be changed to a non-enum type");
+            /*
+             * For future: evolver.addMissingMutation (this, newFormatParam,
+             * "Converter is required when an enum class is changed to " +
+             * "a non-enum type");
+             */
             return false;
         }
 
@@ -208,21 +197,18 @@ public class EnumFormat extends Format {
         if (!newNamesSet.containsAll(oldNamesList)) {
             final Set<String> oldNamesSet = new HashSet<String>(oldNamesList);
             oldNamesSet.removeAll(newNamesSet);
-            evolver.addEvolveError
-                (this, newFormat,
-                 "Incompatible enum type changed detected",
-                 "Enum values may not be removed: " + oldNamesSet);
+            evolver.addEvolveError(this, newFormat, "Incompatible enum type changed detected",
+                    "Enum values may not be removed: " + oldNamesSet);
         }
 
         /* Use a List for additional names to preserve ordinal order. */
-        final List<String> additionalNamesList =
-            new ArrayList<String>(newNamesList);
+        final List<String> additionalNamesList = new ArrayList<String>(newNamesList);
         additionalNamesList.removeAll(oldNamesList);
         final int nAdditionalNames = additionalNamesList.size();
 
         /*
          * If there are no aditional names, the new and old formats are
-         * equivalent.  This is the case where only the declaration order was
+         * equivalent. This is the case where only the declaration order was
          * changed.
          */
         if (nAdditionalNames == 0) {
@@ -231,8 +217,8 @@ public class EnumFormat extends Format {
         }
 
         /*
-         * Evolve the new format.  It should use the old names array, but with
-         * any additional names appended.  [#17140]
+         * Evolve the new format. It should use the old names array, but with
+         * any additional names appended. [#17140]
          */
         final int nOldNames = names.length;
         newFormat.names = new String[nOldNames + nAdditionalNames];
@@ -243,8 +229,8 @@ public class EnumFormat extends Format {
         newFormat.initValues();
 
         /*
-         * Because we never change the array index (stored integer value) for
-         * an enum value, the new format can read the values written by the old
+         * Because we never change the array index (stored integer value) for an
+         * enum value, the new format can read the values written by the old
          * format (newFormat is used as the Reader in the 2nd param below).
          */
         evolver.useEvolvedFormat(this, newFormat, newFormat);

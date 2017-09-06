@@ -30,32 +30,25 @@ import com.sleepycat.je.utilint.StatGroup;
 
 class JvmStats {
 
-    private final List<GarbageCollectorMXBean> gcBeans =
-        ManagementFactory.getGarbageCollectorMXBeans();
+    private final List<GarbageCollectorMXBean> gcBeans                 = ManagementFactory.getGarbageCollectorMXBeans();
 
-    private final MemoryMXBean memoryBean =
-        ManagementFactory.getMemoryMXBean();
-    private final String GROUPNAME = "Jvm";
-    private final String GROUPDEF = "Statistics capture jvm statistics.";
-    private final String GC_COUNT_DESC = "GC collection count.";
-    private final String GC_COLLECTION_TIME_DESC = "GC collection time.";
-    private final String GC_COUNT_NAME_SUFFIX = ".count";
-    private final String GC_TIME_NAME_SUFFIX = ".time";
+    private final MemoryMXBean                 memoryBean              = ManagementFactory.getMemoryMXBean();
+    private final String                       GROUPNAME               = "Jvm";
+    private final String                       GROUPDEF                = "Statistics capture jvm statistics.";
+    private final String                       GC_COUNT_DESC           = "GC collection count.";
+    private final String                       GC_COLLECTION_TIME_DESC = "GC collection time.";
+    private final String                       GC_COUNT_NAME_SUFFIX    = ".count";
+    private final String                       GC_TIME_NAME_SUFFIX     = ".time";
 
-    public static final StatDefinition LOAD_AVERAGE =
-        new StatDefinition("loadAverage",
-                           "Average JVM system load.",
-                           StatType.CUMULATIVE);
+    public static final StatDefinition         LOAD_AVERAGE            = new StatDefinition("loadAverage",
+            "Average JVM system load.", StatType.CUMULATIVE);
 
-    public static final StatDefinition HEAP_MEMORY_USAGE =
-        new StatDefinition("heap",
-                           "Heap memory usage.",
-                           StatType.CUMULATIVE);
+    public static final StatDefinition         HEAP_MEMORY_USAGE       = new StatDefinition("heap",
+            "Heap memory usage.", StatType.CUMULATIVE);
 
-    private StatGroup prev = null;
+    private StatGroup                          prev                    = null;
 
-    private final Map<String, StatDefinition> statdefmap =
-        new HashMap<String, StatDefinition>();
+    private final Map<String, StatDefinition>  statdefmap              = new HashMap<String, StatDefinition>();
 
     public JvmStats() {
         for (GarbageCollectorMXBean gcBean : gcBeans) {
@@ -78,15 +71,12 @@ class JvmStats {
         for (GarbageCollectorMXBean gcBean : gcBeans) {
             String name = gcBean.getName();
             String statname = name + GC_COUNT_NAME_SUFFIX;
-            new LongStat(
-                sg, statdefmap.get(statname), gcBean.getCollectionCount());
+            new LongStat(sg, statdefmap.get(statname), gcBean.getCollectionCount());
             statname = name + GC_TIME_NAME_SUFFIX;
-            new LongStat(
-                sg, statdefmap.get(statname), gcBean.getCollectionTime());
+            new LongStat(sg, statdefmap.get(statname), gcBean.getCollectionTime());
         }
         new LongStat(sg, LOAD_AVERAGE, (long) JVMSystemUtils.getSystemLoad());
-        new LongStat(
-            sg, HEAP_MEMORY_USAGE, memoryBean.getHeapMemoryUsage().getUsed());
+        new LongStat(sg, HEAP_MEMORY_USAGE, memoryBean.getHeapMemoryUsage().getUsed());
 
         if (prev != null) {
             retgroup = sg.computeInterval(prev);
@@ -99,10 +89,8 @@ class JvmStats {
 
     public void addVMStatDefs(SortedSet<String> projections) {
         for (GarbageCollectorMXBean gcBean : gcBeans) {
-            projections.add(
-                GROUPNAME + ":" + gcBean.getName() + GC_COUNT_NAME_SUFFIX);
-            projections.add(
-                GROUPNAME + ":" + gcBean.getName() + GC_TIME_NAME_SUFFIX);
+            projections.add(GROUPNAME + ":" + gcBean.getName() + GC_COUNT_NAME_SUFFIX);
+            projections.add(GROUPNAME + ":" + gcBean.getName() + GC_TIME_NAME_SUFFIX);
         }
         projections.add(GROUPNAME + ":" + LOAD_AVERAGE.getName());
         projections.add(GROUPNAME + ":" + HEAP_MEMORY_USAGE.getName());

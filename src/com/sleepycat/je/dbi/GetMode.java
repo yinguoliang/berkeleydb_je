@@ -25,7 +25,7 @@ public enum GetMode {
     NEXT_NODUP("NEXT_NODUP", true),
     PREV_NODUP("PREV_NODUP", false);
 
-    private String name;
+    private String  name;
     private boolean forward;
 
     private GetMode(String name, boolean forward) {

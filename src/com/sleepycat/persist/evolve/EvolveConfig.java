@@ -20,7 +20,7 @@ import java.util.Set;
 import com.sleepycat.persist.EntityStore;
 
 /**
- * Configuration properties for eager conversion of unevolved objects.  This
+ * Configuration properties for eager conversion of unevolved objects. This
  * configuration is used with {@link EntityStore#evolve EntityStore.evolve}.
  *
  * @see com.sleepycat.persist.evolve Class Evolution
@@ -28,7 +28,7 @@ import com.sleepycat.persist.EntityStore;
  */
 public class EvolveConfig implements Cloneable {
 
-    private Set<String> classesToEvolve;
+    private Set<String>    classesToEvolve;
     private EvolveListener evolveListener;
 
     /**
@@ -42,9 +42,7 @@ public class EvolveConfig implements Cloneable {
      * Returns a shallow copy of the configuration.
      *
      * @return a shallow copy of the configuration.
-     *
-     * @deprecated As of JE 4.0.13, replaced by {@link
-     * EvolveConfig#clone()}.
+     * @deprecated As of JE 4.0.13, replaced by {@link EvolveConfig#clone()}.
      */
     public EvolveConfig cloneConfig() {
         try {
@@ -67,11 +65,10 @@ public class EvolveConfig implements Cloneable {
     }
 
     /**
-     * Adds an entity class for a primary index to be converted.  If no classes
+     * Adds an entity class for a primary index to be converted. If no classes
      * are added, all indexes that require evolution will be converted.
      *
      * @param entityClass the entity class name.
-     *
      * @return 'this'.
      */
     public EvolveConfig addClassToEvolve(String entityClass) {
@@ -92,20 +89,18 @@ public class EvolveConfig implements Cloneable {
      * Sets a progress listener that is notified each time an entity is read.
      *
      * @param listener the EvolveListener.
-     *
      * @return 'this'.
      */
     public EvolveConfig setEvolveListener(EvolveListener listener) {
         setEvolveListenerVoid(listener);
         return this;
     }
-    
+
     /**
      * <!-- begin JE only -->
-     * @hidden
-     * <!-- end JE only -->
-     * The void return setter for use by Bean editors.
-     *
+     * 
+     * @hidden <!-- end JE only --> The void return setter for use by Bean
+     *         editors.
      * @param listener the EvolveListener.
      */
     public void setEvolveListenerVoid(EvolveListener listener) {

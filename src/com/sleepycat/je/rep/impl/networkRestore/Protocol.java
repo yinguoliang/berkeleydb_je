@@ -23,88 +23,48 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * The protocol used to obtain backup files from a LF Feeder. The message
- * exchange is always initiated by the client.
- *
- * The following describes the request/response messages exchanged between the
- * two nodes:
- *
- *      FeederInfoReq -> FeederInfoResp
- *
- *      FileListReq -> FileListResp
- *
- *      FileInfoReq -> FileInfoResp
- *
- *      FileReq -> FileStart <byte stream> FileEnd
- *
- *      Done
- *
- * So a complete sequence of successful request messages looks like:
- *
- * FeederInfoReq FileListReq [[FileInfoReq] [FileReq] ]+ Done
- *
- * A response sequence would look like:
- *
- * FeederInfoResp FileListResp [[FileInfoResp] [FileStart <byte stream> FileEnd] ]+
- *
- * The client may abandon its interaction with the server if it decides the
- * server is overloaded.
- *
- * The client tries to minimize the number of files it actually requests based
- * upon its current state.
- *
+ * exchange is always initiated by the client. The following describes the
+ * request/response messages exchanged between the two nodes: FeederInfoReq ->
+ * FeederInfoResp FileListReq -> FileListResp FileInfoReq -> FileInfoResp
+ * FileReq -> FileStart <byte stream> FileEnd Done So a complete sequence of
+ * successful request messages looks like: FeederInfoReq FileListReq
+ * [[FileInfoReq] [FileReq] ]+ Done A response sequence would look like:
+ * FeederInfoResp FileListResp [[FileInfoResp] [FileStart <byte stream> FileEnd]
+ * ]+ The client may abandon its interaction with the server if it decides the
+ * server is overloaded. The client tries to minimize the number of files it
+ * actually requests based upon its current state.
  */
 public class Protocol extends BinaryProtocol {
 
-    static public final int VERSION = 2;
+    static public final int VERSION          = 2;
 
     /* The messages defined by this class. */
-    public final MessageOp FEEDER_INFO_REQ =
-        new MessageOp((short)1, FeederInfoReq.class);
+    public final MessageOp  FEEDER_INFO_REQ  = new MessageOp((short) 1, FeederInfoReq.class);
 
-    public final MessageOp FEEDER_INFO_RESP =
-        new MessageOp((short)2, FeederInfoResp.class);
+    public final MessageOp  FEEDER_INFO_RESP = new MessageOp((short) 2, FeederInfoResp.class);
 
-    public final MessageOp FILE_LIST_REQ =
-        new MessageOp((short)3, FileListReq.class);
+    public final MessageOp  FILE_LIST_REQ    = new MessageOp((short) 3, FileListReq.class);
 
-    public final MessageOp FILE_LIST_RESP =
-        new MessageOp((short)4, FileListResp.class);
+    public final MessageOp  FILE_LIST_RESP   = new MessageOp((short) 4, FileListResp.class);
 
-    public final MessageOp FILE_REQ =
-        new MessageOp((short)5, FileReq.class);
+    public final MessageOp  FILE_REQ         = new MessageOp((short) 5, FileReq.class);
 
-    public final MessageOp FILE_START =
-        new MessageOp((short)6, FileStart.class);
+    public final MessageOp  FILE_START       = new MessageOp((short) 6, FileStart.class);
 
-    public final MessageOp FILE_END =
-        new MessageOp((short)7, FileEnd.class);
+    public final MessageOp  FILE_END         = new MessageOp((short) 7, FileEnd.class);
 
-    public final MessageOp FILE_INFO_REQ =
-        new MessageOp((short)8, FileInfoReq.class);
+    public final MessageOp  FILE_INFO_REQ    = new MessageOp((short) 8, FileInfoReq.class);
 
-    public final MessageOp FILE_INFO_RESP =
-        new MessageOp((short)9, FileInfoResp.class);
+    public final MessageOp  FILE_INFO_RESP   = new MessageOp((short) 9, FileInfoResp.class);
 
-    public final MessageOp DONE =
-        new MessageOp((short)10, Done.class);
+    public final MessageOp  DONE             = new MessageOp((short) 10, Done.class);
 
-    public Protocol(NameIdPair nameIdPair,
-                    int configuredVersion,
-                    EnvironmentImpl envImpl) {
+    public Protocol(NameIdPair nameIdPair, int configuredVersion, EnvironmentImpl envImpl) {
 
         super(nameIdPair, VERSION, configuredVersion, envImpl);
 
-        initializeMessageOps(new MessageOp[]
-                             {FEEDER_INFO_REQ,
-                              FEEDER_INFO_RESP,
-                              FILE_LIST_REQ,
-                              FILE_LIST_RESP,
-                              FILE_INFO_REQ,
-                              FILE_INFO_RESP,
-                              FILE_REQ,
-                              FILE_START,
-                              FILE_END,
-                              DONE});
+        initializeMessageOps(new MessageOp[] { FEEDER_INFO_REQ, FEEDER_INFO_RESP, FILE_LIST_REQ, FILE_LIST_RESP,
+                FILE_INFO_REQ, FILE_INFO_RESP, FILE_REQ, FILE_START, FILE_END, DONE });
     }
 
     /* Requests the list of log files that need to be backed up. */
@@ -127,15 +87,13 @@ public class Protocol extends BinaryProtocol {
 
     public class FeederInfoResp extends SimpleMessage {
         /* The number of feeders that are currently busy at this server. */
-        private final int activeFeeders;
+        private final int  activeFeeders;
 
         /* The vlsn range covered by this server if it's a rep node. */
         private final VLSN rangeFirst;
         private final VLSN rangeLast;
 
-        public FeederInfoResp(int activeFeeders,
-                              VLSN rangeFirst,
-                              VLSN rangeLast) {
+        public FeederInfoResp(int activeFeeders, VLSN rangeFirst, VLSN rangeLast) {
             super();
             this.activeFeeders = activeFeeders;
             this.rangeFirst = rangeFirst;
@@ -210,7 +168,7 @@ public class Protocol extends BinaryProtocol {
 
         @Override
         public ByteBuffer wireFormat() {
-            return wireFormat((Object)fileNames);
+            return wireFormat((Object) fileNames);
         }
 
         public String[] getFileNames() {
@@ -286,10 +244,7 @@ public class Protocol extends BinaryProtocol {
     public class FileInfoResp extends FileStart {
         private final byte[] digestSHA1;
 
-        public FileInfoResp(String fileName,
-                            long fileLength,
-                            long lastModifiedTime,
-                            byte[] digestSHA1) {
+        public FileInfoResp(String fileName, long fileLength, long lastModifiedTime, byte[] digestSHA1) {
             super(fileName, fileLength, lastModifiedTime);
             this.digestSHA1 = digestSHA1;
         }
@@ -306,10 +261,7 @@ public class Protocol extends BinaryProtocol {
 
         @Override
         public ByteBuffer wireFormat() {
-            return wireFormat(fileName,
-                              fileLength,
-                              lastModifiedTime,
-                              digestSHA1);
+            return wireFormat(fileName, fileLength, lastModifiedTime, digestSHA1);
         }
 
         /**
@@ -322,21 +274,17 @@ public class Protocol extends BinaryProtocol {
     }
 
     /**
-     * The message starting the response triple:
-     *
-     * FileStart <byte stream> FileEnd
+     * The message starting the response triple: FileStart <byte stream> FileEnd
      */
     public class FileStart extends SimpleMessage {
         /* Must match the request name. */
         protected final String fileName;
 
         /* The actual file length in bytes on disk */
-        protected final long fileLength;
-        protected final long lastModifiedTime;
+        protected final long   fileLength;
+        protected final long   lastModifiedTime;
 
-        public FileStart(String fileName,
-                         long fileLength,
-                         long lastModifiedTime) {
+        public FileStart(String fileName, long fileLength, long lastModifiedTime) {
             super();
             this.fileName = fileName;
             this.fileLength = fileLength;
@@ -369,16 +317,11 @@ public class Protocol extends BinaryProtocol {
     }
 
     /**
-     * The message ending the response triple:
-     *
-     * FileStart <byte stream> FileEnd
+     * The message ending the response triple: FileStart <byte stream> FileEnd
      */
     public class FileEnd extends FileInfoResp {
 
-        public FileEnd(String fileName,
-                       long fileLength,
-                       long lastModifiedTime,
-                       byte[] digestSHA1) {
+        public FileEnd(String fileName, long fileLength, long lastModifiedTime, byte[] digestSHA1) {
             super(fileName, fileLength, lastModifiedTime, digestSHA1);
         }
 

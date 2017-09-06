@@ -27,12 +27,9 @@ class RawComplexInput extends RawAbstractInput {
 
     private FieldInfo[] fields;
     private RawObject[] objects;
-    private int index;
+    private int         index;
 
-    RawComplexInput(Catalog catalog,
-                    boolean rawAccess,
-                    IdentityHashMap converted,
-                    FieldInfo[] fields,
+    RawComplexInput(Catalog catalog, boolean rawAccess, IdentityHashMap converted, FieldInfo[] fields,
                     RawObject[] objects) {
         super(catalog, rawAccess, converted);
         this.fields = fields;
@@ -40,8 +37,7 @@ class RawComplexInput extends RawAbstractInput {
     }
 
     @Override
-    Object readNext()
-        throws RefreshException {
+    Object readNext() throws RefreshException {
 
         RawObject raw = objects[index];
         FieldInfo field = fields[index];

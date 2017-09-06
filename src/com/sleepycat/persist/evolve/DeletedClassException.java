@@ -26,11 +26,10 @@ public class DeletedClassException extends OperationFailureException {
 
     private static final long serialVersionUID = 518500929L;
 
-    /** 
-     * For internal use only.
-     * <!-- begin JE only -->
-     * @hidden 
-     * <!-- end JE only -->
+    /**
+     * For internal use only. <!-- begin JE only -->
+     * 
+     * @hidden <!-- end JE only -->
      */
     public DeletedClassException(String message) {
         super(message);
@@ -38,18 +37,19 @@ public class DeletedClassException extends OperationFailureException {
 
     /* <!-- begin JE only --> */
 
-    /** 
+    /**
      * For internal use only.
-     * @hidden 
+     * 
+     * @hidden
      */
-    private DeletedClassException(String message,
-                                  OperationFailureException cause) {
+    private DeletedClassException(String message, OperationFailureException cause) {
         super(message, cause);
     }
 
-    /** 
+    /**
      * For internal use only.
-     * @hidden 
+     * 
+     * @hidden
      */
     @Override
     public OperationFailureException wrapSelf(String msg) {

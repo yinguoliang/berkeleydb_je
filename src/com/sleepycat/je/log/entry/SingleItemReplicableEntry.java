@@ -22,7 +22,7 @@ import com.sleepycat.je.log.VersionedWriteLoggable;
 
 /**
  * A basic implementation of a replicable log entry that has a single loggable
- * item and provides for writing in a single format by default.  Starting with
+ * item and provides for writing in a single format by default. Starting with
  * log version 9, entry classes whose log format has changed since the previous
  * log version will need to override the {@link #getSize(int, boolean)} and
  * {@link #writeEntry(ByteBuffer, int, boolean)} methods to support writing the
@@ -30,8 +30,8 @@ import com.sleepycat.je.log.VersionedWriteLoggable;
  *
  * @param <T> the type of the loggable items in this entry
  */
-abstract class SingleItemReplicableEntry<T extends VersionedWriteLoggable>
-        extends SingleItemEntry<T> implements ReplicableLogEntry {
+abstract class SingleItemReplicableEntry<T extends VersionedWriteLoggable> extends SingleItemEntry<T>
+        implements ReplicableLogEntry {
 
     /**
      * Creates an instance of this class for reading a log entry.
@@ -55,8 +55,7 @@ abstract class SingleItemReplicableEntry<T extends VersionedWriteLoggable>
     @Override
     public Collection<VersionedWriteLoggable> getEmbeddedLoggables() {
         /* The cast is needed due to quirks of Java generics. */
-        return Collections.singleton(
-            (VersionedWriteLoggable) newInstanceOfType());
+        return Collections.singleton((VersionedWriteLoggable) newInstanceOfType());
     }
 
     @Override
@@ -65,10 +64,8 @@ abstract class SingleItemReplicableEntry<T extends VersionedWriteLoggable>
     }
 
     @Override
-    public void writeEntry(final ByteBuffer logBuffer,
-                           final int logVersion,
-                           final boolean forReplication) {
-        getMainItem().writeToLog(logBuffer, logVersion,forReplication);
+    public void writeEntry(final ByteBuffer logBuffer, final int logVersion, final boolean forReplication) {
+        getMainItem().writeToLog(logBuffer, logVersion, forReplication);
     }
 
     @Override
@@ -77,10 +74,8 @@ abstract class SingleItemReplicableEntry<T extends VersionedWriteLoggable>
     }
 
     @Override
-    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer,
-                                                 final int srcVersion,
+    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer, final int srcVersion,
                                                  final int destVersion) {
-        return newInstanceOfType().isReplicationFormatWorthwhile(
-            logBuffer, srcVersion, destVersion);
+        return newInstanceOfType().isReplicationFormatWorthwhile(logBuffer, srcVersion, destVersion);
     }
 }

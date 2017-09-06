@@ -35,32 +35,28 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
  */
 public interface ReplicaConsistencyPolicy {
 
-	/**
-	 * @hidden For internal use only.
-	 *
-	 *         Ensures that the replica is within the constraints specified by
-	 *         this policy. If it isn't the method waits until the constraint is
-	 *         satisfied by the replica.
-	 *
-	 * @param repInstance
-	 *            identifies the replicated environment that must meet this
-	 *            consistency requirement.
-	 */
-	public void ensureConsistency(EnvironmentImpl repInstance) throws InterruptedException;
+    /**
+     * @hidden For internal use only. Ensures that the replica is within the
+     *         constraints specified by this policy. If it isn't the method
+     *         waits until the constraint is satisfied by the replica.
+     * @param repInstance identifies the replicated environment that must meet
+     *            this consistency requirement.
+     */
+    public void ensureConsistency(EnvironmentImpl repInstance) throws InterruptedException;
 
-	/**
-	 * Returns the name used to identify the policy. The name is used when
-	 * constructing policy property values for use in je.properties files.
-	 */
-	public String getName();
+    /**
+     * Returns the name used to identify the policy. The name is used when
+     * constructing policy property values for use in je.properties files.
+     */
+    public String getName();
 
-	/**
-	 * The timeout associated with the consistency policy. If consistency cannot
-	 * be established by the Replica within the timeout period, a
-	 * {@link com.sleepycat.je.rep.ReplicaConsistencyException} is thrown by
-	 * {@link com.sleepycat.je.Environment#beginTransaction}.
-	 *
-	 * @return the timeout associated with the policy
-	 */
-	public long getTimeout(TimeUnit unit);
+    /**
+     * The timeout associated with the consistency policy. If consistency cannot
+     * be established by the Replica within the timeout period, a
+     * {@link com.sleepycat.je.rep.ReplicaConsistencyException} is thrown by
+     * {@link com.sleepycat.je.Environment#beginTransaction}.
+     *
+     * @return the timeout associated with the policy
+     */
+    public long getTimeout(TimeUnit unit);
 }

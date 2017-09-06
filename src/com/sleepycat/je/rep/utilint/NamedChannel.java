@@ -21,12 +21,12 @@ import com.sleepycat.je.rep.net.DataChannel;
 import com.sleepycat.je.rep.impl.node.NameIdPair;
 
 /**
- * Packages a DataChannel and a NameIdPair together so that logging
- * messages can show the node name instead of the channel toString();
+ * Packages a DataChannel and a NameIdPair together so that logging messages can
+ * show the node name instead of the channel toString();
  */
 public class NamedChannel implements ByteChannel {
 
-    private NameIdPair nameIdPair;
+    private NameIdPair          nameIdPair;
     protected final DataChannel channel;
 
     public NamedChannel(DataChannel channel, NameIdPair nameIdPair) {
@@ -87,4 +87,3 @@ public class NamedChannel implements ByteChannel {
         return channel.write(src);
     }
 }
-

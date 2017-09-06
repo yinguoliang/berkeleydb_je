@@ -21,13 +21,13 @@ import com.sleepycat.je.log.Loggable;
 import com.sleepycat.je.utilint.DbLsn;
 
 /**
- * DeltaInfo holds the delta for one BIN entry in a partial BIN log entry.
- * The data here is all that we need to update a BIN to its proper state.
+ * DeltaInfo holds the delta for one BIN entry in a partial BIN log entry. The
+ * data here is all that we need to update a BIN to its proper state.
  */
 public class DeltaInfo implements Loggable {
     private byte[] key;
-    private long lsn;
-    private byte state;
+    private long   lsn;
+    private byte   state;
 
     DeltaInfo(byte[] key, long lsn, byte state) {
         this.key = key;
@@ -36,9 +36,7 @@ public class DeltaInfo implements Loggable {
     }
 
     /**
-     * For reading from the log only.
-     *
-     * Is public for Sizeof.
+     * For reading from the log only. Is public for Sizeof.
      */
     public DeltaInfo() {
         lsn = DbLsn.NULL_LSN;
@@ -46,10 +44,8 @@ public class DeltaInfo implements Loggable {
 
     @Override
     public int getLogSize() {
-        return
-            LogUtils.getByteArrayLogSize(key) +
-            LogUtils.getPackedLongLogSize(lsn) + // LSN
-            1; // state
+        return LogUtils.getByteArrayLogSize(key) + LogUtils.getPackedLongLogSize(lsn) + // LSN
+                1; // state
     }
 
     @Override
@@ -106,12 +102,11 @@ public class DeltaInfo implements Loggable {
     }
 
     /**
-     * Returns the number of bytes occupied by this object.  Deltas are not
+     * Returns the number of bytes occupied by this object. Deltas are not
      * stored in the Btree, but they are budgeted during a SortedLSNTreeWalker
      * run.
      */
     long getMemorySize() {
-        return MemoryBudget.DELTAINFO_OVERHEAD +
-               MemoryBudget.byteArraySize(key.length);
+        return MemoryBudget.DELTAINFO_OVERHEAD + MemoryBudget.byteArraySize(key.length);
     }
 }

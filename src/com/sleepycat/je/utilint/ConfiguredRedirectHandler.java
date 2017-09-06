@@ -19,13 +19,11 @@ import java.util.logging.LogRecord;
 import com.sleepycat.je.dbi.EnvironmentImpl;
 
 /**
- * Redirects logging messages to the owning environment's application
- * configured handler, if one was specified through
- * EnvironmentConfig.setLoggingHandler(). Handlers for JE logging can be
- * configured through EnvironmentConfig, to support handlers which:
- * - require a constructor with arguments
- * - is specific to this environment, and multiple environments exist in the
- *   same process.
+ * Redirects logging messages to the owning environment's application configured
+ * handler, if one was specified through EnvironmentConfig.setLoggingHandler().
+ * Handlers for JE logging can be configured through EnvironmentConfig, to
+ * support handlers which: - require a constructor with arguments - is specific
+ * to this environment, and multiple environments exist in the same process.
  */
 public class ConfiguredRedirectHandler extends Handler {
 
@@ -42,8 +40,7 @@ public class ConfiguredRedirectHandler extends Handler {
     }
 
     private Handler getEnvSpecificConfiguredHandler() {
-        EnvironmentImpl envImpl =
-            LoggerUtils.envMap.get(Thread.currentThread());
+        EnvironmentImpl envImpl = LoggerUtils.envMap.get(Thread.currentThread());
 
         /*
          * Prefer to lose logging output, rather than risk a
@@ -58,8 +55,7 @@ public class ConfiguredRedirectHandler extends Handler {
     }
 
     @Override
-    public void close()
-        throws SecurityException {
+    public void close() throws SecurityException {
         Handler h = getEnvSpecificConfiguredHandler();
         if (h != null) {
             h.close();

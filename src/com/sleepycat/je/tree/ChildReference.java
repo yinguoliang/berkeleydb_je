@@ -26,15 +26,15 @@ import com.sleepycat.je.log.Loggable;
 import com.sleepycat.je.utilint.DbLsn;
 
 /**
- * A ChildReference is a reference in the tree from parent to child.  It
- * contains a node reference, key, and LSN.
+ * A ChildReference is a reference in the tree from parent to child. It contains
+ * a node reference, key, and LSN.
  */
 public class ChildReference implements Loggable {
 
-    private Node target;
-    private long lsn;
+    private Node   target;
+    private long   lsn;
     private byte[] key;
-    private byte state;
+    private byte   state;
 
     /**
      * Construct an empty child reference, for reading from the log.
@@ -53,17 +53,11 @@ public class ChildReference implements Loggable {
     /**
      * Construct a ChildReference for inserting an existing entry.
      */
-    public ChildReference(Node target,
-                          byte[] key,
-                          long lsn,
-                          byte existingState) {
+    public ChildReference(Node target, byte[] key, long lsn, byte existingState) {
         init(target, key, lsn, existingState | EntryStates.DIRTY_BIT);
     }
 
-    private void init(Node target,
-                      byte[] key,
-                      long lsn,
-                      int state) {
+    private void init(Node target, byte[] key, long lsn, int state) {
         this.target = target;
         this.key = key;
         this.lsn = lsn;
@@ -86,33 +80,30 @@ public class ChildReference implements Loggable {
     }
 
     /**
-     * Fetch the target object that this ChildReference refers to.  If the
-     * object is already in VM, then just return the reference to it.  If the
-     * object is not in VM, then read the object from the log.  If the object
-     * has been faulted in and the in arg is supplied, then the total memory
-     * size cache in the IN is invalidated.
+     * Fetch the target object that this ChildReference refers to. If the object
+     * is already in VM, then just return the reference to it. If the object is
+     * not in VM, then read the object from the log. If the object has been
+     * faulted in and the in arg is supplied, then the total memory size cache
+     * in the IN is invalidated.
      *
      * @param database The database that this ChildReference resides in.
-     * @param parent The IN that this ChildReference lives in.  If
-     * the target is fetched (i.e. it is null on entry), then the
-     * total in memory count is invalidated in the IN. May be null.
-     * For example, the root is a ChildReference and there is no parent IN
-     * when the rootIN is fetched in.
-     * @return the Node object representing the target node in the tree, or
-     * null if there is no target of this ChildReference, or null if a
-     * pendingDelete or knownDeleted entry has been cleaned.
+     * @param parent The IN that this ChildReference lives in. If the target is
+     *            fetched (i.e. it is null on entry), then the total in memory
+     *            count is invalidated in the IN. May be null. For example, the
+     *            root is a ChildReference and there is no parent IN when the
+     *            rootIN is fetched in.
+     * @return the Node object representing the target node in the tree, or null
+     *         if there is no target of this ChildReference, or null if a
+     *         pendingDelete or knownDeleted entry has been cleaned.
      */
-    public Node fetchTarget(DatabaseImpl database, IN parent)
-        throws DatabaseException {
+    public Node fetchTarget(DatabaseImpl database, IN parent) throws DatabaseException {
 
         if (target == null) {
 
             if (lsn == DbLsn.NULL_LSN) {
                 if (!isKnownDeleted()) {
                     throw EnvironmentFailureException.unexpectedState(
-                        IN.makeFetchErrorMsg(
-                            "NULL_LSN without KnownDeleted",
-                            parent, lsn, state, 0));
+                            IN.makeFetchErrorMsg("NULL_LSN without KnownDeleted", parent, lsn, state, 0));
                 }
                 /* Ignore a NULL_LSN (return null) if KnownDeleted is set. */
                 return null;
@@ -123,14 +114,14 @@ public class ChildReference implements Loggable {
                 Node node = (Node) envImpl.getLogManager().getEntry(lsn);
 
                 /*
-                 * For now, fetchTarget is never used to fetch an LN. If
-                 * this changes in the future, a CacheMode must be given
-                 * as a param, and the parent BIN moved from the dirty LRU
-                 * to the mixed LRU if the CacheMode is not EVICT_LN (as
-                 * it is done in IN.fetchTarget()).
+                 * For now, fetchTarget is never used to fetch an LN. If this
+                 * changes in the future, a CacheMode must be given as a param,
+                 * and the parent BIN moved from the dirty LRU to the mixed LRU
+                 * if the CacheMode is not EVICT_LN (as it is done in
+                 * IN.fetchTarget()).
                  */
-                assert(node.isIN());
-                assert(!node.isBINDelta());
+                assert (node.isIN());
+                assert (!node.isBINDelta());
 
                 final IN in = (IN) node;
 
@@ -145,29 +136,21 @@ public class ChildReference implements Loggable {
                     parent.updateMemorySize(null, target);
                 }
             } catch (FileNotFoundException e) {
-                if (!isKnownDeleted() &&
-                    !isPendingDeleted()) {
-                    throw new EnvironmentFailureException(
-                        envImpl, EnvironmentFailureReason.LOG_FILE_NOT_FOUND,
-                        IN.makeFetchErrorMsg(
-                            e.toString(), parent, lsn, state, 0),
-                        e);
-                    }
+                if (!isKnownDeleted() && !isPendingDeleted()) {
+                    throw new EnvironmentFailureException(envImpl, EnvironmentFailureReason.LOG_FILE_NOT_FOUND,
+                            IN.makeFetchErrorMsg(e.toString(), parent, lsn, state, 0), e);
+                }
 
                 /*
-                 * This is a LOG_FILE_NOT_FOUND for a KD or PD entry.
-                 *
-                 * Ignore. Cleaner got to it, so just return null.
+                 * This is a LOG_FILE_NOT_FOUND for a KD or PD entry. Ignore.
+                 * Cleaner got to it, so just return null.
                  */
             } catch (EnvironmentFailureException e) {
-                e.addErrorMessage(
-                    IN.makeFetchErrorMsg(null, parent, lsn, state, 0));
+                e.addErrorMessage(IN.makeFetchErrorMsg(null, parent, lsn, state, 0));
                 throw e;
             } catch (RuntimeException e) {
-                throw new EnvironmentFailureException(
-                    envImpl, EnvironmentFailureReason.LOG_INTEGRITY,
-                    IN.makeFetchErrorMsg(e.toString(), parent, lsn, state, 0),
-                    e);
+                throw new EnvironmentFailureException(envImpl, EnvironmentFailureReason.LOG_INTEGRITY,
+                        IN.makeFetchErrorMsg(e.toString(), parent, lsn, state, 0), e);
             }
         }
 
@@ -228,11 +211,10 @@ public class ChildReference implements Loggable {
      * Do deferredWrite optional logging check.
      */
     void updateLsnAfterOptionalLog(DatabaseImpl dbImpl, long lsn) {
-        if ((lsn == DbLsn.NULL_LSN) &&
-            dbImpl.isDeferredWriteMode()) {
+        if ((lsn == DbLsn.NULL_LSN) && dbImpl.isDeferredWriteMode()) {
             /*
-             * Don't update the lsn -- we don't want to overwrite a
-             * non-null lsn.
+             * Don't update the lsn -- we don't want to overwrite a non-null
+             * lsn.
              */
             setDirty();
         } else {
@@ -246,7 +228,7 @@ public class ChildReference implements Loggable {
 
     /**
      * @return true if the entry has been deleted, although the transaction the
-     * performed the deletion may not be committed.
+     *         performed the deletion may not be committed.
      */
     private boolean isPendingDeleted() {
         return ((state & EntryStates.PENDING_DELETED_BIT) != 0);
@@ -274,19 +256,18 @@ public class ChildReference implements Loggable {
      * @see Loggable#getLogSize
      */
     public int getLogSize() {
-        return
-            LogUtils.getByteArrayLogSize(key) +   // key
-            LogUtils.getPackedLongLogSize(lsn) +  // LSN
-            1;                                    // state
+        return LogUtils.getByteArrayLogSize(key) + // key
+                LogUtils.getPackedLongLogSize(lsn) + // LSN
+                1; // state
     }
 
     /**
      * @see Loggable#writeToLog
      */
     public void writeToLog(ByteBuffer logBuffer) {
-        LogUtils.writeByteArray(logBuffer, key);  // key
+        LogUtils.writeByteArray(logBuffer, key); // key
         LogUtils.writePackedLong(logBuffer, lsn);
-        logBuffer.put(state);                     // state
+        logBuffer.put(state); // state
         state &= EntryStates.CLEAR_DIRTY_BIT;
     }
 
@@ -295,9 +276,9 @@ public class ChildReference implements Loggable {
      */
     public void readFromLog(ByteBuffer itemBuffer, int entryVersion) {
         boolean unpacked = (entryVersion < 6);
-        key = LogUtils.readByteArray(itemBuffer, unpacked);      // key
-        lsn = LogUtils.readLong(itemBuffer, unpacked);           // LSN
-        state = itemBuffer.get();                                // state
+        key = LogUtils.readByteArray(itemBuffer, unpacked); // key
+        lsn = LogUtils.readLong(itemBuffer, unpacked); // LSN
+        state = itemBuffer.get(); // state
         state &= EntryStates.CLEAR_DIRTY_BIT;
     }
 
@@ -321,8 +302,8 @@ public class ChildReference implements Loggable {
     }
 
     /**
-     * @see Loggable#logicalEquals
-     * Always return false, this item should never be compared.
+     * @see Loggable#logicalEquals Always return false, this item should never
+     *      be compared.
      */
     public boolean logicalEquals(Loggable other) {
         return false;

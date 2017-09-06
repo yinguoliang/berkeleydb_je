@@ -13,11 +13,10 @@
 
 package com.sleepycat.persist.model;
 
-
 /**
  * Specifies the action to take when a related entity is deleted having a
- * primary key value that exists as a secondary key value for this entity.
- * This can be specified using a {@link SecondaryKey#onRelatedEntityDelete}
+ * primary key value that exists as a secondary key value for this entity. This
+ * can be specified using a {@link SecondaryKey#onRelatedEntityDelete}
  * annotation.
  *
  * @author Mark Hayes
@@ -25,12 +24,10 @@ package com.sleepycat.persist.model;
 public enum DeleteAction {
 
     /**
-     * The default action, {@code ABORT}, means that an exception is thrown in 
-     * order to abort the current transaction. 
-     * <!-- begin JE only -->
-     * On BDB JE, a {@link com.sleepycat.je.DeleteConstraintException} is 
-     * thrown.
-     * <!-- end JE only -->
+     * The default action, {@code ABORT}, means that an exception is thrown in
+     * order to abort the current transaction. <!-- begin JE only --> On BDB JE,
+     * a {@link com.sleepycat.je.DeleteConstraintException} is thrown. <!-- end
+     * JE only -->
      */
     ABORT,
 
@@ -42,11 +39,11 @@ public enum DeleteAction {
     CASCADE,
 
     /**
-     * If {@code NULLIFY} is specified, then the secondary key in this entity
-     * is set to null and this entity is updated.  For a secondary key field
-     * that has an array or collection type, the array or collection element
-     * will be removed by this action.  The secondary key field must have a
-     * reference (not a primitive) type in order to specify this action.
+     * If {@code NULLIFY} is specified, then the secondary key in this entity is
+     * set to null and this entity is updated. For a secondary key field that
+     * has an array or collection type, the array or collection element will be
+     * removed by this action. The secondary key field must have a reference
+     * (not a primitive) type in order to specify this action.
      */
     NULLIFY;
 }

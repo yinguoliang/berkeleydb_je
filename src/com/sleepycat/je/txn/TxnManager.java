@@ -51,51 +51,49 @@ import com.sleepycat.je.utilint.LongStat;
 import com.sleepycat.je.utilint.StatGroup;
 
 /**
- * Class to manage transactions.  Basically a Set of all transactions with add
+ * Class to manage transactions. Basically a Set of all transactions with add
  * and remove methods and a latch around the set.
  */
 public class TxnManager {
 
     /*
-     * All NullTxns share the same id so as not to eat from the id number
-     * space.
-     *
+     * All NullTxns share the same id so as not to eat from the id number space.
      * Negative transaction ids are used by the master node of a replication
-     * group. That sequence begins at -10 to avoid conflict with the
-     * NULL_TXN_ID and leave room for other special purpose ids.
+     * group. That sequence begins at -10 to avoid conflict with the NULL_TXN_ID
+     * and leave room for other special purpose ids.
      */
-    static final long NULL_TXN_ID = -1;
-    private static final long FIRST_NEGATIVE_ID = -10;
-    private LockManager lockManager;
-    private final EnvironmentImpl envImpl;
-    private final SharedLatch allTxnsLatch;
-    private final Map<Txn, Txn> allTxns;
+    static final long                      NULL_TXN_ID       = -1;
+    private static final long              FIRST_NEGATIVE_ID = -10;
+    private LockManager                    lockManager;
+    private final EnvironmentImpl          envImpl;
+    private final SharedLatch              allTxnsLatch;
+    private final Map<Txn, Txn>            allTxns;
 
     /* Maps Xids to Txns. */
-    private final Map<Xid, Txn> allXATxns;
+    private final Map<Xid, Txn>            allXATxns;
 
     /* Maps Threads to Txns when there are thread implied transactions. */
     private final Map<Thread, Transaction> thread2Txn;
 
     /*
-     * Positive and negative transaction ids are used in a replicated system,
-     * to let replicated transactions intermingle with local transactions.
+     * Positive and negative transaction ids are used in a replicated system, to
+     * let replicated transactions intermingle with local transactions.
      */
-    private final AtomicLong lastUsedLocalTxnId;
-    private final AtomicLong lastUsedReplicatedTxnId;
-    private final AtomicInteger nActiveSerializable;
+    private final AtomicLong               lastUsedLocalTxnId;
+    private final AtomicLong               lastUsedReplicatedTxnId;
+    private final AtomicInteger            nActiveSerializable;
 
     /* Locker Stats */
-    private final StatGroup stats;
-    private final IntStat nActive;
-    private final LongStat numBegins;
-    private final LongStat numCommits;
-    private final LongStat numAborts;
-    private final LongStat numXAPrepares;
-    private final LongStat numXACommits;
-    private final LongStat numXAAborts;
-    private final ActiveTxnArrayStat activeTxns;
-    private volatile long nTotalCommits = 0;
+    private final StatGroup                stats;
+    private final IntStat                  nActive;
+    private final LongStat                 numBegins;
+    private final LongStat                 numCommits;
+    private final LongStat                 numAborts;
+    private final LongStat                 numXAPrepares;
+    private final LongStat                 numXACommits;
+    private final LongStat                 numXAAborts;
+    private final ActiveTxnArrayStat       activeTxns;
+    private volatile long                  nTotalCommits     = 0;
 
     public TxnManager(EnvironmentImpl envImpl) {
         lockManager = new SyncedLockManager(envImpl);
@@ -105,8 +103,7 @@ public class TxnManager {
         }
 
         this.envImpl = envImpl;
-        allTxnsLatch = LatchFactory.createSharedLatch(
-            envImpl, "TxnManager.allTxns", false /*exclusiveOnly*/);
+        allTxnsLatch = LatchFactory.createSharedLatch(envImpl, "TxnManager.allTxns", false /* exclusiveOnly */);
         allTxns = new ConcurrentHashMap<Txn, Txn>();
         allXATxns = Collections.synchronizedMap(new HashMap<Xid, Txn>());
         thread2Txn = new ConcurrentHashMap<Thread, Transaction>();
@@ -156,9 +153,9 @@ public class TxnManager {
     }
 
     /**
-     * Get the next transaction id for a non-replicated transaction. Note
-     * than in the future, a replicated node could conceivable issue an
-     * application level, non-replicated transaction.
+     * Get the next transaction id for a non-replicated transaction. Note than
+     * in the future, a replicated node could conceivable issue an application
+     * level, non-replicated transaction.
      */
     long getNextTxnId() {
         return lastUsedLocalTxnId.incrementAndGet();
@@ -171,8 +168,7 @@ public class TxnManager {
      */
     public void updateFromReplay(long replayTxnId) {
         assert !envImpl.isMaster();
-        assert replayTxnId < 0 :
-            "replay txn id is unexpectedly positive " + replayTxnId;
+        assert replayTxnId < 0 : "replay txn id is unexpectedly positive " + replayTxnId;
 
         if (replayTxnId < lastUsedReplicatedTxnId.get()) {
             lastUsedReplicatedTxnId.set(replayTxnId);
@@ -180,8 +176,8 @@ public class TxnManager {
     }
 
     /**
-     * Returns commit counter that is never cleared (as stats are), so it can
-     * be used for monitoring un-flushed txns.
+     * Returns commit counter that is never cleared (as stats are), so it can be
+     * used for monitoring un-flushed txns.
      */
     public long getNTotalCommits() {
         return nTotalCommits;
@@ -189,12 +185,12 @@ public class TxnManager {
 
     /**
      * Create a new transaction.
+     * 
      * @param parent for nested transactions, not yet supported
      * @param txnConfig specifies txn attributes
      * @return the new txn
      */
-    public Txn txnBegin(Transaction parent, TransactionConfig txnConfig)
-        throws DatabaseException {
+    public Txn txnBegin(Transaction parent, TransactionConfig txnConfig) throws DatabaseException {
 
         return Txn.createUserTxn(envImpl, txnConfig);
     }
@@ -231,8 +227,7 @@ public class TxnManager {
             allTxns.remove(txn);
 
             /* Remove any accumulated MemoryBudget delta for the Txn. */
-            envImpl.getMemoryBudget().
-                updateTxnMemoryUsage(0 - txn.getBudgetedMemorySize());
+            envImpl.getMemoryBudget().updateTxnMemoryUsage(0 - txn.getBudgetedMemorySize());
             if (isCommit) {
                 numCommits.increment();
                 nTotalCommits += 1;
@@ -253,8 +248,7 @@ public class TxnManager {
     public void registerXATxn(Xid xid, Txn txn, boolean isPrepare) {
         if (!allXATxns.containsKey(xid)) {
             allXATxns.put(xid, txn);
-            envImpl.getMemoryBudget().updateTxnMemoryUsage
-                (MemoryBudget.HASHMAP_ENTRY_OVERHEAD);
+            envImpl.getMemoryBudget().updateTxnMemoryUsage(MemoryBudget.HASHMAP_ENTRY_OVERHEAD);
         }
 
         if (isPrepare) {
@@ -274,15 +268,12 @@ public class TxnManager {
      *
      * @throws IllegalStateException via XAResource
      */
-    void unRegisterXATxn(Xid xid, boolean isCommit)
-        throws DatabaseException {
+    void unRegisterXATxn(Xid xid, boolean isCommit) throws DatabaseException {
 
         if (allXATxns.remove(xid) == null) {
-            throw new IllegalStateException
-                ("XA Transaction " + xid + " is not registered.");
+            throw new IllegalStateException("XA Transaction " + xid + " is not registered.");
         }
-        envImpl.getMemoryBudget().updateTxnMemoryUsage
-            (0 - MemoryBudget.HASHMAP_ENTRY_OVERHEAD);
+        envImpl.getMemoryBudget().updateTxnMemoryUsage(0 - MemoryBudget.HASHMAP_ENTRY_OVERHEAD);
         if (isCommit) {
             numXACommits.increment();
         } else {
@@ -334,17 +325,13 @@ public class TxnManager {
     }
 
     /**
-     * Returns whether there are any active serializable transactions,
-     * excluding the transaction given (if non-null).  This is intentionally
-     * returned without latching, since latching would not make the act of
-     * reading an integer more atomic than it already is.
+     * Returns whether there are any active serializable transactions, excluding
+     * the transaction given (if non-null). This is intentionally returned
+     * without latching, since latching would not make the act of reading an
+     * integer more atomic than it already is.
      */
-    public boolean
-        areOtherSerializableTransactionsActive(Locker excludeLocker) {
-        int exclude =
-            (excludeLocker != null &&
-             excludeLocker.isSerializableIsolation()) ?
-            1 : 0;
+    public boolean areOtherSerializableTransactionsActive(Locker excludeLocker) {
+        int exclude = (excludeLocker != null && excludeLocker.isSerializableIsolation()) ? 1 : 0;
         return (nActiveSerializable.get() - exclude > 0);
     }
 
@@ -355,8 +342,8 @@ public class TxnManager {
     public long getFirstActiveLsn() {
 
         /*
-         * Note that the latching hierarchy calls for synchronizing on
-         * allTxns first, then synchronizing on individual txns.
+         * Note that the latching hierarchy calls for synchronizing on allTxns
+         * first, then synchronizing on individual txns.
          */
         long firstActive = DbLsn.NULL_LSN;
         allTxnsLatch.acquireExclusive();
@@ -391,14 +378,12 @@ public class TxnManager {
         allTxnsLatch.acquireShared();
         try {
             nActive.set(allTxns.size());
-            TransactionStats.Active[] activeSet =
-                new TransactionStats.Active[nActive.get()];
+            TransactionStats.Active[] activeSet = new TransactionStats.Active[nActive.get()];
             Iterator<Txn> iter = allTxns.keySet().iterator();
             int i = 0;
             while (iter.hasNext() && i < activeSet.length) {
                 Locker txn = iter.next();
-                activeSet[i] = new TransactionStats.Active
-                    (txn.toString(), txn.getId(), 0);
+                activeSet[i] = new TransactionStats.Active(txn.toString(), txn.getId(), 0);
                 i++;
             }
             activeTxns.set(activeSet);
@@ -423,8 +408,7 @@ public class TxnManager {
     /**
      * Collect lock related stats.
      */
-    public LockStats lockStat(StatsConfig config)
-        throws DatabaseException {
+    public LockStats lockStat(StatsConfig config) throws DatabaseException {
 
         return lockManager.lockStat(config);
     }
@@ -440,10 +424,10 @@ public class TxnManager {
         allTxnsLatch.acquireShared();
         try {
             Set<Txn> all = allTxns.keySet();
-            for (Txn t: all) {
+            for (Txn t : all) {
                 if (txnClass.isAssignableFrom(t.getClass())) {
                     @SuppressWarnings("unchecked")
-                    final T t2 = (T)t;
+                    final T t2 = (T) t;
                     targetSet.add(t2);
                 }
             }

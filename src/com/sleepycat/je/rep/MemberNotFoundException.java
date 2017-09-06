@@ -24,23 +24,25 @@ public class MemberNotFoundException extends OperationFailureException {
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     public MemberNotFoundException(String message) {
-        super(null /*locker*/, false /*abortOnly*/, message, null /*cause*/);
+        super(null /* locker */, false /* abortOnly */, message, null /* cause */);
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    private MemberNotFoundException(String message,
-                                      MemberNotFoundException cause) {
+    private MemberNotFoundException(String message, MemberNotFoundException cause) {
         super(message, cause);
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     @Override

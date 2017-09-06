@@ -24,27 +24,28 @@ import com.sleepycat.je.utilint.Timestamp;
 
 /**
  * This log entry is used to indicate that the environment's log files are not
- * recoverable and that some sort of curative action should happen first. It's
- * a general purpose mechanism that can be used for many types of errors.
+ * recoverable and that some sort of curative action should happen first. It's a
+ * general purpose mechanism that can be used for many types of errors.
  */
 public class RestoreRequired implements Loggable {
 
     /* The failure type is used to decide on the course of action. */
-    public enum FailureType {NETWORK_RESTORE};
+    public enum FailureType {
+        NETWORK_RESTORE
+    };
 
     private FailureType failureType;
 
     /* For debugging, information */
-    private Timestamp time;
+    private Timestamp   time;
 
     /*
-     * PropVals is a general purpose, serialized property list, to hold
-     * whatever each failure type needs, in order to fix the environment.
+     * PropVals is a general purpose, serialized property list, to hold whatever
+     * each failure type needs, in order to fix the environment.
      */
-    private String propVals;
+    private String      propVals;
 
-    public RestoreRequired(FailureType failureType,
-                           Properties props) throws IOException {
+    public RestoreRequired(FailureType failureType, Properties props) throws IOException {
         this.failureType = failureType;
         time = new Timestamp(System.currentTimeMillis());
         StringWriter sw = new StringWriter();
@@ -68,9 +69,8 @@ public class RestoreRequired implements Loggable {
 
     @Override
     public int getLogSize() {
-        return LogUtils.getStringLogSize(failureType.name()) +
-            LogUtils.getTimestampLogSize(time) +
-            LogUtils.getStringLogSize(propVals);
+        return LogUtils.getStringLogSize(failureType.name()) + LogUtils.getTimestampLogSize(time)
+                + LogUtils.getStringLogSize(propVals);
     }
 
     @Override

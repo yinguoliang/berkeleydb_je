@@ -33,11 +33,12 @@ import com.sleepycat.je.utilint.DbLsn;
 
 /**
  * Dumps the contents of the log in XML format to System.out.
- *
- * <p>To print an environment log:</p>
+ * <p>
+ * To print an environment log:
+ * </p>
  *
  * <pre>
- *      DbPrintLog.main(argv);
+ * DbPrintLog.main(argv);
  * </pre>
  */
 public class DbPrintLog {
@@ -45,53 +46,27 @@ public class DbPrintLog {
     /**
      * Dump a JE log into human readable form.
      */
-    public void dump(File envHome,
-                     String entryTypes,
-                     String txnIds,
-                     long startLsn,
-                     long endLsn,
-                     boolean verbose,
-                     boolean stats,
-                     boolean repEntriesOnly,
-                     boolean csvFormat,
-                     boolean forwards,
-                     boolean vlsnDistribution,
-                     String customDumpReaderClass)
-        throws EnvironmentNotFoundException,
-               EnvironmentLockedException {
+    public void dump(File envHome, String entryTypes, String txnIds, long startLsn, long endLsn, boolean verbose,
+                     boolean stats, boolean repEntriesOnly, boolean csvFormat, boolean forwards,
+                     boolean vlsnDistribution, String customDumpReaderClass)
+            throws EnvironmentNotFoundException, EnvironmentLockedException {
 
-        dump(envHome, entryTypes, "" /*dbIds*/, txnIds, startLsn, endLsn,
-            verbose, stats, repEntriesOnly, csvFormat, forwards,
-            vlsnDistribution, customDumpReaderClass);
+        dump(envHome, entryTypes, "" /* dbIds */, txnIds, startLsn, endLsn, verbose, stats, repEntriesOnly, csvFormat,
+                forwards, vlsnDistribution, customDumpReaderClass);
     }
 
-    private void dump(File envHome,
-                     String entryTypes,
-                     String dbIds,
-                     String txnIds,
-                     long startLsn,
-                     long endLsn,
-                     boolean verbose,
-                     boolean stats,
-                     boolean repEntriesOnly,
-                     boolean csvFormat,
-                     boolean forwards,
-                     boolean vlsnDistribution,
-                     String customDumpReaderClass) {
-        EnvironmentImpl env =
-            CmdUtil.makeUtilityEnvironment(envHome, true);
+    private void dump(File envHome, String entryTypes, String dbIds, String txnIds, long startLsn, long endLsn,
+                      boolean verbose, boolean stats, boolean repEntriesOnly, boolean csvFormat, boolean forwards,
+                      boolean vlsnDistribution, String customDumpReaderClass) {
+        EnvironmentImpl env = CmdUtil.makeUtilityEnvironment(envHome, true);
         FileManager fileManager = env.getFileManager();
         fileManager.setIncludeDeletedFiles(true);
-        int readBufferSize =
-            env.getConfigManager().getInt
-            (EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+        int readBufferSize = env.getConfigManager().getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
 
         /* Configure the startLsn and endOfFileLsn if reading backwards. */
         long endOfFileLsn = DbLsn.NULL_LSN;
-        if (startLsn == DbLsn.NULL_LSN && endLsn == DbLsn.NULL_LSN &&
-            !forwards) {
-            LastFileReader fileReader =
-                new LastFileReader(env, readBufferSize);
+        if (startLsn == DbLsn.NULL_LSN && endLsn == DbLsn.NULL_LSN && !forwards) {
+            LastFileReader fileReader = new LastFileReader(env, readBufferSize);
             while (fileReader.readNextEntry()) {
             }
             startLsn = fileReader.getLastValidLsn();
@@ -100,38 +75,31 @@ public class DbPrintLog {
 
         try {
 
-            /* 
+            /*
              * Make a reader. First see if a custom debug class is available,
-             * else use the default versions. 
+             * else use the default versions.
              */
             DumpFileReader reader = null;
             if (customDumpReaderClass != null) {
 
-                reader = getDebugReader(
-                    customDumpReaderClass, env, readBufferSize,
-                    startLsn, endLsn, endOfFileLsn, entryTypes, txnIds,
-                    verbose, repEntriesOnly, forwards);
+                reader = getDebugReader(customDumpReaderClass, env, readBufferSize, startLsn, endLsn, endOfFileLsn,
+                        entryTypes, txnIds, verbose, repEntriesOnly, forwards);
 
             } else {
                 if (stats) {
 
-                    reader = new StatsFileReader(
-                        env, readBufferSize, startLsn, endLsn, endOfFileLsn,
-                        entryTypes, dbIds, txnIds, verbose, repEntriesOnly,
-                        forwards);
+                    reader = new StatsFileReader(env, readBufferSize, startLsn, endLsn, endOfFileLsn, entryTypes, dbIds,
+                            txnIds, verbose, repEntriesOnly, forwards);
 
                 } else if (vlsnDistribution) {
 
-                    reader = new VLSNDistributionReader(
-                        env, readBufferSize, startLsn, endLsn, endOfFileLsn,
-                        verbose, forwards);
+                    reader = new VLSNDistributionReader(env, readBufferSize, startLsn, endLsn, endOfFileLsn, verbose,
+                            forwards);
 
                 } else {
 
-                    reader = new PrintFileReader(
-                        env, readBufferSize, startLsn, endLsn, endOfFileLsn,
-                        entryTypes, dbIds, txnIds, verbose, repEntriesOnly,
-                        forwards);
+                    reader = new PrintFileReader(env, readBufferSize, startLsn, endLsn, endOfFileLsn, entryTypes, dbIds,
+                            txnIds, verbose, repEntriesOnly, forwards);
                 }
             }
 
@@ -155,10 +123,9 @@ public class DbPrintLog {
     /**
      * The main used by the DbPrintLog utility.
      *
-     * @param argv An array of command line arguments to the DbPrintLog
-     * utility.
+     * @param argv An array of command line arguments to the DbPrintLog utility.
      *
-     * <pre>
+     *            <pre>
      * usage: java { com.sleepycat.je.util.DbPrintLog | -jar
      * je-&lt;version&gt;.jar DbPrintLog }
      *  -h &lt;envHomeDir&gt;
@@ -179,10 +146,12 @@ public class DbPrintLog {
      *      will attempt to load a class of this name, which will be used to
      *      process log entries. Used to customize formatting and dumping when
      *      debugging files.
-     * </pre>
-     *
-     * <p>All arguments are optional.  The current directory is used if {@code
-     * -h} is not specified.</p>
+     *            </pre>
+     *            <p>
+     *            All arguments are optional. The current directory is used if
+     *            {@code
+     * -h} is not specified.
+     *            </p>
      */
     public static void main(String[] argv) {
         try {
@@ -236,9 +205,7 @@ public class DbPrintLog {
                     } else if (dumpType.equalsIgnoreCase("obfuscate")) {
                         Key.DUMP_TYPE = DumpType.OBFUSCATE;
                     } else {
-                        System.err.println
-                            (dumpType +
-                             " is not a supported dump format type.");
+                        System.err.println(dumpType + " is not a supported dump format type.");
                     }
                 } else if (nextArg.equals("-q")) {
                     verbose = false;
@@ -255,14 +222,13 @@ public class DbPrintLog {
                     whichArg++;
                     customDumpReaderClass = CmdUtil.getArg(argv, whichArg);
                 } else if (nextArg.equals("-vd")) {
-                    /* 
+                    /*
                      * An unadvertised option which displays vlsn distribution
                      * in a log, for debugging.
                      */
                     vlsnDistribution = true;
                 } else {
-                    System.err.println
-                        (nextArg + " is not a supported option.");
+                    System.err.println(nextArg + " is not a supported option.");
                     usage();
                     System.exit(-1);
                 }
@@ -270,17 +236,14 @@ public class DbPrintLog {
             }
 
             /* Don't support scan backwards when -s or -e is enabled. */
-            if ((startLsn != DbLsn.NULL_LSN || endLsn != DbLsn.NULL_LSN) &&
-                !forwards) {
-                throw new UnsupportedOperationException
-                    ("Backwards scans are not supported when -s or -e are " +
-                     "used. They can only be used against the entire log.");
+            if ((startLsn != DbLsn.NULL_LSN || endLsn != DbLsn.NULL_LSN) && !forwards) {
+                throw new UnsupportedOperationException("Backwards scans are not supported when -s or -e are "
+                        + "used. They can only be used against the entire log.");
             }
 
             DbPrintLog printer = new DbPrintLog();
-            printer.dump(envHome, entryTypes, dbIds, txnIds, startLsn, endLsn,
-                         verbose, stats, repEntriesOnly, csvFormat, forwards,
-                         vlsnDistribution, customDumpReaderClass);
+            printer.dump(envHome, entryTypes, dbIds, txnIds, startLsn, endLsn, verbose, stats, repEntriesOnly,
+                    csvFormat, forwards, vlsnDistribution, customDumpReaderClass);
 
         } catch (Throwable e) {
             e.printStackTrace();
@@ -291,13 +254,11 @@ public class DbPrintLog {
     }
 
     private static void usage() {
-        System.out.println("Usage: " +
-                           CmdUtil.getJavaCommand(DbPrintLog.class));
+        System.out.println("Usage: " + CmdUtil.getJavaCommand(DbPrintLog.class));
         System.out.println(" -h  <envHomeDir>");
         System.out.println(" -s  <start file number or LSN, in hex>");
         System.out.println(" -e  <end file number or LSN, in hex>");
-        System.out.println(" -k  <binary|text|hex|obfuscate> " +
-                           "(format for dumping the key and data)");
+        System.out.println(" -k  <binary|text|hex|obfuscate> " + "(format for dumping the key and data)");
         System.out.println(" -db <targeted db ids, comma separated>");
         System.out.println(" -tx <targeted txn ids, comma separated>");
         System.out.println(" -ty <targeted entry types, comma separated>");
@@ -315,77 +276,45 @@ public class DbPrintLog {
     }
 
     /**
-     * If a custom dump reader class is specified, we'll use that for 
-     * DbPrintLog instead of the regular DumpFileReader. The custom reader must
-     * have DumpFileReader as a superclass ancestor. Its constructor must have
-     * this signature:
-     *
-     *  public class FooReader extends DumpFileReader {
-     *
-     *      public FooReader(EnvironmentImpl env,
-     *                       Integer readBufferSize, 
-     *                       Long startLsn,
-     *                       Long finishLsn,
-     *                       Long endOfFileLsn,
-     *                       String entryTypes,
-     *                       String txnIds,
-     *                       Boolean verbose,
-     *                       Boolean repEntriesOnly,
-     *                       Boolean forwards) 
-     *          super(env, readBufferSize, startLsn, finishLsn, endOfFileLsn,
-     *                entryTypes, txnIds, verbose, repEntriesOnly, forwards);
-     *
-     * See com.sleepycat.je.util.TestDumper, on the test side, for an example.
+     * If a custom dump reader class is specified, we'll use that for DbPrintLog
+     * instead of the regular DumpFileReader. The custom reader must have
+     * DumpFileReader as a superclass ancestor. Its constructor must have this
+     * signature: public class FooReader extends DumpFileReader { public
+     * FooReader(EnvironmentImpl env, Integer readBufferSize, Long startLsn,
+     * Long finishLsn, Long endOfFileLsn, String entryTypes, String txnIds,
+     * Boolean verbose, Boolean repEntriesOnly, Boolean forwards) super(env,
+     * readBufferSize, startLsn, finishLsn, endOfFileLsn, entryTypes, txnIds,
+     * verbose, repEntriesOnly, forwards); See com.sleepycat.je.util.TestDumper,
+     * on the test side, for an example.
      */
-    private DumpFileReader getDebugReader(String customDumpReaderClass,
-                                          EnvironmentImpl env,
-                                          int readBufferSize,
-                                          long startLsn,
-                                          long finishLsn,
-                                          long endOfFileLsn,
-                                          String entryTypes,
-                                          String txnIds,
-                                          boolean verbose,
-                                          boolean repEntriesOnly,
-                                          boolean forwards) {
+    private DumpFileReader getDebugReader(String customDumpReaderClass, EnvironmentImpl env, int readBufferSize,
+                                          long startLsn, long finishLsn, long endOfFileLsn, String entryTypes,
+                                          String txnIds, boolean verbose, boolean repEntriesOnly, boolean forwards) {
         Class<?> debugClass = null;
         try {
             debugClass = Class.forName(customDumpReaderClass);
         } catch (Exception e) {
-            throw new IllegalArgumentException
-                ("-c was specified, but couldn't load " +
-                 customDumpReaderClass + " ", e);
+            throw new IllegalArgumentException("-c was specified, but couldn't load " + customDumpReaderClass + " ", e);
         }
 
-        Class<?> args[] = { EnvironmentImpl.class,
-                            Integer.class,     // readBufferSize
-                            Long.class,        // startLsn
-                            Long.class,        // finishLsn
-                            Long.class,        // endOfFileLsn
-                            String.class,      // entryTypes
-                            String.class,      // txnIds
-                            Boolean.class,     // verbose
-                            Boolean.class,     // repEntriesOnly
-                            Boolean.class };   // forwards
+        Class<?> args[] = { EnvironmentImpl.class, Integer.class, // readBufferSize
+                Long.class, // startLsn
+                Long.class, // finishLsn
+                Long.class, // endOfFileLsn
+                String.class, // entryTypes
+                String.class, // txnIds
+                Boolean.class, // verbose
+                Boolean.class, // repEntriesOnly
+                Boolean.class }; // forwards
 
         DumpFileReader debugReader = null;
         try {
-            Constructor<?> con = 
-                debugClass.getConstructor(args);
-            debugReader = (DumpFileReader) con.newInstance(env,
-                                                           readBufferSize,
-                                                           startLsn,
-                                                           finishLsn,
-                                                           endOfFileLsn,
-                                                           entryTypes,
-                                                           txnIds,
-                                                           verbose,
-                                                           repEntriesOnly,
-                                                           forwards);
+            Constructor<?> con = debugClass.getConstructor(args);
+            debugReader = (DumpFileReader) con.newInstance(env, readBufferSize, startLsn, finishLsn, endOfFileLsn,
+                    entryTypes, txnIds, verbose, repEntriesOnly, forwards);
         } catch (Exception e) {
-            throw new IllegalStateException
-                ("-c was specified, but couldn't instantiate " + 
-                 customDumpReaderClass + " ", e);
+            throw new IllegalStateException("-c was specified, but couldn't instantiate " + customDumpReaderClass + " ",
+                    e);
         }
 
         return debugReader;

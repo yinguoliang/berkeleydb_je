@@ -18,7 +18,7 @@ import com.sleepycat.je.txn.ThreadLocker;
 
 /**
  * A MasterThreadLocker is used with a user initiated non-transactional
- * operation on a Master, for a replicated DB.  Currently there is no behavior
+ * operation on a Master, for a replicated DB. Currently there is no behavior
  * specific to this class, and it is only a placeholder for future HA
  * functionality.
  */

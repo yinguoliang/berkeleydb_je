@@ -19,10 +19,9 @@ import java.beans.BeanDescriptor;
 import java.beans.PropertyDescriptor;
 
 /**
- * @hidden
- * Getter/Setters for JavaBean based tools.
+ * @hidden Getter/Setters for JavaBean based tools.
  */
-public class ReplicationSSLConfigBeanInfo  extends ConfigBeanInfoBase {
+public class ReplicationSSLConfigBeanInfo extends ConfigBeanInfoBase {
 
     @Override
     public BeanDescriptor getBeanDescriptor() {

@@ -28,8 +28,8 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
 public class ThreadLocker extends BasicLocker {
 
     /**
-     * Set to allow this locker to be used by multiple threads.  This mode
-     * should only be set temporarily, for example, while locking in
+     * Set to allow this locker to be used by multiple threads. This mode should
+     * only be set temporarily, for example, while locking in
      * lockAfterLsnChange.
      */
     private boolean allowMultithreadedAccess;
@@ -42,13 +42,9 @@ public class ThreadLocker extends BasicLocker {
         lockManager.registerThreadLocker(this);
     }
 
-    public static ThreadLocker createThreadLocker(EnvironmentImpl env,
-                                                  boolean replicated)
-        throws DatabaseException {
+    public static ThreadLocker createThreadLocker(EnvironmentImpl env, boolean replicated) throws DatabaseException {
 
-        return (env.isReplicated() && replicated) ?
-               env.createRepThreadLocker() :
-               new ThreadLocker(env);
+        return (env.isReplicated() && replicated) ? env.createRepThreadLocker() : new ThreadLocker(env);
     }
 
     @Override
@@ -61,11 +57,9 @@ public class ThreadLocker extends BasicLocker {
      * Checks for preemption in all thread lockers for this thread.
      */
     @Override
-    public void checkPreempted(final Locker allowPreemptedLocker) 
-        throws OperationFailureException {
+    public void checkPreempted(final Locker allowPreemptedLocker) throws OperationFailureException {
 
-        final Iterator<ThreadLocker> iter =
-            lockManager.getThreadLockers(thread);
+        final Iterator<ThreadLocker> iter = lockManager.getThreadLockers(thread);
         while (iter.hasNext()) {
             final ThreadLocker locker = iter.next();
             locker.throwIfPreempted(allowPreemptedLocker);
@@ -78,9 +72,7 @@ public class ThreadLocker extends BasicLocker {
      * more than one thread.
      */
     @Override
-    public synchronized void lockAfterLsnChange(long oldLsn,
-                                                long newLsn,
-                                                DatabaseImpl dbImpl) {
+    public synchronized void lockAfterLsnChange(long oldLsn, long newLsn, DatabaseImpl dbImpl) {
         final boolean oldVal = allowMultithreadedAccess;
         allowMultithreadedAccess = true;
         try {
@@ -94,25 +86,22 @@ public class ThreadLocker extends BasicLocker {
      * Check that this locker is not used in the wrong thread.
      *
      * @throws IllegalStateException via all Cursor methods that use a
-     * non-transactional locker.
+     *             non-transactional locker.
      */
     @Override
     protected synchronized void checkState(boolean ignoreCalledByAbort) {
         if (!allowMultithreadedAccess && thread != Thread.currentThread()) {
-            throw new IllegalStateException
-                ("Non-transactional Cursors may not be used in multiple " +
-                 "threads; Cursor was created in " + thread +
-                 " but used in " + Thread.currentThread());
+            throw new IllegalStateException("Non-transactional Cursors may not be used in multiple "
+                    + "threads; Cursor was created in " + thread + " but used in " + Thread.currentThread());
         }
     }
 
     /**
-     * Returns a new non-transactional locker that shares locks with this
-     * locker by virtue of being a ThreadLocker for the same thread.
+     * Returns a new non-transactional locker that shares locks with this locker
+     * by virtue of being a ThreadLocker for the same thread.
      */
     @Override
-    public Locker newNonTxnLocker()
-        throws DatabaseException {
+    public Locker newNonTxnLocker() throws DatabaseException {
 
         checkState(false);
         return newEmptyThreadLockerClone();
@@ -123,9 +112,9 @@ public class ThreadLocker extends BasicLocker {
     }
 
     /**
-     * Returns whether this locker can share locks with the given locker.
-     * Locks are shared when both lockers are ThreadLocker instances for the
-     * same thread.
+     * Returns whether this locker can share locks with the given locker. Locks
+     * are shared when both lockers are ThreadLocker instances for the same
+     * thread.
      */
     @Override
     public boolean sharesLocksWith(Locker other) {

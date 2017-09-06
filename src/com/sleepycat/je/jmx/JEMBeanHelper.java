@@ -42,127 +42,100 @@ import com.sleepycat.je.StatsConfig;
 
 /**
  * @deprecated As of JE 4, JEMBeanHelper is deprecated in favor of the concrete
- * MBeans available by default with a JE environment. These MBeans can be 
- * registered and enabled by the environment by setting the following JVM
- * property:
- *     JEMonitor: 
- *         This MBean provides general stats monitoring and access to basic 
- *         environment level operations.
- *
- * JEMBeanHelper is a utility class for the MBean implementation which wants to
- * add management of a JE environment to its capabilities. MBean
- * implementations can contain a JEMBeanHelper instance to get MBean metadata
- * for JE and to set attributes, get attributes, and invoke operations.
- * <p>
- * com.sleepycat.je.jmx.JEMonitor and the example program
- * jmx.JEApplicationMBean are two MBean implementations which provide support
- * different application use cases. See those classes for examples of how to
- * use JEMBeanHelper.
+ *             MBeans available by default with a JE environment. These MBeans
+ *             can be registered and enabled by the environment by setting the
+ *             following JVM property: JEMonitor: This MBean provides general
+ *             stats monitoring and access to basic environment level
+ *             operations. JEMBeanHelper is a utility class for the MBean
+ *             implementation which wants to add management of a JE environment
+ *             to its capabilities. MBean implementations can contain a
+ *             JEMBeanHelper instance to get MBean metadata for JE and to set
+ *             attributes, get attributes, and invoke operations.
+ *             <p>
+ *             com.sleepycat.je.jmx.JEMonitor and the example program
+ *             jmx.JEApplicationMBean are two MBean implementations which
+ *             provide support different application use cases. See those
+ *             classes for examples of how to use JEMBeanHelper.
  */
 public class JEMBeanHelper {
 
     /*
      * A note to JE developers: all available JE attributes and operations are
      * described in the following static info arrays. New management
-     * functionality can be added to the helper by adding to the appropriate
-     * set of static definitions. For example, if we want to add a new JE
-     * attribute called "foo", which is available for open environments, we
-     * need to define a new MBeanAttributeInfo in the OPEN_ATTR array. The
-     * helper then needs to provide an implementation in set/getAttribute.
+     * functionality can be added to the helper by adding to the appropriate set
+     * of static definitions. For example, if we want to add a new JE attribute
+     * called "foo", which is available for open environments, we need to define
+     * a new MBeanAttributeInfo in the OPEN_ATTR array. The helper then needs to
+     * provide an implementation in set/getAttribute.
      */
 
     /* Attribute names. */
-    public static final String ATT_ENV_HOME = "environmentHome";
-    public static final String ATT_OPEN = "isOpen";
-    public static final String ATT_IS_READ_ONLY = "isReadOnly";
-    public static final String ATT_IS_TRANSACTIONAL = "isTransactional";
-    public static final String ATT_CACHE_SIZE = "cacheSize";
-    public static final String ATT_CACHE_PERCENT = "cachePercent";
-    public static final String ATT_LOCK_TIMEOUT = "lockTimeout";
-    public static final String ATT_IS_SERIALIZABLE = "isSerializableIsolation";
-    public static final String ATT_TXN_TIMEOUT = "transactionTimeout";
-    public static final String ATT_SET_READ_ONLY = "openReadOnly";
-    public static final String ATT_SET_TRANSACTIONAL = "openTransactional";
-    public static final String ATT_SET_SERIALIZABLE =
-        "openSerializableIsolation";
+    public static final String                ATT_ENV_HOME          = "environmentHome";
+    public static final String                ATT_OPEN              = "isOpen";
+    public static final String                ATT_IS_READ_ONLY      = "isReadOnly";
+    public static final String                ATT_IS_TRANSACTIONAL  = "isTransactional";
+    public static final String                ATT_CACHE_SIZE        = "cacheSize";
+    public static final String                ATT_CACHE_PERCENT     = "cachePercent";
+    public static final String                ATT_LOCK_TIMEOUT      = "lockTimeout";
+    public static final String                ATT_IS_SERIALIZABLE   = "isSerializableIsolation";
+    public static final String                ATT_TXN_TIMEOUT       = "transactionTimeout";
+    public static final String                ATT_SET_READ_ONLY     = "openReadOnly";
+    public static final String                ATT_SET_TRANSACTIONAL = "openTransactional";
+    public static final String                ATT_SET_SERIALIZABLE  = "openSerializableIsolation";
 
     /* COMMON_ATTR attributes are available for any environment. */
-    private static final MBeanAttributeInfo[] COMMON_ATTR = {
+    private static final MBeanAttributeInfo[] COMMON_ATTR           = {
 
-        new MBeanAttributeInfo(ATT_ENV_HOME,
-                               "java.lang.String",
-                               "Environment home directory.",
-                               true,   // readable
-                               false,  // writable
-                               false), // isIs
-        new MBeanAttributeInfo(ATT_OPEN,
-                               "java.lang.Boolean",
-                               "True if this environment is open.",
-                               true,   // readable
-                               false,  // writable
-                               true)   // isIs
+            new MBeanAttributeInfo(ATT_ENV_HOME, "java.lang.String", "Environment home directory.", true,                 // readable
+                    false,                                                                                                // writable
+                    false),                                                                                               // isIs
+            new MBeanAttributeInfo(ATT_OPEN, "java.lang.Boolean", "True if this environment is open.", true,              // readable
+                    false,                                                                                                // writable
+                    true)                                                                                                 // isIs
     };
 
     /* OPEN_ATTR attributes are available for all open environments. */
-    private static final MBeanAttributeInfo[] OPEN_ATTR = {
+    private static final MBeanAttributeInfo[] OPEN_ATTR             = {
 
-        new MBeanAttributeInfo(ATT_IS_READ_ONLY,
-                               "java.lang.Boolean",
-                               "True if this environment is read only.",
-                               true,   // readable
-                               false,  // writable
-                               true),  // isIs
-        new MBeanAttributeInfo(ATT_IS_TRANSACTIONAL,
-                               "java.lang.Boolean",
-                             "True if this environment supports transactions.",
-                               true,   // readable
-                               false,  // writable
-                               true),  // isIs
-        new MBeanAttributeInfo(ATT_CACHE_SIZE,
-                               "java.lang.Long",
-                               "Cache size, in bytes.",
-                               true,   // readable
-                               true,   // writable
-                               false), // isIs
-        new MBeanAttributeInfo(ATT_CACHE_PERCENT,
-                               "java.lang.Integer",
-                               "By default, cache size is (cachePercent * " +
-                               "JVM maximum memory. To change the cache size "+
-                               "using a percentage of the heap size, set " +
-                               "the cache size to 0 and cachePercent to the "+
-                               "desired percentage value.",
-                               true,   // readable
-                               true,   // writable
-                               false), // isIs
-        new MBeanAttributeInfo(ATT_LOCK_TIMEOUT,
-                               "java.lang.Long",
-                               "Lock timeout, in microseconds.",
-                               true,   // readable
-                               false,  // writable
-                               false), // isIs
+            new MBeanAttributeInfo(ATT_IS_READ_ONLY, "java.lang.Boolean", "True if this environment is read only.",
+                    true,                                                                                                 // readable
+                    false,                                                                                                // writable
+                    true),                                                                                                // isIs
+            new MBeanAttributeInfo(ATT_IS_TRANSACTIONAL, "java.lang.Boolean",
+                    "True if this environment supports transactions.", true,                                              // readable
+                    false,                                                                                                // writable
+                    true),                                                                                                // isIs
+            new MBeanAttributeInfo(ATT_CACHE_SIZE, "java.lang.Long", "Cache size, in bytes.", true,                       // readable
+                    true,                                                                                                 // writable
+                    false),                                                                                               // isIs
+            new MBeanAttributeInfo(ATT_CACHE_PERCENT, "java.lang.Integer",
+                    "By default, cache size is (cachePercent * " + "JVM maximum memory. To change the cache size "
+                            + "using a percentage of the heap size, set "
+                            + "the cache size to 0 and cachePercent to the " + "desired percentage value.",
+                    true,                                                                                                 // readable
+                    true,                                                                                                 // writable
+                    false),                                                                                               // isIs
+            new MBeanAttributeInfo(ATT_LOCK_TIMEOUT, "java.lang.Long", "Lock timeout, in microseconds.", true,            // readable
+                    false,                                                                                                // writable
+                    false),                                                                                               // isIs
     };
 
     /*
      * TRANSACTIONAL_ATTR attributes are available only for open, transactional
      * environments.
      */
-    private static final MBeanAttributeInfo[] TRANSACTIONAL_ATTR = {
+    private static final MBeanAttributeInfo[] TRANSACTIONAL_ATTR    = {
 
-        new MBeanAttributeInfo(ATT_IS_SERIALIZABLE,
-                               "java.lang.Boolean",
-                               "True if this environment provides " +
-                               "Serializable (degree 3) isolation. The " +
-                               "default is RepeatableRead isolation.",
-                               true,   // readable
-                               false,  // writable
-                               true),  // isIs
-        new MBeanAttributeInfo(ATT_TXN_TIMEOUT,
-                               "java.lang.Long",
-                               "Transaction timeout, in seconds. A value " +
-                               "of 0 means there is no timeout.",
-                               true,   // readable
-                               false,  // writable
-                               false)  // isIs
+            new MBeanAttributeInfo(ATT_IS_SERIALIZABLE, "java.lang.Boolean",
+                    "True if this environment provides " + "Serializable (degree 3) isolation. The "
+                            + "default is RepeatableRead isolation.",
+                    true,                                                                                                 // readable
+                    false,                                                                                                // writable
+                    true),                                                                                                // isIs
+            new MBeanAttributeInfo(ATT_TXN_TIMEOUT, "java.lang.Long",
+                    "Transaction timeout, in seconds. A value " + "of 0 means there is no timeout.", true,                // readable
+                    false,                                                                                                // writable
+                    false)                                                                                                // isIs
     };
 
     /*
@@ -170,168 +143,116 @@ public class JEMBeanHelper {
      * support configuration and opening by the mbean. They express the
      * configuration settings.
      */
-    private static final MBeanAttributeInfo[] CREATE_ATTR = {
+    private static final MBeanAttributeInfo[] CREATE_ATTR           = {
 
-        new MBeanAttributeInfo(ATT_SET_READ_ONLY,
-                               "java.lang.Boolean",
-                               "True if this environment should be opened " +
-                               "in readonly mode.",
-                               true,   // readable
-                               true,   // writable
-                               false), // isIs
-        new MBeanAttributeInfo(ATT_SET_TRANSACTIONAL,
-                               "java.lang.Boolean",
-                               "True if this environment should be opened " +
-                               "in transactional mode.",
-                               true,   // readable
-                               true,   // writable
-                               false), // isIs
-        new MBeanAttributeInfo(ATT_SET_SERIALIZABLE,
-                               "java.lang.Boolean",
-                               "True if this environment should be opened " +
-                               "with serializableIsolation. The default is "+
-                               "false.",
-                               true,   // readable
-                               true,   // writable
-                               false), // isIs
+            new MBeanAttributeInfo(ATT_SET_READ_ONLY, "java.lang.Boolean",
+                    "True if this environment should be opened " + "in readonly mode.", true,                             // readable
+                    true,                                                                                                 // writable
+                    false),                                                                                               // isIs
+            new MBeanAttributeInfo(ATT_SET_TRANSACTIONAL, "java.lang.Boolean",
+                    "True if this environment should be opened " + "in transactional mode.", true,                        // readable
+                    true,                                                                                                 // writable
+                    false),                                                                                               // isIs
+            new MBeanAttributeInfo(ATT_SET_SERIALIZABLE, "java.lang.Boolean",
+                    "True if this environment should be opened " + "with serializableIsolation. The default is "
+                            + "false.",
+                    true,                                                                                                 // readable
+                    true,                                                                                                 // writable
+                    false),                                                                                               // isIs
     };
 
     /* Operation names */
-    static final String OP_CLEAN = "cleanLog";
-    static final String OP_EVICT = "evictMemory";
-    static final String OP_CHECKPOINT = "checkpoint";
-    static final String OP_SYNC = "sync";
-    static final String OP_ENV_STAT = "getEnvironmentStats";
-    static final String OP_TXN_STAT = "getTxnStats";
-    static final String OP_DB_NAMES = "getDatabaseNames";
-    static final String OP_DB_STAT = "getDatabaseStats";
+    static final String                       OP_CLEAN              = "cleanLog";
+    static final String                       OP_EVICT              = "evictMemory";
+    static final String                       OP_CHECKPOINT         = "checkpoint";
+    static final String                       OP_SYNC               = "sync";
+    static final String                       OP_ENV_STAT           = "getEnvironmentStats";
+    static final String                       OP_TXN_STAT           = "getTxnStats";
+    static final String                       OP_DB_NAMES           = "getDatabaseNames";
+    static final String                       OP_DB_STAT            = "getDatabaseStats";
 
-    private static final MBeanOperationInfo OP_CLEAN_INFO =
-        new MBeanOperationInfo(OP_CLEAN,
-                               "Remove obsolete environment log files. " +
-                               "Zero or more log files will be cleaned as " +
-                               "necessary to bring the disk space " +
-                               "utilization of the environment above the " +
-                               "configured minimum utilization threshold " +
-                               "as determined by the setting " +
-                               "je.cleaner.minUtilization. Returns the " +
-                               "number of files cleaned, that will be " +
-                               "deleted at the next qualifying checkpoint.",
-                               new MBeanParameterInfo[0], // no params
-                               "java.lang.Integer",
-                               MBeanOperationInfo.UNKNOWN);
+    private static final MBeanOperationInfo   OP_CLEAN_INFO         = new MBeanOperationInfo(OP_CLEAN,
+            "Remove obsolete environment log files. " + "Zero or more log files will be cleaned as "
+                    + "necessary to bring the disk space " + "utilization of the environment above the "
+                    + "configured minimum utilization threshold " + "as determined by the setting "
+                    + "je.cleaner.minUtilization. Returns the " + "number of files cleaned, that will be "
+                    + "deleted at the next qualifying checkpoint.",
+            new MBeanParameterInfo[0],                                                                                    // no params
+            "java.lang.Integer", MBeanOperationInfo.UNKNOWN);
 
-    private static final MBeanOperationInfo OP_EVICT_INFO =
-        new MBeanOperationInfo(OP_EVICT,
-                               "Reduce cache usage to the threshold " +
-                               "determined by the setting " +
-                               "je.evictor.useMemoryFloor. ",
-                               new MBeanParameterInfo[0], // no params
-                               "void",
-                               MBeanOperationInfo.UNKNOWN);
+    private static final MBeanOperationInfo   OP_EVICT_INFO         = new MBeanOperationInfo(OP_EVICT,
+            "Reduce cache usage to the threshold " + "determined by the setting " + "je.evictor.useMemoryFloor. ",
+            new MBeanParameterInfo[0],                                                                                    // no params
+            "void", MBeanOperationInfo.UNKNOWN);
 
     /* parameter for checkpoint operation. */
-    private static final MBeanParameterInfo[] checkpointParams = {
-        new MBeanParameterInfo("force", "java.lang.Boolean",
-                               "If true, force a checkpoint even if " +
-                               "there has been no activity since the last " +
-                               "checkpoint. Returns true if a checkpoint " +
-                               "executed.")
-    };
+    private static final MBeanParameterInfo[] checkpointParams      = { new MBeanParameterInfo("force",
+            "java.lang.Boolean", "If true, force a checkpoint even if " + "there has been no activity since the last "
+                    + "checkpoint. Returns true if a checkpoint " + "executed.") };
 
-    private static final MBeanOperationInfo OP_CHECKPOINT_INFO =
-        new MBeanOperationInfo(OP_CHECKPOINT,
-                               "Checkpoint the environment.",
-                               checkpointParams,
-                               "void",
-                               MBeanOperationInfo.UNKNOWN);
+    private static final MBeanOperationInfo   OP_CHECKPOINT_INFO    = new MBeanOperationInfo(OP_CHECKPOINT,
+            "Checkpoint the environment.", checkpointParams, "void", MBeanOperationInfo.UNKNOWN);
 
-    private static final MBeanOperationInfo OP_SYNC_INFO =
-        new MBeanOperationInfo(OP_SYNC,
-                               "Flush the environment to stable storage.",
-                               new MBeanParameterInfo[0], // no params
-                               "void",
-                               MBeanOperationInfo.UNKNOWN);
+    private static final MBeanOperationInfo   OP_SYNC_INFO          = new MBeanOperationInfo(OP_SYNC,
+            "Flush the environment to stable storage.", new MBeanParameterInfo[0],                                        // no params
+            "void", MBeanOperationInfo.UNKNOWN);
 
-    private static final MBeanParameterInfo[] statParams = {
-        new MBeanParameterInfo("clear", "java.lang.Boolean",
-                               "If true, reset statistics after reading."),
-        new MBeanParameterInfo("fast", "java.lang.Boolean",
-                               "If true, only return statistics which do " +
-                               "not require expensive computation.")
-    };
+    private static final MBeanParameterInfo[] statParams            = {
+            new MBeanParameterInfo("clear", "java.lang.Boolean", "If true, reset statistics after reading."),
+            new MBeanParameterInfo("fast", "java.lang.Boolean",
+                    "If true, only return statistics which do " + "not require expensive computation.") };
 
-    private static final MBeanOperationInfo OP_ENV_STAT_INFO =
-        new MBeanOperationInfo(OP_ENV_STAT,
-                               "Get environment statistics.",
-                               statParams,
-                               "java.lang.String",
-                               MBeanOperationInfo.INFO);
+    private static final MBeanOperationInfo   OP_ENV_STAT_INFO      = new MBeanOperationInfo(OP_ENV_STAT,
+            "Get environment statistics.", statParams, "java.lang.String", MBeanOperationInfo.INFO);
 
-    private static final MBeanOperationInfo OP_TXN_STAT_INFO =
-        new MBeanOperationInfo(OP_TXN_STAT,
-                               "Get transactional statistics.",
-                               statParams,
-                               "java.lang.String",
-                               MBeanOperationInfo.INFO);
+    private static final MBeanOperationInfo   OP_TXN_STAT_INFO      = new MBeanOperationInfo(OP_TXN_STAT,
+            "Get transactional statistics.", statParams, "java.lang.String", MBeanOperationInfo.INFO);
 
-    private static final MBeanOperationInfo OP_DB_NAMES_INFO =
-        new MBeanOperationInfo(OP_DB_NAMES,
-                              "Get the names of databases in the environment.",
-                               new MBeanParameterInfo[0], // no params
-                               "java.util.ArrayList",
-                               MBeanOperationInfo.INFO);
+    private static final MBeanOperationInfo   OP_DB_NAMES_INFO      = new MBeanOperationInfo(OP_DB_NAMES,
+            "Get the names of databases in the environment.", new MBeanParameterInfo[0],                                  // no params
+            "java.util.ArrayList", MBeanOperationInfo.INFO);
 
-    private static final MBeanParameterInfo[] dbStatParams = {
-        new MBeanParameterInfo("clear", "java.lang.Boolean",
-                               "If true, reset statistics after reading."),
-        new MBeanParameterInfo("fast", "java.lang.Boolean",
-                               "If true, only return statistics which do " +
-                               "not require expensive computation. " +
-                               "Currently all database stats are not fast."),
-        new MBeanParameterInfo("databaseName", "java.lang.String",
-                               "database name")
-    };
+    private static final MBeanParameterInfo[] dbStatParams          = {
+            new MBeanParameterInfo("clear", "java.lang.Boolean", "If true, reset statistics after reading."),
+            new MBeanParameterInfo("fast", "java.lang.Boolean",
+                    "If true, only return statistics which do " + "not require expensive computation. "
+                            + "Currently all database stats are not fast."),
+            new MBeanParameterInfo("databaseName", "java.lang.String", "database name") };
 
-    private static final MBeanOperationInfo OP_DB_STAT_INFO =
-        new MBeanOperationInfo(OP_DB_STAT,
-                               "Get database statistics.",
-                               dbStatParams,
-                               "java.lang.String",
-                               MBeanOperationInfo.INFO);
+    private static final MBeanOperationInfo   OP_DB_STAT_INFO       = new MBeanOperationInfo(OP_DB_STAT,
+            "Get database statistics.", dbStatParams, "java.lang.String", MBeanOperationInfo.INFO);
 
     /* target JE environment home directory. */
-    private File environmentHome;
+    private File                              environmentHome;
 
     /*
      * If canConfigure is true, this helper will make environment configuration
-     * attributes available in the mbean metadata. Configuration attributes
-     * will be saved in the openConfig instance.
+     * attributes available in the mbean metadata. Configuration attributes will
+     * be saved in the openConfig instance.
      */
-    private boolean canConfigure;
-    private EnvironmentConfig openConfig;
+    private boolean                           canConfigure;
+    private EnvironmentConfig                 openConfig;
 
     /* true if the mbean metadata needs to be refreshed. */
-    private boolean needReset;
+    private boolean                           needReset;
 
     /*
      * Save whether the environment was open the last time we fetched mbean
      * attributes. Use to detect a change in environment status.
      */
-    private boolean envWasOpen;
+    private boolean                           envWasOpen;
 
     /**
      * Instantiate a helper, specifying environment home and open capabilities.
      *
      * @param environmentHome home directory of the target JE environment.
      * @param canConfigure If true, the helper will show environment
-     * configuration attributes.
+     *            configuration attributes.
      */
     public JEMBeanHelper(File environmentHome, boolean canConfigure) {
 
         if (environmentHome == null) {
-            throw new IllegalArgumentException
-                ("Environment home cannot be null");
+            throw new IllegalArgumentException("Environment home cannot be null");
         }
         this.environmentHome = environmentHome;
         this.canConfigure = canConfigure;
@@ -355,7 +276,7 @@ public class JEMBeanHelper {
      * within this EnvironmentConfig object for use in opening environments.
      *
      * @return EnvironmentConfig object which saves configuration attributes
-     * recorded through MBean attributes.
+     *         recorded through MBean attributes.
      */
     public EnvironmentConfig getEnvironmentOpenConfig() {
         return openConfig;
@@ -372,18 +293,18 @@ public class JEMBeanHelper {
 
     /**
      * Get MBean attribute metadata for this environment.
+     * 
      * @param targetEnv The target JE environment. May be null if the
-     * environment is not open.
+     *            environment is not open.
      * @return list of MBeanAttributeInfo objects describing the available
-     * attributes.
+     *         attributes.
      */
     public List<MBeanAttributeInfo> getAttributeList(Environment targetEnv) {
 
         /* Turn off reset because the mbean metadata is being refreshed. */
         setNeedReset(false);
 
-        ArrayList<MBeanAttributeInfo> attrList = 
-            new ArrayList<MBeanAttributeInfo>();
+        ArrayList<MBeanAttributeInfo> attrList = new ArrayList<MBeanAttributeInfo>();
 
         /* Add attributes for all JE environments. */
         for (int i = 0; i < COMMON_ATTR.length; i++) {
@@ -412,7 +333,7 @@ public class JEMBeanHelper {
                     }
                 }
             } catch (DatabaseException ignore) {
-                    /* ignore */
+                /* ignore */
             }
         }
 
@@ -426,18 +347,16 @@ public class JEMBeanHelper {
      * should be reset.
      *
      * @param targetEnv The target JE environment. May be null if the
-     * environment is not open.
+     *            environment is not open.
      * @param attributeName attribute name.
      * @return attribute value.
      */
     public Object getAttribute(Environment targetEnv, String attributeName)
-        throws AttributeNotFoundException,
-               MBeanException {
+            throws AttributeNotFoundException, MBeanException {
 
         /* Sanity check. */
         if (attributeName == null) {
-            throw new AttributeNotFoundException
-                ("Attribute name cannot be null");
+            throw new AttributeNotFoundException("Attribute name cannot be null");
         }
 
         /* These attributes are available regardless of environment state. */
@@ -471,13 +390,11 @@ public class JEMBeanHelper {
                     } else if (attributeName.equals(ATT_LOCK_TIMEOUT)) {
                         return new Long(config.getLockTimeout());
                     } else if (attributeName.equals(ATT_IS_SERIALIZABLE)) {
-                        return new
-                            Boolean(config.getTxnSerializableIsolation());
+                        return new Boolean(config.getTxnSerializableIsolation());
                     } else if (attributeName.equals(ATT_TXN_TIMEOUT)) {
                         return new Long(config.getTxnTimeout());
                     } else {
-                        throw new AttributeNotFoundException
-                            ("attribute " + attributeName + " is not valid.");
+                        throw new AttributeNotFoundException("attribute " + attributeName + " is not valid.");
                     }
                 }
                 return null;
@@ -485,8 +402,8 @@ public class JEMBeanHelper {
         } catch (Exception e) {
 
             /*
-             * Add both the message and the exception for easiest deciphering
-             * of the problem. Sometimes the original exception stacktrace gets
+             * Add both the message and the exception for easiest deciphering of
+             * the problem. Sometimes the original exception stacktrace gets
              * hidden in server logs.
              */
             throw new MBeanException(e, e.getMessage());
@@ -497,12 +414,11 @@ public class JEMBeanHelper {
      * Set an attribute value for the given environment.
      *
      * @param targetEnv The target JE environment. May be null if the
-     * environment is not open.
+     *            environment is not open.
      * @param attribute name/value pair
      */
     public void setAttribute(Environment targetEnv, Attribute attribute)
-        throws AttributeNotFoundException,
-               InvalidAttributeValueException {
+            throws AttributeNotFoundException, InvalidAttributeValueException {
 
         if (attribute == null) {
             throw new AttributeNotFoundException("Attribute cannot be null");
@@ -513,13 +429,11 @@ public class JEMBeanHelper {
         Object value = attribute.getValue();
 
         if (name == null) {
-            throw new AttributeNotFoundException
-                ("Attribute name cannot be null");
+            throw new AttributeNotFoundException("Attribute name cannot be null");
         }
 
         if (value == null) {
-            throw new InvalidAttributeValueException
-                ("Attribute value for attribute " + name + " cannot be null");
+            throw new InvalidAttributeValueException("Attribute value for attribute " + name + " cannot be null");
         }
 
         try {
@@ -528,14 +442,12 @@ public class JEMBeanHelper {
             } else if (name.equals(ATT_SET_TRANSACTIONAL)) {
                 openConfig.setTransactional(((Boolean) value).booleanValue());
             } else if (name.equals(ATT_SET_SERIALIZABLE)) {
-                openConfig.setTxnSerializableIsolation
-                    (((Boolean) value).booleanValue());
+                openConfig.setTxnSerializableIsolation(((Boolean) value).booleanValue());
             } else {
                 /* Set the specified attribute if the environment is open. */
                 if (targetEnv != null) {
 
-                    EnvironmentMutableConfig config =
-                        targetEnv.getMutableConfig();
+                    EnvironmentMutableConfig config = targetEnv.getMutableConfig();
 
                     if (name.equals(ATT_CACHE_SIZE)) {
                         config.setCacheSize(((Long) value).longValue());
@@ -544,38 +456,34 @@ public class JEMBeanHelper {
                         config.setCachePercent(((Integer) value).intValue());
                         targetEnv.setMutableConfig(config);
                     } else {
-                        throw new AttributeNotFoundException
-                            ("attribute " + name + " is not valid.");
+                        throw new AttributeNotFoundException("attribute " + name + " is not valid.");
                     }
                 } else {
-                    throw new AttributeNotFoundException
-                        ("attribute " + name + " is not valid.");
+                    throw new AttributeNotFoundException("attribute " + name + " is not valid.");
                 }
             }
         } catch (NumberFormatException e) {
             throw new InvalidAttributeValueException("attribute name=" + name);
         } catch (DatabaseException e) {
-            throw new InvalidAttributeValueException
-                ("attribute name=" + name + e.getMessage());
+            throw new InvalidAttributeValueException("attribute name=" + name + e.getMessage());
         }
     }
 
     /********************************************************************/
-    /* JE Operations                                                    */
+    /* JE Operations */
     /********************************************************************/
 
     /**
      * Get mbean operation metadata for this environment.
      *
      * @param targetEnv The target JE environment. May be null if the
-     * environment is not open.
+     *            environment is not open.
      * @return List of MBeanOperationInfo describing available operations.
      */
     public List<MBeanOperationInfo> getOperationList(Environment targetEnv) {
         setNeedReset(false);
 
-        List<MBeanOperationInfo> operationList = 
-            new ArrayList<MBeanOperationInfo>();
+        List<MBeanOperationInfo> operationList = new ArrayList<MBeanOperationInfo>();
 
         if (targetEnv != null) {
 
@@ -613,17 +521,14 @@ public class JEMBeanHelper {
      * Invoke an operation for the given environment.
      *
      * @param targetEnv The target JE environment. May be null if the
-     * environment is not open.
+     *            environment is not open.
      * @param actionName operation name.
      * @param params operation parameters. May be null.
      * @param signature operation signature. May be null.
      * @return the operation result
      */
-    public Object invoke(Environment targetEnv,
-                         String actionName,
-                         Object[] params,
-                         String[] signature)
-        throws MBeanException {
+    public Object invoke(Environment targetEnv, String actionName, Object[] params, String[] signature)
+            throws MBeanException {
 
         /* Sanity checking. */
         if (actionName == null) {
@@ -650,11 +555,9 @@ public class JEMBeanHelper {
                     targetEnv.sync();
                     return null;
                 } else if (actionName.equals(OP_ENV_STAT)) {
-                    return targetEnv.getStats
-                        (getStatsConfig(params)).toString();
+                    return targetEnv.getStats(getStatsConfig(params)).toString();
                 } else if (actionName.equals(OP_TXN_STAT)) {
-                    return targetEnv.getTransactionStats
-                        (getStatsConfig(params)).toString();
+                    return targetEnv.getTransactionStats(getStatsConfig(params)).toString();
                 } else if (actionName.equals(OP_DB_NAMES)) {
                     return targetEnv.getDatabaseNames();
                 } else if (actionName.equals(OP_DB_STAT)) {
@@ -663,13 +566,12 @@ public class JEMBeanHelper {
                 }
             }
 
-            return new IllegalArgumentException
-                ("actionName: " + actionName + " is not valid");
+            return new IllegalArgumentException("actionName: " + actionName + " is not valid");
         } catch (Exception e) {
 
             /*
-             * Add both the message and the exception for easiest deciphering
-             * of the problem. Sometimes the original exception stacktrace gets
+             * Add both the message and the exception for easiest deciphering of
+             * the problem. Sometimes the original exception stacktrace gets
              * hidden in server logs.
              */
             throw new MBeanException(e, e.getMessage());
@@ -695,19 +597,17 @@ public class JEMBeanHelper {
 
     /**
      * Helper to get statistics for a given database.
+     * 
      * @param params operation parameters
      * @return DatabaseStats object
      */
-    private DatabaseStats getDatabaseStats(Environment targetEnv,
-                                           Object[] params)
-        throws IllegalArgumentException,
-               DatabaseNotFoundException,
-               DatabaseException {
+    private DatabaseStats getDatabaseStats(Environment targetEnv, Object[] params)
+            throws IllegalArgumentException, DatabaseNotFoundException, DatabaseException {
 
         if ((params == null) || (params.length < 3)) {
             return null;
         }
-        String dbName = (String)params[2];
+        String dbName = (String) params[2];
 
         Database db = null;
         try {
@@ -730,10 +630,10 @@ public class JEMBeanHelper {
 
     /**
      * No notifications are supported.
+     * 
      * @return List of MBeanNotificationInfo for available notifications.
      */
-    public MBeanNotificationInfo[]
-        getNotificationInfo(Environment targetEnv) {
+    public MBeanNotificationInfo[] getNotificationInfo(Environment targetEnv) {
         return null;
     }
 

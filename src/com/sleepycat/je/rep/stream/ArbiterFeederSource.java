@@ -34,23 +34,17 @@ import com.sleepycat.je.utilint.VLSN;
  */
 public class ArbiterFeederSource implements FeederSource {
 
-
     private final BlockingQueue<LogItem> queue;
-    private final EnvironmentImpl envImpl;
-    private final StatGroup stats;
-    private final LongStat nQueueFull;
+    private final EnvironmentImpl        envImpl;
+    private final StatGroup              stats;
+    private final LongStat               nQueueFull;
 
-    public ArbiterFeederSource(EnvironmentImpl envImpl)
-        throws DatabaseException {
+    public ArbiterFeederSource(EnvironmentImpl envImpl) throws DatabaseException {
 
-        int queueSize =
-            envImpl.getConfigManager().getInt
-            (RepParams.ARBITER_OUTPUT_QUEUE_SIZE);
+        int queueSize = envImpl.getConfigManager().getInt(RepParams.ARBITER_OUTPUT_QUEUE_SIZE);
         queue = new ArrayBlockingQueue<LogItem>(queueSize);
         this.envImpl = envImpl;
-        stats =
-            new StatGroup(ArbiterFeederStatDefinition.GROUP_NAME,
-                          ArbiterFeederStatDefinition.GROUP_DESC);
+        stats = new StatGroup(ArbiterFeederStatDefinition.GROUP_NAME, ArbiterFeederStatDefinition.GROUP_DESC);
         nQueueFull = new LongStat(stats, QUEUE_FULL);
     }
 
@@ -59,11 +53,10 @@ public class ArbiterFeederSource implements FeederSource {
         if (!queue.offer(commitItem)) {
 
             /*
-             * If the commit could not be added to the queue because
-             * the queue is filled. Try to remove an item
-             * and replace with the item with the higher VLSN.
-             * The Arbiter ack for the higher VLSN is sufficient
-             * for transactions with a lower commit VLSN.
+             * If the commit could not be added to the queue because the queue
+             * is filled. Try to remove an item and replace with the item with
+             * the higher VLSN. The Arbiter ack for the higher VLSN is
+             * sufficient for transactions with a lower commit VLSN.
              */
             nQueueFull.increment();
             try {
@@ -81,12 +74,11 @@ public class ArbiterFeederSource implements FeederSource {
             }
 
             /*
-             * Attempt to put the item on the queue. If another
-             * thread has inserted and the queue is full, we will
-             * skip this transaction for an Arbiter ack attempt. The
-             * transaction may still succeed in this case due to acks from
-             * Replicas or other Arbiter acked transactions with a higher
-             * VLSN.
+             * Attempt to put the item on the queue. If another thread has
+             * inserted and the queue is full, we will skip this transaction for
+             * an Arbiter ack attempt. The transaction may still succeed in this
+             * case due to acks from Replicas or other Arbiter acked
+             * transactions with a higher VLSN.
              */
             queue.offer(commitItem);
         }
@@ -96,8 +88,7 @@ public class ArbiterFeederSource implements FeederSource {
      * @see com.sleepycat.je.rep.stream.FeederSource#init
      */
     @Override
-    public void init(VLSN startVLSN)
-        throws DatabaseException, IOException {
+    public void init(VLSN startVLSN) throws DatabaseException, IOException {
         queue.clear();
     }
 
@@ -107,20 +98,19 @@ public class ArbiterFeederSource implements FeederSource {
      */
     @Override
     public OutputWireRecord getWireRecord(VLSN vlsn, int waitTime)
-        throws DatabaseException, InterruptedException, IOException {
+            throws DatabaseException, InterruptedException, IOException {
 
         LogItem commitItem = queue.poll(waitTime, TimeUnit.MILLISECONDS);
         if (commitItem != null) {
-            return new OutputWireRecord(envImpl, commitItem) ;
+            return new OutputWireRecord(envImpl, commitItem);
         }
         return null;
     }
 
-    public StatGroup loadStats(StatsConfig config)
-            throws DatabaseException {
-            StatGroup copyStats = stats.cloneGroup(config.getClear());
-            return copyStats;
-        }
+    public StatGroup loadStats(StatsConfig config) throws DatabaseException {
+        StatGroup copyStats = stats.cloneGroup(config.getClear());
+        return copyStats;
+    }
 
     @Override
     public String dumpState() {

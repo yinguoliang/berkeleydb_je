@@ -38,91 +38,81 @@ import com.sleepycat.je.rep.impl.node.RepNode;
 import com.sleepycat.je.utilint.CmdUtil;
 
 /**
- * @hidden
- *
- * DbNullNode is an internal debugging aid that simply starts up a node as part
- * of a group. It's primarily useful for diagnosing node start up bugs, since
- * it enables you to start up the nodes in a group if you have the associated
- * log files.
- * <p>
- * If the environment does not exist, and the -createEnv is specified it will
- * create the environment (with the aid of helpers), using network restore to
- * initialize it. This behavior can be used to advantage at a Replica node if
- * the log files have been damaged for example and the Replica cannot proceed.
- * It effectively restores the environment for the Replica, which can then
- * proceed with the restored files using the actual application.
- * <p>
- * Similarly, if a node does not exist in the environment and -createNode is
- * specified, it will create a new node in either the existing environment, or
- * if -createEnv is specified in a new environment.
- * <p>
- * Note that the hostnames mentioned in the member database must be resolvable
- * before the group can start up. The hostnames can be obtained by running
- * DbDumpGroup. The hostnames can be "faked" on Linux, by adding appropriate
- * entries to /etc/hosts or cnames to the DNS.
- * <p>
- * If the hosts all use the same port, you will need to make provisions for
- * virtual ip addresses that are then associated with the host. On Linux this
- * can be done by adding an entry of the following type for each virtual ip in
- * /etc/network/interfaces:
- *<p>
- * iface eth0:1 inet static
- * address 192.168.1.201
- * netmask 255.255.255.0
- * gateway 192.168.2.1
- * hwaddress ether XX:YY:ZZ:AA:BB:CC
- * <p>
- * Use eth0:2, eth0:3, etc for each new virtual ip that is needed. Also,
- * substitute the real NIC address for XX:YY:ZZ:AA:BB:CC in the iface stanza.
- *
- * Be careful when modifying your machine's configuration information since it
- * can have unintended side-effects. So back up the above config files before
- * making any changes.
+ * @hidden DbNullNode is an internal debugging aid that simply starts up a node
+ *         as part of a group. It's primarily useful for diagnosing node start
+ *         up bugs, since it enables you to start up the nodes in a group if you
+ *         have the associated log files.
+ *         <p>
+ *         If the environment does not exist, and the -createEnv is specified it
+ *         will create the environment (with the aid of helpers), using network
+ *         restore to initialize it. This behavior can be used to advantage at a
+ *         Replica node if the log files have been damaged for example and the
+ *         Replica cannot proceed. It effectively restores the environment for
+ *         the Replica, which can then proceed with the restored files using the
+ *         actual application.
+ *         <p>
+ *         Similarly, if a node does not exist in the environment and
+ *         -createNode is specified, it will create a new node in either the
+ *         existing environment, or if -createEnv is specified in a new
+ *         environment.
+ *         <p>
+ *         Note that the hostnames mentioned in the member database must be
+ *         resolvable before the group can start up. The hostnames can be
+ *         obtained by running DbDumpGroup. The hostnames can be "faked" on
+ *         Linux, by adding appropriate entries to /etc/hosts or cnames to the
+ *         DNS.
+ *         <p>
+ *         If the hosts all use the same port, you will need to make provisions
+ *         for virtual ip addresses that are then associated with the host. On
+ *         Linux this can be done by adding an entry of the following type for
+ *         each virtual ip in /etc/network/interfaces:
+ *         <p>
+ *         iface eth0:1 inet static address 192.168.1.201 netmask 255.255.255.0
+ *         gateway 192.168.2.1 hwaddress ether XX:YY:ZZ:AA:BB:CC
+ *         <p>
+ *         Use eth0:2, eth0:3, etc for each new virtual ip that is needed. Also,
+ *         substitute the real NIC address for XX:YY:ZZ:AA:BB:CC in the iface
+ *         stanza. Be careful when modifying your machine's configuration
+ *         information since it can have unintended side-effects. So back up the
+ *         above config files before making any changes.
  */
 public class DbNullNode {
-    private static final String USAGE =
+    private static final String            USAGE              =
 
-        "usage: " + CmdUtil.getJavaCommand(DbNullNode.class) + "\n" +
-        "       -h <env home dir>\n" +
-        "       -nodeName <nodeName>\n" +
-        "       [-groupName <groupName>]\n" +
-        "       [-hostPort <hostPort>]\n" +
-        "       [-createEnv]\n" +
-        "       [-createNode]\n" +
-        "       [-helpers <hostPort>,<hostPort> ...]\n" +
-        "       [-designatedPrimary] \n" +
-        "       [-electableGroupSize] <groupSize>\n" +
-        "       [-updates <updates>\n" +
-        "       [-nodeType ELECTABLE|SECONDARY]\n" +
-        "       [-cacheMode ENUM_NAME]\n";
+            "usage: " + CmdUtil.getJavaCommand(DbNullNode.class) + "\n" + "       -h <env home dir>\n"
+                    + "       -nodeName <nodeName>\n" + "       [-groupName <groupName>]\n"
+                    + "       [-hostPort <hostPort>]\n" + "       [-createEnv]\n" + "       [-createNode]\n"
+                    + "       [-helpers <hostPort>,<hostPort> ...]\n" + "       [-designatedPrimary] \n"
+                    + "       [-electableGroupSize] <groupSize>\n" + "       [-updates <updates>\n"
+                    + "       [-nodeType ELECTABLE|SECONDARY]\n" + "       [-cacheMode ENUM_NAME]\n";
 
-    private File envHome;
-    private String nodeName;
-    private String hostPort;
-    private String groupName;
-    public  String helpers;
+    private File                           envHome;
+    private String                         nodeName;
+    private String                         hostPort;
+    private String                         groupName;
+    public String                          helpers;
 
     /* Permit creation of a new environment. */
-    private boolean createNode = false;
-    private boolean createEnv = false;
+    private boolean                        createNode         = false;
+    private boolean                        createEnv          = false;
 
-    private final int pollIntervalMs = 60*1000;
+    private final int                      pollIntervalMs     = 60 * 1000;
 
-    private boolean designatedPrimary = false;
+    private boolean                        designatedPrimary  = false;
 
-    private int electableGroupSize = 0;
+    private int                            electableGroupSize = 0;
 
     /**
-     * If non-zero write the number of updates at each poll period when the
-     * node is a master to simulate write traffic.
+     * If non-zero write the number of updates at each poll period when the node
+     * is a master to simulate write traffic.
      */
-    private int updates = 0;
+    private int                            updates            = 0;
 
-    private NodeType nodeType = NodeType.ELECTABLE;
-    private CacheMode cacheMode = CacheMode.DEFAULT;
+    private NodeType                       nodeType           = NodeType.ELECTABLE;
+    private CacheMode                      cacheMode          = CacheMode.DEFAULT;
 
-    private static final DatabaseConfig dbConfig = new DatabaseConfig();
-    private static final TransactionConfig txnConfig = TransactionConfig.DEFAULT;
+    private static final DatabaseConfig    dbConfig           = new DatabaseConfig();
+    private static final TransactionConfig txnConfig          = TransactionConfig.DEFAULT;
 
     static {
         dbConfig.setAllowCreate(true);
@@ -181,9 +171,9 @@ public class DbNullNode {
                     printUsage("-groupName requires an argument");
                 }
             } else if (thisArg.equals("-createNode")) {
-                createNode  = true;
+                createNode = true;
             } else if (thisArg.equals("-createEnv")) {
-                createEnv  = true;
+                createEnv = true;
             } else if (thisArg.equals("-helpers")) {
                 if (argc < nArgs) {
                     helpers = argv[argc++];
@@ -191,20 +181,18 @@ public class DbNullNode {
                     printUsage("-helpers requires an argument");
                 }
             } else if ("-designatedPrimary".equals(thisArg)) {
-                designatedPrimary = true ;
+                designatedPrimary = true;
             } else if ("-electableGroupSize".equals(thisArg)) {
                 if (argc < nArgs) {
                     electableGroupSize = Integer.parseInt(argv[argc++]);
                 } else {
-                    printUsage("-electableGroupSize requires a group size " +
-                                "argument");
+                    printUsage("-electableGroupSize requires a group size " + "argument");
                 }
             } else if ("-updates".equals(thisArg)) {
                 if (argc < nArgs) {
                     updates = Integer.parseInt(argv[argc++]);
                 } else {
-                    printUsage("-updates requires number of updates/period" +
-                                "argument");
+                    printUsage("-updates requires number of updates/period" + "argument");
                 }
             } else if ("-nodeType".equals(thisArg)) {
                 if (argc < nArgs) {
@@ -224,22 +212,17 @@ public class DbNullNode {
         }
         if (createNode) {
             /* Verify that the create arguments are all specified. */
-            if ((nodeName == null) ||
-                (hostPort == null) ||
-                (groupName == null) ||
-                (helpers  == null)) {
-                printUsage("groupName, nodeName, nodeHost and helpers " +
-                           "must all be specified when using -createNode");
+            if ((nodeName == null) || (hostPort == null) || (groupName == null) || (helpers == null)) {
+                printUsage(
+                        "groupName, nodeName, nodeHost and helpers " + "must all be specified when using -createNode");
             }
         }
         if (createEnv) {
-            if ((groupName == null) || (helpers  == null)) {
-                printUsage("groupName and helpers " +
-                    "must all be specified when using -createEnv");
+            if ((groupName == null) || (helpers == null)) {
+                printUsage("groupName and helpers " + "must all be specified when using -createEnv");
             }
         }
     }
-
 
     private void run() {
         while (true) {
@@ -247,7 +230,7 @@ public class DbNullNode {
                 checkParameters();
                 openAndIdle();
                 break;
-            }  catch (InsufficientLogException ile) {
+            } catch (InsufficientLogException ile) {
                 System.err.println("Restoring environment:" + envHome);
                 NetworkRestore networkRestore = new NetworkRestore();
                 NetworkRestoreConfig config = new NetworkRestoreConfig();
@@ -270,53 +253,45 @@ public class DbNullNode {
             }
             final RepGroupImpl group = RepGroupDB.getGroup(envHome);
             if (createEnv) {
-                printUsage("Environment exists:" + envHome +
-                           "but -createEnv was specified.");
+                printUsage("Environment exists:" + envHome + "but -createEnv was specified.");
             }
             final RepNodeImpl node = group.getNode(nodeName);
             if (node == null) {
-                if (! createNode) {
-                    printUsage("The node:" + nodeName +
-                               " is not a member of the group:" + group +
-                               ". Use -createNode to create a new one.");
+                if (!createNode) {
+                    printUsage("The node:" + nodeName + " is not a member of the group:" + group
+                            + ". Use -createNode to create a new one.");
                 }
             } else {
                 /* Node exists, check arguments if any. */
                 if (groupName == null) {
                     groupName = group.getName();
                 } else if (!groupName.equals(group.getName())) {
-                    printUsage("-groupname:" + groupName +
-                               ", does not match the name:" + group.getName() +
-                               " in the environment.");
+                    printUsage("-groupname:" + groupName + ", does not match the name:" + group.getName()
+                            + " in the environment.");
                 }
 
                 if (hostPort == null) {
                     hostPort = node.getHostPortPair();
                 } else if (!hostPort.equals(node.getHostPortPair())) {
-                    System.err.println("-hostPort:" + hostPort +
-                                       ", does not match the hostPort:" +
-                                       node.getHostPortPair() +
-                                       " in the environment. " +
-                                       "Continuing ...");
+                    System.err.println("-hostPort:" + hostPort + ", does not match the hostPort:"
+                            + node.getHostPortPair() + " in the environment. " + "Continuing ...");
                 }
             }
         } catch (EnvironmentNotFoundException enf) {
             if (!createEnv) {
-                printUsage("No existing environment:" + envHome +
-                           ". Use -createEnv to create one");
+                printUsage("No existing environment:" + envHome + ". Use -createEnv to create one");
             }
         }
     }
 
     /**
-     * Opens a replicated environment and idles in a loop printing out its
-     * state periodically.
+     * Opens a replicated environment and idles in a loop printing out its state
+     * periodically.
      *
-     * @throws InsufficientLogException so that the log files can be restored
-     * if necessary
+     * @throws InsufficientLogException so that the log files can be restored if
+     *             necessary
      */
-    private void openAndIdle()
-        throws InsufficientLogException {
+    private void openAndIdle() throws InsufficientLogException {
 
         ReplicationConfig repConfig = new ReplicationConfig();
         repConfig.setNodeName(nodeName);
@@ -334,20 +309,14 @@ public class DbNullNode {
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(createEnv);
         envConfig.setCacheMode(cacheMode);
-        ReplicatedEnvironment repEnv =
-            new ReplicatedEnvironment(envHome, repConfig, envConfig);
+        ReplicatedEnvironment repEnv = new ReplicatedEnvironment(envHome, repConfig, envConfig);
         RepNode repNode = RepInternal.getNonNullRepImpl(repEnv).getRepNode();
 
-        System.err.println("Handle created:" + repEnv +
-                           "  Node idling indefinitely...");
+        System.err.println("Handle created:" + repEnv + "  Node idling indefinitely...");
         try {
             while (true) {
-                System.out.println(new Date() +
-                                   " State:" + repEnv.getState() + " " +
-                                   " VLSN range:" +
-                                   repNode.getVLSNIndex().getRange() +
-                                   " DTVLSN:" + repNode.getDTVLSN() +
-                                   repNode.dumpState());
+                System.out.println(new Date() + " State:" + repEnv.getState() + " " + " VLSN range:"
+                        + repNode.getVLSNIndex().getRange() + " DTVLSN:" + repNode.getDTVLSN() + repNode.dumpState());
                 writeUpdates(repEnv);
                 Thread.sleep(pollIntervalMs);
             }
@@ -360,7 +329,7 @@ public class DbNullNode {
      * Write updates if master.
      */
     private void writeUpdates(ReplicatedEnvironment repEnv) {
-        if ((updates == 0) || ! repEnv.getState().isMaster()) {
+        if ((updates == 0) || !repEnv.getState().isMaster()) {
             return;
         }
 
@@ -371,7 +340,7 @@ public class DbNullNode {
             db = repEnv.openDatabase(txn, "DbNullDb", dbConfig);
             txn.commit();
             txn = null;
-            DatabaseEntry key = new DatabaseEntry(new byte[]{1});
+            DatabaseEntry key = new DatabaseEntry(new byte[] { 1 });
             IntegerBinding.intToEntry(0, key);
             txn = repEnv.beginTransaction(null, txnConfig);
             for (int i = 0; i < updates; i++) {

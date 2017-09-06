@@ -30,16 +30,11 @@ public class CheckpointFileReader extends FileReader {
     /**
      * Create this reader to start at a given LSN.
      */
-    public CheckpointFileReader(EnvironmentImpl env,
-                                int readBufferSize,
-                                boolean forward,
-                                long startLsn,
-                                long finishLsn,
+    public CheckpointFileReader(EnvironmentImpl env, int readBufferSize, boolean forward, long startLsn, long finishLsn,
                                 long endOfFileLsn)
-        throws DatabaseException {
+            throws DatabaseException {
 
-        super(env, readBufferSize, forward, startLsn,
-              null, endOfFileLsn, finishLsn);
+        super(env, readBufferSize, forward, startLsn, null, endOfFileLsn, finishLsn);
     }
 
     /**
@@ -55,12 +50,10 @@ public class CheckpointFileReader extends FileReader {
         if (LogEntryType.LOG_CKPT_END.equalsType(logEntryTypeNumber)) {
             isTarget = true;
             isCheckpointEnd = true;
-        } else if (LogEntryType.LOG_CKPT_START.equalsType
-            (logEntryTypeNumber)) {
+        } else if (LogEntryType.LOG_CKPT_START.equalsType(logEntryTypeNumber)) {
             isTarget = true;
             isCheckpointStart = true;
-        } else if (LogEntryType.LOG_DBTREE.equalsType
-                (logEntryTypeNumber)) {
+        } else if (LogEntryType.LOG_DBTREE.equalsType(logEntryTypeNumber)) {
             isTarget = true;
             isDbTree = true;
         }

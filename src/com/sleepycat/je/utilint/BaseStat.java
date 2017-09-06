@@ -17,8 +17,8 @@ import java.io.Serializable;
 
 /**
  * The basic interface for accessing and clearing statistics for use in both
- * standalone statistics and component statistics contained in a {@link
- * MapStat}.
+ * standalone statistics and component statistics contained in a {@link MapStat}
+ * .
  *
  * @param <T> the type of the statistic value
  */

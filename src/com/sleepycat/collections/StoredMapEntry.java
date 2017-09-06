@@ -18,13 +18,10 @@ package com.sleepycat.collections;
  */
 final class StoredMapEntry extends MapEntryParameter {
 
-    private BaseIterator iter;
+    private BaseIterator     iter;
     private StoredCollection coll;
 
-    StoredMapEntry(Object key,
-                   Object value,
-                   StoredCollection coll,
-                   BaseIterator iter) {
+    StoredMapEntry(Object key, Object value, StoredCollection coll, BaseIterator iter) {
 
         super(key, value);
         this.coll = coll;

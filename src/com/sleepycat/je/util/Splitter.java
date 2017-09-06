@@ -17,23 +17,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Splitter is used to split a string based on a delimiter.
- * Support includes double quoted strings, and the escape character.
- * Raw tokens are returned that include the double quotes, white space,
- * and escape characters.
- *
+ * Splitter is used to split a string based on a delimiter. Support includes
+ * double quoted strings, and the escape character. Raw tokens are returned that
+ * include the double quotes, white space, and escape characters.
  */
 public class Splitter {
-    private static final char QUOTECHAR = '"';
-    private static final char ESCAPECHAR = '\\';
-    private final char delimiter;
-    private final List<String> tokens = new ArrayList<String>();
-    private enum StateType {COLLECT, COLLECTANY, QUOTE};
+    private static final char  QUOTECHAR  = '"';
+    private static final char  ESCAPECHAR = '\\';
+    private final char         delimiter;
+    private final List<String> tokens     = new ArrayList<String>();
+
+    private enum StateType {
+        COLLECT,
+        COLLECTANY,
+        QUOTE
+    };
+
     private StateType prevState;
     private StateType state;
-    private int startIndex;
-    private int curIndex;
-    private String row;
+    private int       startIndex;
+    private int       curIndex;
+    private String    row;
 
     public Splitter(char delimiter) {
         this.delimiter = delimiter;
@@ -48,7 +52,7 @@ public class Splitter {
         for (int cur = 0; cur < row.length(); cur++) {
             char c = row.charAt(cur);
             switch (state) {
-                case COLLECT :
+                case COLLECT:
                     if (isDelimiter(c)) {
                         outputToken();
                         startIndex = cur + 1;

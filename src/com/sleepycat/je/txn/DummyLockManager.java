@@ -30,16 +30,14 @@ public class DummyLockManager extends LockManager {
     /*
      * Even though a user may specify isNoLocking for performance reasons, JE
      * will sometimes still need to use locking internally (e.g. handle locks,
-     * and transactional access to internal db's).  So we can not completely
+     * and transactional access to internal db's). So we can not completely
      * eliminate the Lock Manager. Instead, when isNoLocking is specified, we
      * keep a standard Lock Manager around for use by cursors that access
-     * internal databases.  Delegate to that as needed.
-     * [#16453]
+     * internal databases. Delegate to that as needed. [#16453]
      */
     private final LockManager superiorLockManager;
 
-    public DummyLockManager(EnvironmentImpl envImpl,
-                            LockManager superiorLockManager) {
+    public DummyLockManager(EnvironmentImpl envImpl, LockManager superiorLockManager) {
         super(envImpl);
         this.superiorLockManager = superiorLockManager;
     }
@@ -53,12 +51,12 @@ public class DummyLockManager extends LockManager {
     public List<LockInfo> getWaiters(Long lsn) {
         return superiorLockManager.getWaiters(lsn);
     }
-    
+
     @Override
     public LockType getOwnedLockType(Long lsn, Locker locker) {
         return superiorLockManager.getOwnedLockType(lsn, locker);
     }
-    
+
     @Override
     public boolean isLockUncontended(Long lsn) {
         return superiorLockManager.isLockUncontended(lsn);
@@ -73,8 +71,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#lookupLock
      */
     @Override
-    Lock lookupLock(Long lsn)
-        throws DatabaseException {
+    Lock lookupLock(Long lsn) throws DatabaseException {
 
         Lock ret = superiorLockManager.lookupLock(lsn);
         return ret;
@@ -84,16 +81,12 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#attemptLock
      */
     @Override
-    LockAttemptResult attemptLock(Long lsn,
-                                  Locker locker,
-                                  LockType type,
-                                  boolean nonBlockingRequest,
+    LockAttemptResult attemptLock(Long lsn, Locker locker, LockType type, boolean nonBlockingRequest,
                                   boolean jumpAheadOfWaiters)
-        throws DatabaseException {
+            throws DatabaseException {
 
         if (locker.lockingRequired()) {
-            return superiorLockManager.attemptLock
-                (lsn, locker, type, nonBlockingRequest, jumpAheadOfWaiters);
+            return superiorLockManager.attemptLock(lsn, locker, type, nonBlockingRequest, jumpAheadOfWaiters);
         }
         return new LockAttemptResult(null, LockGrantType.NEW, true);
     }
@@ -102,25 +95,14 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#getTimeoutInfo
      */
     @Override
-    TimeoutInfo getTimeoutInfo(
-        boolean isLockNotTxnTimeout,
-        Locker locker,
-        long lsn,
-        LockType type,
-        LockGrantType grantType,
-        Lock useLock,
-        long timeout,
-        long start,
-        long now,
-        DatabaseImpl database,
-        Set<LockInfo> owners,
-        List<LockInfo> waiters)
-        throws DatabaseException {
+    TimeoutInfo getTimeoutInfo(boolean isLockNotTxnTimeout, Locker locker, long lsn, LockType type,
+                               LockGrantType grantType, Lock useLock, long timeout, long start, long now,
+                               DatabaseImpl database, Set<LockInfo> owners, List<LockInfo> waiters)
+            throws DatabaseException {
 
         if (locker.lockingRequired()) {
-            return superiorLockManager.getTimeoutInfo(
-                isLockNotTxnTimeout, locker, lsn, type, grantType, useLock,
-                timeout, start, now, database, owners, waiters);
+            return superiorLockManager.getTimeoutInfo(isLockNotTxnTimeout, locker, lsn, type, grantType, useLock,
+                    timeout, start, now, database, owners, waiters);
         }
         return null;
     }
@@ -129,23 +111,19 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#releaseAndFindNotifyTargets
      */
     @Override
-    Set<Locker> releaseAndFindNotifyTargets(long lsn, Locker locker)
-        throws DatabaseException {
+    Set<Locker> releaseAndFindNotifyTargets(long lsn, Locker locker) throws DatabaseException {
 
         /*
-         * Unconditionally release the lock.  This does not detract from the
+         * Unconditionally release the lock. This does not detract from the
          * performance benefit of disabled locking, since this method is only
          * called if a lock was previously acquired, i.e., it is held by a
-         * Locker.
-         *
-         * The comment below is now obsolete because handle locks are no longer
-         * transferred.
-         *   If the release of the lock were conditional, a lock transferred
-         *   between Lockers (as we do with Database handle locks) would never
-         *   be released, since the destination Locker's lockingRequired
-         *   property is not set to true.  In general, it is safer to
-         *   unconditionally release locks than to rely on the lockingRequired
-         *   property. [#17985]
+         * Locker. The comment below is now obsolete because handle locks are no
+         * longer transferred. If the release of the lock were conditional, a
+         * lock transferred between Lockers (as we do with Database handle
+         * locks) would never be released, since the destination Locker's
+         * lockingRequired property is not set to true. In general, it is safer
+         * to unconditionally release locks than to rely on the lockingRequired
+         * property. [#17985]
          */
         return superiorLockManager.releaseAndFindNotifyTargets(lsn, locker);
     }
@@ -154,8 +132,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#demote
      */
     @Override
-    void demote(long lsn, Locker locker)
-        throws DatabaseException {
+    void demote(long lsn, Locker locker) throws DatabaseException {
 
         if (locker.lockingRequired()) {
             superiorLockManager.demote(lsn, locker);
@@ -168,8 +145,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#isLocked
      */
     @Override
-    boolean isLocked(Long lsn)
-        throws DatabaseException {
+    boolean isLocked(Long lsn) throws DatabaseException {
 
         return superiorLockManager.isLocked(lsn);
     }
@@ -178,8 +154,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#isOwner
      */
     @Override
-    boolean isOwner(Long lsn, Locker locker, LockType type)
-        throws DatabaseException {
+    boolean isOwner(Long lsn, Locker locker, LockType type) throws DatabaseException {
 
         return superiorLockManager.isOwner(lsn, locker, type);
     }
@@ -188,8 +163,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#isWaiter
      */
     @Override
-    boolean isWaiter(Long lsn, Locker locker)
-        throws DatabaseException {
+    boolean isWaiter(Long lsn, Locker locker) throws DatabaseException {
 
         return superiorLockManager.isWaiter(lsn, locker);
     }
@@ -198,8 +172,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#nWaiters
      */
     @Override
-    int nWaiters(Long lsn)
-        throws DatabaseException {
+    int nWaiters(Long lsn) throws DatabaseException {
 
         return superiorLockManager.nWaiters(lsn);
     }
@@ -208,8 +181,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#nOwners
      */
     @Override
-    int nOwners(Long lsn)
-        throws DatabaseException {
+    int nOwners(Long lsn) throws DatabaseException {
 
         return superiorLockManager.nOwners(lsn);
     }
@@ -218,8 +190,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#getWriterOwnerLocker
      */
     @Override
-    Locker getWriteOwnerLocker(Long lsn)
-        throws DatabaseException {
+    Locker getWriteOwnerLocker(Long lsn) throws DatabaseException {
 
         return superiorLockManager.getWriteOwnerLocker(lsn);
     }
@@ -228,19 +199,13 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#validateOwnership
      */
     @Override
-    boolean validateOwnership(Long lsn,
-                              Locker locker,
-                              LockType type,
-                              boolean getOwnersAndWaiters,
-                              boolean flushFromWaiters,
-                              Set<LockInfo> owners,
-                              List<LockInfo> waiters)
-        throws DatabaseException {
+    boolean validateOwnership(Long lsn, Locker locker, LockType type, boolean getOwnersAndWaiters,
+                              boolean flushFromWaiters, Set<LockInfo> owners, List<LockInfo> waiters)
+            throws DatabaseException {
 
         if (locker.lockingRequired()) {
-            return superiorLockManager.validateOwnership(
-                lsn, locker, type, getOwnersAndWaiters, flushFromWaiters,
-                owners, waiters);
+            return superiorLockManager.validateOwnership(lsn, locker, type, getOwnersAndWaiters, flushFromWaiters,
+                    owners, waiters);
         }
         return true;
     }
@@ -249,14 +214,10 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#stealLock
      */
     @Override
-    public LockAttemptResult stealLock(Long lsn,
-                                          Locker locker,
-                                          LockType lockType)
-        throws DatabaseException {
+    public LockAttemptResult stealLock(Long lsn, Locker locker, LockType lockType) throws DatabaseException {
 
         if (locker.lockingRequired()) {
-            return superiorLockManager.stealLock
-                (lsn, locker, lockType);
+            return superiorLockManager.stealLock(lsn, locker, lockType);
         }
         return null;
     }
@@ -265,8 +226,7 @@ public class DummyLockManager extends LockManager {
      * @see LockManager#dumpLockTable
      */
     @Override
-    void dumpLockTable(StatGroup stats, boolean clear)
-        throws DatabaseException {
+    void dumpLockTable(StatGroup stats, boolean clear) throws DatabaseException {
 
         superiorLockManager.dumpLockTable(stats, clear);
     }

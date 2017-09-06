@@ -23,11 +23,11 @@ import com.sleepycat.je.dbi.DatabaseImpl;
 import com.sleepycat.je.txn.LockType;
 
 /**
- * Estimates the number of non-deleted BIN entries between two end points,
- * using information returned in TrackingInfo from Tree.getParentINForChildIN.
- * Used for estimating dup counts, e.g., for join query optimization.  Accuracy
- * is limited by the number of samples taken to compute the average number of
- * entries at each level.  Currently only two samples (at the end points) are
+ * Estimates the number of non-deleted BIN entries between two end points, using
+ * information returned in TrackingInfo from Tree.getParentINForChildIN. Used
+ * for estimating dup counts, e.g., for join query optimization. Accuracy is
+ * limited by the number of samples taken to compute the average number of
+ * entries at each level. Currently only two samples (at the end points) are
  * taken, and because the tree is not balanced making the number of entries
  * highly variable, the count can easily be off by a factor of two.
  */
@@ -40,10 +40,7 @@ public class CountEstimator {
      * Returns an estimate of the number of records between two end points
      * specified by begin/end cursor positions.
      */
-    public static long count(DatabaseImpl dbImpl,
-                             CursorImpl beginCursor,
-                             boolean beginInclusive,
-                             CursorImpl endCursor,
+    public static long count(DatabaseImpl dbImpl, CursorImpl beginCursor, boolean beginInclusive, CursorImpl endCursor,
                              boolean endInclusive) {
 
         /* If the two cursors are at the same position, return 1. */
@@ -54,41 +51,38 @@ public class CountEstimator {
         /* Compute estimate for cursors at different positions. */
         final CountEstimator estimator = new CountEstimator(dbImpl);
 
-        return estimator.count(beginCursor, endCursor) +
-               (beginInclusive ? 1 : 0) +
-               (endInclusive ? 1 : 0);
+        return estimator.count(beginCursor, endCursor) + (beginInclusive ? 1 : 0) + (endInclusive ? 1 : 0);
     }
 
-    private final DatabaseImpl dbImpl;
+    private final DatabaseImpl             dbImpl;
 
-    private List<TrackingInfo> beginStack;
-    private List<TrackingInfo> endStack;
+    private List<TrackingInfo>             beginStack;
+    private List<TrackingInfo>             endStack;
 
-    private final List<List<TrackingInfo>> avgEntriesStacks =
-        new ArrayList<List<TrackingInfo>>();
+    private final List<List<TrackingInfo>> avgEntriesStacks = new ArrayList<List<TrackingInfo>>();
 
-    private int levelCount;
-    private int rootLevel;
-    private float[] avgEntries;
+    private int                            levelCount;
+    private int                            rootLevel;
+    private float[]                        avgEntries;
 
     private CountEstimator(DatabaseImpl dbImpl) {
         this.dbImpl = dbImpl;
     }
-    
+
     private long count(CursorImpl beginCursor, CursorImpl endCursor) {
 
         for (int numRetries = 0;; numRetries += 1) {
 
             /*
-             * If we have retried too many times, give up.  This is probably
-             * due to a bug of some kind, and we shouldn't loop forever.
+             * If we have retried too many times, give up. This is probably due
+             * to a bug of some kind, and we shouldn't loop forever.
              */
             if (numRetries > MAX_RETRIES_AFTER_SPLIT) {
                 throw EnvironmentFailureException.unexpectedState();
             }
 
             /*
-             * Set up the initial info for the computation.  Retry if a split
+             * Set up the initial info for the computation. Retry if a split
              * occurs.
              */
             beginStack = beginCursor.getAncestorPath();
@@ -104,12 +98,12 @@ public class CountEstimator {
                 continue;
             }
 
-            /* Get the the average entries from the two end points.  */
+            /* Get the the average entries from the two end points. */
             getAvgEntries(beginCursor, endCursor);
 
             /*
-             * Return the count.  FUTURE: Taking more samples between the two
-             * end points would increase accuracy.
+             * Return the count. FUTURE: Taking more samples between the two end
+             * points would increase accuracy.
              */
             return countTotal();
         }
@@ -117,7 +111,7 @@ public class CountEstimator {
 
     /**
      * Find the common ancestor node for the two end points, which we'll call
-     * the root level.  If no common ancestor can be found, return false to
+     * the root level. If no common ancestor can be found, return false to
      * restart the process, because a split must have occurred in between
      * getting the two stacks for the end points.
      */
@@ -154,11 +148,11 @@ public class CountEstimator {
         avgEntriesStacks.clear();
 
         if (!addAvgEntriesSample(beginStack)) {
-            sampleNextBIN(beginCursor, true /*moveForward*/);
+            sampleNextBIN(beginCursor, true /* moveForward */);
         }
 
         if (!addAvgEntriesSample(endStack)) {
-            sampleNextBIN(endCursor, false /*moveForward*/);
+            sampleNextBIN(endCursor, false /* moveForward */);
         }
 
         computeAvgEntries();
@@ -167,13 +161,10 @@ public class CountEstimator {
     /**
      * FUTURE: use internal skip method instead, saving a btree lookup.
      */
-    private void sampleNextBIN(
-        CursorImpl beginOrEndCursor,
-        boolean moveForward) {
+    private void sampleNextBIN(CursorImpl beginOrEndCursor, boolean moveForward) {
 
-        final CursorImpl cursor =
-            beginOrEndCursor.cloneCursor(true /*samePosition*/);
-        
+        final CursorImpl cursor = beginOrEndCursor.cloneCursor(true /* samePosition */);
+
         try {
             cursor.latchBIN();
             if (moveForward) {
@@ -182,11 +173,8 @@ public class CountEstimator {
                 cursor.setOnFirstSlot();
             }
 
-            final OperationResult result = cursor.getNext(
-                null /*foundKey*/, null /*foundData*/,
-                LockType.NONE, false /*dirtyReadAll*/,
-                moveForward, true /*alreadyLatched*/,
-                null /*rangeConstraint*/);
+            final OperationResult result = cursor.getNext(null /* foundKey */, null /* foundData */, LockType.NONE,
+                    false /* dirtyReadAll */, moveForward, true /* alreadyLatched */, null /* rangeConstraint */);
 
             if (result != null) {
                 final List<TrackingInfo> stack = cursor.getAncestorPath();
@@ -200,9 +188,8 @@ public class CountEstimator {
     }
 
     /**
-     * At each level we compute the average number of entries.  This will be
-     * used as a multipler to estimate the number of nodes for any IN at that
-     * level.
+     * At each level we compute the average number of entries. This will be used
+     * as a multipler to estimate the number of nodes for any IN at that level.
      */
     private void computeAvgEntries() {
 
@@ -262,8 +249,7 @@ public class CountEstimator {
         final int rootIndex1 = beginStack.get(rootLevel).index + 1;
         final int rootIndex2 = endStack.get(rootLevel).index;
         if (rootIndex2 > rootIndex1) {
-            total += Math.round((rootIndex2 - rootIndex1) *
-                                avgEntries[rootLevel]);
+            total += Math.round((rootIndex2 - rootIndex1) * avgEntries[rootLevel]);
         }
 
         /* Add nodes under the end points at lower levels. */
@@ -273,16 +259,14 @@ public class CountEstimator {
             final int leftIndex = beginStack.get(level).index;
             final int lastIndex = beginStack.get(level).entries - 1;
             if (lastIndex > leftIndex) {
-                total += Math.round((lastIndex - leftIndex) *
-                                    avgEntries[level]);
+                total += Math.round((lastIndex - leftIndex) * avgEntries[level]);
             }
 
             /* Add nodes under right end point that are to its left. */
             final int rightIndex = endStack.get(level).index;
             final int firstIndex = 0;
             if (rightIndex > firstIndex) {
-                total += Math.round((rightIndex - firstIndex) *
-                                    avgEntries[level]);
+                total += Math.round((rightIndex - firstIndex) * avgEntries[level]);
             }
         }
 
@@ -303,20 +287,16 @@ public class CountEstimator {
 
         @Override
         public String toString() {
-            return "less: " + less +
-                   " equal: " + equal +
-                   " greater: " + greater;
+            return "less: " + less + " equal: " + equal + " greater: " + greater;
         }
     }
 
     /*
-     * For future use, if getKeyRatios is exposed in the API.  Be sure to test
-     * boundary conditions when index is 0 or nEntries.
-     *
-     * Algorithm copied from __bam_key_range in BDB btree/bt_stat.c.
+     * For future use, if getKeyRatios is exposed in the API. Be sure to test
+     * boundary conditions when index is 0 or nEntries. Algorithm copied from
+     * __bam_key_range in BDB btree/bt_stat.c.
      */
-    static KeyRatios getKeyRatios(List<TrackingInfo> infoByLevel,
-                                  boolean exact) {
+    static KeyRatios getKeyRatios(List<TrackingInfo> infoByLevel, boolean exact) {
         double factor = 1.0;
         double less = 0.0;
         double greater = 0.0;
@@ -324,8 +304,8 @@ public class CountEstimator {
         /*
          * At each level we know that INs greater than index contain keys
          * greater than what we are looking for and those less than index are
-         * less than.  The one pointed to by index may have some less, some
-         * greater or even equal.  If index is equal to the number of entries,
+         * less than. The one pointed to by index may have some less, some
+         * greater or even equal. If index is equal to the number of entries,
          * then the key is out of range and everything is less.
          */
         for (final TrackingInfo info : infoByLevel) {
@@ -335,24 +315,22 @@ public class CountEstimator {
                 less += factor;
             } else {
                 less += (factor * info.index) / info.entries;
-                greater += (factor * ((info.entries - info.index) - 1)) /
-                           info.entries;
+                greater += (factor * ((info.entries - info.index) - 1)) / info.entries;
             }
 
             /* Factor at next level down is 1/n'th the amount at this level. */
             factor /= info.entries;
 
             /*
-            System.out.println("factor: " + factor +
-                               " less: " + less +
-                               " greater: " + greater);
-            */
+             * System.out.println("factor: " + factor + " less: " + less +
+             * " greater: " + greater);
+             */
         }
 
         /*
          * If there was an exact match then assign the 1/n'th factor to the key
-         * itself.  Otherwise that factor belongs to those greater than the
-         * key, unless the key was out of range.
+         * itself. Otherwise that factor belongs to those greater than the key,
+         * unless the key was out of range.
          */
         final double equal;
         if (exact) {

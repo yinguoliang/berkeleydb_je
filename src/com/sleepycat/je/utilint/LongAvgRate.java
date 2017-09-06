@@ -25,31 +25,31 @@ import java.util.concurrent.TimeUnit;
  * specified time period of the rate of change in a long value over time.
  */
 public class LongAvgRate extends MapStatComponent<Long, LongAvgRate> {
-    private static final long serialVersionUID = 1L;
+    private static final long        serialVersionUID = 1L;
 
     /**
      * The minimum number of milliseconds for computing rate changes, to avoid
      * quantizing errors.
      */
-    public static final long MIN_PERIOD = 200;
+    public static final long         MIN_PERIOD       = 200;
 
     /** The time unit for reporting the result. */
-    private final TimeUnit reportTimeUnit;
+    private final TimeUnit           reportTimeUnit;
 
     /** The average of the rate values. */
     private final DoubleExpMovingAvg avg;
 
     /**
-     * The previous value, or 0.  Synchronize on this instance when accessing
+     * The previous value, or 0. Synchronize on this instance when accessing
      * this field.
      */
-    private long prevValue;
+    private long                     prevValue;
 
     /**
-     * The time in milliseconds of the previous value, or 0.  Synchronize on
-     * this instance when accessing this field.
+     * The time in milliseconds of the previous value, or 0. Synchronize on this
+     * instance when accessing this field.
      */
-    private long prevTime;
+    private long                     prevTime;
 
     /**
      * Creates an instance of this class.
@@ -58,9 +58,7 @@ public class LongAvgRate extends MapStatComponent<Long, LongAvgRate> {
      * @param periodMillis the averaging period in milliseconds
      * @param reportTimeUnit the time unit for reporting the result
      */
-    public LongAvgRate(String name,
-                       long periodMillis,
-                       TimeUnit reportTimeUnit) {
+    public LongAvgRate(String name, long periodMillis, TimeUnit reportTimeUnit) {
         avg = new DoubleExpMovingAvg(name, periodMillis);
         assert reportTimeUnit != null;
         this.reportTimeUnit = reportTimeUnit;
@@ -105,8 +103,7 @@ public class LongAvgRate extends MapStatComponent<Long, LongAvgRate> {
             if (deltaTime < MIN_PERIOD) {
                 return;
             }
-            avg.add(((double) (value - prevValue)) / ((double) deltaTime),
-                    time);
+            avg.add(((double) (value - prevValue)) / ((double) deltaTime), time);
         }
         prevValue = value;
         prevTime = time;
@@ -127,16 +124,15 @@ public class LongAvgRate extends MapStatComponent<Long, LongAvgRate> {
     }
 
     /**
-     * Do an  add, letting the caller  arrange to synchronize on  this instance
-     * and the argument safely.
+     * Do an add, letting the caller arrange to synchronize on this instance and
+     * the argument safely.
      */
     private void addInternal(LongAvgRate other) {
-        assert(Thread.holdsLock(this));
-        assert(Thread.holdsLock(other));
+        assert (Thread.holdsLock(this));
+        assert (Thread.holdsLock(other));
 
         /*
-         * Only use the other values if they are newer by more than the
-         * minimum
+         * Only use the other values if they are newer by more than the minimum
          */
         if ((other.prevTime - prevTime) > MIN_PERIOD) {
             avg.add(other.avg);
@@ -193,8 +189,7 @@ public class LongAvgRate extends MapStatComponent<Long, LongAvgRate> {
         if (reportTimeUnit == MILLISECONDS) {
             return Math.round(inMillis);
         } else if (reportTimeUnit.compareTo(MILLISECONDS) < 0) {
-            return Math.round(
-                inMillis / reportTimeUnit.convert(1, MILLISECONDS));
+            return Math.round(inMillis / reportTimeUnit.convert(1, MILLISECONDS));
         } else {
             return Math.round(inMillis * reportTimeUnit.toMillis(1));
         }
@@ -232,20 +227,17 @@ public class LongAvgRate extends MapStatComponent<Long, LongAvgRate> {
 
     @Override
     public synchronized String toString() {
-        return "LongAvgRate[" + avg + ", prevValue=" + prevValue +
-            ", prevTime=" + prevTime + "]";
+        return "LongAvgRate[" + avg + ", prevValue=" + prevValue + ", prevTime=" + prevTime + "]";
     }
 
     /** Synchronize access to fields. */
-    private synchronized void readObject(ObjectInputStream in)
-        throws IOException, ClassNotFoundException {
+    private synchronized void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 
         in.defaultReadObject();
     }
 
     /** Synchronize access to fields. */
-    private synchronized void writeObject(ObjectOutputStream out)
-        throws IOException {
+    private synchronized void writeObject(ObjectOutputStream out) throws IOException {
 
         out.defaultWriteObject();
     }

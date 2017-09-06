@@ -22,14 +22,13 @@ public class LatchFactory {
      * Creates a SharedLatch using a given LatchContext.
      *
      * @param exclusiveOnly indicates whether this latch can only be set
-     * exclusively (not shared).
+     *            exclusively (not shared).
      */
-    public static SharedLatch createSharedLatch(final LatchContext context,
-                                                final boolean exclusiveOnly) {
+    public static SharedLatch createSharedLatch(final LatchContext context, final boolean exclusiveOnly) {
         if (exclusiveOnly) {
             return new LatchImpl(context);
         }
-        return new SharedLatchImpl(false /*fair*/, context);
+        return new SharedLatchImpl(false /* fair */, context);
     }
 
     /**
@@ -37,26 +36,23 @@ public class LatchFactory {
      * envImpl.
      *
      * @param exclusiveOnly indicates whether this latch can only be set
-     * exclusively (not shared).
+     *            exclusively (not shared).
      */
-    public static SharedLatch createSharedLatch(final EnvironmentImpl envImpl,
-                                                final String name,
+    public static SharedLatch createSharedLatch(final EnvironmentImpl envImpl, final String name,
                                                 final boolean exclusiveOnly) {
         if (exclusiveOnly) {
             return new LatchImpl(createContext(envImpl, name));
         }
-        return new SharedLatchImpl(
-            false /*fair*/, createContext(envImpl, name));
+        return new SharedLatchImpl(false /* fair */, createContext(envImpl, name));
     }
 
     /**
      * Creates a Latch using a given LatchContext.
      *
-     * @param collectStats is true to collect stats.  If false, a smaller and
-     * faster implementation is used.
+     * @param collectStats is true to collect stats. If false, a smaller and
+     *            faster implementation is used.
      */
-    public static Latch createExclusiveLatch(final LatchContext context,
-                                             final boolean collectStats) {
+    public static Latch createExclusiveLatch(final LatchContext context, final boolean collectStats) {
         if (collectStats) {
             return new LatchWithStatsImpl(context);
         }
@@ -64,14 +60,12 @@ public class LatchFactory {
     }
 
     /**
-     * Creates a Latch, creating a LatchContext from the given name and
-     * envImpl.
+     * Creates a Latch, creating a LatchContext from the given name and envImpl.
      *
-     * @param collectStats is true to collect stats.  If false, a smaller and
-     * faster implementation is used.
+     * @param collectStats is true to collect stats. If false, a smaller and
+     *            faster implementation is used.
      */
-    public static Latch createExclusiveLatch(final EnvironmentImpl envImpl,
-                                             final String name,
+    public static Latch createExclusiveLatch(final EnvironmentImpl envImpl, final String name,
                                              final boolean collectStats) {
         if (collectStats) {
             return new LatchWithStatsImpl(createContext(envImpl, name));
@@ -79,21 +73,23 @@ public class LatchFactory {
         return new LatchImpl(createContext(envImpl, name));
     }
 
-    private static LatchContext createContext(final EnvironmentImpl envImpl,
-                                              final String name) {
+    private static LatchContext createContext(final EnvironmentImpl envImpl, final String name) {
         return new LatchContext() {
             @Override
             public int getLatchTimeoutMs() {
                 return envImpl.getLatchTimeoutMs();
             }
+
             @Override
             public String getLatchName() {
                 return name;
             }
+
             @Override
             public LatchTable getLatchTable() {
                 return LatchSupport.otherLatchTable;
             }
+
             @Override
             public EnvironmentImpl getEnvImplForFatalException() {
                 return envImpl;
@@ -110,14 +106,17 @@ public class LatchFactory {
             public int getLatchTimeoutMs() {
                 return 1000;
             }
+
             @Override
             public String getLatchName() {
                 return name;
             }
+
             @Override
             public LatchTable getLatchTable() {
                 return LatchSupport.otherLatchTable;
             }
+
             @Override
             public EnvironmentImpl getEnvImplForFatalException() {
                 throw EnvironmentFailureException.unexpectedState();

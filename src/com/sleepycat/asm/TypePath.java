@@ -42,13 +42,13 @@ public class TypePath {
      * A type path step that steps into the element type of an array type. See
      * {@link #getStep getStep}.
      */
-    public final static int ARRAY_ELEMENT = 0;
+    public final static int ARRAY_ELEMENT  = 0;
 
     /**
      * A type path step that steps into the nested type of a class type. See
      * {@link #getStep getStep}.
      */
-    public final static int INNER_TYPE = 1;
+    public final static int INNER_TYPE     = 1;
 
     /**
      * A type path step that steps into the bound of a wildcard type. See
@@ -60,26 +60,24 @@ public class TypePath {
      * A type path step that steps into a type argument of a generic type. See
      * {@link #getStep getStep}.
      */
-    public final static int TYPE_ARGUMENT = 3;
+    public final static int TYPE_ARGUMENT  = 3;
 
     /**
      * The byte array where the path is stored, in Java class file format.
      */
-    byte[] b;
+    byte[]                  b;
 
     /**
      * The offset of the first byte of the type path in 'b'.
      */
-    int offset;
+    int                     offset;
 
     /**
      * Creates a new type path.
      * 
-     * @param b
-     *            the byte array containing the type path in Java class file
+     * @param b the byte array containing the type path in Java class file
      *            format.
-     * @param offset
-     *            the offset of the first byte of the type path in 'b'.
+     * @param offset the offset of the first byte of the type path in 'b'.
      */
     TypePath(byte[] b, int offset) {
         this.b = b;
@@ -98,8 +96,7 @@ public class TypePath {
     /**
      * Returns the value of the given step of this path.
      * 
-     * @param index
-     *            an index between 0 and {@link #getLength()}, exclusive.
+     * @param index an index between 0 and {@link #getLength()}, exclusive.
      * @return {@link #ARRAY_ELEMENT ARRAY_ELEMENT}, {@link #INNER_TYPE
      *         INNER_TYPE}, {@link #WILDCARD_BOUND WILDCARD_BOUND}, or
      *         {@link #TYPE_ARGUMENT TYPE_ARGUMENT}.
@@ -113,8 +110,7 @@ public class TypePath {
      * into. This method should only be used for steps whose value is
      * {@link #TYPE_ARGUMENT TYPE_ARGUMENT}.
      * 
-     * @param index
-     *            an index between 0 and {@link #getLength()}, exclusive.
+     * @param index an index between 0 and {@link #getLength()}, exclusive.
      * @return the index of the type argument that the given step is stepping
      *         into.
      */
@@ -126,8 +122,7 @@ public class TypePath {
      * Converts a type path in string form, in the format used by
      * {@link #toString()}, into a TypePath object.
      * 
-     * @param typePath
-     *            a type path in string form, in the format used by
+     * @param typePath a type path in string form, in the format used by
      *            {@link #toString()}. May be null or empty.
      * @return the corresponding TypePath object, or null if the path is empty.
      */
@@ -172,20 +167,20 @@ public class TypePath {
         StringBuilder result = new StringBuilder(length * 2);
         for (int i = 0; i < length; ++i) {
             switch (getStep(i)) {
-            case ARRAY_ELEMENT:
-                result.append('[');
-                break;
-            case INNER_TYPE:
-                result.append('.');
-                break;
-            case WILDCARD_BOUND:
-                result.append('*');
-                break;
-            case TYPE_ARGUMENT:
-                result.append(getStepArgument(i));
-                break;
-            default:
-                result.append('_');
+                case ARRAY_ELEMENT:
+                    result.append('[');
+                    break;
+                case INNER_TYPE:
+                    result.append('.');
+                    break;
+                case WILDCARD_BOUND:
+                    result.append('*');
+                    break;
+                case TYPE_ARGUMENT:
+                    result.append(getStepArgument(i));
+                    break;
+                default:
+                    result.append('_');
             }
         }
         return result.toString();

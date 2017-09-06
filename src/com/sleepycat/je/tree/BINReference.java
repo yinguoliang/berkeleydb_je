@@ -16,17 +16,15 @@ package com.sleepycat.je.tree;
 import com.sleepycat.je.dbi.DatabaseId;
 
 /**
- * A class that embodies a reference to a BIN that does not rely on a
- * Java reference to the actual BIN.
+ * A class that embodies a reference to a BIN that does not rely on a Java
+ * reference to the actual BIN.
  */
 public class BINReference {
-    private final byte[] idKey;
-    private final long nodeId;
+    private final byte[]     idKey;
+    private final long       nodeId;
     private final DatabaseId databaseId;
 
-    BINReference(final long nodeId,
-                 final DatabaseId databaseId,
-                 final byte[] idKey) {
+    BINReference(final long nodeId, final DatabaseId databaseId, final byte[] idKey) {
         this.nodeId = nodeId;
         this.databaseId = databaseId;
         this.idKey = idKey;
@@ -67,8 +65,6 @@ public class BINReference {
 
     @Override
     public String toString() {
-        return "idKey=" + Key.getNoFormatString(idKey) +
-            " nodeId = " + nodeId +
-            " db=" + databaseId;
+        return "idKey=" + Key.getNoFormatString(idKey) + " nodeId = " + nodeId + " db=" + databaseId;
     }
 }

@@ -26,21 +26,16 @@ import com.sleepycat.je.utilint.DbLsn;
 public class SearchFileReader extends FileReader {
 
     private LogEntryType targetType;
-    private LogEntry logEntry;
+    private LogEntry     logEntry;
 
     /**
      * Create this reader to start at a given LSN.
      */
-    public SearchFileReader(EnvironmentImpl env,
-                            int readBufferSize,
-                            boolean forward,
-                            long startLsn,
-                            long endOfFileLsn,
+    public SearchFileReader(EnvironmentImpl env, int readBufferSize, boolean forward, long startLsn, long endOfFileLsn,
                             LogEntryType targetType)
-        throws DatabaseException {
+            throws DatabaseException {
 
-        super(env, readBufferSize, forward, startLsn, null,
-              endOfFileLsn, DbLsn.NULL_LSN);
+        super(env, readBufferSize, forward, startLsn, null, endOfFileLsn, DbLsn.NULL_LSN);
 
         this.targetType = targetType;
         logEntry = targetType.getNewLogEntry();
@@ -57,8 +52,7 @@ public class SearchFileReader extends FileReader {
     /**
      * This reader instantiate the first object of a given log entry.
      */
-    protected boolean processEntry(ByteBuffer entryBuffer)
-        throws DatabaseException {
+    protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
         logEntry.readEntry(envImpl, currentEntryHeader, entryBuffer);
         return true;

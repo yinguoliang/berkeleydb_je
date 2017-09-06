@@ -22,14 +22,14 @@ import com.sleepycat.je.utilint.Timestamp;
 
 /**
  * This class indicates the end of a partial rollback at syncup. This is a
- * non-replicated entry.  Although this is a replication class, it resides in
- * the utilint package because it is referenced in LogEntryType.java and is
- * used in a general way at recovery.
+ * non-replicated entry. Although this is a replication class, it resides in the
+ * utilint package because it is referenced in LogEntryType.java and is used in
+ * a general way at recovery.
  */
 public class RollbackEnd implements Loggable {
 
-    private long matchpointLSN;
-    private long rollbackStartLSN;
+    private long      matchpointLSN;
+    private long      rollbackStartLSN;
     /* For debugging in the field */
     private Timestamp time;
 
@@ -57,9 +57,8 @@ public class RollbackEnd implements Loggable {
      * @see Loggable#getLogSize
      */
     public int getLogSize() {
-        return  LogUtils.getPackedLongLogSize(matchpointLSN) +
-            LogUtils.getPackedLongLogSize(rollbackStartLSN) +
-            LogUtils.getTimestampLogSize(time);
+        return LogUtils.getPackedLongLogSize(matchpointLSN) + LogUtils.getPackedLongLogSize(rollbackStartLSN)
+                + LogUtils.getTimestampLogSize(time);
 
     }
 
@@ -112,9 +111,8 @@ public class RollbackEnd implements Loggable {
         }
 
         RollbackEnd otherRE = (RollbackEnd) other;
-        return (rollbackStartLSN == otherRE.rollbackStartLSN) &&
-            (matchpointLSN == otherRE.matchpointLSN) &&
-            (time.equals(otherRE.time));
+        return (rollbackStartLSN == otherRE.rollbackStartLSN) && (matchpointLSN == otherRE.matchpointLSN)
+                && (time.equals(otherRE.time));
     }
 
     @Override

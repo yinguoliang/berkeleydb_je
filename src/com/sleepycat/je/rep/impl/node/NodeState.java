@@ -29,29 +29,26 @@ import com.sleepycat.je.utilint.LoggerUtils;
  */
 public class NodeState {
     /* The rep impl whose state is being tracked. */
-    private final RepImpl repImpl;
+    private final RepImpl                                      repImpl;
 
     /* The application registered state change listener for this node. */
-    private StateChangeListener stateChangeListener = null;
+    private StateChangeListener                                stateChangeListener = null;
 
     /* The state change event that resulted in the current state. */
-    private StateChangeEvent stateChangeEvent = null;
+    private StateChangeEvent                                   stateChangeEvent    = null;
     private final AtomicReference<ReplicatedEnvironment.State> currentState;
-    private final Logger logger;
-    private final NameIdPair nameIdPair;
+    private final Logger                                       logger;
+    private final NameIdPair                                   nameIdPair;
 
-    public NodeState(NameIdPair nameIdPair,
-                     RepImpl repImpl) {
+    public NodeState(NameIdPair nameIdPair, RepImpl repImpl) {
 
-        currentState = new AtomicReference<ReplicatedEnvironment.State>
-            (ReplicatedEnvironment.State.DETACHED);
+        currentState = new AtomicReference<ReplicatedEnvironment.State>(ReplicatedEnvironment.State.DETACHED);
         this.nameIdPair = nameIdPair;
         this.repImpl = repImpl;
         logger = LoggerUtils.getLogger(getClass());
     }
 
-    synchronized public
-        void setChangeListener(StateChangeListener stateChangeListener){
+    synchronized public void setChangeListener(StateChangeListener stateChangeListener) {
         this.stateChangeListener = stateChangeListener;
     }
 
@@ -63,26 +60,21 @@ public class NodeState {
      * Change to a new node state and release any threads waiting for a state
      * transition.
      */
-    synchronized public void changeAndNotify(ReplicatedEnvironment.State state,
-                                             NameIdPair masterNameId) {
+    synchronized public void changeAndNotify(ReplicatedEnvironment.State state, NameIdPair masterNameId) {
 
         ReplicatedEnvironment.State newState = state;
         ReplicatedEnvironment.State oldState = currentState.getAndSet(state);
         stateChangeEvent = new StateChangeEvent(state, masterNameId);
 
         LoggerUtils.info(logger, repImpl,
-                         "node:" + masterNameId +
-                         " state change from " + oldState + " to " + newState);
+                "node:" + masterNameId + " state change from " + oldState + " to " + newState);
 
         if (stateChangeListener != null) {
             try {
                 stateChangeListener.stateChange(stateChangeEvent);
             } catch (Exception e) {
-                LoggerUtils.severe(logger, repImpl,
-                                   "State Change listener exception" +
-                                   e.getMessage());
-                throw new EnvironmentFailureException
-                    (repImpl, EnvironmentFailureReason.LISTENER_EXCEPTION, e);
+                LoggerUtils.severe(logger, repImpl, "State Change listener exception" + e.getMessage());
+                throw new EnvironmentFailureException(repImpl, EnvironmentFailureReason.LISTENER_EXCEPTION, e);
             }
         }
 

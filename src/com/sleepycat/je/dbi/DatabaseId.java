@@ -28,8 +28,7 @@ import com.sleepycat.utilint.StringUtils;
 /**
  * DatabaseImpl Ids are wrapped in a class so they can be logged.
  */
-public class DatabaseId extends BasicVersionedWriteLoggable
-        implements Comparable<DatabaseId> {
+public class DatabaseId extends BasicVersionedWriteLoggable implements Comparable<DatabaseId> {
 
     /**
      * The log version of the most recent format change for this loggable.
@@ -41,7 +40,7 @@ public class DatabaseId extends BasicVersionedWriteLoggable
     /**
      * The unique id of this database.
      */
-    private long id;
+    private long             id;
 
     /**
      *
@@ -66,8 +65,7 @@ public class DatabaseId extends BasicVersionedWriteLoggable
     /**
      * @return id as bytes, for use as a key
      */
-    public byte[] getBytes()
-        throws DatabaseException {
+    public byte[] getBytes() throws DatabaseException {
 
         return StringUtils.toUTF8(toString());
     }
@@ -136,9 +134,7 @@ public class DatabaseId extends BasicVersionedWriteLoggable
     }
 
     @Override
-    public void writeToLog(final ByteBuffer logBuffer,
-                           final int logVersion,
-                           final boolean forReplication) {
+    public void writeToLog(final ByteBuffer logBuffer, final int logVersion, final boolean forReplication) {
         LogUtils.writePackedLong(logBuffer, id);
     }
 

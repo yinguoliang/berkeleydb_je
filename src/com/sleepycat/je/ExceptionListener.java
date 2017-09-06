@@ -19,11 +19,11 @@ package com.sleepycat.je;
  */
 public interface ExceptionListener {
 
-	/**
-	 * This method is called if an exception is seen in a JE Daemon thread.
-	 *
-	 * @param event
-	 *            the ExceptionEvent representing the exception that was thrown.
-	 */
-	void exceptionThrown(ExceptionEvent event);
+    /**
+     * This method is called if an exception is seen in a JE Daemon thread.
+     *
+     * @param event the ExceptionEvent representing the exception that was
+     *            thrown.
+     */
+    void exceptionThrown(ExceptionEvent event);
 }

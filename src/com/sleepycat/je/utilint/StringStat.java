@@ -20,16 +20,13 @@ package com.sleepycat.je.utilint;
 public class StringStat extends Stat<String> {
     private static final long serialVersionUID = 1L;
 
-    private String value;
+    private String            value;
 
-    public StringStat(StatGroup group,
-                      StatDefinition definition) {
+    public StringStat(StatGroup group, StatDefinition definition) {
         super(group, definition);
     }
 
-    public StringStat(StatGroup group,
-                      StatDefinition definition,
-                      String initialValue) {
+    public StringStat(StatGroup group, StatDefinition definition, String initialValue) {
         super(group, definition);
         value = initialValue;
     }
@@ -51,7 +48,7 @@ public class StringStat extends Stat<String> {
 
     @Override
     public Stat<String> computeInterval(Stat<String> base) {
-       return copy();
+        return copy();
     }
 
     @Override

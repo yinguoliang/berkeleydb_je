@@ -37,14 +37,14 @@ import com.sleepycat.je.utilint.VLSN;
  * handles, are invalidated as a result of this exception. The application must
  * close all old handles and create new handles before it can proceed. The
  * actual rollback of any recently committed transactions is done when the
- * application re-instantiates and thereby reopens the {@link
- * ReplicatedEnvironment}.  The application is responsible for discarding and
- * recreating any transient state that may be associated with the committed
- * transactions that were rolled back. {@link #getEarliestTransactionId} and 
+ * application re-instantiates and thereby reopens the
+ * {@link ReplicatedEnvironment}. The application is responsible for discarding
+ * and recreating any transient state that may be associated with the committed
+ * transactions that were rolled back. {@link #getEarliestTransactionId} and
  * {@link #getEarliestTransactionCommitTime} provide information to help
  * determine which transactions might be rolled back. Note that it is possible
- * that no committed transactions have been rolled back and that the 
- * application need do no adjustments, in which case 
+ * that no committed transactions have been rolled back and that the application
+ * need do no adjustments, in which case
  * {@link #getEarliestTransactionCommitTime} will return null.
  * <p>
  * This exception should be encountered relatively infrequently in practice,
@@ -57,70 +57,64 @@ import com.sleepycat.je.utilint.VLSN;
  * {@link com.sleepycat.je.Durability.ReplicaAckPolicy#NONE} or a
  * {@link com.sleepycat.je.rep.ReplicationMutableConfig#NODE_PRIORITY} of zero
  * increases the likelihood of this exception.
+ * 
  * @see RollbackProhibitedException
  */
 public class RollbackException extends RestartRequiredException {
-    private static final long serialVersionUID = 1;
+    private static final long             serialVersionUID = 1;
 
     /* Testing support only */
     private final MatchpointSearchResults searchResults;
+
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    public RollbackException(RepImpl repImpl,
-                             VLSN matchpointVLSN,
-                             MatchpointSearchResults searchResults) {
-        super(repImpl, HARD_RECOVERY, makeMessage(repImpl.getName(),
-                                                  searchResults,
-                                                  matchpointVLSN));
-                                                  
+    public RollbackException(RepImpl repImpl, VLSN matchpointVLSN, MatchpointSearchResults searchResults) {
+        super(repImpl, HARD_RECOVERY, makeMessage(repImpl.getName(), searchResults, matchpointVLSN));
+
         this.searchResults = searchResults;
-              
+
     }
 
-    private static String makeMessage
-        (final String nodeName,
-         final MatchpointSearchResults searchResults,
-         final VLSN matchpointVLSN) {
+    private static String makeMessage(final String nodeName, final MatchpointSearchResults searchResults,
+                                      final VLSN matchpointVLSN) {
 
         final long matchpointLSN = searchResults.getMatchpointLSN();
-        return "Node " + nodeName + 
-            " must rollback" +  searchResults.getRollbackMsg() +
-            " in order to rejoin the replication group. All existing " +
-            "ReplicatedEnvironment handles must be closed and " +
-            "reinstantiated.  Log files were truncated to file 0x" + 
-            DbLsn.getFileNumber(matchpointLSN) + ", offset 0x" +
-            DbLsn.getFileOffset(matchpointLSN) + ", vlsn " +
-            matchpointVLSN;
+        return "Node " + nodeName + " must rollback" + searchResults.getRollbackMsg()
+                + " in order to rejoin the replication group. All existing "
+                + "ReplicatedEnvironment handles must be closed and "
+                + "reinstantiated.  Log files were truncated to file 0x" + DbLsn.getFileNumber(matchpointLSN)
+                + ", offset 0x" + DbLsn.getFileOffset(matchpointLSN) + ", vlsn " + matchpointVLSN;
     }
 
     /**
      * Return the time in milliseconds of the earliest transaction commit that
      * has been rolled back. May return null if no commits have been rolled
-     * back.  
+     * back.
      */
     public Long getEarliestTransactionCommitTime() {
         if (searchResults == null) {
             return null;
         }
-        
+
         if (searchResults.getEarliestPassedTxn() == null) {
             return null;
-        } 
+        }
 
         return searchResults.getEarliestPassedTxn().time.getTime();
     }
 
     /**
-     * Return the id of the earliest transaction commit that has been
-     * rolled back. 0 is returned if no commits have been rolled back.
+     * Return the id of the earliest transaction commit that has been rolled
+     * back. 0 is returned if no commits have been rolled back.
      */
     public long getEarliestTransactionId() {
         if (searchResults == null) {
             return 0;
         }
-        
+
         if (searchResults.getEarliestPassedTxn() == null) {
             return 0;
         }
@@ -130,15 +124,17 @@ public class RollbackException extends RestartRequiredException {
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     public RollbackException(String message, RollbackException cause) {
-        super(message + " " +  cause.getMessage(), cause);
+        super(message + " " + cause.getMessage(), cause);
         searchResults = cause.searchResults;
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     @Override

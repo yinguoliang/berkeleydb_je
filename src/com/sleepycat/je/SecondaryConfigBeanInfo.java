@@ -21,13 +21,13 @@ import java.beans.PropertyDescriptor;
  */
 public class SecondaryConfigBeanInfo extends DatabaseConfigBeanInfo {
 
-	@Override
-	public BeanDescriptor getBeanDescriptor() {
-		return getBdescriptor(SecondaryConfig.class);
-	}
+    @Override
+    public BeanDescriptor getBeanDescriptor() {
+        return getBdescriptor(SecondaryConfig.class);
+    }
 
-	@Override
-	public PropertyDescriptor[] getPropertyDescriptors() {
-		return getPdescriptor(SecondaryConfig.class);
-	}
+    @Override
+    public PropertyDescriptor[] getPropertyDescriptors() {
+        return getPdescriptor(SecondaryConfig.class);
+    }
 }

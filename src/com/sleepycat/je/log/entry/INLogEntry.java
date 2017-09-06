@@ -28,16 +28,12 @@ import com.sleepycat.je.tree.IN;
 import com.sleepycat.je.utilint.DbLsn;
 
 /**
- * - INLogEntry is used to read/write full-version IN logrecs.
- *
- * - BINDeltaLogEntry subclasses INLogEntry and is used to read/write
- *   BIN-delta logrecs for log versions 9 or later.
- *
- * - OldBINDeltaLogEntry is used to read/write BIN-delta logrecs for
- *   log versions earlier than 9. OldBINDeltaLogEntry is not a subclass
- *   of INLogEntry.
- *
- * On disk, a full IN logrec contains:
+ * - INLogEntry is used to read/write full-version IN logrecs. -
+ * BINDeltaLogEntry subclasses INLogEntry and is used to read/write BIN-delta
+ * logrecs for log versions 9 or later. - OldBINDeltaLogEntry is used to
+ * read/write BIN-delta logrecs for log versions earlier than 9.
+ * OldBINDeltaLogEntry is not a subclass of INLogEntry. On disk, a full IN
+ * logrec contains:
  * 
  * <pre>
  * (3 <= version < 6)
@@ -57,7 +53,7 @@ import com.sleepycat.je.utilint.DbLsn;
  *        IN
  * </pre>
  *
- *  On disk, a BIN-delta logrec written via the BINDeltaLogEntry contains:
+ * On disk, a BIN-delta logrec written via the BINDeltaLogEntry contains:
  *
  * <pre>
  * (version == 9)
@@ -72,12 +68,10 @@ import com.sleepycat.je.utilint.DbLsn;
  *        prevFullLsn
  *        prevDeltaLsn
  *        BIN (dirty slots only and including the new fullBinNEntries and
- *             fullBinMaxEntries fields) 
+ *             fullBinMaxEntries fields)
  * </pre>
- *
  */
-public class INLogEntry<T extends IN> extends BaseEntry<T>
-    implements LogEntry, INContainingEntry {
+public class INLogEntry<T extends IN> extends BaseEntry<T> implements LogEntry, INContainingEntry {
 
     /*
      * Persistent fields in an IN entry.
@@ -86,14 +80,13 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
     private DatabaseId dbId;
 
     /*
-     * this.in may be a (a) UIN, (b) full BIN, or (c) BIN delta.
-     * In case (a), "this" is a INLogEntry
-     * In case (c), "this" is a BINDeltaLogEntry instance.
-     * In case (b), "this" may be either a INLogEntry or a BINDeltaLogEntry
-     * instance. It will be a BINDeltaLogEntry instance, if "this" is used
-     * to log a full in-memory BIN as a BIN-delta.
+     * this.in may be a (a) UIN, (b) full BIN, or (c) BIN delta. In case (a),
+     * "this" is a INLogEntry In case (c), "this" is a BINDeltaLogEntry
+     * instance. In case (b), "this" may be either a INLogEntry or a
+     * BINDeltaLogEntry instance. It will be a BINDeltaLogEntry instance, if
+     * "this" is used to log a full in-memory BIN as a BIN-delta.
      */
-    private T in;
+    private T          in;
 
     /**
      * If non-null, used to write a pre-serialized log entry. In this case the
@@ -102,20 +95,18 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
     private ByteBuffer inBytes;
 
     /*
-     * The lsn of the previous full-version logrec for the same IN.
-     *
-     * See comment above about the evolution of this field.
+     * The lsn of the previous full-version logrec for the same IN. See comment
+     * above about the evolution of this field.
      */
-    private long prevFullLsn;
+    private long       prevFullLsn;
 
     /*
-     * If this is a BIN logrec and the previous logrec for the same BIN was
-     * a BIN-delta, prevDeltaLsn is the lsn of that previous logrec. Otherwise,
-     * prevDeltaLsn is NULL.
-     *
-     * See comment above about the evolution of this field.
+     * If this is a BIN logrec and the previous logrec for the same BIN was a
+     * BIN-delta, prevDeltaLsn is the lsn of that previous logrec. Otherwise,
+     * prevDeltaLsn is NULL. See comment above about the evolution of this
+     * field.
      */
-    private long prevDeltaLsn;
+    private long       prevDeltaLsn;
 
     /**
      * Construct a log entry for reading.
@@ -132,7 +123,7 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
      * Construct an INLogEntry for writing to the log.
      */
     public INLogEntry(T in) {
-        this(in, false /*isBINDelta*/);
+        this(in, false /* isBINDelta */);
     }
 
     /*
@@ -154,11 +145,8 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
     /**
      * Used to write a pre-serialized log entry.
      */
-    public INLogEntry(final ByteBuffer bytes,
-                      final long lastFullLsn,
-                      final long lastDeltaLsn,
-                      final LogEntryType logEntryType,
-                      final IN parent) {
+    public INLogEntry(final ByteBuffer bytes, final long lastFullLsn, final long lastDeltaLsn,
+                      final LogEntryType logEntryType, final IN parent) {
 
         setLogType(logEntryType);
 
@@ -172,8 +160,8 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
     }
 
     /*
-     * Whether this LogEntry reads/writes a BIN-Delta logrec.
-     * Overriden by the BINDeltaLogEntry subclass.
+     * Whether this LogEntry reads/writes a BIN-Delta logrec. Overriden by the
+     * BINDeltaLogEntry subclass.
      */
     @Override
     public boolean isBINDelta() {
@@ -220,19 +208,17 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
     }
 
     /**
-     * Returns the main item BIN if it has any slots with expiration times.
-     * Must only be called if this entry's type is BIN or BIN_DELTA.
-     *
-     * This method is called for expiration tracking because getMainItem and
-     * getIN cannot be called on an INLogEntry logging parameter, since it may
-     * be in pre-serialize form when it appears in the off-heap cache.
+     * Returns the main item BIN if it has any slots with expiration times. Must
+     * only be called if this entry's type is BIN or BIN_DELTA. This method is
+     * called for expiration tracking because getMainItem and getIN cannot be
+     * called on an INLogEntry logging parameter, since it may be in
+     * pre-serialize form when it appears in the off-heap cache.
      */
     public BIN getBINWithExpiration() {
 
         if (inBytes != null) {
             final BIN bin = new BIN();
-            if (!bin.mayHaveExpirationValues(
-                inBytes, LogEntryType.LOG_VERSION)) {
+            if (!bin.mayHaveExpirationValues(inBytes, LogEntryType.LOG_VERSION)) {
                 return null;
             }
             inBytes.mark();
@@ -251,10 +237,7 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
      */
 
     @Override
-    public void readEntry(
-        EnvironmentImpl envImpl,
-        LogEntryHeader header,
-        ByteBuffer entryBuffer) {
+    public void readEntry(EnvironmentImpl envImpl, LogEntryHeader header, ByteBuffer entryBuffer) {
 
         assert inBytes == null;
 
@@ -263,15 +246,14 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
 
         if (logVersion < 2) {
             throw unexpectedState(
-                "Attempt to read from log file with version " +
-                logVersion + ", which is not supported any more");
+                    "Attempt to read from log file with version " + logVersion + ", which is not supported any more");
         }
 
         if (version6OrLater) {
             dbId = new DatabaseId();
             dbId.readFromLog(entryBuffer, logVersion);
 
-            prevFullLsn = LogUtils.readLong(entryBuffer, false/*unpacked*/);
+            prevFullLsn = LogUtils.readLong(entryBuffer, false/* unpacked */);
             if (logVersion >= 8) {
                 prevDeltaLsn = LogUtils.readPackedLong(entryBuffer);
             } else {
@@ -287,7 +269,7 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
             dbId = new DatabaseId();
             dbId.readFromLog(entryBuffer, logVersion);
 
-            prevFullLsn = LogUtils.readLong(entryBuffer, true/*unpacked*/);
+            prevFullLsn = LogUtils.readLong(entryBuffer, true/* unpacked */);
             prevDeltaLsn = DbLsn.NULL_LSN;
         }
     }
@@ -295,10 +277,9 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
     private void readMainItem(T in, ByteBuffer entryBuffer, int logVersion) {
 
         if (isBINDelta()) {
-            assert(logVersion >= 9);
+            assert (logVersion >= 9);
 
-            in.readFromLog(
-                entryBuffer, logVersion, true /*deltasOnly*/);
+            in.readFromLog(entryBuffer, logVersion, true /* deltasOnly */);
 
             if (logVersion == 9) {
                 prevFullLsn = LogUtils.readPackedLong(entryBuffer);
@@ -325,10 +306,8 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
             inSize = in.getLogSize(isBINDelta());
         }
 
-        return (inSize +
-                dbId.getLogSize() +
-                LogUtils.getPackedLongLogSize(prevFullLsn) +
-                LogUtils.getPackedLongLogSize(prevDeltaLsn));
+        return (inSize + dbId.getLogSize() + LogUtils.getPackedLongLogSize(prevFullLsn)
+                + LogUtils.getPackedLongLogSize(prevDeltaLsn));
     }
 
     @Override
@@ -354,8 +333,8 @@ public class INLogEntry<T extends IN> extends BaseEntry<T>
     }
 
     /**
-     * INs from two different environments are never considered equal,
-     * because they have lsns that are environment-specific.
+     * INs from two different environments are never considered equal, because
+     * they have lsns that are environment-specific.
      */
     @Override
     public boolean logicalEquals(@SuppressWarnings("unused") LogEntry other) {

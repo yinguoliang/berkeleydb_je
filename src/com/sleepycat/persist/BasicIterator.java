@@ -27,10 +27,10 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  */
 class BasicIterator<V> implements Iterator<V> {
 
-    private EntityCursor<V> entityCursor;
+    private EntityCursor<V>  entityCursor;
     private ForwardCursor<V> forwardCursor;
-    private LockMode lockMode;
-    private V nextValue;
+    private LockMode         lockMode;
+    private V                nextValue;
 
     /**
      * An EntityCursor is given and the remove() method is supported.
@@ -78,8 +78,7 @@ class BasicIterator<V> implements Iterator<V> {
         }
         try {
             if (!entityCursor.delete()) {
-                throw new IllegalStateException
-                    ("Record at cursor position is already deleted");
+                throw new IllegalStateException("Record at cursor position is already deleted");
             }
         } catch (DatabaseException e) {
             throw RuntimeExceptionWrapper.wrapIfNeeded(e);

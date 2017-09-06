@@ -18,10 +18,10 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Maintain interval and cumulative stats for a given set of operations, as
- * well as a activityCounter that generates thread dumps if operations take too
- * long. The markStart and markFinish methods can be used to bracket each
- * tracked operation.
+ * Maintain interval and cumulative stats for a given set of operations, as well
+ * as a activityCounter that generates thread dumps if operations take too long.
+ * The markStart and markFinish methods can be used to bracket each tracked
+ * operation.
  */
 public class StatsTracker<T> {
 
@@ -33,36 +33,29 @@ public class StatsTracker<T> {
      * ActivityCounter tracks throughput and dumps thread stacktraces when
      * throughput drops.
      */
-    private final ActivityCounter activityCounter;
+    private final ActivityCounter     activityCounter;
 
     /**
      * The logger is used for activity stack traces.
      */
-    public StatsTracker(T[] opTypes,
-                        Logger stackTraceLogger,
-                        int activeThreadThreshold,
-                        long threadDumpIntervalMillis,
-                        int threadDumpMax,
-                        int maxTrackedLatencyMillis) {
+    public StatsTracker(T[] opTypes, Logger stackTraceLogger, int activeThreadThreshold, long threadDumpIntervalMillis,
+                        int threadDumpMax, int maxTrackedLatencyMillis) {
 
         this.intervalLatencies = new HashMap<T, LatencyStat>();
         this.cumulativeLatencies = new HashMap<T, LatencyStat>();
 
         for (T opType : opTypes) {
-            intervalLatencies.put
-                (opType, new LatencyStat(maxTrackedLatencyMillis));
-            cumulativeLatencies.put
-                (opType, new LatencyStat(maxTrackedLatencyMillis));
+            intervalLatencies.put(opType, new LatencyStat(maxTrackedLatencyMillis));
+            cumulativeLatencies.put(opType, new LatencyStat(maxTrackedLatencyMillis));
         }
 
-        activityCounter = new ActivityCounter(activeThreadThreshold,
-                                              threadDumpIntervalMillis,
-                                              threadDumpMax, 
-                                              stackTraceLogger);
+        activityCounter = new ActivityCounter(activeThreadThreshold, threadDumpIntervalMillis, threadDumpMax,
+                stackTraceLogger);
     }
 
-    /** 
+    /**
      * Track the start of a operation.
+     * 
      * @return the value of System.nanoTime, for passing to markFinish.
      */
     public long markStart() {
@@ -72,16 +65,19 @@ public class StatsTracker<T> {
 
     /**
      * Track the end of an operation.
+     * 
      * @param startTime should be the value returned by the corresponding call
-     * to markStart
+     *            to markStart
      */
     public void markFinish(T opType, long startTime) {
         markFinish(opType, startTime, 1);
     }
+
     /**
      * Track the end of an operation.
+     * 
      * @param startTime should be the value returned by the corresponding call
-     * to markStart
+     *            to markStart
      */
     public void markFinish(T opType, long startTime, int numOperations) {
         try {

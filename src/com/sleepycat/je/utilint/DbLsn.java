@@ -22,37 +22,35 @@ import com.sleepycat.je.tree.TreeUtils;
 
 /**
  * DbLsn is a class that operates on Log Sequence Numbers (LSNs). An LSN is a
- * long comprised of a file number (32b) and offset within that file (32b)
- * which references a unique record in the database environment log.  While
- * LSNs are represented as long's, we operate on them using an abstraction and
- * return longs from these methods so that we don't have to worry about the
- * lack of unsigned quantities.
+ * long comprised of a file number (32b) and offset within that file (32b) which
+ * references a unique record in the database environment log. While LSNs are
+ * represented as long's, we operate on them using an abstraction and return
+ * longs from these methods so that we don't have to worry about the lack of
+ * unsigned quantities.
  */
 public class DbLsn {
-    static final long INT_MASK = 0xFFFFFFFFL;
+    static final long         INT_MASK        = 0xFFFFFFFFL;
 
-    public static final long MAX_FILE_OFFSET = 0xFFFFFFFFL;
+    public static final long  MAX_FILE_OFFSET = 0xFFFFFFFFL;
 
     /* Signifies a transient LSN. */
-    private static final long MAX_FILE_NUM = 0xFFFFFFFFL;
+    private static final long MAX_FILE_NUM    = 0xFFFFFFFFL;
 
-    public static final long NULL_LSN = -1;
+    public static final long  NULL_LSN        = -1;
 
     private DbLsn() {
     }
 
     public static long makeLsn(long fileNumber, long fileOffset) {
-        return fileOffset & INT_MASK |
-            ((fileNumber & INT_MASK) << 32);
+        return fileOffset & INT_MASK | ((fileNumber & INT_MASK) << 32);
     }
 
     /**
-     * This flavor of makeLsn is used when the file offset has been stored
-     * in 32 bits, as is done in the VLSNBucket.
+     * This flavor of makeLsn is used when the file offset has been stored in 32
+     * bits, as is done in the VLSNBucket.
      */
     public static long makeLsn(long fileNumber, int fileOffset) {
-        return fileOffset & INT_MASK |
-            ((fileNumber & INT_MASK) << 32);
+        return fileOffset & INT_MASK | ((fileNumber & INT_MASK) << 32);
     }
 
     /**
@@ -84,6 +82,7 @@ public class DbLsn {
 
     /**
      * Return the file number for this DbLsn.
+     * 
      * @return the number for this DbLsn.
      */
     public static long getFileNumber(long lsn) {
@@ -92,6 +91,7 @@ public class DbLsn {
 
     /**
      * Return the file offset for this DbLsn.
+     * 
      * @return the offset for this DbLsn.
      */
     public static long getFileOffset(long lsn) {
@@ -99,11 +99,10 @@ public class DbLsn {
     }
 
     /*
-     * The file offset is really an unsigned int. If we are using the
-     * file offset as a value, we must be careful to manipulate it as a long
-     * in order not to lose the last bit of data. If we are only storing
-     * the file offset, we can treat it as an Integer in order to save
-     * 32 bits of space.
+     * The file offset is really an unsigned int. If we are using the file
+     * offset as a value, we must be careful to manipulate it as a long in order
+     * not to lose the last bit of data. If we are only storing the file offset,
+     * we can treat it as an Integer in order to save 32 bits of space.
      */
     public static int getFileOffsetAsInt(long lsn) {
         return (int) getFileOffset(lsn);
@@ -124,11 +123,9 @@ public class DbLsn {
     }
 
     public static int compareTo(long lsn1, long lsn2) {
-        if (lsn1 == NULL_LSN ||
-            lsn2 == NULL_LSN) {
-            throw EnvironmentFailureException.unexpectedState
-                ("NULL_LSN lsn1=" + getNoFormatString(lsn1) + 
-                 " lsn2=" + getNoFormatString(lsn2));
+        if (lsn1 == NULL_LSN || lsn2 == NULL_LSN) {
+            throw EnvironmentFailureException
+                    .unexpectedState("NULL_LSN lsn1=" + getNoFormatString(lsn1) + " lsn2=" + getNoFormatString(lsn2));
         }
 
         long fileNumber1 = getFileNumber(lsn1);
@@ -140,16 +137,12 @@ public class DbLsn {
     }
 
     public static String toString(long lsn) {
-        return "<DbLsn val=\"0x" +
-            Long.toHexString(getFileNumber(lsn)) +
-            "/0x" +
-            Long.toHexString(getFileOffset(lsn)) +
-            "\"/>";
+        return "<DbLsn val=\"0x" + Long.toHexString(getFileNumber(lsn)) + "/0x" + Long.toHexString(getFileOffset(lsn))
+                + "\"/>";
     }
 
     public static String getNoFormatString(long lsn) {
-        return "0x" + Long.toHexString(getFileNumber(lsn)) + "/0x" +
-            Long.toHexString(getFileOffset(lsn));
+        return "0x" + Long.toHexString(getFileNumber(lsn)) + "/0x" + Long.toHexString(getFileOffset(lsn));
     }
 
     public static String dumpString(long lsn, int nSpaces) {
@@ -161,12 +154,10 @@ public class DbLsn {
 
     /**
      * Return the logsize in bytes between these two LSNs. This is an
-     * approximation; the logs might actually be a little more or less in
-     * size. This assumes that no log files have been cleaned.
+     * approximation; the logs might actually be a little more or less in size.
+     * This assumes that no log files have been cleaned.
      */
-    public static long getNoCleaningDistance(long thisLsn,
-                                             long otherLsn,
-                                             long logFileSize) {
+    public static long getNoCleaningDistance(long thisLsn, long otherLsn, long logFileSize) {
         long diff = 0;
 
         assert thisLsn != NULL_LSN;
@@ -179,24 +170,19 @@ public class DbLsn {
         if (myFile == otherFile) {
             diff = Math.abs(getFileOffset(thisLsn) - getFileOffset(otherLsn));
         } else if (myFile > otherFile) {
-            diff = calcDiff(myFile - otherFile,
-                            logFileSize, thisLsn, otherLsn);
+            diff = calcDiff(myFile - otherFile, logFileSize, thisLsn, otherLsn);
         } else {
-            diff = calcDiff(otherFile - myFile,
-                            logFileSize, otherLsn, thisLsn);
+            diff = calcDiff(otherFile - myFile, logFileSize, otherLsn, thisLsn);
         }
         return diff;
     }
 
     /**
      * Return the logsize in bytes between these two LSNs. This is an
-     * approximation; the logs might actually be a little more or less in
-     * size. This assumes that log files might have been cleaned.
+     * approximation; the logs might actually be a little more or less in size.
+     * This assumes that log files might have been cleaned.
      */
-    public static long getWithCleaningDistance(long thisLsn,
-                                               long otherLsn,
-                                               long logFileSize,
-                                               FileManager fileManager) {
+    public static long getWithCleaningDistance(long thisLsn, long otherLsn, long logFileSize, FileManager fileManager) {
         long diff = 0;
 
         assert thisLsn != NULL_LSN;
@@ -211,25 +197,18 @@ public class DbLsn {
         } else {
             /* Figure out how many files lie between. */
             Long[] fileNums = fileManager.getAllFileNumbers();
-            int myFileIdx = Arrays.binarySearch(fileNums,
-                                                Long.valueOf(myFile));
-            int otherFileIdx =
-                Arrays.binarySearch(fileNums, Long.valueOf(otherFile));
+            int myFileIdx = Arrays.binarySearch(fileNums, Long.valueOf(myFile));
+            int otherFileIdx = Arrays.binarySearch(fileNums, Long.valueOf(otherFile));
             if (myFileIdx > otherFileIdx) {
-                diff = calcDiff(myFileIdx - otherFileIdx,
-                                logFileSize, thisLsn, otherLsn);
+                diff = calcDiff(myFileIdx - otherFileIdx, logFileSize, thisLsn, otherLsn);
             } else {
-                diff = calcDiff(otherFileIdx - myFileIdx,
-                                logFileSize, otherLsn, thisLsn);
+                diff = calcDiff(otherFileIdx - myFileIdx, logFileSize, otherLsn, thisLsn);
             }
         }
         return diff;
     }
 
-    private static long calcDiff(long fileDistance,
-                                 long logFileSize,
-                                 long laterLsn,
-                                 long earlierLsn) {
+    private static long calcDiff(long fileDistance, long logFileSize, long laterLsn, long earlierLsn) {
         long diff = fileDistance * logFileSize;
         diff += getFileOffset(laterLsn);
         diff -= getFileOffset(earlierLsn);
@@ -242,9 +221,7 @@ public class DbLsn {
      * currently protected from cleaner deletion, e.g., during recovery. Uses
      * File.length and does not perturb the FileManager's file handle cache.
      */
-    public static long getTrueDistance(final long thisLsn,
-                                       final long otherLsn,
-                                       final FileManager fileManager) {
+    public static long getTrueDistance(final long thisLsn, final long otherLsn, final FileManager fileManager) {
 
         final long lsn1;
         final long lsn2;

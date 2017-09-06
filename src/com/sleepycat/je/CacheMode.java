@@ -17,7 +17,6 @@ package com.sleepycat.je;
  * in-memory cache. When a record is stored or retrieved, the cache mode
  * determines how long the record is subsequently retained in the JE in-memory
  * cache, relative to other records in the cache.
- *
  * <p>
  * When the cache overflows, JE must evict some records from the cache. By
  * default, JE uses a Least Recently Used (LRU) algorithm for determining which
@@ -25,14 +24,12 @@ package com.sleepycat.je;
  * "coldest" (least recently used or accessed) records and to retain the
  * "hottest" records in the cache for as long as possible.
  * </p>
- *
  * <p>
  * When an {@link EnvironmentMutableConfig#setOffHeapCacheSize off-heap cache}
  * is configured, records evicted from the main cache are placed in the off-heap
  * cache, and a separate LRU is used to determine when to evict a record from
  * the off-heap cache.
  * </p>
- *
  * <p>
  * JE uses an approximate LRU approach with some exceptions and special cases.
  * </p>
@@ -86,13 +83,11 @@ package com.sleepycat.je;
  * The behavior of each CacheMode when an off-heap cache is configured is also
  * described.</li>
  * </ul>
- *
  * <p>
  * When no cache mode is explicitly specified, the default cache mode is
  * {@link #DEFAULT}. The default mode causes the normal LRU algorithm to be
  * used.
  * </p>
- *
  * <p>
  * An explicit cache mode may be specified as an
  * {@link EnvironmentConfig#setCacheMode Environment property}, a
@@ -104,7 +99,6 @@ package com.sleepycat.je;
  * the Cursor property overrides the Database and Environment properties, and
  * the Database property overrides the Environment property.
  * </p>
- *
  * <p>
  * When all records in a given Database, or all Databases, should be treated the
  * same with respect to caching, using the Database and/or Environment cache
@@ -114,7 +108,6 @@ package com.sleepycat.je;
  * property can be changed at any time, and the cache mode specified will apply
  * to subsequent operations performed with that Cursor.
  * </p>
- *
  * <p>
  * In a Replicated Environment where a non-default cache mode is desired, the
  * cache mode can be configured on the Master node as described above. However,
@@ -126,7 +119,6 @@ package com.sleepycat.je;
  * the desired cache mode as an Environment property on all nodes in a
  * Replicated Environment.
  * </p>
- *
  * <p>
  * On a Replica, per-Database control over the cache mode for <em>write</em>
  * operations is possible by opening the Database on the Replica and configuring
@@ -141,224 +133,196 @@ package com.sleepycat.je;
  */
 public enum CacheMode {
 
-	/**
-	 * The record's hotness is changed to "most recently used" by the operation.
-	 *
-	 * <p>
-	 * This cache mode is used when the application does not need explicit
-	 * control over the cache and a standard LRU approach is sufficient.
-	 * </p>
-	 *
-	 * <p>
-	 * Note that {@code null} may be specified to use the {@code DEFAULT} mode.
-	 * </p>
-	 *
-	 * <p>
-	 * Specifically:
-	 * <ul>
-	 * <li>The BIN containing the record's LN will remain in the main cache, and
-	 * it is moved to the hot end of its LRU list.</li>
-	 *
-	 * <li>When an off-heap cache is configured, the record's LN and BIN will be
-	 * loaded into the main cache only. They will be removed from the off-heap
-	 * cache, if they were present there. However, if other LNs belonging to
-	 * this BIN were present in the off-heap cache, they will remain there.</li>
-	 * <ul>
-	 */
-	DEFAULT,
+    /**
+     * The record's hotness is changed to "most recently used" by the operation.
+     * <p>
+     * This cache mode is used when the application does not need explicit
+     * control over the cache and a standard LRU approach is sufficient.
+     * </p>
+     * <p>
+     * Note that {@code null} may be specified to use the {@code DEFAULT} mode.
+     * </p>
+     * <p>
+     * Specifically:
+     * <ul>
+     * <li>The BIN containing the record's LN will remain in the main cache, and
+     * it is moved to the hot end of its LRU list.</li>
+     * <li>When an off-heap cache is configured, the record's LN and BIN will be
+     * loaded into the main cache only. They will be removed from the off-heap
+     * cache, if they were present there. However, if other LNs belonging to
+     * this BIN were present in the off-heap cache, they will remain there.</li>
+     * <ul>
+     */
+    DEFAULT,
 
-	/**
-	 * @deprecated please use {@link #DEFAULT} instead. As of JE 4.0, this mode
-	 *             functions exactly as if {@link #DEFAULT} were specified.
-	 */
-	KEEP_HOT,
+    /**
+     * @deprecated please use {@link #DEFAULT} instead. As of JE 4.0, this mode
+     *             functions exactly as if {@link #DEFAULT} were specified.
+     */
+    KEEP_HOT,
 
-	/**
-	 * The record's hotness or coldness is unchanged by the operation where this
-	 * cache mode is specified.
-	 *
-	 * <p>
-	 * This cache mode is normally used when the application prefers that the
-	 * operation should not perturb the cache, for example, when scanning over
-	 * all records in a database.
-	 * </p>
-	 *
-	 * <p>
-	 * Specifically:
-	 * <ul>
-	 * <li>A record's LN and BIN must be loaded into the main cache in order to
-	 * perform the operation. However, they may be removed from the main cache
-	 * after the operation, to avoid a net change to the cache, according to the
-	 * rules below.</li>
-	 *
-	 * <li>If the record's LN was not present in the main cache prior to the
-	 * operation, then the LN will be evicted from the main cache after the
-	 * operation. The LN will not be added to, or removed from, the off-heap
-	 * cache.</li>
-	 *
-	 * <li>When the LN is to be evicted from the main cache (according to the
-	 * above rules) and the operation is not performed via a cursor, the LN is
-	 * evicted when the operation is complete. When a cursor is used, the LN is
-	 * evicted when the cursor is moved to a different record or closed.</li>
-	 *
-	 * <li>If the record's BIN was not present in the main cache prior to the
-	 * operation, the action taken depends on whether the BIN is dirty and
-	 * whether an off-heap cache is configured.
-	 * <ul>
-	 * <li>When the BIN is not dirty, the BIN (and LN) will be evicted from the
-	 * main cache after the operation. The BIN (and LN) will not be added to, or
-	 * removed from, the off-heap cache.</li>
-	 *
-	 * <li>When the BIN is dirty and an off-heap cache is <em>not</em>
-	 * configured, the BIN will not be evicted from the main cache and will be
-	 * moved to the hot end of its main cache LRU list. This is done to reduce
-	 * logging.</li>
-	 *
-	 * <li>When the BIN is dirty and an off-heap cache <em>is</em> configured,
-	 * we evict the BIN from the main cache even when it is dirty because the
-	 * BIN (and LN) will be stored in the off-heap cache and the BIN will not be
-	 * logged. The BIN will be placed at the hot end of its off-heap LRU list.
-	 * </li>
-	 *
-	 * <li>Note that when this operation loaded the BIN and the BIN becomes
-	 * dirty, it is normally because this operation is a write operation.
-	 * However, other concurrent threads can also dirty the BIN.</li>
-	 * </ul>
-	 *
-	 * <li>When the BIN is to be evicted from the main cache (according to the
-	 * above rules) and the operation is not performed via a cursor, the BIN is
-	 * evicted when the operation is complete. When a cursor is used, the BIN is
-	 * evicted only when the cursor moves to a different BIN or is closed.
-	 * Because of the way BINs are evicted, when multiple operations are
-	 * performed using a single cursor and not perturbing the cache is desired,
-	 * it is important to use this cache mode for all of the operations.</li>
-	 *
-	 * <li>When the BIN was present in the main cache prior to the operation,
-	 * its position in the LRU list will not be changed. Its position in the
-	 * off-heap LRU list, if it is present in the off-heap cache, will also not
-	 * be changed.</li>
-	 * </ul>
-	 */
-	UNCHANGED,
+    /**
+     * The record's hotness or coldness is unchanged by the operation where this
+     * cache mode is specified.
+     * <p>
+     * This cache mode is normally used when the application prefers that the
+     * operation should not perturb the cache, for example, when scanning over
+     * all records in a database.
+     * </p>
+     * <p>
+     * Specifically:
+     * <ul>
+     * <li>A record's LN and BIN must be loaded into the main cache in order to
+     * perform the operation. However, they may be removed from the main cache
+     * after the operation, to avoid a net change to the cache, according to the
+     * rules below.</li>
+     * <li>If the record's LN was not present in the main cache prior to the
+     * operation, then the LN will be evicted from the main cache after the
+     * operation. The LN will not be added to, or removed from, the off-heap
+     * cache.</li>
+     * <li>When the LN is to be evicted from the main cache (according to the
+     * above rules) and the operation is not performed via a cursor, the LN is
+     * evicted when the operation is complete. When a cursor is used, the LN is
+     * evicted when the cursor is moved to a different record or closed.</li>
+     * <li>If the record's BIN was not present in the main cache prior to the
+     * operation, the action taken depends on whether the BIN is dirty and
+     * whether an off-heap cache is configured.
+     * <ul>
+     * <li>When the BIN is not dirty, the BIN (and LN) will be evicted from the
+     * main cache after the operation. The BIN (and LN) will not be added to, or
+     * removed from, the off-heap cache.</li>
+     * <li>When the BIN is dirty and an off-heap cache is <em>not</em>
+     * configured, the BIN will not be evicted from the main cache and will be
+     * moved to the hot end of its main cache LRU list. This is done to reduce
+     * logging.</li>
+     * <li>When the BIN is dirty and an off-heap cache <em>is</em> configured,
+     * we evict the BIN from the main cache even when it is dirty because the
+     * BIN (and LN) will be stored in the off-heap cache and the BIN will not be
+     * logged. The BIN will be placed at the hot end of its off-heap LRU list.
+     * </li>
+     * <li>Note that when this operation loaded the BIN and the BIN becomes
+     * dirty, it is normally because this operation is a write operation.
+     * However, other concurrent threads can also dirty the BIN.</li>
+     * </ul>
+     * <li>When the BIN is to be evicted from the main cache (according to the
+     * above rules) and the operation is not performed via a cursor, the BIN is
+     * evicted when the operation is complete. When a cursor is used, the BIN is
+     * evicted only when the cursor moves to a different BIN or is closed.
+     * Because of the way BINs are evicted, when multiple operations are
+     * performed using a single cursor and not perturbing the cache is desired,
+     * it is important to use this cache mode for all of the operations.</li>
+     * <li>When the BIN was present in the main cache prior to the operation,
+     * its position in the LRU list will not be changed. Its position in the
+     * off-heap LRU list, if it is present in the off-heap cache, will also not
+     * be changed.</li>
+     * </ul>
+     */
+    UNCHANGED,
 
-	/**
-	 * @deprecated please use {@link #UNCHANGED} instead. As of JE 4.0, this
-	 *             mode functions exactly as if {@link #UNCHANGED} were
-	 *             specified.
-	 */
-	MAKE_COLD,
+    /**
+     * @deprecated please use {@link #UNCHANGED} instead. As of JE 4.0, this
+     *             mode functions exactly as if {@link #UNCHANGED} were
+     *             specified.
+     */
+    MAKE_COLD,
 
-	/**
-	 * The record's LN is evicted after the operation, and the containing BIN is
-	 * moved to the hot end of the LRU list.
-	 *
-	 * <p>
-	 * This cache mode is normally used when not all LNs will fit into the main
-	 * cache, and the application prefers to read the LN from the log file or
-	 * load it from the off-heap cache when the record is accessed again, rather
-	 * than have it take up space in the main cache and potentially cause
-	 * expensive Java GC. By using this mode, the file system cache or off-heap
-	 * cache can be relied on for holding LNs, which complements the use of the
-	 * JE cache to hold BINs and INs.
-	 * </p>
-	 *
-	 * <p>
-	 * Note that using this mode for all operations will prevent the cache from
-	 * filling, if all internal nodes fit in cache.
-	 * </p>
-	 *
-	 * <p>
-	 * Specifically:
-	 * <ul>
-	 * <li>The record's LN will be evicted from the main cache after the
-	 * operation. The LN will be added to the off-heap cache, if it is not
-	 * already present and an off-heap cache is configured.</li>
-	 *
-	 * <li>When the operation is not performed via a cursor, the LN is evicted
-	 * when the operation is complete. When a cursor is used, the LN is evicted
-	 * when the cursor is moved to a different record or closed.</li>
-	 * </ul>
-	 *
-	 * @since 3.3.98
-	 */
-	EVICT_LN,
+    /**
+     * The record's LN is evicted after the operation, and the containing BIN is
+     * moved to the hot end of the LRU list.
+     * <p>
+     * This cache mode is normally used when not all LNs will fit into the main
+     * cache, and the application prefers to read the LN from the log file or
+     * load it from the off-heap cache when the record is accessed again, rather
+     * than have it take up space in the main cache and potentially cause
+     * expensive Java GC. By using this mode, the file system cache or off-heap
+     * cache can be relied on for holding LNs, which complements the use of the
+     * JE cache to hold BINs and INs.
+     * </p>
+     * <p>
+     * Note that using this mode for all operations will prevent the cache from
+     * filling, if all internal nodes fit in cache.
+     * </p>
+     * <p>
+     * Specifically:
+     * <ul>
+     * <li>The record's LN will be evicted from the main cache after the
+     * operation. The LN will be added to the off-heap cache, if it is not
+     * already present and an off-heap cache is configured.</li>
+     * <li>When the operation is not performed via a cursor, the LN is evicted
+     * when the operation is complete. When a cursor is used, the LN is evicted
+     * when the cursor is moved to a different record or closed.</li>
+     * </ul>
+     *
+     * @since 3.3.98
+     */
+    EVICT_LN,
 
-	/**
-	 * The record's BIN (and its LNs) are evicted after the operation.
-	 *
-	 * <p>
-	 * This cache mode is normally used when not all BINs will fit into the main
-	 * cache, and the application prefers to read the LN and BIN from the log
-	 * file or load it from the off-heap cache when the record is accessed
-	 * again, rather than have them take up space in the JE cache and
-	 * potentially cause expensive Java GC.
-	 * </p>
-	 *
-	 * <p>
-	 * Because this mode evicts all LNs in the BIN, even if they are "hot" from
-	 * the perspective of a different accessor, this mode should be used with
-	 * caution. One valid use case is where all accessors use this mode; in this
-	 * case the cache mode might be set on a per-Database or per-Environment
-	 * basis.
-	 * </p>
-	 *
-	 * <p>
-	 * Note that using this mode for all operations will prevent the cache from
-	 * filling, if all upper internal nodes fit in cache.
-	 * </p>
-	 *
-	 * <p>
-	 * Specifically:
-	 * <ul>
-	 * <li>The record's LN will be evicted from the main cache after the
-	 * operation. The LN will be added to the off-heap cache, if it is not
-	 * already present and an off-heap cache is configured.</li>
-	 *
-	 * <li>When the operation is not performed via a cursor, the LN is evicted
-	 * when the operation is complete. When a cursor is used, the LN is evicted
-	 * when the cursor is moved to a different record or closed.</li>
-	 *
-	 * <li>Whether the BIN is evicted depends on whether the BIN is dirty and
-	 * whether an off-heap cache is configured.
-	 * <ul>
-	 * <li>When the BIN is not dirty, the BIN (and LN) will be evicted from the
-	 * main cache after the operation. The BIN (and LN) will be added to the
-	 * off-heap cache, if they are not already present and an off-heap cache is
-	 * configured. The BIN will be placed at the hot end of its off-heap LRU
-	 * list.</li>
-	 *
-	 * <li>When the BIN is dirty and an off-heap cache is <em>not</em>
-	 * configured, the BIN will not be evicted from the main cache and will be
-	 * moved to the hot end of its main cache LRU list. This is done to reduce
-	 * logging.</li>
-	 *
-	 * <li>When the BIN is dirty and an off-heap cache <em>is</em> configured,
-	 * we evict the BIN from the main cache even when it is dirty because the
-	 * BIN (and LN) will be stored in the off-heap cache and the BIN will not be
-	 * logged. The BIN will be placed at the hot end of its off-heap LRU list.
-	 * </li>
-	 *
-	 * <li>Note that BIN may have been dirtied by this operation, if it is a
-	 * write operation, or by earlier write operations.</li>
-	 * </ul>
-	 *
-	 * <li>When the BIN is to be evicted from the main cache (according to the
-	 * above rules) and the operation is not performed via a cursor, the BIN is
-	 * evicted when the operation is complete. When a cursor is used, the BIN is
-	 * evicted only when the cursor moves to a different BIN or is closed.
-	 * Because of the way BINs are evicted, when multiple operations are
-	 * performed using a single cursor and not perturbing the cache is desired,
-	 * it is important to use this cache mode for all of the operations.</li>
-	 * </ul>
-	 *
-	 * @since 4.0.97
-	 */
-	EVICT_BIN,
+    /**
+     * The record's BIN (and its LNs) are evicted after the operation.
+     * <p>
+     * This cache mode is normally used when not all BINs will fit into the main
+     * cache, and the application prefers to read the LN and BIN from the log
+     * file or load it from the off-heap cache when the record is accessed
+     * again, rather than have them take up space in the JE cache and
+     * potentially cause expensive Java GC.
+     * </p>
+     * <p>
+     * Because this mode evicts all LNs in the BIN, even if they are "hot" from
+     * the perspective of a different accessor, this mode should be used with
+     * caution. One valid use case is where all accessors use this mode; in this
+     * case the cache mode might be set on a per-Database or per-Environment
+     * basis.
+     * </p>
+     * <p>
+     * Note that using this mode for all operations will prevent the cache from
+     * filling, if all upper internal nodes fit in cache.
+     * </p>
+     * <p>
+     * Specifically:
+     * <ul>
+     * <li>The record's LN will be evicted from the main cache after the
+     * operation. The LN will be added to the off-heap cache, if it is not
+     * already present and an off-heap cache is configured.</li>
+     * <li>When the operation is not performed via a cursor, the LN is evicted
+     * when the operation is complete. When a cursor is used, the LN is evicted
+     * when the cursor is moved to a different record or closed.</li>
+     * <li>Whether the BIN is evicted depends on whether the BIN is dirty and
+     * whether an off-heap cache is configured.
+     * <ul>
+     * <li>When the BIN is not dirty, the BIN (and LN) will be evicted from the
+     * main cache after the operation. The BIN (and LN) will be added to the
+     * off-heap cache, if they are not already present and an off-heap cache is
+     * configured. The BIN will be placed at the hot end of its off-heap LRU
+     * list.</li>
+     * <li>When the BIN is dirty and an off-heap cache is <em>not</em>
+     * configured, the BIN will not be evicted from the main cache and will be
+     * moved to the hot end of its main cache LRU list. This is done to reduce
+     * logging.</li>
+     * <li>When the BIN is dirty and an off-heap cache <em>is</em> configured,
+     * we evict the BIN from the main cache even when it is dirty because the
+     * BIN (and LN) will be stored in the off-heap cache and the BIN will not be
+     * logged. The BIN will be placed at the hot end of its off-heap LRU list.
+     * </li>
+     * <li>Note that BIN may have been dirtied by this operation, if it is a
+     * write operation, or by earlier write operations.</li>
+     * </ul>
+     * <li>When the BIN is to be evicted from the main cache (according to the
+     * above rules) and the operation is not performed via a cursor, the BIN is
+     * evicted when the operation is complete. When a cursor is used, the BIN is
+     * evicted only when the cursor moves to a different BIN or is closed.
+     * Because of the way BINs are evicted, when multiple operations are
+     * performed using a single cursor and not perturbing the cache is desired,
+     * it is important to use this cache mode for all of the operations.</li>
+     * </ul>
+     *
+     * @since 4.0.97
+     */
+    EVICT_BIN,
 
-	/**
-	 * @hidden For internal use only. Placeholder to avoid DPL class evolution
-	 *         errors. Never actually used.
-	 * @since 4.0.97
-	 */
-	DYNAMIC
+    /**
+     * @hidden For internal use only. Placeholder to avoid DPL class evolution
+     *         errors. Never actually used.
+     * @since 4.0.97
+     */
+    DYNAMIC
 }

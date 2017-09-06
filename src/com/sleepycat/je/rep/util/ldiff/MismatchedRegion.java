@@ -25,10 +25,10 @@ package com.sleepycat.je.rep.util.ldiff;
 public class MismatchedRegion {
     private byte[] remoteBeginKey;
     private byte[] remoteBeginData;
-    private long remoteDiffSize;
+    private long   remoteDiffSize;
     private byte[] localBeginKey;
     private byte[] localBeginData;
-    private long localDiffSize;
+    private long   localDiffSize;
 
     public void setRemoteBeginKey(byte[] remoteBeginKey) {
         this.remoteBeginKey = remoteBeginKey;
@@ -78,9 +78,9 @@ public class MismatchedRegion {
         return localDiffSize;
     }
 
-    /* 
-     * Return true if the different area is an additional block on remote 
-     * database. 
+    /*
+     * Return true if the different area is an additional block on remote
+     * database.
      */
     public boolean isRemoteAdditional() {
         return (localDiffSize == 0) ? true : false;
@@ -96,8 +96,7 @@ public class MismatchedRegion {
 
     /* Present a different area is meaningless. */
     public boolean isNull() {
-        return (remoteBeginKey == null) && (remoteBeginData == null) &&
-               (localBeginKey == null) && (localBeginData == null) &&
-               (localDiffSize == 0) && (remoteDiffSize == 0);
+        return (remoteBeginKey == null) && (remoteBeginData == null) && (localBeginKey == null)
+                && (localBeginData == null) && (localDiffSize == 0) && (remoteDiffSize == 0);
     }
 }

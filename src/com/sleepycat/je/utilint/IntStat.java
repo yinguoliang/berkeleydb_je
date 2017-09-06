@@ -21,7 +21,7 @@ import com.sleepycat.je.utilint.StatDefinition.StatType;
 public class IntStat extends Stat<Integer> {
     private static final long serialVersionUID = 1L;
 
-    private int counter;
+    private int               counter;
 
     public IntStat(StatGroup group, StatDefinition definition) {
         super(group, definition);

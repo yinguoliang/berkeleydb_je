@@ -29,23 +29,21 @@ public class DbOpReplicationContext extends ReplicationContext {
 
     /*
      * Convenience static instance used when you know this database operation
-     * will not be replicated, either because it's executing on a
-     * non-replicated node or it's a local operation for a local database.
+     * will not be replicated, either because it's executing on a non-replicated
+     * node or it's a local operation for a local database.
      */
-    public static DbOpReplicationContext NO_REPLICATE =
-        new DbOpReplicationContext(false, // inReplicationStream
-                                   DbOperationType.NONE);
+    public static DbOpReplicationContext NO_REPLICATE    = new DbOpReplicationContext(false,                       // inReplicationStream
+            DbOperationType.NONE);
 
-    final private DbOperationType opType;
-    private ReplicatedDatabaseConfig createConfig = null;
-    private DatabaseId truncateOldDbId = null;
+    final private DbOperationType        opType;
+    private ReplicatedDatabaseConfig     createConfig    = null;
+    private DatabaseId                   truncateOldDbId = null;
 
     /**
      * Create a replication context for logging a database operation NameLN on
      * the master.
      */
-    public DbOpReplicationContext(boolean inReplicationStream,
-                                  DbOperationType opType) {
+    public DbOpReplicationContext(boolean inReplicationStream, DbOperationType opType) {
         super(inReplicationStream);
         this.opType = opType;
     }
@@ -53,8 +51,7 @@ public class DbOpReplicationContext extends ReplicationContext {
     /**
      * Create a repContext for executing a databaseOperation on the client.
      */
-    public DbOpReplicationContext(VLSN vlsn,
-                                  NameLNLogEntry nameLNEntry) {
+    public DbOpReplicationContext(VLSN vlsn, NameLNLogEntry nameLNEntry) {
 
         /*
          * Initialize the context with the VLSN that was shipped with the
@@ -77,22 +74,22 @@ public class DbOpReplicationContext extends ReplicationContext {
     }
 
     public void setCreateConfig(ReplicatedDatabaseConfig createConfig) {
-        assert(DbOperationType.isWriteConfigType(opType));
+        assert (DbOperationType.isWriteConfigType(opType));
         this.createConfig = createConfig;
     }
 
     public ReplicatedDatabaseConfig getCreateConfig() {
-        assert(DbOperationType.isWriteConfigType(opType));
+        assert (DbOperationType.isWriteConfigType(opType));
         return createConfig;
     }
 
     public void setTruncateOldDbId(DatabaseId truncateOldDbId) {
-        assert(opType == DbOperationType.TRUNCATE);
+        assert (opType == DbOperationType.TRUNCATE);
         this.truncateOldDbId = truncateOldDbId;
     }
 
     public DatabaseId getTruncateOldDbId() {
-        assert(opType == DbOperationType.TRUNCATE);
+        assert (opType == DbOperationType.TRUNCATE);
         return truncateOldDbId;
     }
 

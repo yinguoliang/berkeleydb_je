@@ -42,35 +42,34 @@ public enum DbOperationType implements VersionedWriteLoggable {
      */
     private static final int LAST_FORMAT_CHANGE = 8;
 
-    private byte value;
+    private byte             value;
 
     private DbOperationType(byte value) {
         this.value = value;
     }
 
     public static DbOperationType readTypeFromLog(final ByteBuffer entryBuffer,
-                                                  @SuppressWarnings("unused")
-                                                  int entryVersion) {
+                                                  @SuppressWarnings("unused") int entryVersion) {
         byte opVal = entryBuffer.get();
         switch (opVal) {
-        case 1:
-            return CREATE;
+            case 1:
+                return CREATE;
 
-        case 2:
-            return REMOVE;
+            case 2:
+                return REMOVE;
 
-        case 3:
-            return TRUNCATE;
+            case 3:
+                return TRUNCATE;
 
-        case 4:
-            return RENAME;
+            case 4:
+                return RENAME;
 
-        case 5:
-            return UPDATE_CONFIG;
+            case 5:
+                return UPDATE_CONFIG;
 
-        case 0:
-        default:
-            return NONE;
+            case 0:
+            default:
+                return NONE;
 
         }
     }
@@ -87,13 +86,12 @@ public enum DbOperationType implements VersionedWriteLoggable {
 
     @Override
     public int getLogSize() {
-        return getLogSize(LogEntryType.LOG_VERSION, false /*forReplication*/);
+        return getLogSize(LogEntryType.LOG_VERSION, false /* forReplication */);
     }
 
     @Override
     public void writeToLog(final ByteBuffer logBuffer) {
-        writeToLog(
-            logBuffer, LogEntryType.LOG_VERSION, false /*forReplication*/);
+        writeToLog(logBuffer, LogEntryType.LOG_VERSION, false /* forReplication */);
     }
 
     @Override
@@ -102,9 +100,7 @@ public enum DbOperationType implements VersionedWriteLoggable {
     }
 
     @Override
-    public void writeToLog(final ByteBuffer logBuffer,
-                           final int logVersion,
-                           final boolean forReplication) {
+    public void writeToLog(final ByteBuffer logBuffer, final int logVersion, final boolean forReplication) {
         logBuffer.put(value);
     }
 
@@ -119,8 +115,7 @@ public enum DbOperationType implements VersionedWriteLoggable {
     }
 
     @Override
-    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer,
-                                                 final int srcVersion,
+    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer, final int srcVersion,
                                                  final int destVersion) {
         return false;
     }

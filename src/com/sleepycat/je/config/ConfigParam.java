@@ -16,28 +16,23 @@ package com.sleepycat.je.config;
 import com.sleepycat.je.EnvironmentFailureException;
 
 /**
- * A ConfigParam embodies the metadata about a JE configuration parameter:
- * the parameter name, default value, and a validation method.
- *
- * Validation can be done in the scope of this parameter, or as a function of
- * other parameters.
+ * A ConfigParam embodies the metadata about a JE configuration parameter: the
+ * parameter name, default value, and a validation method. Validation can be
+ * done in the scope of this parameter, or as a function of other parameters.
  */
 public class ConfigParam {
 
     protected String name;
-    private String defaultValue;
-    private boolean mutable;
-    private boolean forReplication;
-    private boolean isMultiValueParam;
+    private String   defaultValue;
+    private boolean  mutable;
+    private boolean  forReplication;
+    private boolean  isMultiValueParam;
 
     /*
      * Create a String parameter.
      */
-    public ConfigParam(String configName,
-                       String configDefault,
-                       boolean mutable,
-                       boolean forReplication)
-        throws IllegalArgumentException {
+    public ConfigParam(String configName, String configDefault, boolean mutable, boolean forReplication)
+            throws IllegalArgumentException {
 
         if (configName == null) {
             name = null;
@@ -71,7 +66,7 @@ public class ConfigParam {
     }
 
     /*
-     * Return the parameter name of a multi-value parameter.  e.g.
+     * Return the parameter name of a multi-value parameter. e.g.
      * "je.rep.remote.address.foo" => "je.rep.remote.address"
      */
     public static String multiValueParamName(String paramName) {
@@ -83,7 +78,7 @@ public class ConfigParam {
     }
 
     /*
-     * Return the label of a multi-value parameter.  e.g.
+     * Return the label of a multi-value parameter. e.g.
      * "je.rep.remote.address.foo" => foo.
      */
     public static String mvParamIndex(String paramName) {
@@ -119,24 +114,22 @@ public class ConfigParam {
     /**
      * A param name can't be null or 0 length
      */
-    private void validateName(String name)
-        throws IllegalArgumentException {
+    private void validateName(String name) throws IllegalArgumentException {
 
         if ((name == null) || (name.length() < 1)) {
-            throw EnvironmentFailureException.unexpectedState
-                ("A configuration parameter name can't be null or 0 length");
+            throw EnvironmentFailureException
+                    .unexpectedState("A configuration parameter name can't be null or 0 length");
         }
     }
 
     /**
-     * Validate your value. (No default validation for strings.)
-     * May be overridden for (e.g.) Multi-value params.
+     * Validate your value. (No default validation for strings.) May be
+     * overridden for (e.g.) Multi-value params.
      *
      * @throws IllegalArgumentException via XxxConfig.setXxx methods and
-     * XxxConfig(Properties) ctor.
+     *             XxxConfig(Properties) ctor.
      */
-    public void validateValue(String value)
-        throws IllegalArgumentException {
+    public void validateValue(String value) throws IllegalArgumentException {
 
     }
 

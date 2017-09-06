@@ -76,232 +76,213 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * There is an instance of a Feeder for each client that needs a replication
- * stream. Either a master, or replica (providing feeder services) may
- * establish a feeder.
- *
- * A feeder is created in response to a request from a Replica, and is shutdown
- * either upon loss of connectivity, or upon a change in mastership.
- *
+ * stream. Either a master, or replica (providing feeder services) may establish
+ * a feeder. A feeder is created in response to a request from a Replica, and is
+ * shutdown either upon loss of connectivity, or upon a change in mastership.
  * The protocol used to validate and negotiate a connection is synchronous, but
  * once this phase has been completed, the communication between the feeder and
  * replica is asynchronous. To handle the async communications, the feeder has
- * two threads associated with it:
- *
- * 1) An output thread whose sole purpose is to pump log records (and if
- * necessary heart beat requests) down to the replica as fast as the network
- * will allow it
- *
- * 2) An input thread that listens for responses to transaction commits and
- * heart beat responses.
- *
- * <p>The feeder maintains several statistics that provide information about
- * the replication rate for each replica.  By comparing this information to
+ * two threads associated with it: 1) An output thread whose sole purpose is to
+ * pump log records (and if necessary heart beat requests) down to the replica
+ * as fast as the network will allow it 2) An input thread that listens for
+ * responses to transaction commits and heart beat responses.
+ * <p>
+ * The feeder maintains several statistics that provide information about the
+ * replication rate for each replica. By comparing this information to
  * information about master replication maintained by the FeederTxns class, it
  * is also possible to estimate the lag between replicas and the master.
- *
- * <p>The statistics facilities do not expect the set of available statistics
- * to change dynamically.  To handle recording statistics about the changing
- * set of replicas, the statistics are represented as maps that associated node
- * names with statistics.  Each feeder adds individual statistics in these maps
- * at startup, and removes them at shutdown time to make sure that the
- * statistics in the map only reflect up-to-date information.
- *
- * <p>Some notes about the specific statistics:<dl>
- *
+ * <p>
+ * The statistics facilities do not expect the set of available statistics to
+ * change dynamically. To handle recording statistics about the changing set of
+ * replicas, the statistics are represented as maps that associated node names
+ * with statistics. Each feeder adds individual statistics in these maps at
+ * startup, and removes them at shutdown time to make sure that the statistics
+ * in the map only reflect up-to-date information.
+ * <p>
+ * Some notes about the specific statistics:
+ * <dl>
  * <dt>replicaDelay
- *
  * <dd>The difference between the commit times of the latest transaction
  * committed on the master and the transaction most recently processed by the
- * replica.  The master timestamp comes from the lastCommitTimestamp statistic
- * maintained by FeederTxns.  The feeder determines the commit timestamp of the
+ * replica. The master timestamp comes from the lastCommitTimestamp statistic
+ * maintained by FeederTxns. The feeder determines the commit timestamp of the
  * replica's most recently processed transaction by obtaining timestamps from
  * commit records being sent to the replica, and noting the last one prior to
- * sending a heartbeat.  When a heartbeat response is received, if the latest
- * replica VLSN included in the response is equal or greater to the one
- * recorded when the heartbeat request was sent, then the delay is computed by
- * comparing the commit timestamp for that most recently sent transaction with
- * the timestamp of the master's latest transaction.  Replicas can send
- * heartbeat responses on their own, so comparing the VLSNs is necessary to
- * make sure that the response matches the request.  Note that this arrangement
- * depends on the fact that the replica processes transactions and heartbeats
- * in order, and only sends a heartbeat response once all preceding
- * transactions have been processed.  If the master processes transactions at a
- * fast enough rate that additional transactions are generated while waiting
- * for a heartbeat response, then the value of this statistic will not reach
- * zero, but will represent the total time for sending a commit operation to
- * the replica and receiving the associated response, including the roundtrip
- * latency of the network and any time spent due to buffering of replication
- * data.
- *
+ * sending a heartbeat. When a heartbeat response is received, if the latest
+ * replica VLSN included in the response is equal or greater to the one recorded
+ * when the heartbeat request was sent, then the delay is computed by comparing
+ * the commit timestamp for that most recently sent transaction with the
+ * timestamp of the master's latest transaction. Replicas can send heartbeat
+ * responses on their own, so comparing the VLSNs is necessary to make sure that
+ * the response matches the request. Note that this arrangement depends on the
+ * fact that the replica processes transactions and heartbeats in order, and
+ * only sends a heartbeat response once all preceding transactions have been
+ * processed. If the master processes transactions at a fast enough rate that
+ * additional transactions are generated while waiting for a heartbeat response,
+ * then the value of this statistic will not reach zero, but will represent the
+ * total time for sending a commit operation to the replica and receiving the
+ * associated response, including the roundtrip latency of the network and any
+ * time spent due to buffering of replication data.
  * <dt>replicaLastCommitTimestamp
- *
  * <dd>The commit timestamp of the last transaction committed before the most
- * recent heartbeat for which a heartbeat response has been received.  This
+ * recent heartbeat for which a heartbeat response has been received. This
  * statistic represents the commit time on the master of the most recent data
- * known to have been processed on the replica.  It provides the information
- * used for the replica component of the replicaDelay statistic.
- *
+ * known to have been processed on the replica. It provides the information used
+ * for the replica component of the replicaDelay statistic.
  * <dt>replicaLastCommitVLSN
- *
  * <dd>The VLSN of the committed transaction described for
- * replicaLastCommitTimestamp.  This statistic provides the information used
- * for the replica component of the replicaVLSNLag statistic.
- *
+ * replicaLastCommitTimestamp. This statistic provides the information used for
+ * the replica component of the replicaVLSNLag statistic.
  * <dt>replicaVLSNLag
- *
  * <dd>The difference between the VLSN of the latest transaction committed on
- * the master and the one most recently processed by the replica.  The master
- * VLSN comes from the lastCommitVLSN statistic maintained by FeederTxns.  This
- * statistic is similar to replicaDelay, but provides information about the
- * VLSN lag rather than the time delay.
- *
+ * the master and the one most recently processed by the replica. The master
+ * VLSN comes from the lastCommitVLSN statistic maintained by FeederTxns. This
+ * statistic is similar to replicaDelay, but provides information about the VLSN
+ * lag rather than the time delay.
  * <dt>replicaVLSNRate
- *
  * <dd>An exponential moving average of the rate of change of the
  * replicaLastCommitVLSN statistic over time, averaged over a 10 second time
- * period.  This statistic provides information about how quickly the replica
- * is processing replication data, which can be used, along with the vlsnRate
+ * period. This statistic provides information about how quickly the replica is
+ * processing replication data, which can be used, along with the vlsnRate
  * statistic maintained by FeederTxns, to estimate the amount of time it will
- * take for the replica to catch up with the master.</dl>
+ * take for the replica to catch up with the master.
+ * </dl>
  */
 final public class Feeder {
     /*
-     * A heartbeat is written with this period by the feeder output thread.
-     * Is mutable.
+     * A heartbeat is written with this period by the feeder output thread. Is
+     * mutable.
      */
-    private int heartbeatMs;
+    private int                                  heartbeatMs;
 
     /* The manager for all Feeder instances. */
-    private final FeederManager feederManager;
+    private final FeederManager                  feederManager;
 
     /* The replication node that is associated with this Feeder */
-    private final RepNode repNode;
+    private final RepNode                        repNode;
     /* The RepImpl that is associated with this rep node. */
-    private final RepImpl repImpl;
+    private final RepImpl                        repImpl;
 
     /* The socket on which the feeder communicates with the Replica. */
-    private final NamedChannelWithTimeout feederReplicaChannel;
+    private final NamedChannelWithTimeout        feederReplicaChannel;
 
     /* The Threads that implement the Feeder */
-    private final InputThread inputThread;
-    private final OutputThread outputThread;
+    private final InputThread                    inputThread;
+    private final OutputThread                   outputThread;
 
-    /* The filter to be used for records written to the replication stream.*/
-    private FeederFilter feederFilter;
+    /* The filter to be used for records written to the replication stream. */
+    private FeederFilter                         feederFilter;
 
-    private boolean isArbiterFeeder = false;
+    private boolean                              isArbiterFeeder   = false;
 
     /* The source of log records to be sent to the Replica. */
-    private FeederSource feederSource;
+    private FeederSource                         feederSource;
 
     /* Negotiated message protocol version for the replication stream. */
-    private int protocolVersion;
+    private int                                  protocolVersion;
 
     /**
      * The current position of the feeder, that is, the log record with this
      * VLSN will be sent next to the Replica. Note that this does not mean that
      * the replica has actually processed all log records preceding feederVLSN.
-     * The records immediately preceding feederVLSN (down to replicaAckVLSN)
-     * may be in the network, in transit to the replica.
-     *
-     * The feederVLSN can only move forwards post feeder-replica syncup.
-     * However, it can move forwards or backwards as matchpoints are
-     * negotiated during syncup.
+     * The records immediately preceding feederVLSN (down to replicaAckVLSN) may
+     * be in the network, in transit to the replica. The feederVLSN can only
+     * move forwards post feeder-replica syncup. However, it can move forwards
+     * or backwards as matchpoints are negotiated during syncup.
      */
-    private volatile VLSN feederVLSN = VLSN.NULL_VLSN;
+    private volatile VLSN                        feederVLSN        = VLSN.NULL_VLSN;
 
     /**
      * The latest commit or abort that the replica has reported receiving,
-     * either by ack (in the case of a commit), or via heartbeat response.  It
+     * either by ack (in the case of a commit), or via heartbeat response. It
      * serves as a rough indication of the replay state of the replica that is
-     * used in exception messages.
-     *
-     * The following invariant must always hold: replicaTxnEndLSN < feederVLSN
+     * used in exception messages. The following invariant must always hold:
+     * replicaTxnEndLSN < feederVLSN
      */
-    private volatile VLSN replicaTxnEndVLSN = VLSN.NULL_VLSN;
+    private volatile VLSN                        replicaTxnEndVLSN = VLSN.NULL_VLSN;
 
     /* The time that the feeder last heard from its Replica */
-    private volatile long lastResponseTime = 0l;
+    private volatile long                        lastResponseTime  = 0l;
 
     /*
-     * Used to communicate our progress when getting ready for a Master
-     * Transfer operation.
+     * Used to communicate our progress when getting ready for a Master Transfer
+     * operation.
      */
-    private volatile MasterTransfer masterXfr;
-    private volatile boolean caughtUp = false;
+    private volatile MasterTransfer              masterXfr;
+    private volatile boolean                     caughtUp          = false;
 
     /* Used to track the status of the master. */
-    private final MasterStatus masterStatus;
+    private final MasterStatus                   masterStatus;
 
     /*
      * Determines whether the Feeder has been shutdown. Usually this is held
-     * within the StoppableThread, but the Feeder's two child threads have
-     * their shutdown coordinated by the parent Feeder.
+     * within the StoppableThread, but the Feeder's two child threads have their
+     * shutdown coordinated by the parent Feeder.
      */
-    private final AtomicBoolean shutdown = new AtomicBoolean(false);
+    private final AtomicBoolean                  shutdown          = new AtomicBoolean(false);
 
-    private final Logger logger;
+    private final Logger                         logger;
 
     /* The Feeder's node ID. */
-    private final NameIdPair nameIdPair;
+    private final NameIdPair                     nameIdPair;
 
     /**
      * The replica node ID, that is, the node that is the recipient of the
      * replication stream. Its established at the time of the Feeder/Replica
      * handshake.
      */
-    private volatile NameIdPair replicaNameIdPair = NameIdPair.NULL;
+    private volatile NameIdPair                  replicaNameIdPair = NameIdPair.NULL;
 
     /**
-     * The agreed upon log format that should be used for writing log entries
-     * to send to the replica, or zero if not yet known.
+     * The agreed upon log format that should be used for writing log entries to
+     * send to the replica, or zero if not yet known.
      */
-    private volatile int streamLogVersion = 0;
+    private volatile int                         streamLogVersion  = 0;
 
     /** The JE version of the replica, or null if not known. */
-    private volatile JEVersion replicaJEVersion = null;
+    private volatile JEVersion                   replicaJEVersion  = null;
 
     /** The RepNodeImpl of the replica, or null if not known. */
-    private volatile RepNodeImpl replicaNode = null;
+    private volatile RepNodeImpl                 replicaNode       = null;
 
     /** Tracks when the last heartbeat was sent, or 0 if none has been sent */
-    private volatile long lastHeartbeatTime;
+    private volatile long                        lastHeartbeatTime;
 
     /**
      * The VLSN of the most recent log entry that committed a transaction and
      * was sent to the replica before the last heartbeat was sent, or 0 if no
      * such log entries have been sent since the previous heartbeat.
      */
-    private volatile long lastHeartbeatCommitVLSN;
+    private volatile long                        lastHeartbeatCommitVLSN;
 
     /**
      * The timestamp of the most recent log entry that committed a transaction
      * and was sent to the replica before the last heartbeat was sent, or 0 if
      * no such log entries have been sent since the previous heartbeat.
      */
-    private volatile long lastHeartbeatCommitTimestamp;
+    private volatile long                        lastHeartbeatCommitTimestamp;
 
     /** The VLSN generation rate of the master in VLSNs/minute. */
-    private final LongAvgRateStat vlsnRate;
+    private final LongAvgRateStat                vlsnRate;
 
     /**
-     * A test hook that is called before a message is written.  Note that the
+     * A test hook that is called before a message is written. Note that the
      * hook is inherited by the ReplicaFeederHandshake, and will be kept in
      * place there for the entire handshake.
      */
-    private volatile TestHook<Message> writeMessageHook;
+    private volatile TestHook<Message>           writeMessageHook;
 
     /**
      * A test hook that is used to set the writeMessageHook for newly created
      * feeders.
      */
-    private static volatile TestHook<Message> initialWriteMessageHook;
+    private static volatile TestHook<Message>    initialWriteMessageHook;
 
     /**
      * A test hook, parameterized by the replica's Name/ID pair, that delays
-     * heartbeat requests from being sent if it throws an
-     * IllegalStateException.  Does not apply to the initial heartbeat request,
-     * which is required by the protocol.
+     * heartbeat requests from being sent if it throws an IllegalStateException.
+     * Does not apply to the initial heartbeat request, which is required by the
+     * protocol.
      */
     private static volatile TestHook<NameIdPair> delayHeartbeatHook;
 
@@ -312,40 +293,32 @@ final public class Feeder {
      * @return the configured DataChannel
      * @throws IOException
      */
-    private NamedChannelWithTimeout configureChannel(DataChannel channel)
-        throws IOException {
+    private NamedChannelWithTimeout configureChannel(DataChannel channel) throws IOException {
 
         try {
             channel.getSocketChannel().configureBlocking(true);
-            LoggerUtils.info
-                (logger, repImpl, "Feeder accepted connection from " + channel);
-            final int timeoutMs = repNode.getConfigManager().
-                getDuration(RepParams.PRE_HEARTBEAT_TIMEOUT);
-            final boolean tcpNoDelay = repNode.getConfigManager().
-                    getBoolean(RepParams.FEEDER_TCP_NO_DELAY);
+            LoggerUtils.info(logger, repImpl, "Feeder accepted connection from " + channel);
+            final int timeoutMs = repNode.getConfigManager().getDuration(RepParams.PRE_HEARTBEAT_TIMEOUT);
+            final boolean tcpNoDelay = repNode.getConfigManager().getBoolean(RepParams.FEEDER_TCP_NO_DELAY);
 
             /* Set use of Nagle's algorithm on the socket. */
             channel.getSocketChannel().socket().setTcpNoDelay(tcpNoDelay);
             return new NamedChannelWithTimeout(repNode, channel, timeoutMs);
         } catch (IOException e) {
             LoggerUtils.warning(logger, repImpl,
-                                "IO exception while configuring channel " +
-                                "Exception:" + e.getMessage());
+                    "IO exception while configuring channel " + "Exception:" + e.getMessage());
             throw e;
         }
     }
 
-    Feeder(FeederManager feederManager, DataChannel dataChannel)
-        throws DatabaseException, IOException {
+    Feeder(FeederManager feederManager, DataChannel dataChannel) throws DatabaseException, IOException {
 
         this.feederManager = feederManager;
         this.repNode = feederManager.repNode();
         this.repImpl = repNode.getRepImpl();
         this.masterStatus = repNode.getMasterStatus();
         nameIdPair = repNode.getNameIdPair();
-        this.feederSource = new MasterFeederSource(repImpl,
-                                                   repNode.getVLSNIndex(),
-                                                   nameIdPair);
+        this.feederSource = new MasterFeederSource(repImpl, repNode.getVLSNIndex(), nameIdPair);
         logger = LoggerUtils.getLogger(getClass());
 
         this.feederReplicaChannel = configureChannel(dataChannel);
@@ -361,8 +334,7 @@ final public class Feeder {
     }
 
     /**
-     * @hidden
-     * Place holder Feeder for testing only
+     * @hidden Place holder Feeder for testing only
      */
     public Feeder() {
         feederManager = null;
@@ -384,10 +356,8 @@ final public class Feeder {
     public StatGroup getProtocolStats(StatsConfig config) {
         final Protocol protocol = outputThread.protocol;
 
-        return (protocol != null) ?
-               protocol.getStats(config) :
-               new StatGroup(BinaryProtocolStatDefinition.GROUP_NAME,
-                             BinaryProtocolStatDefinition.GROUP_DESC);
+        return (protocol != null) ? protocol.getStats(config)
+                : new StatGroup(BinaryProtocolStatDefinition.GROUP_NAME, BinaryProtocolStatDefinition.GROUP_DESC);
     }
 
     void resetStats() {
@@ -407,9 +377,7 @@ final public class Feeder {
     void adviseMasterTransferProgress() {
         MasterTransfer mt = masterXfr;
         if (mt != null) {
-            mt.noteProgress
-                (new VLSNProgress(replicaTxnEndVLSN,
-                                  replicaNameIdPair.getName()));
+            mt.noteProgress(new VLSNProgress(replicaTxnEndVLSN, replicaNameIdPair.getName()));
         }
     }
 
@@ -435,8 +403,8 @@ final public class Feeder {
     }
 
     /**
-     * Returns the next VLSN that will be sent to the replica. It will
-     * return VLSN.NULL if the Feeder is in the process of being created and
+     * Returns the next VLSN that will be sent to the replica. It will return
+     * VLSN.NULL if the Feeder is in the process of being created and
      * FeederReplicaSyncup has not yet happened.
      */
     public VLSN getFeederVLSN() {
@@ -445,8 +413,8 @@ final public class Feeder {
 
     /**
      * Sets the next VLSN that will be sent to the replica. It's only used at
-     * startup after a feeder replica syncup determines the next VLSN to be
-     * sent to the replica.
+     * startup after a feeder replica syncup determines the next VLSN to be sent
+     * to the replica.
      */
     public void setFeederVLSN(VLSN feederVLSN) {
         this.feederVLSN = feederVLSN;
@@ -464,7 +432,7 @@ final public class Feeder {
 
     /**
      * Returns a RepNodeImpl that describes the replica, or {@code null} if the
-     * value is not yet known.  The value will be non-null if the feeder
+     * value is not yet known. The value will be non-null if the feeder
      * handshake has completed successfully.
      *
      * @return the replica node or {@code null}
@@ -474,7 +442,7 @@ final public class Feeder {
     }
 
     /**
-     * Shutdown the feeder, closing its channel and releasing its threads.  May
+     * Shutdown the feeder, closing its channel and releasing its threads. May
      * be called internally upon noticing a problem, or externally when the
      * RepNode is shutting down.
      */
@@ -492,10 +460,8 @@ final public class Feeder {
         }
         feederManager.removeFeeder(this);
 
-        StatGroup pstats = (inputThread.protocol != null) ?
-            inputThread.protocol.getStats(StatsConfig.DEFAULT) :
-            new StatGroup(BinaryProtocolStatDefinition.GROUP_NAME,
-                          BinaryProtocolStatDefinition.GROUP_DESC);
+        StatGroup pstats = (inputThread.protocol != null) ? inputThread.protocol.getStats(StatsConfig.DEFAULT)
+                : new StatGroup(BinaryProtocolStatDefinition.GROUP_NAME, BinaryProtocolStatDefinition.GROUP_DESC);
         if (outputThread.protocol != null) {
             pstats.addAll(outputThread.protocol.getStats(StatsConfig.DEFAULT));
         }
@@ -503,18 +469,15 @@ final public class Feeder {
 
         /* Remove replica stats */
         feederManager.getReplicaDelayMap().removeStat(replicaName);
-        feederManager.getReplicaLastCommitTimestampMap().removeStat(
-            replicaName);
+        feederManager.getReplicaLastCommitTimestampMap().removeStat(replicaName);
         feederManager.getReplicaLastCommitVLSNMap().removeStat(replicaName);
         feederManager.getReplicaVLSNLagMap().removeStat(replicaName);
         feederManager.getReplicaVLSNRateMap().removeStat(replicaName);
 
         LoggerUtils.info(logger, repImpl,
-                         "Shutting down feeder for replica " + replicaName +
-                         ((shutdownException == null) ?
-                          "" :
-                          (" Reason: " + shutdownException.getMessage())) +
-                         RepUtils.writeTimesString(pstats));
+                "Shutting down feeder for replica " + replicaName
+                        + ((shutdownException == null) ? "" : (" Reason: " + shutdownException.getMessage()))
+                        + RepUtils.writeTimesString(pstats));
 
         if (repNode.getReplicaCloseCatchupMs() >= 0) {
 
@@ -533,9 +496,7 @@ final public class Feeder {
                 inputThread.join();
                 /* Timed out, or the input thread exited; keep going. */
             } catch (InterruptedException e) {
-                LoggerUtils.warning(logger, repImpl,
-                                    "Interrupted while waiting to join " +
-                                    "thread:" + outputThread);
+                LoggerUtils.warning(logger, repImpl, "Interrupted while waiting to join " + "thread:" + outputThread);
             }
         }
 
@@ -543,8 +504,7 @@ final public class Feeder {
         inputThread.shutdownThread(logger);
 
         LoggerUtils.finest(logger, repImpl,
-                           feederReplicaChannel + " isOpen=" +
-                           feederReplicaChannel.getChannel().isOpen());
+                feederReplicaChannel + " isOpen=" + feederReplicaChannel.getChannel().isOpen());
     }
 
     public boolean isShutdown() {
@@ -552,9 +512,8 @@ final public class Feeder {
     }
 
     public ArbiterFeederSource getArbiterFeederSource() {
-        if (feederSource != null &&
-            feederSource instanceof ArbiterFeederSource) {
-            return (ArbiterFeederSource)feederSource;
+        if (feederSource != null && feederSource instanceof ArbiterFeederSource) {
+            return (ArbiterFeederSource) feederSource;
         }
 
         return null;
@@ -566,22 +525,21 @@ final public class Feeder {
      */
     private class InputThread extends StoppableThread {
 
-        Protocol protocol = null;
-        private LocalCBVLSNUpdater replicaCBVLSN;
+        Protocol                             protocol = null;
+        private LocalCBVLSNUpdater           replicaCBVLSN;
 
         /*
-         * Per-replica stats stored in a map in the feeder manager.  These can
+         * Per-replica stats stored in a map in the feeder manager. These can
          * only be set once the replica name is found following the handshake.
-         *
          * See the class javadoc comment for more information about these
          * statistics and how they can be used to gather information about
          * replication rates.
          */
-        private volatile LongDiffStat replicaDelay;
+        private volatile LongDiffStat        replicaDelay;
         private volatile AtomicLongComponent replicaLastCommitTimestamp;
         private volatile AtomicLongComponent replicaLastCommitVLSN;
-        private volatile LongDiffStat replicaVLSNLag;
-        private volatile LongAvgRate replicaVLSNRate;
+        private volatile LongDiffStat        replicaVLSNLag;
+        private volatile LongAvgRate         replicaVLSNRate;
 
         InputThread() {
             /*
@@ -604,10 +562,8 @@ final public class Feeder {
             Exception shutdownException = null;
 
             try {
-                FeederReplicaHandshake handshake =
-                    new FeederReplicaHandshake(repNode,
-                                               Feeder.this,
-                                               feederReplicaChannel);
+                FeederReplicaHandshake handshake = new FeederReplicaHandshake(repNode, Feeder.this,
+                        feederReplicaChannel);
                 protocol = handshake.execute();
                 protocolVersion = protocol.getVersion();
                 replicaNameIdPair = handshake.getReplicaNameIdPair();
@@ -619,18 +575,14 @@ final public class Feeder {
                  * Rename the thread when we get the replica name in, so that
                  * it's clear who is on the other end.
                  */
-                Thread.currentThread().setName("Feeder Input for " +
-                                               replicaNameIdPair.getName());
-
+                Thread.currentThread().setName("Feeder Input for " + replicaNameIdPair.getName());
 
                 if (replicaNode.getType().isArbiter()) {
-                    feederSource =
-                        new ArbiterFeederSource(repNode.getRepImpl());
+                    feederSource = new ArbiterFeederSource(repNode.getRepImpl());
                     feederVLSN = VLSN.NULL_VLSN;
                     isArbiterFeeder = true;
                 } else {
-                    FeederReplicaSyncup syncup = new FeederReplicaSyncup(
-                            Feeder.this, feederReplicaChannel, protocol);
+                    FeederReplicaSyncup syncup = new FeederReplicaSyncup(Feeder.this, feederReplicaChannel, protocol);
 
                     /*
                      * The replicaCBVLSN can only be instantiated after we know
@@ -639,8 +591,7 @@ final public class Feeder {
                      * can be updated while the global CBVLSN update is locked
                      * out.
                      */
-                    this.replicaCBVLSN = new LocalCBVLSNUpdater(
-                            replicaNameIdPair, replicaNode.getType(), repNode);
+                    this.replicaCBVLSN = new LocalCBVLSNUpdater(replicaNameIdPair, replicaNode.getType(), repNode);
 
                     /*
                      * Sync-up produces the VLSN of the next log record needed
@@ -649,31 +600,24 @@ final public class Feeder {
                      */
                     VLSN startVLSN = syncup.execute(replicaCBVLSN);
                     replicaTxnEndVLSN = startVLSN.getPrev();
-                    if (replicaTxnEndVLSN.compareTo(repNode
-                            .getCurrentTxnEndVLSN()) >= 0) {
+                    if (replicaTxnEndVLSN.compareTo(repNode.getCurrentTxnEndVLSN()) >= 0) {
                         caughtUp = true;
                     }
                     feederVLSN = startVLSN;
-                    feederSource = new MasterFeederSource(repNode.getRepImpl(),
-                            repNode.getVLSNIndex(), nameIdPair);
+                    feederSource = new MasterFeederSource(repNode.getRepImpl(), repNode.getVLSNIndex(), nameIdPair);
                 }
 
                 final VLSNRange range = repImpl.getVLSNIndex().getRange();
-                if (!feederVLSN.isNull() &&
-                    range.getFirst().compareTo(feederVLSN) > 0) {
+                if (!feederVLSN.isNull() && range.getFirst().compareTo(feederVLSN) > 0) {
                     /*
                      * This situation can arise in rare circumstances when a
                      * syncup results in matchpoint that is no longer in the
                      * VLSN range due to cleaning. See
-                     * FeederReplicaSyncup.makeResponseToEntryRequest() for
-                     * more details.
+                     * FeederReplicaSyncup.makeResponseToEntryRequest() for more
+                     * details.
                      */
-                    LoggerUtils.info(logger, repImpl,
-                                     " Feeder shutdown. Feeder VLSN: " +
-                                     feederVLSN +
-                                     " is outside the VLSN range:" + range +
-                                     " Group CBVLSN: " +
-                                     repNode.getGroupCBVLSN());
+                    LoggerUtils.info(logger, repImpl, " Feeder shutdown. Feeder VLSN: " + feederVLSN
+                            + " is outside the VLSN range:" + range + " Group CBVLSN: " + repNode.getGroupCBVLSN());
                     /*
                      * Exit the feeder, shutting down the connection. The
                      * replica will retry and perform a network restore
@@ -684,20 +628,15 @@ final public class Feeder {
                 feederSource.init(feederVLSN);
 
                 /* Set up stats */
-                replicaDelay = feederManager.getReplicaDelayMap().createStat(
-                    replicaNameIdPair.getName(),
-                    repNode.getFeederTxns().getLastCommitTimestamp());
-                replicaLastCommitTimestamp =
-                    feederManager.getReplicaLastCommitTimestampMap()
-                    .createStat(replicaNameIdPair.getName());
-                replicaLastCommitVLSN =
-                    feederManager.getReplicaLastCommitVLSNMap()
-                    .createStat(replicaNameIdPair.getName());
-                replicaVLSNLag = feederManager.getReplicaVLSNLagMap()
-                    .createStat(replicaNameIdPair.getName(),
-                                repNode.getFeederTxns().getLastCommitVLSN());
-                replicaVLSNRate = feederManager.getReplicaVLSNRateMap()
-                    .createStat(replicaNameIdPair.getName());
+                replicaDelay = feederManager.getReplicaDelayMap().createStat(replicaNameIdPair.getName(),
+                        repNode.getFeederTxns().getLastCommitTimestamp());
+                replicaLastCommitTimestamp = feederManager.getReplicaLastCommitTimestampMap()
+                        .createStat(replicaNameIdPair.getName());
+                replicaLastCommitVLSN = feederManager.getReplicaLastCommitVLSNMap()
+                        .createStat(replicaNameIdPair.getName());
+                replicaVLSNLag = feederManager.getReplicaVLSNLagMap().createStat(replicaNameIdPair.getName(),
+                        repNode.getFeederTxns().getLastCommitVLSN());
+                replicaVLSNRate = feederManager.getReplicaVLSNRateMap().createStat(replicaNameIdPair.getName());
 
                 /* Start the thread to pump out log records */
                 outputThread.start();
@@ -719,8 +658,7 @@ final public class Feeder {
                 shutdownException = e; /* Expected. */
             } catch (ExitException e) {
                 shutdownException = e;
-                LoggerUtils.warning(logger, repImpl,
-                                    "Exiting feeder loop: " + e.getMessage());
+                LoggerUtils.warning(logger, repImpl, "Exiting feeder loop: " + e.getMessage());
             } catch (Error e) {
                 feederInputError = e;
                 repNode.getRepImpl().invalidate(e);
@@ -728,22 +666,18 @@ final public class Feeder {
                 shutdownException = e;
 
                 /* An internal, unexpected error. Invalidate the environment. */
-                throw new EnvironmentFailureException
-                    (repNode.getRepImpl(),
-                     EnvironmentFailureReason.LOG_CHECKSUM, e);
+                throw new EnvironmentFailureException(repNode.getRepImpl(), EnvironmentFailureReason.LOG_CHECKSUM, e);
             } catch (RuntimeException e) {
                 shutdownException = e;
 
                 /*
-                 * An internal error. Shut down the rep node as well for now
-                 * by throwing the exception out of the thread.
-                 *
-                 * In future we may want to close down just the impacted Feeder
-                 * but this is the safe course of action.
+                 * An internal error. Shut down the rep node as well for now by
+                 * throwing the exception out of the thread. In future we may
+                 * want to close down just the impacted Feeder but this is the
+                 * safe course of action.
                  */
                 LoggerUtils.severe(logger, repImpl,
-                                   "Unexpected exception: " + e.getMessage() +
-                                   LoggerUtils.getStackTrace(e));
+                        "Unexpected exception: " + e.getMessage() + LoggerUtils.getStackTrace(e));
                 throw e;
             } finally {
                 if (feederInputError != null) {
@@ -752,9 +686,9 @@ final public class Feeder {
                 }
 
                 /*
-                 * Shutdown the feeder in its entirety, in case the input
-                 * thread is the only one to notice a problem. The Replica can
-                 * decide to re-establish the connection
+                 * Shutdown the feeder in its entirety, in case the input thread
+                 * is the only one to notice a problem. The Replica can decide
+                 * to re-establish the connection
                  */
                 shutdown(shutdownException);
                 cleanup();
@@ -763,38 +697,28 @@ final public class Feeder {
 
         /*
          * This method deals with responses from the Replica. There are exactly
-         * two types of responses from the Replica:
-         *
-         * 1) Responses acknowledging a successful commit by the Replica.
-         *
-         * 2) Responses to heart beat messages.
-         *
-         * This loop (like the loop in the OutputThread) is terminated under
-         * one of the following conditions:
-         *
-         * 1) The thread detects a change in masters.
-         * 2) There is network connection issue (which might also be an
-         *    indication of an unfolding change in masters).
-         * 3) If the replica closes its connection -- variation of the above.
-         *
-         * In addition, the loop will also exit if it gets a ShutdownResponse
-         * message sent in response to a ShutdownRequest sent by the
-         * OutputThread.
+         * two types of responses from the Replica: 1) Responses acknowledging a
+         * successful commit by the Replica. 2) Responses to heart beat
+         * messages. This loop (like the loop in the OutputThread) is terminated
+         * under one of the following conditions: 1) The thread detects a change
+         * in masters. 2) There is network connection issue (which might also be
+         * an indication of an unfolding change in masters). 3) If the replica
+         * closes its connection -- variation of the above. In addition, the
+         * loop will also exit if it gets a ShutdownResponse message sent in
+         * response to a ShutdownRequest sent by the OutputThread.
          */
-        private void runResponseLoop()
-            throws IOException, MasterSyncException {
+        private void runResponseLoop() throws IOException, MasterSyncException {
 
             /*
-             * Start the acknowledgment loop. It's very important that this
-             * loop be wait/contention free.
+             * Start the acknowledgment loop. It's very important that this loop
+             * be wait/contention free.
              */
             while (!checkShutdown()) {
                 Message response = protocol.read(feederReplicaChannel);
                 if (checkShutdown()) {
 
                     /*
-                     * Shutdown quickly, in particular, don't update sync
-                     * VLSNs.
+                     * Shutdown quickly, in particular, don't update sync VLSNs.
                      */
                     break;
                 }
@@ -815,33 +739,28 @@ final public class Feeder {
                         LoggerUtils.fine(logger, repImpl, "Ack for: " + txnId);
                     }
                     deemAcked(txnId);
-                }  else if (response.getOp() == Protocol.GROUP_ACK) {
+                } else if (response.getOp() == Protocol.GROUP_ACK) {
                     final long txnIds[] = ((GroupAck) response).getTxnIds();
 
                     for (long txnId : txnIds) {
                         if (logger.isLoggable(Level.FINE)) {
-                            LoggerUtils.fine(logger, repImpl,
-                                             "Group Ack for: " + txnId);
+                            LoggerUtils.fine(logger, repImpl, "Group Ack for: " + txnId);
                         }
                         deemAcked(txnId);
                     }
                 } else if (response.getOp() == Protocol.SHUTDOWN_RESPONSE) {
-                    LoggerUtils.info(logger, repImpl,
-                                     "Shutdown confirmed by replica " +
-                                     replicaNameIdPair.getName());
+                    LoggerUtils.info(logger, repImpl, "Shutdown confirmed by replica " + replicaNameIdPair.getName());
                     /* Exit the loop and the thread. */
                     break;
                 } else {
-                    throw EnvironmentFailureException.unexpectedState
-                        ("Unexpected message: " + response);
+                    throw EnvironmentFailureException.unexpectedState("Unexpected message: " + response);
                 }
             }
         }
 
         private void processHeartbeatResponse(Message response) {
             /* Last response has been updated, keep going. */
-            HeartbeatResponse hbResponse =
-                (Protocol.HeartbeatResponse)response;
+            HeartbeatResponse hbResponse = (Protocol.HeartbeatResponse) response;
 
             if (replicaCBVLSN == null) {
                 // this is an arbiter feeder
@@ -868,10 +787,10 @@ final public class Feeder {
 
             /*
              * Only tally statistics for the commit VLSN and timestamp if both
-             * values were recorded when the heartbeat was requested.  Make
+             * values were recorded when the heartbeat was requested. Make
              * computations based directly on the measured heartbeat delay if
              * the heartbeat reply confirms that the requested VLSN has been
-             * processed.  Otherwise, use the master VLSN rate to estimate the
+             * processed. Otherwise, use the master VLSN rate to estimate the
              * delay.
              */
             final long commitVLSN = lastHeartbeatCommitVLSN;
@@ -879,8 +798,7 @@ final public class Feeder {
             if ((commitVLSN == 0) || (commitTimestamp == 0)) {
                 return;
             }
-            long statCommitVLSN = (commitVLSN <= replicaTxnVLSNSeq) ?
-                commitVLSN : replicaTxnVLSNSeq;
+            long statCommitVLSN = (commitVLSN <= replicaTxnVLSNSeq) ? commitVLSN : replicaTxnVLSNSeq;
 
             /* Set the depended-on stats first */
             replicaLastCommitVLSN.set(statCommitVLSN);
@@ -898,8 +816,7 @@ final public class Feeder {
                     return;
                 }
                 final long vlsnLag = commitVLSN - replicaTxnVLSNSeq;
-                final long timeLagMillis =
-                    (long) (60000.0 * ((double) vlsnLag / vlsnRatePerMinute));
+                final long timeLagMillis = (long) (60000.0 * ((double) vlsnLag / vlsnRatePerMinute));
                 statCommitTimestamp = commitTimestamp - timeLagMillis;
             }
             replicaLastCommitTimestamp.set(statCommitTimestamp);
@@ -913,8 +830,7 @@ final public class Feeder {
          * acknowledgment of the shutdown message from the Replica.
          */
         private boolean checkShutdown() {
-            return shutdown.get() &&
-                   (repNode.getReplicaCloseCatchupMs() < 0);
+            return shutdown.get() && (repNode.getReplicaCloseCatchupMs() < 0);
         }
 
         @Override
@@ -938,53 +854,52 @@ final public class Feeder {
      * Simply pumps out log entries as rapidly as it can.
      */
     private class OutputThread extends StoppableThread {
-        Protocol protocol = null;
+        Protocol                      protocol             = null;
 
-        private long totalTransferDelay = 0;
+        private long                  totalTransferDelay   = 0;
 
         /* The time at which the group shutdown was initiated. */
-        private long shutdownRequestStart = 0;
+        private long                  shutdownRequestStart = 0;
 
         /**
          * Determines whether writing to the network connection for the replica
          * suffices as a commit acknowledgment.
          */
-        private final boolean commitToNetwork;
+        private final boolean         commitToNetwork;
 
         /**
          * The threshold used to trigger the logging of transfers of commit
          * records.
          */
-        private final int transferLoggingThresholdMs;
+        private final int             transferLoggingThresholdMs;
 
         /**
          * The max time interval during which feeder records are grouped.
          */
-        private final int batchNs;
+        private final int             batchNs;
 
         /**
          * The direct byte buffer holding the batched feeder records.
          */
-        private final ByteBuffer batchBuff;
+        private final ByteBuffer      batchBuff;
 
         /* Shared stats used to track max replica lag across all feeders. */
         private final LongMaxZeroStat nMaxReplicaLag;
-        private final StringStat nMaxReplicaLagName;
+        private final StringStat      nMaxReplicaLagName;
 
-        private final VLSNIndex vlsnIndex;
+        private final VLSNIndex       vlsnIndex;
 
         /* The timestamp of the most recently written commit record or 0 */
-        private long lastCommitTimestamp;
+        private long                  lastCommitTimestamp;
 
         /* The VLSN of the most recently written commit record or 0 */
-        private long lastCommitVLSN;
+        private long                  lastCommitVLSN;
 
         /*
-         * The delay between writes of a replication message. Note that
-         * setting this to a non-zero value effectively turns off message
-         * batching.
+         * The delay between writes of a replication message. Note that setting
+         * this to a non-zero value effectively turns off message batching.
          */
-        final int testDelayMs;
+        final int                     testDelayMs;
 
         OutputThread() {
             /*
@@ -993,17 +908,12 @@ final public class Feeder {
              */
             super(repImpl, new IOThreadsHandler(), "Feeder Output");
             final DbConfigManager configManager = repNode.getConfigManager();
-            commitToNetwork = configManager.
-                getBoolean(RepParams.COMMIT_TO_NETWORK);
-            transferLoggingThresholdMs = configManager.
-                getDuration(RepParams.TRANSFER_LOGGING_THRESHOLD);
+            commitToNetwork = configManager.getBoolean(RepParams.COMMIT_TO_NETWORK);
+            transferLoggingThresholdMs = configManager.getDuration(RepParams.TRANSFER_LOGGING_THRESHOLD);
 
-            batchNs = Math.min(configManager.
-                               getInt(RepParams.FEEDER_BATCH_NS),
-                               heartbeatMs * 1000000);
+            batchNs = Math.min(configManager.getInt(RepParams.FEEDER_BATCH_NS), heartbeatMs * 1000000);
 
-            final int batchBuffSize = configManager.
-                getInt(RepParams.FEEDER_BATCH_BUFF_KB) * 1024;
+            final int batchBuffSize = configManager.getInt(RepParams.FEEDER_BATCH_BUFF_KB) * 1024;
 
             batchBuff = ByteBuffer.allocateDirect(batchBuffSize);
 
@@ -1012,19 +922,15 @@ final public class Feeder {
                 nMaxReplicaLagName = feederManager.getnMaxReplicaLagName();
             } else {
                 /* Create a placeholder stat for testing. */
-                StatGroup stats =
-                    new StatGroup(FeederManagerStatDefinition.GROUP_NAME,
-                                  FeederManagerStatDefinition.GROUP_DESC);
+                StatGroup stats = new StatGroup(FeederManagerStatDefinition.GROUP_NAME,
+                        FeederManagerStatDefinition.GROUP_DESC);
                 nMaxReplicaLag = new LongMaxZeroStat(stats, N_MAX_REPLICA_LAG);
-                nMaxReplicaLagName = new StringStat(stats,
-                                                    N_MAX_REPLICA_LAG_NAME);
+                nMaxReplicaLagName = new StringStat(stats, N_MAX_REPLICA_LAG_NAME);
             }
 
             testDelayMs = feederManager.getTestDelayMs();
             if (testDelayMs > 0) {
-                LoggerUtils.info(logger, repImpl,
-                                 "Test delay of:" + testDelayMs + "ms." +
-                                 " after each message sent");
+                LoggerUtils.info(logger, repImpl, "Test delay of:" + testDelayMs + "ms." + " after each message sent");
             }
             vlsnIndex = repNode.getVLSNIndex();
         }
@@ -1032,16 +938,14 @@ final public class Feeder {
         /**
          * Determines whether we should exit the output loop. If we are trying
          * to shutdown the Replica cleanly, that is, this is a group shutdown,
-         * the method delays the shutdown until the Replica has had a chance
-         * to catch up to the current commit VLSN on this node, after which
-         * it sends the Replica a Shutdown message.
+         * the method delays the shutdown until the Replica has had a chance to
+         * catch up to the current commit VLSN on this node, after which it
+         * sends the Replica a Shutdown message.
          *
          * @return true if the output thread should be shutdown.
-         *
          * @throws IOException
          */
-        private boolean checkShutdown()
-            throws IOException {
+        private boolean checkShutdown() throws IOException {
 
             if (!shutdown.get()) {
                 return false;
@@ -1051,13 +955,9 @@ final public class Feeder {
                     shutdownRequestStart = System.currentTimeMillis();
                 }
                 /* Determines if the feeder has waited long enough. */
-                boolean timedOut =
-                    (System.currentTimeMillis() - shutdownRequestStart) >
-                    repNode.getReplicaCloseCatchupMs();
-                if (!timedOut &&
-                    !isArbiterFeeder &&
-                    (feederVLSN.compareTo
-                                (repNode.getCurrentTxnEndVLSN()) <= 0)) {
+                boolean timedOut = (System.currentTimeMillis() - shutdownRequestStart) > repNode
+                        .getReplicaCloseCatchupMs();
+                if (!timedOut && !isArbiterFeeder && (feederVLSN.compareTo(repNode.getCurrentTxnEndVLSN()) <= 0)) {
                     /*
                      * Replica is not caught up. Note that feederVLSN at stasis
                      * is one beyond the last value that was actually sent,
@@ -1066,17 +966,12 @@ final public class Feeder {
                     return false;
                 }
                 /* Replica is caught up or has timed out, shut it down. */
-                writeMessage(protocol.new ShutdownRequest(shutdownRequestStart),
-                             feederReplicaChannel);
+                writeMessage(protocol.new ShutdownRequest(shutdownRequestStart), feederReplicaChannel);
 
-                String shutdownMessage =
-                    String.format("Shutdown message sent to: %s. " +
-                                  "Feeder vlsn: %,d. " +
-                                  "Shutdown elapsed time: %,dms",
-                                  replicaNameIdPair,
-                                  feederVLSN.getSequence(),
-                                  (System.currentTimeMillis() -
-                                   shutdownRequestStart));
+                String shutdownMessage = String.format(
+                        "Shutdown message sent to: %s. " + "Feeder vlsn: %,d. " + "Shutdown elapsed time: %,dms",
+                        replicaNameIdPair, feederVLSN.getSequence(),
+                        (System.currentTimeMillis() - shutdownRequestStart));
                 LoggerUtils.info(logger, repImpl, shutdownMessage);
                 return true;
             }
@@ -1084,9 +979,7 @@ final public class Feeder {
         }
 
         /** Write a protocol message to the channel. */
-        private void writeMessage(final Message message,
-                                  final NamedChannel namedChannel)
-            throws IOException {
+        private void writeMessage(final Message message, final NamedChannel namedChannel) throws IOException {
 
             assert TestHookExecute.doHookIfSet(writeMessageHook, message);
             protocol.write(message, namedChannel);
@@ -1094,25 +987,16 @@ final public class Feeder {
 
         @Override
         public void run() {
-            protocol =
-                Protocol.get(repNode, protocolVersion, protocolVersion,
-                             streamLogVersion);
-            Thread.currentThread().setName
-                ("Feeder Output for " +
-                 Feeder.this.getReplicaNameIdPair().getName());
+            protocol = Protocol.get(repNode, protocolVersion, protocolVersion, streamLogVersion);
+            Thread.currentThread().setName("Feeder Output for " + Feeder.this.getReplicaNameIdPair().getName());
             {
                 VLSNRange range = vlsnIndex.getRange();
-                LoggerUtils.info
-                    (logger, repImpl, String.format
-                     ("Feeder output thread for replica %s started at " +
-                      "VLSN %,d master at %,d (DTVLSN:%,d) " +
-                      "VLSN delta=%,d socket=%s",
-                      replicaNameIdPair.getName(),
-                      feederVLSN.getSequence(),
-                      range.getLast().getSequence(),
-                      repNode.getAnyDTVLSN(),
-                      range.getLast().getSequence() - feederVLSN.getSequence(),
-                      feederReplicaChannel));
+                LoggerUtils.info(logger, repImpl, String.format(
+                        "Feeder output thread for replica %s started at " + "VLSN %,d master at %,d (DTVLSN:%,d) "
+                                + "VLSN delta=%,d socket=%s",
+                        replicaNameIdPair.getName(), feederVLSN.getSequence(), range.getLast().getSequence(),
+                        repNode.getAnyDTVLSN(), range.getLast().getSequence() - feederVLSN.getSequence(),
+                        feederReplicaChannel));
             }
 
             /* Set to indicate an error-initiated shutdown. */
@@ -1121,22 +1005,20 @@ final public class Feeder {
             try {
 
                 /*
-                 *  Always start out with a heartbeat; the replica is counting
-                 *  on it.
+                 * Always start out with a heartbeat; the replica is counting on
+                 * it.
                  */
                 sendHeartbeat();
-                final int timeoutMs = repNode.getConfigManager().
-                        getDuration(RepParams.FEEDER_TIMEOUT);
+                final int timeoutMs = repNode.getConfigManager().getDuration(RepParams.FEEDER_TIMEOUT);
                 feederReplicaChannel.setTimeoutMs(timeoutMs);
 
                 while (!checkShutdown()) {
-                    if (feederVLSN.compareTo
-                            (repNode.getCurrentTxnEndVLSN()) >= 0) {
+                    if (feederVLSN.compareTo(repNode.getCurrentTxnEndVLSN()) >= 0) {
 
                         /*
                          * The replica is caught up, if we are a Primary stop
-                         * playing that role, and start requesting acks from
-                         * the replica.
+                         * playing that role, and start requesting acks from the
+                         * replica.
                          */
                         repNode.getArbiter().endArbitration();
                     }
@@ -1154,18 +1036,18 @@ final public class Feeder {
 
             } catch (IOException e) {
                 /* Trio of benign "expected" exceptions below. */
-                shutdownException = e;  /* Expected. */
+                shutdownException = e; /* Expected. */
             } catch (MasterSyncException e) {
                 /* Expected, shutdown just the feeder. */
                 shutdownException = e; /* Expected. */
             } catch (InterruptedException e) {
                 /* Expected, shutdown just the feeder. */
-                shutdownException = e;  /* Expected. */
+                shutdownException = e; /* Expected. */
             } catch (FeederReader.LogFileNotFoundException lfnfe) {
                 /*
-                 * This situation can happen in rare circumstances when a
-                 * syncup results in matchpoint that is no longer in the VLSN
-                 * range due to cleaning. See
+                 * This situation can happen in rare circumstances when a syncup
+                 * results in matchpoint that is no longer in the VLSN range due
+                 * to cleaning. See
                  * FeederReplicaSyncup.makeResponseToEntryRequest() for more
                  * details. Exit the feeder normally, thus shutting down the
                  * connection. The replica will retry and perform a network
@@ -1176,15 +1058,13 @@ final public class Feeder {
                 shutdownException = e;
 
                 /*
-                 * An internal error. Shut down the rep node as well for now
-                 * by throwing the exception out of the thread.
-                 *
-                 * In future we may want to close down just the impacted
-                 * Feeder but this is the safe course of action.
+                 * An internal error. Shut down the rep node as well for now by
+                 * throwing the exception out of the thread. In future we may
+                 * want to close down just the impacted Feeder but this is the
+                 * safe course of action.
                  */
                 LoggerUtils.severe(logger, repImpl,
-                                   "Unexpected exception: " + e.getMessage() +
-                                   LoggerUtils.getStackTrace(e));
+                        "Unexpected exception: " + e.getMessage() + LoggerUtils.getStackTrace(e));
                 throw e;
             } catch (Error e) {
                 feederOutputError = e;
@@ -1195,11 +1075,8 @@ final public class Feeder {
                     throw feederOutputError;
                 }
                 LoggerUtils.info(logger, repImpl,
-                                 "Feeder output for replica " +
-                                 replicaNameIdPair.getName() +
-                                 " shutdown. feeder VLSN: " + feederVLSN +
-                                 " currentTxnEndVLSN: " +
-                                 repNode.getCurrentTxnEndVLSN());
+                        "Feeder output for replica " + replicaNameIdPair.getName() + " shutdown. feeder VLSN: "
+                                + feederVLSN + " currentTxnEndVLSN: " + repNode.getCurrentTxnEndVLSN());
 
                 /*
                  * Shutdown the feeder in its entirety, in case the output
@@ -1219,42 +1096,30 @@ final public class Feeder {
          * method tried to batch multiple entries, to minimize the number of
          * network calls permitting better packet utilization and fewer network
          * related interrupts, since FEEDER_TCP_NO_DELAY is set on the channel.
-         *
-         * The size of the batch is limited by one of:
-         *
-         * 1) The number of "available" trailing vlsn entries between the
-         * current position of the feeder and the end of the log.
-         *
-         * 2) The size of the batchWriteBuffer and
-         *
-         * 3) The time it takes to accumulate the batch without exceeding the
-         * minimum of:
-         *
-         *    a) heartbeat interval, a larger time window typically in effect
-         *    when the replica is not in the ack window. It effectively favors
-         *    batching.
-         *
-         *    b) (batchNs + time to first ack requiring) transaction,
-         *    typically in effect when the replica is in the ack window and
-         *    more timely acks are needed.
-         *
-         * This adaptive time interval strategy effectively adapts the batch
-         * sizes to the behavior needed of the replica at any given instant
-         * in time.
+         * The size of the batch is limited by one of: 1) The number of
+         * "available" trailing vlsn entries between the current position of the
+         * feeder and the end of the log. 2) The size of the batchWriteBuffer
+         * and 3) The time it takes to accumulate the batch without exceeding
+         * the minimum of: a) heartbeat interval, a larger time window typically
+         * in effect when the replica is not in the ack window. It effectively
+         * favors batching. b) (batchNs + time to first ack requiring)
+         * transaction, typically in effect when the replica is in the ack
+         * window and more timely acks are needed. This adaptive time interval
+         * strategy effectively adapts the batch sizes to the behavior needed of
+         * the replica at any given instant in time.
          */
         private void writeAvailableEntries()
-            throws DatabaseException, InterruptedException,
-                   IOException, MasterSyncException {
+                throws DatabaseException, InterruptedException, IOException, MasterSyncException {
 
             /*
              * Set the initial limit at the heartbeat and constrain it, if the
              * batch contains commits that need acks. The batchLimitNS
-             * calculation is slightly sloppy in that it does not allow for
-             * disk and network latencies, but that's ok. We don't need to send
+             * calculation is slightly sloppy in that it does not allow for disk
+             * and network latencies, but that's ok. We don't need to send
              * heartbeats exactly on a heartbeat boundary since the code is
-             * resilient in this regard. It's the feeder timeout that's the
-             * main worry here; it's 30 sec by default and is set at 10s for
-             * KVS, so lots of built in slop.
+             * resilient in this regard. It's the feeder timeout that's the main
+             * worry here; it's 30 sec by default and is set at 10s for KVS, so
+             * lots of built in slop.
              */
             long batchLimitNs = System.nanoTime() + (heartbeatMs * 1000000l);
             boolean batchNeedsAcks = false;
@@ -1262,8 +1127,7 @@ final public class Feeder {
             batchBuff.clear();
 
             do {
-                OutputWireRecord record =
-                    feederSource.getWireRecord(feederVLSN, heartbeatMs);
+                OutputWireRecord record = feederSource.getWireRecord(feederVLSN, heartbeatMs);
 
                 masterStatus.assertSync();
 
@@ -1305,22 +1169,17 @@ final public class Feeder {
                         batchNeedsAcks = true;
                         /* Tighten the time constraints if needed. */
                         final long ackLimitNs = System.nanoTime() + batchNs;
-                        batchLimitNs = ackLimitNs < batchLimitNs ?
-                            ackLimitNs : batchLimitNs;
+                        batchLimitNs = ackLimitNs < batchLimitNs ? ackLimitNs : batchLimitNs;
                     }
                 }
                 assert TestHookExecute.doHookIfSet(writeMessageHook, message);
 
-                nMessages = protocol.bufferWrite(feederReplicaChannel,
-                                                 batchBuff,
-                                                 ++nMessages,
-                                                 message);
+                nMessages = protocol.bufferWrite(feederReplicaChannel, batchBuff, ++nMessages, message);
 
                 feederVLSN = feederVLSN.getNext();
             } while ((testDelayMs == 0) && /* Don't batch if set by test. */
-                (vlsnIndex.getLatestAllocatedVal() >=
-                feederVLSN.getSequence()) &&
-                ((System.nanoTime() - batchLimitNs) < 0)) ;
+                    (vlsnIndex.getLatestAllocatedVal() >= feederVLSN.getSequence())
+                    && ((System.nanoTime() - batchLimitNs) < 0));
 
             if (batchBuff.position() == 0) {
                 /* No entries -- timed out waiting for one. */
@@ -1328,12 +1187,10 @@ final public class Feeder {
             }
 
             /*
-             * We have collected the largest possible batch given the
-             * batching constraints, flush it out.
+             * We have collected the largest possible batch given the batching
+             * constraints, flush it out.
              */
-            protocol.flushBufferedWrites(feederReplicaChannel,
-                                         batchBuff,
-                                         nMessages);
+            protocol.flushBufferedWrites(feederReplicaChannel, batchBuff, nMessages);
         }
 
         /**
@@ -1342,8 +1199,7 @@ final public class Feeder {
          *
          * @throws IOException
          */
-        private void sendHeartbeat()
-            throws IOException {
+        private void sendHeartbeat() throws IOException {
 
             long now = System.currentTimeMillis();
             long interval = now - lastHeartbeatTime;
@@ -1354,21 +1210,18 @@ final public class Feeder {
 
             /*
              * Delay sending a heartbeat request if the hook throws
-             * IllegalStateException, to allow tests to control the timing.
-             * Does not apply if lastHeartbeatTime is 0, which means this
-             * heartbeat is part of the initial protocol.
+             * IllegalStateException, to allow tests to control the timing. Does
+             * not apply if lastHeartbeatTime is 0, which means this heartbeat
+             * is part of the initial protocol.
              */
             try {
-                assert (lastHeartbeatTime == 0) ||
-                    TestHookExecute.doHookIfSet(delayHeartbeatHook,
-                                                replicaNameIdPair);
+                assert (lastHeartbeatTime == 0) || TestHookExecute.doHookIfSet(delayHeartbeatHook, replicaNameIdPair);
             } catch (IllegalStateException e) {
                 return;
             }
 
             final VLSN vlsn = repNode.getCurrentTxnEndVLSN();
-            writeMessage(protocol.new Heartbeat(now, vlsn.getSequence()),
-                         feederReplicaChannel);
+            writeMessage(protocol.new Heartbeat(now, vlsn.getSequence()), feederReplicaChannel);
             lastHeartbeatTime = now;
 
             if (isArbiterFeeder) {
@@ -1406,15 +1259,12 @@ final public class Feeder {
          * Feeder.
          *
          * @param txnId > 0 if the entry is a LOG_TXN_COMMIT
-         *
          * @return the Message representing the entry
-         *
          * @throws DatabaseException
          */
-        private Message createMessage(long txnId,
-                                      OutputWireRecord wireRecord)
+        private Message createMessage(long txnId, OutputWireRecord wireRecord)
 
-            throws DatabaseException {
+                throws DatabaseException {
 
             /* A vanilla entry */
             if (txnId == 0) {
@@ -1428,15 +1278,12 @@ final public class Feeder {
             if (ackTxn != null) {
                 ackTxn.stampRepWriteTime();
                 long messageTransferMs = ackTxn.messageTransferMs();
-                totalTransferDelay  += messageTransferMs;
+                totalTransferDelay += messageTransferMs;
                 if (messageTransferMs > transferLoggingThresholdMs) {
-                    final String message =
-                        String.format("Feeder for: %s, Txn: %,d " +
-                                      " log to rep stream time %,dms." +
-                                      " Total transfer time: %,dms.",
-                                      replicaNameIdPair.getName(),
-                                      txnId, messageTransferMs,
-                                      totalTransferDelay);
+                    final String message = String.format(
+                            "Feeder for: %s, Txn: %,d " + " log to rep stream time %,dms."
+                                    + " Total transfer time: %,dms.",
+                            replicaNameIdPair.getName(), txnId, messageTransferMs, totalTransferDelay);
                     LoggerUtils.info(logger, repImpl, message);
                 }
 
@@ -1445,15 +1292,13 @@ final public class Feeder {
                  * the network and DurabilityQuorum says the acknowledgment
                  * qualifies
                  */
-                needsAck = !commitToNetwork &&
-                    repNode.getDurabilityQuorum().replicaAcksQualify(
-                        replicaNode);
+                needsAck = !commitToNetwork && repNode.getDurabilityQuorum().replicaAcksQualify(replicaNode);
                 replicaSync = ackTxn.getCommitDurability().getReplicaSync();
             } else {
 
                 /*
-                 * Replica is catching up. Specify the weakest and leave it
-                 * up to the replica.
+                 * Replica is catching up. Specify the weakest and leave it up
+                 * to the replica.
                  */
                 needsAck = false;
                 replicaSync = SyncPolicy.NO_SYNC;
@@ -1469,9 +1314,8 @@ final public class Feeder {
 
             /* Check that we've fetched the right message. */
             if (!record.getVLSN().equals(feederVLSN)) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("Expected VLSN:" + feederVLSN + " log entry VLSN:" +
-                     record.getVLSN());
+                throw EnvironmentFailureException
+                        .unexpectedState("Expected VLSN:" + feederVLSN + " log entry VLSN:" + record.getVLSN());
             }
 
             if (!repImpl.isRepConverted()) {
@@ -1486,9 +1330,7 @@ final public class Feeder {
     }
 
     private void deemAcked(long txnId) {
-        final TxnInfo txnInfo =
-            repNode.getFeederTxns().noteReplicaAck(replicaNode,
-                                                   txnId);
+        final TxnInfo txnInfo = repNode.getFeederTxns().noteReplicaAck(replicaNode, txnId);
         if (txnInfo == null) {
             /* Txn did not call for an ack. */
             return;
@@ -1516,29 +1358,22 @@ final public class Feeder {
     /**
      * Defines the handler for the RepNode thread. The handler invalidates the
      * environment by ensuring that an EnvironmentFailureException is in place.
-     *
      * The handler communicates the cause of the exception back to the
      * FeederManager's thread by setting the repNodeShutdownException and then
      * interrupting the FM thread. The FM thread upon handling the interrupt
-     * notices the exception and propagates it out in turn to other threads
-     * that might be coordinating activities with it.
+     * notices the exception and propagates it out in turn to other threads that
+     * might be coordinating activities with it.
      */
     private class IOThreadsHandler implements UncaughtExceptionHandler {
 
         @Override
         public void uncaughtException(Thread t, Throwable e) {
             LoggerUtils.severe(logger, repImpl,
-                               "Uncaught exception in feeder thread " + t +
-                               e.getMessage() +
-                               LoggerUtils.getStackTrace(e));
+                    "Uncaught exception in feeder thread " + t + e.getMessage() + LoggerUtils.getStackTrace(e));
 
             /* Bring the exception to the parent thread's attention. */
-            feederManager.setRepNodeShutdownException
-                (EnvironmentFailureException.promote
-                 (repNode.getRepImpl(),
-                  EnvironmentFailureReason.UNCAUGHT_EXCEPTION,
-                  "Uncaught exception in feeder thread:" + t,
-                  e));
+            feederManager.setRepNodeShutdownException(EnvironmentFailureException.promote(repNode.getRepImpl(),
+                    EnvironmentFailureReason.UNCAUGHT_EXCEPTION, "Uncaught exception in feeder thread:" + t, e));
 
             /*
              * Bring it to the FeederManager's attention, it's currently the
@@ -1566,8 +1401,7 @@ final public class Feeder {
             this.failReplica = true;
         }
 
-        public ExitException(Throwable cause,
-                             boolean failReplica) {
+        public ExitException(Throwable cause, boolean failReplica) {
             super(cause);
             this.failReplica = failReplica;
         }
@@ -1577,13 +1411,11 @@ final public class Feeder {
         }
     }
 
-    /**  For debugging and exception messages. */
+    /** For debugging and exception messages. */
     public String dumpState() {
-        return "feederVLSN=" + feederVLSN +
-                " replicaTxnEndVLSN=" + replicaTxnEndVLSN +
-            ((replicaNode != null) && !replicaNode.getType().isElectable() ?
-             " nodeType=" + replicaNode.getType() :
-             "");
+        return "feederVLSN=" + feederVLSN + " replicaTxnEndVLSN=" + replicaTxnEndVLSN
+                + ((replicaNode != null) && !replicaNode.getType().isElectable() ? " nodeType=" + replicaNode.getType()
+                        : "");
     }
 
     /**
@@ -1607,17 +1439,16 @@ final public class Feeder {
      * Set the value of the write message hook that will be used for newly
      * created feeders.
      */
-    public static void setInitialWriteMessageHook(
-        final TestHook<Message> initialWriteMessageHook) {
+    public static void setInitialWriteMessageHook(final TestHook<Message> initialWriteMessageHook) {
 
         Feeder.initialWriteMessageHook = initialWriteMessageHook;
     }
 
     /**
-     * Set a test hook, parameterized by the replica's Name/ID pair, that
-     * delays heartbeat requests from being sent if it throws an
-     * IllegalStateException.  Does not apply to the initial heartbeat request,
-     * which is required by the protocol.
+     * Set a test hook, parameterized by the replica's Name/ID pair, that delays
+     * heartbeat requests from being sent if it throws an IllegalStateException.
+     * Does not apply to the initial heartbeat request, which is required by the
+     * protocol.
      */
     public static void setDelayHeartbeatHook(TestHook<NameIdPair> hook) {
         delayHeartbeatHook = hook;

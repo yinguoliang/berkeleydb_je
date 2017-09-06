@@ -55,13 +55,13 @@ public class LogFileFeeder extends StoppableThread {
     /**
      * Time to wait for the next request from the client, 5 minutes.
      */
-    private static final int SOCKET_TIMEOUT_MS = 5 * 60 * 1000;
+    private static final int    SOCKET_TIMEOUT_MS = 5 * 60 * 1000;
 
     /*
-     * 8K transfer size to take advantage of increasingly prevalent jumbo
-     * frame sizes and to keep disk i/o contention to a minimum.
+     * 8K transfer size to take advantage of increasingly prevalent jumbo frame
+     * sizes and to keep disk i/o contention to a minimum.
      */
-    static final int TRANSFER_BYTES = 0x2000;
+    static final int            TRANSFER_BYTES    = 0x2000;
 
     /*
      * The parent FeederManager that creates and maintains LogFileFeeder
@@ -70,10 +70,10 @@ public class LogFileFeeder extends StoppableThread {
     private final FeederManager feederManager;
 
     /* The channel on which the feeder communicates with the client. */
-    private final NamedChannel namedChannel;
+    private final NamedChannel  namedChannel;
 
     /* The client node requesting the log files. */
-    private int clientId;
+    private int                 clientId;
 
     /*
      * The dbBackup instance that's used to manage the list of files that will
@@ -82,17 +82,15 @@ public class LogFileFeeder extends StoppableThread {
      * established in the checkProtocol method immediately after the client has
      * been identified.
      */
-    private DbBackup dbBackup = null;
+    private DbBackup            dbBackup          = null;
 
     /* Used to compute a SHA1 during a transfer, or if a client requests it. */
-    final MessageDigest messageDigest;
+    final MessageDigest         messageDigest;
 
     /* Logger shared with the FeederManager. */
-    final private Logger logger;
+    final private Logger        logger;
 
-    public LogFileFeeder(FeederManager feederManager,
-                         DataChannel channel)
-        throws DatabaseException {
+    public LogFileFeeder(FeederManager feederManager, DataChannel channel) throws DatabaseException {
         super(feederManager.getEnvImpl(), "Log File Feeder");
 
         this.feederManager = feederManager;
@@ -103,8 +101,7 @@ public class LogFileFeeder extends StoppableThread {
             messageDigest = MessageDigest.getInstance("SHA1");
         } catch (NoSuchAlgorithmException e) {
             LoggerUtils.severe(logger, feederManager.getEnvImpl(),
-                               "The SHA1 algorithm was not made available " +
-                               "by the security provider");
+                    "The SHA1 algorithm was not made available " + "by the security provider");
             throw EnvironmentFailureException.unexpectedException(e);
         }
     }
@@ -117,15 +114,14 @@ public class LogFileFeeder extends StoppableThread {
         shutdownThread(logger);
         feederManager.feeders.remove(clientId);
         LoggerUtils.info(logger, feederManager.getEnvImpl(),
-                         "Log file feeder for client:" + clientId +
-                         " is shutdown.");
+                "Log file feeder for client:" + clientId + " is shutdown.");
     }
 
     @Override
     protected int initiateSoftShutdown() {
         /*
-         * The feeder will get an I/O exception and exit, since it can't use
-         * the channel after it has been closed.
+         * The feeder will get an I/O exception and exit, since it can't use the
+         * channel after it has been closed.
          */
         RepUtils.shutdownChannel(namedChannel);
         return SOCKET_TIMEOUT_MS;
@@ -138,9 +134,7 @@ public class LogFileFeeder extends StoppableThread {
     @Override
     public void run() {
         /* The initial protocol */
-        Protocol protocol = new Protocol(feederManager.nameIdPair,
-                                         Protocol.VERSION,
-                                         feederManager.getEnvImpl());
+        Protocol protocol = new Protocol(feederManager.nameIdPair, Protocol.VERSION, feederManager.getEnvImpl());
         try {
             configureChannel();
             protocol = checkProtocol(protocol);
@@ -152,27 +146,20 @@ public class LogFileFeeder extends StoppableThread {
             dbBackup.endBackup();
             dbBackup = null;
         } catch (ClosedByInterruptException e) {
-            LoggerUtils.fine
-                (logger, feederManager.getEnvImpl(),
-                 "Ignoring ClosedByInterruptException normal shutdown");
+            LoggerUtils.fine(logger, feederManager.getEnvImpl(), "Ignoring ClosedByInterruptException normal shutdown");
         } catch (IOException e) {
-            LoggerUtils.warning(logger, feederManager.getEnvImpl(),
-                                " IO Exception: " + e.getMessage());
+            LoggerUtils.warning(logger, feederManager.getEnvImpl(), " IO Exception: " + e.getMessage());
         } catch (ProtocolException e) {
-            LoggerUtils.severe(logger, feederManager.getEnvImpl(),
-                               " Protocol Exception: " + e.getMessage());
+            LoggerUtils.severe(logger, feederManager.getEnvImpl(), " Protocol Exception: " + e.getMessage());
         } catch (Exception e) {
-            throw new EnvironmentFailureException
-                (feederManager.getEnvImpl(),
-                 EnvironmentFailureReason.UNCAUGHT_EXCEPTION,
-                 e);
+            throw new EnvironmentFailureException(feederManager.getEnvImpl(),
+                    EnvironmentFailureReason.UNCAUGHT_EXCEPTION, e);
         } finally {
             try {
                 namedChannel.getChannel().close();
             } catch (IOException e) {
                 LoggerUtils.warning(logger, feederManager.getEnvImpl(),
-                                    "Log File feeder io exception on " +
-                                    "channel close: " + e.getMessage());
+                        "Log File feeder io exception on " + "channel close: " + e.getMessage());
             }
             shutdown();
 
@@ -185,65 +172,49 @@ public class LogFileFeeder extends StoppableThread {
                      * Establish lease so client can resume within the lease
                      * period.
                      */
-                    feederManager.new Lease(clientId,
-                                            feederManager.leaseDuration,
-                                            dbBackup);
-                    LoggerUtils.info(logger, feederManager.getEnvImpl(),
-                                     "Lease created for node: " + clientId);
+                    feederManager.new Lease(clientId, feederManager.leaseDuration, dbBackup);
+                    LoggerUtils.info(logger, feederManager.getEnvImpl(), "Lease created for node: " + clientId);
                 }
             }
-            LoggerUtils.info
-                (logger, feederManager.getEnvImpl(),
-                 "Log file feeder for client: " + clientId + " exited");
+            LoggerUtils.info(logger, feederManager.getEnvImpl(), "Log file feeder for client: " + clientId + " exited");
         }
     }
 
     /**
-     * Implements the message exchange used to determine whether this feeder
-     * is suitable for use the client's backup needs. The feeder may be
-     * unsuitable if it's already busy, or it's not current enough to service
-     * the client's needs.
+     * Implements the message exchange used to determine whether this feeder is
+     * suitable for use the client's backup needs. The feeder may be unsuitable
+     * if it's already busy, or it's not current enough to service the client's
+     * needs.
      */
-    private void checkFeeder(Protocol protocol)
-        throws IOException, DatabaseException {
+    private void checkFeeder(Protocol protocol) throws IOException, DatabaseException {
 
         protocol.read(namedChannel.getChannel(), FeederInfoReq.class);
-        int feeders = feederManager.getActiveFeederCount() -
-                      1 /* Exclude this one */;
+        int feeders = feederManager.getActiveFeederCount()
+                - 1 /* Exclude this one */;
         VLSN rangeFirst = VLSN.NULL_VLSN;
         VLSN rangeLast = VLSN.NULL_VLSN;
         if (feederManager.getEnvImpl() instanceof RepImpl) {
             /* Include replication stream feeders as a load component. */
             RepImpl repImpl = (RepImpl) feederManager.getEnvImpl();
-            feeders +=
-                repImpl.getRepNode().feederManager().activeReplicaCount();
+            feeders += repImpl.getRepNode().feederManager().activeReplicaCount();
             VLSNRange range = repImpl.getVLSNIndex().getRange();
             rangeFirst = range.getFirst();
             rangeLast = range.getLast();
         }
-        protocol.write(protocol.new FeederInfoResp
-                       (feeders, rangeFirst, rangeLast), namedChannel);
+        protocol.write(protocol.new FeederInfoResp(feeders, rangeFirst, rangeLast), namedChannel);
     }
 
     /**
      * Send files in response to request messages. The request sequence looks
-     * like the following:
-     *
-     *  [FileReq | StatReq]+ Done
-     *
-     * The response sequence to a FileReq looks like:
-     *
-     *  FileStart <file byte stream> FileEnd
-     *
-     *  and that for a StatReq, is simply a StatResp
+     * like the following: [FileReq | StatReq]+ Done The response sequence to a
+     * FileReq looks like: FileStart <file byte stream> FileEnd and that for a
+     * StatReq, is simply a StatResp
      */
-    private void sendRequestedFiles(Protocol protocol)
-        throws IOException, ProtocolException, DatabaseException {
+    private void sendRequestedFiles(Protocol protocol) throws IOException, ProtocolException, DatabaseException {
 
         try {
             while (true) {
-                FileReq fileReq = protocol.read(namedChannel.getChannel(),
-                                                FileReq.class);
+                FileReq fileReq = protocol.read(namedChannel.getChannel(), FileReq.class);
                 final String fileName = fileReq.getFileName();
 
                 /*
@@ -255,24 +226,19 @@ public class LogFileFeeder extends StoppableThread {
                 File file = new File(fMgr.getFullFileName(fileName));
 
                 if (!file.exists()) {
-                    throw EnvironmentFailureException.unexpectedState
-                        ("Log file not found: " + fileName);
+                    throw EnvironmentFailureException.unexpectedState("Log file not found: " + fileName);
                 }
                 /* Freeze the length and last modified date. */
                 final long length = file.length();
                 final long lastModified = file.lastModified();
                 byte digest[] = null;
                 FileInfoResp resp = null;
-                Protocol.FileInfoResp cachedResp =
-                    feederManager.statResponses.get(fileName);
-                byte cachedDigest[] =
-                    ((cachedResp != null) &&
-                     (cachedResp.getFileLength() == length) &&
-                     (cachedResp.getLastModifiedTime() == lastModified)) ?
-                    cachedResp.getDigestSHA1() : null;
+                Protocol.FileInfoResp cachedResp = feederManager.statResponses.get(fileName);
+                byte cachedDigest[] = ((cachedResp != null) && (cachedResp.getFileLength() == length)
+                        && (cachedResp.getLastModifiedTime() == lastModified)) ? cachedResp.getDigestSHA1() : null;
 
                 if (fileReq instanceof FileInfoReq) {
-                    if  (cachedDigest != null) {
+                    if (cachedDigest != null) {
                         digest = cachedDigest;
                     } else if (((FileInfoReq) fileReq).getNeedSHA1()) {
                         digest = getSHA1Digest(file, length).digest();
@@ -280,20 +246,14 @@ public class LogFileFeeder extends StoppableThread {
                         // Digest not requested
                         digest = new byte[0];
                     }
-                    resp = protocol.new FileInfoResp
-                        (fileName, length, lastModified, digest);
+                    resp = protocol.new FileInfoResp(fileName, length, lastModified, digest);
                 } else {
-                    protocol.write(protocol.new FileStart
-                                   (fileName, length, lastModified),
-                                   namedChannel);
+                    protocol.write(protocol.new FileStart(fileName, length, lastModified), namedChannel);
                     digest = sendFileContents(file, length);
-                    if ((cachedDigest != null) &&
-                         !Arrays.equals(cachedDigest, digest)) {
-                        throw EnvironmentFailureException.unexpectedState
-                            ("Inconsistent cached and computed digests");
+                    if ((cachedDigest != null) && !Arrays.equals(cachedDigest, digest)) {
+                        throw EnvironmentFailureException.unexpectedState("Inconsistent cached and computed digests");
                     }
-                    resp = protocol.new FileEnd
-                        (fileName, length, lastModified, digest);
+                    resp = protocol.new FileEnd(fileName, length, lastModified, digest);
                 }
                 /* Cache for subsequent requests, if it was computed. */
                 if (digest.length > 0) {
@@ -318,8 +278,7 @@ public class LogFileFeeder extends StoppableThread {
      * @throws IOException
      * @throws DatabaseException
      */
-    static MessageDigest getSHA1Digest(File file, long length)
-        throws IOException, DatabaseException {
+    static MessageDigest getSHA1Digest(File file, long length) throws IOException, DatabaseException {
 
         MessageDigest messageDigest = null;
 
@@ -331,13 +290,11 @@ public class LogFileFeeder extends StoppableThread {
         final FileInputStream fileStream = new FileInputStream(file);
         try {
             ByteBuffer buffer = ByteBuffer.allocate(TRANSFER_BYTES);
-            for (long bytes = length; bytes > 0; ) {
-                int readSize = (int)Math.min(TRANSFER_BYTES, bytes);
-                int readBytes =
-                    fileStream.read(buffer.array(), 0, readSize);
+            for (long bytes = length; bytes > 0;) {
+                int readSize = (int) Math.min(TRANSFER_BYTES, bytes);
+                int readBytes = fileStream.read(buffer.array(), 0, readSize);
                 if (readBytes == -1) {
-                    throw new IOException("Premature EOF. Was expecting: " +
-                                          readSize);
+                    throw new IOException("Premature EOF. Was expecting: " + readSize);
                 }
                 messageDigest.update(buffer.array(), 0, readBytes);
                 bytes -= readBytes;
@@ -353,32 +310,26 @@ public class LogFileFeeder extends StoppableThread {
      * that the method does not rely on EOF detection, but rather on the
      * promised file size, since the final log file might be growing while the
      * transfer is in progress. The client uses the length sent in the FileResp
-     * message to maintain its position in the network stream. It expects to
-     * see a StatResp once it has read the agreed upon number of bytes.
-     *
-     * Since JE log files are append only, there is no danger that we will send
-     * over any uninitialized file blocks.
+     * message to maintain its position in the network stream. It expects to see
+     * a StatResp once it has read the agreed upon number of bytes. Since JE log
+     * files are append only, there is no danger that we will send over any
+     * uninitialized file blocks.
      *
      * @param file the log file to be sent.
      * @param the number of bytes to send
      * @return the digest associated with the file that was sent
-     *
      * @throws IOException
      */
-    private byte[] sendFileContents(File file, long length)
-        throws IOException {
+    private byte[] sendFileContents(File file, long length) throws IOException {
 
-        final LogVerifier verifier =
-            new LogVerifier(feederManager.getEnvImpl(), file.getName(), -1L);
+        final LogVerifier verifier = new LogVerifier(feederManager.getEnvImpl(), file.getName(), -1L);
         final FileInputStream fileStream = new FileInputStream(file);
 
         try {
             final FileChannel fileChannel = fileStream.getChannel();
             messageDigest.reset();
-            final ByteBuffer buffer =
-                    ByteBuffer.allocateDirect(TRANSFER_BYTES);
-            final byte[] array =
-                (buffer.hasArray()) ? buffer.array() : new byte[TRANSFER_BYTES];
+            final ByteBuffer buffer = ByteBuffer.allocateDirect(TRANSFER_BYTES);
+            final byte[] array = (buffer.hasArray()) ? buffer.array() : new byte[TRANSFER_BYTES];
             int transmitBytes = 0;
 
             while (true) {
@@ -404,16 +355,14 @@ public class LogFileFeeder extends StoppableThread {
             }
 
             if (transmitBytes != length) {
-                String msg = "File length:" + length + " does not match the " +
-                             "number of bytes that were transmitted:" +
-                             transmitBytes;
+                String msg = "File length:" + length + " does not match the " + "number of bytes that were transmitted:"
+                        + transmitBytes;
 
                 throw new IllegalStateException(msg);
             }
 
-            LoggerUtils.info
-                (logger, feederManager.getEnvImpl(),
-                 "Sent file: " + file + " Length: " + length + " bytes");
+            LoggerUtils.info(logger, feederManager.getEnvImpl(),
+                    "Sent file: " + file + " Length: " + length + " bytes");
         } finally {
             fileStream.close();
         }
@@ -422,12 +371,10 @@ public class LogFileFeeder extends StoppableThread {
 
     /**
      * Processes the request for the list of files that constitute a valid
-     * backup. If a leased DbBackup instance is available, it uses it,
-     * otherwise it creates a new instance and uses it instead.
-     *
+     * backup. If a leased DbBackup instance is available, it uses it, otherwise
+     * it creates a new instance and uses it instead.
      */
-    private void sendFileList(Protocol protocol)
-        throws IOException, ProtocolException, DatabaseException {
+    private void sendFileList(Protocol protocol) throws IOException, ProtocolException, DatabaseException {
 
         /* Wait for the request message. */
         protocol.read(namedChannel.getChannel(), Protocol.FileListReq.class);
@@ -441,14 +388,13 @@ public class LogFileFeeder extends StoppableThread {
 
         /*
          * Remove the subdirectory header of the log files, because the nodes
-         * that need to copy those log files may not configure the spreading
-         * log files into sub directories feature.
+         * that need to copy those log files may not configure the spreading log
+         * files into sub directories feature.
          */
         String[] files = dbBackup.getLogFilesInBackupSet();
         for (int i = 0; i < files.length; i++) {
             if (files[i].contains(File.separator)) {
-                files[i] = files[i].substring
-                    (files[i].indexOf(File.separator) + 1, files[i].length());
+                files[i] = files[i].substring(files[i].indexOf(File.separator) + 1, files[i].length());
             }
         }
 
@@ -459,12 +405,9 @@ public class LogFileFeeder extends StoppableThread {
      * Verify that the protocols are compatible, switch to a different protocol
      * version, if we need to.
      */
-    private Protocol checkProtocol(Protocol protocol)
-        throws IOException, ProtocolException {
+    private Protocol checkProtocol(Protocol protocol) throws IOException, ProtocolException {
 
-        ClientVersion clientVersion =
-            protocol.read(namedChannel.getChannel(),
-                          Protocol.ClientVersion.class);
+        ClientVersion clientVersion = protocol.read(namedChannel.getChannel(), Protocol.ClientVersion.class);
         clientId = clientVersion.getNodeId();
         FeederManager.Lease lease = feederManager.leases.get(clientId);
         if (lease != null) {
@@ -472,19 +415,19 @@ public class LogFileFeeder extends StoppableThread {
         }
         feederManager.feeders.put(clientId, this);
         if (clientVersion.getVersion() != protocol.getVersion()) {
-            String message = "Client requested protocol version: " +
-                clientVersion.getVersion() + " but the server version is " +
-                protocol.getVersion();
+            String message = "Client requested protocol version: " + clientVersion.getVersion()
+                    + " but the server version is " + protocol.getVersion();
 
             /*
-             * Simply log the difference on the server, it's up to the client
-             * to reject the protocol version, if it can't accommodate it.
+             * Simply log the difference on the server, it's up to the client to
+             * reject the protocol version, if it can't accommodate it.
              */
             LoggerUtils.warning(logger, feederManager.getEnvImpl(), message);
         }
-        protocol.write(protocol.new ServerVersion(),  namedChannel);
+        protocol.write(protocol.new ServerVersion(), namedChannel);
 
-        /* In future we may switch protocol versions to accommodate the client.
+        /*
+         * In future we may switch protocol versions to accommodate the client.
          * For now, simply return the one and only version.
          */
         return protocol;
@@ -493,22 +436,18 @@ public class LogFileFeeder extends StoppableThread {
     /**
      * Sets up the channel to facilitate efficient transfer of large log files.
      */
-    private DataChannel configureChannel()
-        throws IOException {
+    private DataChannel configureChannel() throws IOException {
 
         namedChannel.getChannel().getSocketChannel().configureBlocking(true);
-        LoggerUtils.fine
-            (logger, feederManager.getEnvImpl(),
-             "Log File Feeder accepted connection from " + namedChannel);
-        namedChannel.getChannel().getSocketChannel().socket().
-            setSoTimeout(SOCKET_TIMEOUT_MS);
+        LoggerUtils.fine(logger, feederManager.getEnvImpl(),
+                "Log File Feeder accepted connection from " + namedChannel);
+        namedChannel.getChannel().getSocketChannel().socket().setSoTimeout(SOCKET_TIMEOUT_MS);
 
         /*
          * Enable Nagle's algorithm since throughput is important for the large
          * files we will be transferring.
          */
-        namedChannel.getChannel().getSocketChannel().socket().
-            setTcpNoDelay(false);
+        namedChannel.getChannel().getSocketChannel().socket().setTcpNoDelay(false);
         return namedChannel.getChannel();
     }
 

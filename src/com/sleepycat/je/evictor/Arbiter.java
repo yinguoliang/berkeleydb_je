@@ -28,17 +28,16 @@ class Arbiter {
     private final MemoryBudget.Totals memBudgetTotals;
 
     /* Debugging and unit test support. */
-    private TestHook<Boolean> runnableHook;
+    private TestHook<Boolean>         runnableHook;
 
     /* je.evictor.evictBytes */
-    private final long evictBytesSetting;
+    private final long                evictBytesSetting;
 
     Arbiter(EnvironmentImpl envImpl) {
 
         DbConfigManager configManager = envImpl.getConfigManager();
 
-        evictBytesSetting = configManager.getLong(
-            EnvironmentParams.EVICTOR_EVICT_BYTES);
+        evictBytesSetting = configManager.getLong(EnvironmentParams.EVICTOR_EVICT_BYTES);
 
         memBudgetTotals = envImpl.getMemoryBudget().getTotals();
     }
@@ -48,45 +47,40 @@ class Arbiter {
      */
     boolean isOverBudget() {
 
-        return memBudgetTotals.getCacheUsage() >
-            memBudgetTotals.getMaxMemory();
+        return memBudgetTotals.getCacheUsage() > memBudgetTotals.getMaxMemory();
     }
 
     /**
-     * Do a check on whether synchronous eviction is needed.
-     *
-     * Note that this method is intentionally not synchronized in order to
-     * minimize overhead when checking for critical eviction.  This method is
-     * called from application threads for every cursor operation.
+     * Do a check on whether synchronous eviction is needed. Note that this
+     * method is intentionally not synchronized in order to minimize overhead
+     * when checking for critical eviction. This method is called from
+     * application threads for every cursor operation.
      */
     boolean needCriticalEviction() {
 
-        final long over = memBudgetTotals.getCacheUsage() -
-            memBudgetTotals.getMaxMemory();
+        final long over = memBudgetTotals.getCacheUsage() - memBudgetTotals.getMaxMemory();
 
         return (over > memBudgetTotals.getCriticalThreshold());
     }
 
     /**
-     * Do a check on whether the cache should still be subject to eviction.
-     *
-     * Note that this method is intentionally not synchronized in order to
-     * minimize overhead, because it's checked on every iteration of the
-     * evict batch loop.
+     * Do a check on whether the cache should still be subject to eviction. Note
+     * that this method is intentionally not synchronized in order to minimize
+     * overhead, because it's checked on every iteration of the evict batch
+     * loop.
      */
     boolean stillNeedsEviction() {
 
-        return (memBudgetTotals.getCacheUsage() + evictBytesSetting) >
-            memBudgetTotals.getMaxMemory();
+        return (memBudgetTotals.getCacheUsage() + evictBytesSetting) > memBudgetTotals.getMaxMemory();
     }
 
     /**
-     * Return non zero number of bytes if eviction should happen. Caps the 
+     * Return non zero number of bytes if eviction should happen. Caps the
      * number of bytes a single thread will try to evict.
      */
     long getEvictionPledge() {
 
-        long currentUsage  = memBudgetTotals.getCacheUsage();
+        long currentUsage = memBudgetTotals.getCacheUsage();
         long maxMem = memBudgetTotals.getMaxMemory();
 
         long overBudget = currentUsage - maxMem;

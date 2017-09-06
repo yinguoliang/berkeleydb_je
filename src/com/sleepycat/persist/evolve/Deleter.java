@@ -15,13 +15,15 @@ package com.sleepycat.persist.evolve;
 
 /**
  * A mutation for deleting an entity class or field.
- *
- * <p><strong>WARNING:</strong> The data for the deleted class or field will be
- * destroyed and will be recoverable only by restoring from backup.  If you
- * wish to convert the instance data to a different type or format, use a
- * {@link Conversion} mutation instead.</p>
- *
- * <p>For example, to delete a field:</p>
+ * <p>
+ * <strong>WARNING:</strong> The data for the deleted class or field will be
+ * destroyed and will be recoverable only by restoring from backup. If you wish
+ * to convert the instance data to a different type or format, use a
+ * {@link Conversion} mutation instead.
+ * </p>
+ * <p>
+ * For example, to delete a field:
+ * </p>
  *
  * <pre class="code">
  *  package my.package;
@@ -48,9 +50,11 @@ package com.sleepycat.persist.evolve;
  *  mutations.addDeleter(new Deleter(Person.class.getName(), 0,
  *                                   "favoriteColors");
  *
- *  // Configure the mutations as described {@link Mutations here}.</pre>
- *
- * <p>To delete an entity class:</p>
+ *  // Configure the mutations as described {@link Mutations here}.
+ * </pre>
+ * <p>
+ * To delete an entity class:
+ * </p>
  *
  * <pre class="code">
  *  package my.package;
@@ -68,7 +72,8 @@ package com.sleepycat.persist.evolve;
  *
  *  mutations.addDeleter(new Deleter("my.package.Statistics", 0));
  *
- *  // Configure the mutations as described {@link Mutations here}.</pre>
+ *  // Configure the mutations as described {@link Mutations here}.
+ * </pre>
  *
  * @see com.sleepycat.persist.evolve Class Evolution
  * @author Mark Hayes
@@ -88,16 +93,15 @@ public class Deleter extends Mutation {
     }
 
     /**
-     * Creates a mutation for deleting the given field from all instances of
-     * the given class version.
+     * Creates a mutation for deleting the given field from all instances of the
+     * given class version.
      *
      * @param declaringClass the class to which this mutation applies.
      * @param declaringClassVersion the class version to which this mutation
-     * applies.
+     *            applies.
      * @param fieldName field name to which this mutation applies.
      */
-    public Deleter(String declaringClass, int declaringClassVersion,
-                   String fieldName) {
+    public Deleter(String declaringClass, int declaringClassVersion, String fieldName) {
         super(declaringClass, declaringClassVersion, fieldName);
     }
 

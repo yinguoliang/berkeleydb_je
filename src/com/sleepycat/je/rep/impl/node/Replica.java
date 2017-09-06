@@ -82,126 +82,111 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * The Replica class is the locus of the replay operations and replica
- * transaction consistency tracking and management operations at a replica
- * node.
- *
+ * transaction consistency tracking and management operations at a replica node.
  * A single instance of this class is created when the replication node is
  * created and exists for the lifetime of the replication node, although it is
- * only really used when the node is operating as a Replica.
- *
- * Note that the Replica (like the FeederManager) does not have its own
- * independent thread of control; it runs in the RepNode's thread. To make the
- * network I/O as aync as possible, and avoid stalls during network I/O the
- * input and output are done in separate threads. The overall thread
- * and queue organization is as sketched below:
- *
- *  read from network -> RepNodeThread (does read)       -> replayQueue
- *  replayQueue       -> ReplayThread                     -> outputQueue
- *  outputQueue       -> ReplicaOutputThread (does write) -> writes to network
- *
- * This three thread organization has the following benefits over a single
- * thread replay model:
- *
- * 1) It makes the hearbeat mechanism used to determine whether the HA sockets
- * are in use more reliable. This is because a heartbeat response cannot
- * be blocked by lock contention in the replay thread, since a heartbeat
- * can be sent spontaneously (without an explicit heartbeat request from the
- * feeder) by the ReplicaOutputThread, if a heartbeat had not been sent during
- * a heartbeat interval period.
- *
- * 2) The cpu load in the replay thread is reducde by offloading the
- * network-specific aspects of the processing to different threads. It's
- * important to keep the CPU load in this thread at a minimum so we can use
- * a simple single thread replay scheme.
- *
- * 3) Prevents replay thread stalls by input and output buffering in the two
- * threads on either side of it.
- *
+ * only really used when the node is operating as a Replica. Note that the
+ * Replica (like the FeederManager) does not have its own independent thread of
+ * control; it runs in the RepNode's thread. To make the network I/O as aync as
+ * possible, and avoid stalls during network I/O the input and output are done
+ * in separate threads. The overall thread and queue organization is as sketched
+ * below: read from network -> RepNodeThread (does read) -> replayQueue
+ * replayQueue -> ReplayThread -> outputQueue outputQueue -> ReplicaOutputThread
+ * (does write) -> writes to network This three thread organization has the
+ * following benefits over a single thread replay model: 1) It makes the
+ * hearbeat mechanism used to determine whether the HA sockets are in use more
+ * reliable. This is because a heartbeat response cannot be blocked by lock
+ * contention in the replay thread, since a heartbeat can be sent spontaneously
+ * (without an explicit heartbeat request from the feeder) by the
+ * ReplicaOutputThread, if a heartbeat had not been sent during a heartbeat
+ * interval period. 2) The cpu load in the replay thread is reducde by
+ * offloading the network-specific aspects of the processing to different
+ * threads. It's important to keep the CPU load in this thread at a minimum so
+ * we can use a simple single thread replay scheme. 3) Prevents replay thread
+ * stalls by input and output buffering in the two threads on either side of it.
  * With jdk 1.7 we could eliminate the use of these threads and switch over to
  * the new aysnc I/O APIs, but that involves a lot more code restructuring.
  */
 public class Replica {
 
     /* The Node to which the Replica belongs. */
-    private final RepNode repNode;
-    private final RepImpl repImpl;
+    private final RepNode                                     repNode;
+    private final RepImpl                                     repImpl;
 
     /* The replay component of the Replica */
-    private final Replay replay;
+    private final Replay                                      replay;
 
     /* The exception that provoked the replica exit. */
-    private Exception shutdownException = null;
+    private Exception                                         shutdownException           = null;
 
     /*
      * It's non null when the loop is active.
      */
-    private NamedChannelWithTimeout replicaFeederChannel = null;
+    private NamedChannelWithTimeout                           replicaFeederChannel        = null;
 
     /* The consistency component. */
-    private final ConsistencyTracker consistencyTracker;
+    private final ConsistencyTracker                          consistencyTracker;
 
     /**
      * The latest txn-ending (commit or abort) VLSN that we have on this
      * replica.
      */
-    private volatile VLSN txnEndVLSN;
+    private volatile VLSN                                     txnEndVLSN;
 
     /*
-     * A test delay introduced in the replica loop to simulate a loaded
-     * replica. The replica waits this amount of time before processing each
-     * message.
+     * A test delay introduced in the replica loop to simulate a loaded replica.
+     * The replica waits this amount of time before processing each message.
      */
-    private int testDelayMs = 0;
+    private int                                               testDelayMs                 = 0;
 
     /* For testing only - mimic a network partition. */
-    private boolean dontProcessStream = false;
+    private boolean                                           dontProcessStream           = false;
 
     /* Number of times to retry on a network connection failure. */
-    private static final int NETWORK_RETRIES = 2 ;
+    private static final int                                  NETWORK_RETRIES             = 2;
 
     /*
      * Service unavailable retries. These are typically the result of service
-     * request being made before the node is ready to provide them. For
-     * example, the feeder service is only available after a node has
-     * transitioned to becoming the master.
+     * request being made before the node is ready to provide them. For example,
+     * the feeder service is only available after a node has transitioned to
+     * becoming the master.
      */
-    private static final int SERVICE_UNAVAILABLE_RETRIES = 10;
+    private static final int                                  SERVICE_UNAVAILABLE_RETRIES = 10;
 
     /*
      * The number of ms to wait between above retries, allowing time for the
      * master to assume its role, and start listening on its port.
      */
-    private static final int CONNECT_RETRY_SLEEP_MS = 1000;
+    private static final int                                  CONNECT_RETRY_SLEEP_MS      = 1000;
 
     /*
      * The protocol instance if one is currently in use by the Replica.
      */
-    private Protocol protocol = null;
+    private Protocol                                          protocol                    = null;
 
     /*
      * Protocol statistics aggregated across all past protocol instantiations.
      * It does not include the statistics for the current Protocol object in
      * use. A node can potentially go through the Replica state multiple time
-     * during it's lifetime. This instance aggregates replica statistics
-     * across all transitions into and out of the Replica state.
+     * during it's lifetime. This instance aggregates replica statistics across
+     * all transitions into and out of the Replica state.
      */
-    private final StatGroup aggProtoStats;
+    private final StatGroup                                   aggProtoStats;
 
     /*
-     * Holds the exception that is thrown to indicate that an election is
-     * needed before a hard recovery can proceed. It's set to a non-null value
-     * when the need for a hard recovery is first discovered and is
-     * subsequently cleared after an election is held and before the next
-     * attempt at a syncup with the newly elected master. The election ensures
-     * that the master being used for an actual rollback is current and is not
-     * an isolated master that is out of date, due to a network partition that
-     * has since been resolved.
+     * Holds the exception that is thrown to indicate that an election is needed
+     * before a hard recovery can proceed. It's set to a non-null value when the
+     * need for a hard recovery is first discovered and is subsequently cleared
+     * after an election is held and before the next attempt at a syncup with
+     * the newly elected master. The election ensures that the master being used
+     * for an actual rollback is current and is not an isolated master that is
+     * out of date, due to a network partition that has since been resolved.
      */
-    private HardRecoveryElectionException hardRecoveryElectionException;
+    private HardRecoveryElectionException                     hardRecoveryElectionException;
 
     /* For testing only. */
-    private TestHook<Object> replicaFeederSyncupHook;
-    private final com.sleepycat.je.utilint.TestHook<Message> replayHook;
+    private TestHook<Object>                                  replicaFeederSyncupHook;
+    private final com.sleepycat.je.utilint.TestHook<Message>  replayHook;
     static private com.sleepycat.je.utilint.TestHook<Message> initialReplayHook;
 
     /*
@@ -210,13 +195,13 @@ public class Replica {
      * operations have gone by, or if any replay operations on Name LNs are
      * executed.
      */
-    private final DbCache dbCache;
+    private final DbCache                                     dbCache;
 
     /**
-     * The message queue used for communications between the network read
-     * thread and the replay thread.
+     * The message queue used for communications between the network read thread
+     * and the replay thread.
      */
-    private final BlockingQueue<Message> replayQueue;
+    private final BlockingQueue<Message>                      replayQueue;
 
     /*
      * The replica output thread. It's only maintained here as an IV, rather
@@ -224,60 +209,50 @@ public class Replica {
      * facilitate unit tests and is non null only for for the duration of the
      * method.
      */
-    private volatile ReplicaOutputThread replicaOutputThread;
+    private volatile ReplicaOutputThread                      replicaOutputThread;
 
-    private final Logger logger;
+    private final Logger                                      logger;
 
     /**
-     * The number of times a message entry could not be inserted into
-     * the queue within the poll period and had to be retried.
+     * The number of times a message entry could not be inserted into the queue
+     * within the poll period and had to be retried.
      */
-    private final LongStat nMessageQueueOverflows;
+    private final LongStat                                    nMessageQueueOverflows;
 
     Replica(RepNode repNode, Replay replay) {
         this.repNode = repNode;
         this.repImpl = repNode.getRepImpl();
         DbConfigManager configManager = repNode.getConfigManager();
-        dbCache = new DbCache(repImpl.getDbTree(),
-                              configManager.getInt
-                                  (RepParams.REPLAY_MAX_OPEN_DB_HANDLES),
-                                  configManager.getDuration
-                                  (RepParams.REPLAY_DB_HANDLE_TIMEOUT));
+        dbCache = new DbCache(repImpl.getDbTree(), configManager.getInt(RepParams.REPLAY_MAX_OPEN_DB_HANDLES),
+                configManager.getDuration(RepParams.REPLAY_DB_HANDLE_TIMEOUT));
 
         consistencyTracker = new ConsistencyTracker();
         this.replay = replay;
         logger = LoggerUtils.getLogger(getClass());
-        aggProtoStats =
-            new StatGroup(BinaryProtocolStatDefinition.GROUP_NAME,
-                          BinaryProtocolStatDefinition.GROUP_DESC);
+        aggProtoStats = new StatGroup(BinaryProtocolStatDefinition.GROUP_NAME, BinaryProtocolStatDefinition.GROUP_DESC);
         nMessageQueueOverflows = replay.getMessageQueueOverflows();
-        testDelayMs =
-            repNode.getConfigManager().getInt(RepParams.TEST_REPLICA_DELAY);
+        testDelayMs = repNode.getConfigManager().getInt(RepParams.TEST_REPLICA_DELAY);
         replayHook = initialReplayHook;
 
         /* Set up the replay queue. */
-        final int replayQueueSize = repNode.getConfigManager().
-            getInt(RepParams.REPLICA_MESSAGE_QUEUE_SIZE);
+        final int replayQueueSize = repNode.getConfigManager().getInt(RepParams.REPLICA_MESSAGE_QUEUE_SIZE);
 
         replayQueue = new ArrayBlockingQueue<Message>(replayQueueSize);
     }
 
     /**
-     * Shutdown the Replica, free any threads that may have been waiting for
-     * the replica to reach some degree of consistency. This method is only
-     * invoked as part of the repnode shutdown.
-     *
-     * If the shutdown is being executed from a different thread, it attempts
-     * to interrupt the thread by first shutting down the channel it may be
-     * waiting on for input from the feeder. The replica thread should notice
-     * the channel shutdown and/or the shutdown state of the rep node itself.
-     * The caller will use harsher methods, like an interrupt, if the rep node
-     * thread (Replica or Feeder) is still active.
+     * Shutdown the Replica, free any threads that may have been waiting for the
+     * replica to reach some degree of consistency. This method is only invoked
+     * as part of the repnode shutdown. If the shutdown is being executed from a
+     * different thread, it attempts to interrupt the thread by first shutting
+     * down the channel it may be waiting on for input from the feeder. The
+     * replica thread should notice the channel shutdown and/or the shutdown
+     * state of the rep node itself. The caller will use harsher methods, like
+     * an interrupt, if the rep node thread (Replica or Feeder) is still active.
      */
     public void shutdown() {
         if (!repNode.isShutdown()) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Rep node must have initiated the shutdown.");
+            throw EnvironmentFailureException.unexpectedState("Rep node must have initiated the shutdown.");
         }
         consistencyTracker.shutdown();
         if (Thread.currentThread() == repNode) {
@@ -285,10 +260,9 @@ public class Replica {
         }
 
         /*
-         * Perform the actions to provoke a "soft" shutdown.
-         *
-         * Since the replica shares the RepNode thread, it will take care of
-         * the actual thread shutdown itself.
+         * Perform the actions to provoke a "soft" shutdown. Since the replica
+         * shares the RepNode thread, it will take care of the actual thread
+         * shutdown itself.
          */
 
         /*
@@ -363,42 +337,30 @@ public class Replica {
     }
 
     /**
-     * The core control loop when the node is serving as a Replica. Note that
-     * if a Replica is also serving the role of a feeder, it will run
-     * additional feeder loops in separate threads. The loop exits when it
-     * encounters one of the following possible conditions:
-     *
-     * 1) The connection to the master can no longer be maintained, due to
-     * connectivity issues, or because the master has explicitly shutdown its
-     * connections due to an election.
-     *
-     * 2) The node becomes aware of a change in master, that is, assertSync()
-     * fails.
-     *
-     * 3) The loop is interrupted, which is interpreted as a request to
-     * shutdown the replication node as a whole.
-     *
-     * 4) It fails to establish its node information in the master as it
-     * attempts to join the replication group for the first time.
-     *
-     * Normal exit from this run loop results in the rep node retrying an
-     * election and continuing in its new role as determined by the outcome of
-     * the election. A thrown exception, on the other hand, results in the rep
-     * node as a whole terminating its operation and no longer participating in
-     * the replication group, that is, it enters the DETACHED state.
-     *
-     * Note that the in/out streams are handled synchronously on the replica,
-     * while they are handled asynchronously by the Feeder.
+     * The core control loop when the node is serving as a Replica. Note that if
+     * a Replica is also serving the role of a feeder, it will run additional
+     * feeder loops in separate threads. The loop exits when it encounters one
+     * of the following possible conditions: 1) The connection to the master can
+     * no longer be maintained, due to connectivity issues, or because the
+     * master has explicitly shutdown its connections due to an election. 2) The
+     * node becomes aware of a change in master, that is, assertSync() fails. 3)
+     * The loop is interrupted, which is interpreted as a request to shutdown
+     * the replication node as a whole. 4) It fails to establish its node
+     * information in the master as it attempts to join the replication group
+     * for the first time. Normal exit from this run loop results in the rep
+     * node retrying an election and continuing in its new role as determined by
+     * the outcome of the election. A thrown exception, on the other hand,
+     * results in the rep node as a whole terminating its operation and no
+     * longer participating in the replication group, that is, it enters the
+     * DETACHED state. Note that the in/out streams are handled synchronously on
+     * the replica, while they are handled asynchronously by the Feeder.
      *
      * @throws InterruptedException
      * @throws DatabaseException if the environment cannot be closed/for a
-     * re-init
+     *             re-init
      * @throws GroupShutdownException
      */
-    void runReplicaLoop()
-        throws InterruptedException,
-               DatabaseException,
-               GroupShutdownException {
+    void runReplicaLoop() throws InterruptedException, DatabaseException, GroupShutdownException {
 
         Class<? extends RetryException> retryExceptionClass = null;
         int retryCount = 0;
@@ -411,30 +373,22 @@ public class Replica {
                     break;
                 } catch (RetryException e) {
                     if (!repNode.getMasterStatus().inSync()) {
-                        LoggerUtils.fine(logger, repImpl,
-                                         "Retry terminated, out of sync.");
+                        LoggerUtils.fine(logger, repImpl, "Retry terminated, out of sync.");
                         break;
                     }
-                    if ((e.getClass() == retryExceptionClass) ||
-                        (e.retries == 0)) {
+                    if ((e.getClass() == retryExceptionClass) || (e.retries == 0)) {
                         if (++retryCount >= e.retries) {
                             /* Exit replica retry elections */
-                            LoggerUtils.info
-                                (logger, repImpl,
-                                 "Failed to recover from exception: " +
-                                 e.getMessage() + ", despite " + e.retries +
-                                 " retries.\n" +
-                                 LoggerUtils.getStackTrace(e));
+                            LoggerUtils.info(logger, repImpl, "Failed to recover from exception: " + e.getMessage()
+                                    + ", despite " + e.retries + " retries.\n" + LoggerUtils.getStackTrace(e));
                             break;
                         }
                     } else {
                         retryCount = 0;
                         retryExceptionClass = e.getClass();
                     }
-                    LoggerUtils.info(logger, repImpl, "Retry #: " +
-                                     retryCount + "/" + e.retries +
-                                     " Will retry replica loop after " +
-                                     e.retrySleepMs + "ms. ");
+                    LoggerUtils.info(logger, repImpl, "Retry #: " + retryCount + "/" + e.retries
+                            + " Will retry replica loop after " + e.retrySleepMs + "ms. ");
                     Thread.sleep(e.retrySleepMs);
                     if (!repNode.getMasterStatus().inSync()) {
                         break;
@@ -456,19 +410,13 @@ public class Replica {
     }
 
     private void runReplicaLoopInternal()
-        throws RestartRequiredException,
-               InterruptedException,
-               RetryException,
-               InsufficientLogException {
+            throws RestartRequiredException, InterruptedException, RetryException, InsufficientLogException {
 
         shutdownException = null;
         LoggerUtils.info(logger, repImpl,
-                         "Replica loop started with master: " +
-                         repNode.getMasterStatus().getNodeMasterNameId());
+                "Replica loop started with master: " + repNode.getMasterStatus().getNodeMasterNameId());
         if (testDelayMs > 0) {
-            LoggerUtils.info(logger, repImpl,
-                             "Test delay of: " + testDelayMs + "ms." +
-                             " after each message sent");
+            LoggerUtils.info(logger, repImpl, "Test delay of: " + testDelayMs + "ms." + " after each message sent");
         }
         try {
             initReplicaLoop();
@@ -478,14 +426,11 @@ public class Replica {
             throw rre;
         } catch (ClosedByInterruptException closedByInterruptException) {
             if (repNode.isShutdown()) {
-                LoggerUtils.info(logger, repImpl,
-                                 "Replica loop interrupted for shutdown.");
+                LoggerUtils.info(logger, repImpl, "Replica loop interrupted for shutdown.");
                 return;
             }
-            LoggerUtils.warning(logger, repImpl,
-                                "Replica loop unexpected interrupt.");
-            throw new InterruptedException
-                (closedByInterruptException.getMessage());
+            LoggerUtils.warning(logger, repImpl, "Replica loop unexpected interrupt.");
+            throw new InterruptedException(closedByInterruptException.getMessage());
         } catch (IOException e) {
 
             /*
@@ -493,11 +438,8 @@ public class Replica {
              * connection as a result. Normal course of events, log it and
              * return to the outer node level loop.
              */
-            LoggerUtils.info(logger, repImpl,
-                             "Replica IO exception: " + e.getClass().getName() +
-                             " Message:" + e.getMessage() +
-                             (logger.isLoggable(Level.FINE) ?
-                                ("\n" + LoggerUtils.getStackTrace(e)) : ""));
+            LoggerUtils.info(logger, repImpl, "Replica IO exception: " + e.getClass().getName() + " Message:"
+                    + e.getMessage() + (logger.isLoggable(Level.FINE) ? ("\n" + LoggerUtils.getStackTrace(e)) : ""));
         } catch (RetryException e) {
             /* Propagate it outwards. Node does not need to shutdown. */
             throw e;
@@ -507,8 +449,7 @@ public class Replica {
         } catch (RuntimeException e) {
             shutdownException = e;
             LoggerUtils.severe(logger, repImpl,
-                               "Replica unexpected exception " + e +
-                                " " + LoggerUtils.getStackTrace(e));
+                    "Replica unexpected exception " + e + " " + LoggerUtils.getStackTrace(e));
             throw e;
         } catch (MasterSyncException e) {
             /* expected change in masters from an election. */
@@ -524,19 +465,16 @@ public class Replica {
         } catch (Exception e) {
             shutdownException = e;
             LoggerUtils.severe(logger, repImpl,
-                               "Replica unexpected exception " + e +
-                               " " + LoggerUtils.getStackTrace(e));
+                    "Replica unexpected exception " + e + " " + LoggerUtils.getStackTrace(e));
             throw EnvironmentFailureException.unexpectedException(e);
         } finally {
             loopExitCleanup();
         }
     }
 
-    protected void doRunReplicaLoopInternalWork()
-       throws Exception {
+    protected void doRunReplicaLoopInternalWork() throws Exception {
 
-        final int timeoutMs = repNode.getConfigManager().
-                getDuration(RepParams.REPLICA_TIMEOUT);
+        final int timeoutMs = repNode.getConfigManager().getDuration(RepParams.REPLICA_TIMEOUT);
         replicaFeederChannel.setTimeoutMs(timeoutMs);
 
         replayQueue.clear();
@@ -557,10 +495,7 @@ public class Replica {
                     return;
                 }
 
-                while (!replayQueue.
-                        offer(message,
-                              ReplayThread.QUEUE_POLL_INTERVAL_NS,
-                              TimeUnit.NANOSECONDS)) {
+                while (!replayQueue.offer(message, ReplayThread.QUEUE_POLL_INTERVAL_NS, TimeUnit.NANOSECONDS)) {
                     /* Offer timed out. */
                     if (!replayThread.isAlive()) {
                         return;
@@ -587,8 +522,8 @@ public class Replica {
             if (replayThread.exitRequest == ReplayExitType.SOFT) {
 
                 /*
-                 * Drain all queued messages, exceptions may be generated
-                 * in the process. They logically precede IO exceptions.
+                 * Drain all queued messages, exceptions may be generated in the
+                 * process. They logically precede IO exceptions.
                  */
                 replayThread.join();
             }
@@ -621,22 +556,21 @@ public class Replica {
      *
      * @return the GroupShutdownException
      */
-    private GroupShutdownException processShutdown(ShutdownRequest shutdown)
-        throws IOException {
+    private GroupShutdownException processShutdown(ShutdownRequest shutdown) throws IOException {
 
         /*
          * Acknowledge the shutdown message right away, since the checkpoint
-         * operation can take a long time to complete. Long enough to exceed
-         * the feeder timeout on the master. The master only needs to know that
-         * the replica has received the message.
+         * operation can take a long time to complete. Long enough to exceed the
+         * feeder timeout on the master. The master only needs to know that the
+         * replica has received the message.
          */
         replay.queueAck(ReplicaOutputThread.SHUTDOWN_ACK);
 
         /*
          * Turn off network timeouts on the replica, since we don't want the
-         * replica to timeout the connection. The connection itself is no
-         * longer used past this point and will be reclaimed as part of normal
-         * replica exit cleanup.
+         * replica to timeout the connection. The connection itself is no longer
+         * used past this point and will be reclaimed as part of normal replica
+         * exit cleanup.
          */
         replicaFeederChannel.setTimeoutMs(Integer.MAX_VALUE);
 
@@ -646,7 +580,7 @@ public class Replica {
          */
 
         /*
-         * Begin shutdown of the deamons before checkpointing.  Cleaning during
+         * Begin shutdown of the deamons before checkpointing. Cleaning during
          * the checkpoint is wasted and slows down the checkpoint, plus it may
          * cause additional checkpoints.
          */
@@ -664,30 +598,20 @@ public class Replica {
         repNode.getRepImpl().shutdownDaemons();
         LoggerUtils.info(logger, repImpl, "Checkpoint completed.");
 
-        return new GroupShutdownException(logger,
-                                          repNode,
-                                          shutdown.getShutdownTimeMs());
+        return new GroupShutdownException(logger, repNode, shutdown.getShutdownTimeMs());
     }
 
     /**
      * Initialize for replica loop entry, which involves completing the
-     * following steps successfully:
-     *
-     * 1) The replica feeder handshake.
-     * 2) The replica feeder syncup.
-     * 3) Processing the first heartbeat request from the feeder.
+     * following steps successfully: 1) The replica feeder handshake. 2) The
+     * replica feeder syncup. 3) Processing the first heartbeat request from the
+     * feeder.
      */
-    private void initReplicaLoop()
-        throws IOException,
-               ConnectRetryException,
-               DatabaseException,
-               ProtocolException,
-               InterruptedException,
-               HardRecoveryElectionException {
+    private void initReplicaLoop() throws IOException, ConnectRetryException, DatabaseException, ProtocolException,
+            InterruptedException, HardRecoveryElectionException {
 
         createReplicaFeederChannel();
-        ReplicaFeederHandshake handshake =
-            new ReplicaFeederHandshake(new RepFeederHandshakeConfig());
+        ReplicaFeederHandshake handshake = new ReplicaFeederHandshake(new RepFeederHandshakeConfig());
         protocol = handshake.execute();
         repNode.notifyReplicaConnected();
 
@@ -695,56 +619,47 @@ public class Replica {
 
         if (hardRecoveryElectionException != null) {
             LoggerUtils.info(logger, repImpl,
-                             "Replica syncup after election to verify master:"+
-                             hardRecoveryElectionException.getMaster() +
-                             " elected master:" +
-                             repNode.getMasterStatus().getNodeMasterNameId());
+                    "Replica syncup after election to verify master:" + hardRecoveryElectionException.getMaster()
+                            + " elected master:" + repNode.getMasterStatus().getNodeMasterNameId());
             hardRecoveryNeedsElection = false;
         } else {
             hardRecoveryNeedsElection = true;
         }
         hardRecoveryElectionException = null;
 
-        ReplicaFeederSyncup syncup =
-            new ReplicaFeederSyncup(repNode, replay, replicaFeederChannel,
-                                    protocol, hardRecoveryNeedsElection);
+        ReplicaFeederSyncup syncup = new ReplicaFeederSyncup(repNode, replay, replicaFeederChannel, protocol,
+                hardRecoveryNeedsElection);
         syncup.execute(repNode.getCBVLSNTracker());
 
         txnEndVLSN = syncup.getMatchedVLSN();
         long matchedTxnEndTime = syncup.getMatchedVLSNTime();
-        consistencyTracker.reinit(txnEndVLSN.getSequence(),
-                                  matchedTxnEndTime);
-        Protocol.Heartbeat heartbeat =
-            protocol.read(replicaFeederChannel.getChannel(),
-                          Protocol.Heartbeat.class);
+        consistencyTracker.reinit(txnEndVLSN.getSequence(), matchedTxnEndTime);
+        Protocol.Heartbeat heartbeat = protocol.read(replicaFeederChannel.getChannel(), Protocol.Heartbeat.class);
         processHeartbeat(heartbeat);
-        long replicaDelta = consistencyTracker.getMasterTxnEndVLSN() -
-            consistencyTracker.lastReplayedVLSN.getSequence();
-        LoggerUtils.info(logger, repImpl, String.format
-                         ("Replica initialization completed. Replica VLSN: %s "
-                          + " Heartbeat master commit VLSN: %,d " +
-                          " DTVLSN:%,d Replica VLSN delta: %,d",
-                          consistencyTracker.lastReplayedVLSN,
-                          consistencyTracker.getMasterTxnEndVLSN(),
-                          repNode.getAnyDTVLSN(),
-                          replicaDelta));
+        long replicaDelta = consistencyTracker.getMasterTxnEndVLSN()
+                - consistencyTracker.lastReplayedVLSN.getSequence();
+        LoggerUtils.info(logger, repImpl,
+                String.format(
+                        "Replica initialization completed. Replica VLSN: %s " + " Heartbeat master commit VLSN: %,d "
+                                + " DTVLSN:%,d Replica VLSN delta: %,d",
+                        consistencyTracker.lastReplayedVLSN, consistencyTracker.getMasterTxnEndVLSN(),
+                        repNode.getAnyDTVLSN(), replicaDelta));
 
         /*
-         * The replica is ready for business, indicate that the node is
-         * ready by counting down the latch and releasing any waiters.
+         * The replica is ready for business, indicate that the node is ready by
+         * counting down the latch and releasing any waiters.
          */
         repNode.getReadyLatch().countDown();
     }
 
     /**
-     * Process a heartbeat message. It queues a response and updates
-     * the consistency tracker with the information in the heartbeat.
+     * Process a heartbeat message. It queues a response and updates the
+     * consistency tracker with the information in the heartbeat.
      *
-     * @param heartbeat  the heartbeat message
+     * @param heartbeat the heartbeat message
      * @throws IOException
      */
-    private void processHeartbeat(Heartbeat heartbeat)
-        throws IOException {
+    private void processHeartbeat(Heartbeat heartbeat) throws IOException {
 
         replay.queueAck(ReplicaOutputThread.HEARTBEAT_ACK);
         consistencyTracker.trackHeartbeat(heartbeat);
@@ -758,21 +673,15 @@ public class Replica {
         if (shutdownException != null) {
             if (shutdownException instanceof RetryException) {
                 LoggerUtils.info(logger, repImpl,
-                                 "Retrying connection to feeder. Message: " +
-                                 shutdownException.getMessage());
+                        "Retrying connection to feeder. Message: " + shutdownException.getMessage());
             } else if (shutdownException instanceof GroupShutdownException) {
-                LoggerUtils.info(logger, repImpl,
-                                 "Exiting inner Replica loop." +
-                                 " Master requested shutdown.");
+                LoggerUtils.info(logger, repImpl, "Exiting inner Replica loop." + " Master requested shutdown.");
             } else {
-                LoggerUtils.warning
-                    (logger, repImpl,
-                     "Exiting inner Replica loop with exception " +
-                     shutdownException + "\n" +
-                     LoggerUtils.getStackTrace(shutdownException));
+                LoggerUtils.warning(logger, repImpl, "Exiting inner Replica loop with exception " + shutdownException
+                        + "\n" + LoggerUtils.getStackTrace(shutdownException));
             }
         } else {
-            LoggerUtils.info(logger, repImpl, "Exiting inner Replica loop." );
+            LoggerUtils.info(logger, repImpl, "Exiting inner Replica loop.");
         }
 
         clearDbTreeCache();
@@ -798,8 +707,8 @@ public class Replica {
     }
 
     /*
-     * Clear the DatabaseId -> DatabaseImpl cache used to speed up DbTree
-     * lookup operations.
+     * Clear the DatabaseId -> DatabaseImpl cache used to speed up DbTree lookup
+     * operations.
      */
     void clearDbTreeCache() {
         dbCache.clear();
@@ -808,44 +717,39 @@ public class Replica {
     /**
      * Invoked when this node transitions to the master state. Aborts all
      * inflight replay transactions outstanding from a previous state as a
-     * Replica, because they were initiated by a different master and will
-     * never complete. Also, release any Replica transactions that were waiting
-     * on consistency policy requirements.
+     * Replica, because they were initiated by a different master and will never
+     * complete. Also, release any Replica transactions that were waiting on
+     * consistency policy requirements.
      */
-    void masterTransitionCleanup()
-        throws DatabaseException {
+    void masterTransitionCleanup() throws DatabaseException {
         hardRecoveryElectionException = null;
         replay.abortOldTxns();
-        consistencyTracker.forceTripLatches
-            (new MasterStateException(repNode.getRepImpl().
-                                      getStateChangeEvent()));
+        consistencyTracker.forceTripLatches(new MasterStateException(repNode.getRepImpl().getStateChangeEvent()));
     }
 
     /**
      * Invoked when this node seamlessly changes roles from master to replica
      * without a recovery. The ability to do this transition without a recovery
-     * is desirable because it's a faster transition, and avoids the GC
-     * overhead of releasing the JE cache, and the I/O overhead of recreating
-     * the in-memory btree.
+     * is desirable because it's a faster transition, and avoids the GC overhead
+     * of releasing the JE cache, and the I/O overhead of recreating the
+     * in-memory btree.
      * <p>
-     * The two key cases where this happens are:
-     * A) a network partition occurs, and the group elects a new master. The
-     * orphaned master did not crash and its environment is still valid, and
-     * when it regains contact with the group, it discovers that it has been
-     * deposed. It transitions into a replica status.
+     * The two key cases where this happens are: A) a network partition occurs,
+     * and the group elects a new master. The orphaned master did not crash and
+     * its environment is still valid, and when it regains contact with the
+     * group, it discovers that it has been deposed. It transitions into a
+     * replica status.
      * <p>
      * B) a master transfer request moves mastership from this node to another
      * member of the group. This node's environment is still valid, and it
      * transitions to replica state.
      * <p>
-     * The transition from master to replica requires resetting state so all
-     * is as expected for a Replica. There are two categories of work:
-     * - network connections: shutting down feeder connections and
-     * reinitializing feeder infrastructure so that a future replica->master
-     * transition will work.
-     * - resetting transaction state. All MasterTxns must be transformed
-     * into ReplayTxns, bearing the same transaction id and holding the same
-     * locks.
+     * The transition from master to replica requires resetting state so all is
+     * as expected for a Replica. There are two categories of work: - network
+     * connections: shutting down feeder connections and reinitializing feeder
+     * infrastructure so that a future replica->master transition will work. -
+     * resetting transaction state. All MasterTxns must be transformed into
+     * ReplayTxns, bearing the same transaction id and holding the same locks.
      * <p>
      * Note: since non-masters can't commit txns, the inflight MasterTxns are
      * destined to be aborted in the future. An alternative to resetting
@@ -854,131 +758,122 @@ public class Replica {
      * didn't chose that approach because the simplicity of the replay is a
      * plus; it is almost entirely ignorant of the semantics of the replication
      * stream. Also, replays have potential for complexity, either because
-     * syncups could restart if masters change or become unavailable, or
-     * because there may be future performance optimizations in that area.
+     * syncups could restart if masters change or become unavailable, or because
+     * there may be future performance optimizations in that area.
      * <p>
-     * Resetting transaction state is tricky because the MasterTxn is
-     * accessible to the application code. While the Replay thread is
-     * attempting to transform the MasterTxn, application threads may be
-     * attempting to commit or abort the transactions. Note that application
-     * threads will not be trying to add locks, because the node will be in
-     * UNKNOWN state, and writes will be prohibited by the MasterTxn.
+     * Resetting transaction state is tricky because the MasterTxn is accessible
+     * to the application code. While the Replay thread is attempting to
+     * transform the MasterTxn, application threads may be attempting to commit
+     * or abort the transactions. Note that application threads will not be
+     * trying to add locks, because the node will be in UNKNOWN state, and
+     * writes will be prohibited by the MasterTxn.
      * <p>
      * MasterTransfers do impose a blocking period on transaction commits and
-     * aborts, but even there, windows exist in the post-block period where
-     * the application may try to abort the transaction. Network partitions
-     * do no form of blocking, and have a wider window when the application
-     * and RepNode thread must be coordinated. Here's a diagram of the time
-     * periods of concern
+     * aborts, but even there, windows exist in the post-block period where the
+     * application may try to abort the transaction. Network partitions do no
+     * form of blocking, and have a wider window when the application and
+     * RepNode thread must be coordinated. Here's a diagram of the time periods
+     * of concern
      * <p>
-     * t1 - master transfer request issued (only when master transfer)
-     * t2 - user txns which attempt to abort or commit are blocked on
-     *      RepImpl.blockTxnLatch (only when mt)
-     * t3 - node detects that it has transitioned to UNKNOWN and lost
-     *      master status. MasterTxns are now stopped from acquiring
-     *      locks or committing and will throw UnknownMasterException.
-     * t4 - feeder connections shutdown
-     * t5 - node begins conversion to replica state
-     * t6 - blockTxnLatch released (only when master transfer)
-     * t7 - existing MasterTxns converted into ReplayTxns, locks moved into
-     *      new ReplayTxns. Blocked txns must be released before this
-     *      conversion, because the application thread is holding the
-     *      txn mutex, and conversion needs to take that mutex.
+     * t1 - master transfer request issued (only when master transfer) t2 - user
+     * txns which attempt to abort or commit are blocked on
+     * RepImpl.blockTxnLatch (only when mt) t3 - node detects that it has
+     * transitioned to UNKNOWN and lost master status. MasterTxns are now
+     * stopped from acquiring locks or committing and will throw
+     * UnknownMasterException. t4 - feeder connections shutdown t5 - node begins
+     * conversion to replica state t6 - blockTxnLatch released (only when master
+     * transfer) t7 - existing MasterTxns converted into ReplayTxns, locks moved
+     * into new ReplayTxns. Blocked txns must be released before this
+     * conversion, because the application thread is holding the txn mutex, and
+     * conversion needs to take that mutex.
      * <p>
      * At any time during this process, the application threads may attempt to
      * abort or commit outstanding txns, or acquire read or write locks. After
      * t3, any attempts to lock, abort or commit will throw an
-     * UnknownMasterException or ReplicaWriteException, and in the normal
-     * course of events, the txn would internally abort. But once t5 is
-     * reached, we want to prevent any changes to the number of write locks in
-     * the txn so as to prevent interference with the conversion of the master
-     * txns and any danger of converting only part of a txn. We set the
-     * volatile, transient MasterTxn.freeze field at t5 to indicate that there
-     * should be no change to the contents of the transaction. When freeze is
-     * true, any attempts to abort or commit the transaction will throw
-     * Unknown/ReplicaWriteException, and the txn will be put into MUST_ABORT
-     * state, but the existing locks will be unchanged.
+     * UnknownMasterException or ReplicaWriteException, and in the normal course
+     * of events, the txn would internally abort. But once t5 is reached, we
+     * want to prevent any changes to the number of write locks in the txn so as
+     * to prevent interference with the conversion of the master txns and any
+     * danger of converting only part of a txn. We set the volatile, transient
+     * MasterTxn.freeze field at t5 to indicate that there should be no change
+     * to the contents of the transaction. When freeze is true, any attempts to
+     * abort or commit the transaction will throw Unknown/ReplicaWriteException,
+     * and the txn will be put into MUST_ABORT state, but the existing locks
+     * will be unchanged.
      * <p>
      * In a network partition, it's possible that the txn will be aborted or
      * committed locally before t5. In that case, there may be a hard rollback
-     * when the node syncs up with the new master, and finds the anomalous
-     * abort record. In masterTransfer, the window is smaller, and the blocking
-     * latch ensures that no commits can happen bettween t1-t5. After t5, the
-     * node will not be a master, so there can be no commits. Aborts may happen
-     * and can cause hard rollbacks, but no data will be lost.
+     * when the node syncs up with the new master, and finds the anomalous abort
+     * record. In masterTransfer, the window is smaller, and the blocking latch
+     * ensures that no commits can happen bettween t1-t5. After t5, the node
+     * will not be a master, so there can be no commits. Aborts may happen and
+     * can cause hard rollbacks, but no data will be lost.
      * <p>
-     * The freeze field is similar to the blockTxnLatch, and we considered
-     * using the blockTxnLatch to stabilize the txns, but ruled it out because:
-     * - the locking hierarchy where the application thread holds the txn
-     *   mutex while awaiting the block txn latch prevents txn conversion.
-     * - the blockTxnLatch is scoped to the MasterTransfer instance, which may
-     *   not be in play for network partitioning.
+     * The freeze field is similar to the blockTxnLatch, and we considered using
+     * the blockTxnLatch to stabilize the txns, but ruled it out because: - the
+     * locking hierarchy where the application thread holds the txn mutex while
+     * awaiting the block txn latch prevents txn conversion. - the blockTxnLatch
+     * is scoped to the MasterTransfer instance, which may not be in play for
+     * network partitioning.
      */
     void replicaTransitionCleanup() {
 
         /*
-         * Logically an assert, use an exception rather than Java assert
-         * because we want this check to be enabled at all times. If
-         * unexpectedly in master state, invalidate the environment, so we do a
-         * recovery and are sure to cleanup.
+         * Logically an assert, use an exception rather than Java assert because
+         * we want this check to be enabled at all times. If unexpectedly in
+         * master state, invalidate the environment, so we do a recovery and are
+         * sure to cleanup.
          */
         if (repImpl.getState() == State.MASTER) {
             throw EnvironmentFailureException.unexpectedState(repImpl,
-                "Should not be in MASTER state when converting from master " +
-                "to replica state");
+                    "Should not be in MASTER state when converting from master " + "to replica state");
         }
 
         /*
-         * Find all MasterTxns, and convert them to ReplayTxns.  The set of
+         * Find all MasterTxns, and convert them to ReplayTxns. The set of
          * existing MasterTxns cannot increase at this point, because the node
          * is not in MASTER state. Freeze all txns and prevent change.
          */
         Set<MasterTxn> existingMasterTxns = repImpl.getExistingMasterTxns();
         LoggerUtils.info(logger, repImpl,
-                         "Transitioning node to replica state, " +
-                         existingMasterTxns.size() + " txns to clean up");
+                "Transitioning node to replica state, " + existingMasterTxns.size() + " txns to clean up");
 
         /* Prevent aborts on all MasterTxns; hold their contents steady */
-        for (MasterTxn masterTxn: existingMasterTxns) {
+        for (MasterTxn masterTxn : existingMasterTxns) {
             masterTxn.freeze();
         }
 
         /*
          * Unblock any transactions that are stuck in their commit processing,
-         * awaiting the release of the master transfer block. Such
-         * transactions hold a mutex on the transaction, and the mutex would
-         * block any of the lock stealing that will occur below. Note that if
-         * we are doing this transition because of a network partition, there
-         * will be no blocked transactions.
+         * awaiting the release of the master transfer block. Such transactions
+         * hold a mutex on the transaction, and the mutex would block any of the
+         * lock stealing that will occur below. Note that if we are doing this
+         * transition because of a network partition, there will be no blocked
+         * transactions.
          */
         repImpl.unblockTxnCompletion();
 
-        for (MasterTxn masterTxn: existingMasterTxns) {
+        for (MasterTxn masterTxn : existingMasterTxns) {
 
             /*
-             * Convert this masterTxn to a ReplayTxn and move any existing
-             * write locks to it. Unfreeze and then abort the masterTxn.
+             * Convert this masterTxn to a ReplayTxn and move any existing write
+             * locks to it. Unfreeze and then abort the masterTxn.
              */
-            ReplayTxn replayTxn =
-                masterTxn.convertToReplayTxnAndClose(logger,
-                                                     repImpl.getReplay());
+            ReplayTxn replayTxn = masterTxn.convertToReplayTxnAndClose(logger, repImpl.getReplay());
 
             if (replayTxn == null) {
-                LoggerUtils.info(logger, repImpl, "Master Txn " +
-                                 masterTxn.getId() +
-                                 " has no locks, nothing to transfer");
+                LoggerUtils.info(logger, repImpl,
+                        "Master Txn " + masterTxn.getId() + " has no locks, nothing to transfer");
             } else {
                 repImpl.getTxnManager().registerTxn(replayTxn);
                 LoggerUtils.info(logger, repImpl,
-                                 "state for replay transaction " +
-                                 replayTxn.getId() + " = " +
-                                 replayTxn.getState());
+                        "state for replay transaction " + replayTxn.getId() + " = " + replayTxn.getState());
             }
         }
 
         /*
-         * We're done with the transition, clear any active master transfers,
-         * if they exist.
+         * We're done with the transition, clear any active master transfers, if
+         * they exist.
          */
         repNode.clearActiveTransfer();
     }
@@ -991,69 +886,52 @@ public class Replica {
      * @throws IOException
      * @throws ConnectRetryException
      */
-    private void createReplicaFeederChannel()
-        throws IOException, ConnectRetryException {
+    private void createReplicaFeederChannel() throws IOException, ConnectRetryException {
 
         DataChannel dataChannel = null;
 
         final DbConfigManager configManager = repNode.getConfigManager();
-        final int timeoutMs = configManager.
-            getDuration(RepParams.PRE_HEARTBEAT_TIMEOUT);
+        final int timeoutMs = configManager.getDuration(RepParams.PRE_HEARTBEAT_TIMEOUT);
 
-        final int receiveBufferSize =
-                configManager.getInt(RepParams.REPLICA_RECEIVE_BUFFER_SIZE);
+        final int receiveBufferSize = configManager.getInt(RepParams.REPLICA_RECEIVE_BUFFER_SIZE);
 
         try {
-            final int openTimeout = configManager.
-                getDuration(RepParams.REPSTREAM_OPEN_TIMEOUT);
+            final int openTimeout = configManager.getDuration(RepParams.REPSTREAM_OPEN_TIMEOUT);
 
             /*
              * Note that soTimeout is not set since it's a blocking channel and
-             * setSoTimeout has no effect on a blocking nio channel.
-             *
-             * Push responses out rapidly, they are small (heart beat or commit
-             * response) and need timely delivery to the master.
-             * (tcpNoDelay = true)
+             * setSoTimeout has no effect on a blocking nio channel. Push
+             * responses out rapidly, they are small (heart beat or commit
+             * response) and need timely delivery to the master. (tcpNoDelay =
+             * true)
              */
 
-            final ConnectOptions connectOpts = new ConnectOptions().
-                setTcpNoDelay(true).
-                setReceiveBufferSize(receiveBufferSize).
-                setOpenTimeout(openTimeout).
-                setBlocking(true);
+            final ConnectOptions connectOpts = new ConnectOptions().setTcpNoDelay(true)
+                    .setReceiveBufferSize(receiveBufferSize).setOpenTimeout(openTimeout).setBlocking(true);
 
-            dataChannel =
-                repImpl.getChannelFactory().
-                connect(repNode.getMasterStatus().getNodeMaster(),
-                        connectOpts);
+            dataChannel = repImpl.getChannelFactory().connect(repNode.getMasterStatus().getNodeMaster(), connectOpts);
 
-            replicaFeederChannel =
-                new NamedChannelWithTimeout(repNode, dataChannel, timeoutMs);
+            replicaFeederChannel = new NamedChannelWithTimeout(repNode, dataChannel, timeoutMs);
 
-            ServiceDispatcher.doServiceHandshake
-                (dataChannel, FeederManager.FEEDER_SERVICE);
+            ServiceDispatcher.doServiceHandshake(dataChannel, FeederManager.FEEDER_SERVICE);
         } catch (ConnectException e) {
 
             /*
              * A network problem, or the node went down between the time we
              * learned it was the master and we tried to connect.
              */
-            throw new ConnectRetryException(e.getMessage(),
-                                            NETWORK_RETRIES,
-                                            CONNECT_RETRY_SLEEP_MS);
+            throw new ConnectRetryException(e.getMessage(), NETWORK_RETRIES, CONNECT_RETRY_SLEEP_MS);
         } catch (ServiceConnectFailedException e) {
 
             /*
-             * The feeder may not have established the Feeder Service
-             * as yet. For example, the transition to the master may not have
-             * been completed. Wait longer.
+             * The feeder may not have established the Feeder Service as yet.
+             * For example, the transition to the master may not have been
+             * completed. Wait longer.
              */
-           if (e.getResponse() == Response.UNKNOWN_SERVICE) {
-               throw new ConnectRetryException(e.getMessage(),
-                                               SERVICE_UNAVAILABLE_RETRIES,
-                                               CONNECT_RETRY_SLEEP_MS);
-           }
-           throw EnvironmentFailureException.unexpectedException(e);
+            if (e.getResponse() == Response.UNKNOWN_SERVICE) {
+                throw new ConnectRetryException(e.getMessage(), SERVICE_UNAVAILABLE_RETRIES, CONNECT_RETRY_SLEEP_MS);
+            }
+            throw EnvironmentFailureException.unexpectedException(e);
         }
     }
 
@@ -1101,25 +979,20 @@ public class Replica {
      */
     private enum ReplayExitType {
         IMMEDIATE, /* An immediate exit; ignore queued requests. */
-        SOFT       /* Process pending requests in queue, then exit */
+        SOFT /* Process pending requests in queue, then exit */
     }
 
     /**
      * The thread responsible for the replay of messages delivered over the
      * replication stream. Reading and replay are done in separate threads for
-     * two reasons:
-     *
-     * 1) It allows the two activities to make independent progress. The
-     * network can be read and messages assembled even if the replay activity
-     * has stalled. 2) The two threads permit use of two cores to perform the
-     * replay thus making it less likely that cpu is the replay bottleneck.
-     *
-     * The inputs and outputs of this thread are schematically described as:
-     *
-     * replayQueue -> ReplayThread -> outputQueue
-     *
-     * It's the second component of the three thread structure outlined in the
-     * Replica's class level comment.
+     * two reasons: 1) It allows the two activities to make independent
+     * progress. The network can be read and messages assembled even if the
+     * replay activity has stalled. 2) The two threads permit use of two cores
+     * to perform the replay thus making it less likely that cpu is the replay
+     * bottleneck. The inputs and outputs of this thread are schematically
+     * described as: replayQueue -> ReplayThread -> outputQueue It's the second
+     * component of the three thread structure outlined in the Replica's class
+     * level comment.
      */
     class ReplayThread extends StoppableThread {
 
@@ -1133,10 +1006,10 @@ public class Replica {
         /**
          * Set asynchronously when a shutdown is being requested.
          */
-        volatile ReplayExitType exitRequest = null;
+        volatile ReplayExitType    exitRequest            = null;
 
         /* The queue poll interval, 1 second */
-        private final static long QUEUE_POLL_INTERVAL_NS = 1000000000l;
+        private final static long  QUEUE_POLL_INTERVAL_NS = 1000000000l;
 
         protected ReplayThread() {
             super(repImpl, "ReplayThread");
@@ -1144,37 +1017,31 @@ public class Replica {
 
         @Override
         protected int initiateSoftShutdown() {
-           /* Use immediate, since the stream will continue to be read. */
-           exitRequest = ReplayExitType.IMMEDIATE;
-           return 0;
+            /* Use immediate, since the stream will continue to be read. */
+            exitRequest = ReplayExitType.IMMEDIATE;
+            return 0;
         }
 
         @Override
         public void run() {
 
             LoggerUtils.info(logger, repImpl,
-                             "Replay thread started. Message queue size:" +
-                              replayQueue.remainingCapacity());
+                    "Replay thread started. Message queue size:" + replayQueue.remainingCapacity());
 
-            final int dbTreeCacheClearingOpCount =
-                repNode.getDbTreeCacheClearingOpCount();
+            final int dbTreeCacheClearingOpCount = repNode.getDbTreeCacheClearingOpCount();
 
             long opCount = 0;
 
             try {
                 while (true) {
 
-                    final long pollIntervalNs =
-                        replay.getPollIntervalNs(QUEUE_POLL_INTERVAL_NS);
+                    final long pollIntervalNs = replay.getPollIntervalNs(QUEUE_POLL_INTERVAL_NS);
 
-                    final Message message =
-                        replayQueue.poll(pollIntervalNs,
-                                          TimeUnit.NANOSECONDS);
+                    final Message message = replayQueue.poll(pollIntervalNs, TimeUnit.NANOSECONDS);
 
-                    if ((exitRequest == ReplayExitType.IMMEDIATE) ||
-                        ((exitRequest == ReplayExitType.SOFT) &&
-                         (message == null)) ||
-                         repNode.isShutdownOrInvalid()) {
+                    if ((exitRequest == ReplayExitType.IMMEDIATE)
+                            || ((exitRequest == ReplayExitType.SOFT) && (message == null))
+                            || repNode.isShutdownOrInvalid()) {
 
                         if (exitRequest == ReplayExitType.SOFT) {
                             replay.flushPendingAcks(Long.MAX_VALUE);
@@ -1205,8 +1072,7 @@ public class Replica {
                     } else {
                         /* For testing only! */
                         if (dontProcessStream) {
-                            LoggerUtils.info(logger, repImpl,
-                                             "Not processing " + message);
+                            LoggerUtils.info(logger, repImpl, "Not processing " + message);
                             continue;
                         }
 
@@ -1218,8 +1084,8 @@ public class Replica {
                          * in Replay.replayEntry() and is then used below. An
                          * alternative would be to promote the following
                          * conditional to a level above, so commit/abort
-                         * operations get their own replay method which does
-                         * the consistency tracking.
+                         * operations get their own replay method which does the
+                         * consistency tracking.
                          */
                         if (((Protocol.Entry) message).isTxnEnd()) {
                             txnEndVLSN = replay.getLastReplayedVLSN();
@@ -1240,8 +1106,8 @@ public class Replica {
                 exception = e;
 
                 /*
-                 * Bring it to the attention of the main thread by freeing
-                 * up the "offer" wait right away.
+                 * Bring it to the attention of the main thread by freeing up
+                 * the "offer" wait right away.
                  */
                 replayQueue.clear();
 
@@ -1249,14 +1115,10 @@ public class Replica {
                  * Get the attention of the main replica thread in case it's
                  * waiting in a read on the socket channel.
                  */
-                LoggerUtils.info(logger, repImpl,
-                                 "closing replicaFeederChannel = " +
-                                 replicaFeederChannel);
+                LoggerUtils.info(logger, repImpl, "closing replicaFeederChannel = " + replicaFeederChannel);
                 RepUtils.shutdownChannel(replicaFeederChannel);
 
-                LoggerUtils.info(logger, repImpl,
-                                 "Replay thread exiting with exception:" +
-                                  e.getMessage());
+                LoggerUtils.info(logger, repImpl, "Replay thread exiting with exception:" + e.getMessage());
             }
         }
 
@@ -1266,8 +1128,7 @@ public class Replica {
         }
     }
 
-    private class RepFeederHandshakeConfig
-        implements ReplicaFeederHandshakeConfig {
+    private class RepFeederHandshakeConfig implements ReplicaFeederHandshakeConfig {
 
         @Override
         public RepImpl getRepImpl() {
@@ -1306,66 +1167,70 @@ public class Replica {
      * until the specified consistency policy is satisfied.
      */
     public class ConsistencyTracker {
-        private final long NULL_VLSN_SEQUENCE = VLSN.NULL_VLSN_SEQUENCE;
+        private final long           NULL_VLSN_SEQUENCE     = VLSN.NULL_VLSN_SEQUENCE;
 
         /*
          * Initialized by the Feeder handshake and updated by commit replays.
          * All access to lastReplayedXXXX must be synchronized on the
          * ConsistencyTracker itself.
          */
-        private long lastReplayedTxnVLSN = NULL_VLSN_SEQUENCE;
-        private VLSN lastReplayedVLSN = VLSN.NULL_VLSN;
-        private long masterTxnEndTime = 0l;
+        private long                 lastReplayedTxnVLSN    = NULL_VLSN_SEQUENCE;
+        private VLSN                 lastReplayedVLSN       = VLSN.NULL_VLSN;
+        private long                 masterTxnEndTime       = 0l;
 
         /* Updated by heartbeats */
-        private volatile long masterTxnEndVLSN;
-        private volatile long masterNow = 0l;
+        private volatile long        masterTxnEndVLSN;
+        private volatile long        masterNow              = 0l;
 
-        private final StatGroup stats =
-            new StatGroup(ReplicaStatDefinition.GROUP_NAME,
-                          ReplicaStatDefinition.GROUP_DESC);
+        private final StatGroup      stats                  = new StatGroup(ReplicaStatDefinition.GROUP_NAME,
+                ReplicaStatDefinition.GROUP_DESC);
 
-        private final LongStat nLagConsistencyWaits =
-            new LongStat(stats, N_LAG_CONSISTENCY_WAITS);
+        private final LongStat       nLagConsistencyWaits   = new LongStat(stats, N_LAG_CONSISTENCY_WAITS);
 
-        private final LongStat nLagConsistencyWaitMs =
-            new LongStat(stats, N_LAG_CONSISTENCY_WAIT_MS);
+        private final LongStat       nLagConsistencyWaitMs  = new LongStat(stats, N_LAG_CONSISTENCY_WAIT_MS);
 
-        private final LongStat nVLSNConsistencyWaits =
-            new LongStat(stats, N_VLSN_CONSISTENCY_WAITS);
+        private final LongStat       nVLSNConsistencyWaits  = new LongStat(stats, N_VLSN_CONSISTENCY_WAITS);
 
-        private final LongStat nVLSNConsistencyWaitMs =
-            new LongStat(stats, N_VLSN_CONSISTENCY_WAIT_MS);
+        private final LongStat       nVLSNConsistencyWaitMs = new LongStat(stats, N_VLSN_CONSISTENCY_WAIT_MS);
 
-        private final OrderedLatches vlsnLatches =
-            new OrderedLatches(repNode.getRepImpl()) {
+        private final OrderedLatches vlsnLatches            = new OrderedLatches(repNode.getRepImpl()) {
 
-                /*
-                 * Note that this assumes that NULL_VLSN is -1, and that
-                 * the vlsns ascend.
-                 */
-                @Override
-                    boolean tripPredicate(long keyVLSN, long tripVLSN) {
-                    return keyVLSN <= tripVLSN;
-                }
-            };
+                                                                                                                     /*
+                                                                                                                      * Note
+                                                                                                                      * that
+                                                                                                                      * this
+                                                                                                                      * assumes
+                                                                                                                      * that
+                                                                                                                      * NULL_VLSN
+                                                                                                                      * is
+                                                                                                                      * -1,
+                                                                                                                      * and
+                                                                                                                      * that
+                                                                                                                      * the
+                                                                                                                      * vlsns
+                                                                                                                      * ascend.
+                                                                                                                      */
+                                                                @Override
+                                                                boolean tripPredicate(long keyVLSN, long tripVLSN) {
+                                                                    return keyVLSN <= tripVLSN;
+                                                                }
+                                                            };
 
-        private final OrderedLatches lagLatches =
-            new OrderedLatches(repNode.getRepImpl()) {
-                @Override
-                boolean tripPredicate(long keyLag, long currentLag) {
-                    return currentLag <= keyLag;
-                }
-            };
+        private final OrderedLatches lagLatches             = new OrderedLatches(repNode.getRepImpl()) {
+                                                                @Override
+                                                                boolean tripPredicate(long keyLag, long currentLag) {
+                                                                    return currentLag <= keyLag;
+                                                                }
+                                                            };
 
         /**
-         * Invoked each time after a replica syncup so that the Replica
-         * can re-establish it's consistency vis a vis the master and what
-         * part of the replication stream it considers as having been replayed.
+         * Invoked each time after a replica syncup so that the Replica can
+         * re-establish it's consistency vis a vis the master and what part of
+         * the replication stream it considers as having been replayed.
          *
          * @param matchedTxnVLSN the replica state corresponds to this txn
          * @param matchedTxnEndTime the time at which this txn was committed or
-         * aborted on the master
+         *            aborted on the master
          */
         void reinit(long matchedTxnVLSN, long matchedTxnEndTime) {
             this.lastReplayedVLSN = new VLSN(matchedTxnVLSN);
@@ -1383,14 +1248,10 @@ public class Replica {
 
         void logStats() {
             if (logger.isLoggable(Level.INFO)) {
-                LoggerUtils.info
-                    (logger, repImpl,
-                    "Replica stats - Lag waits: " + nLagConsistencyWaits.get() +
-                     " Lag wait time: " + nLagConsistencyWaitMs.get()
-                     + "ms. " +
-                     " VLSN waits: " + nVLSNConsistencyWaits.get() +
-                     " Lag wait time: " +  nVLSNConsistencyWaitMs.get() +
-                     "ms.");
+                LoggerUtils.info(logger, repImpl,
+                        "Replica stats - Lag waits: " + nLagConsistencyWaits.get() + " Lag wait time: "
+                                + nLagConsistencyWaitMs.get() + "ms. " + " VLSN waits: " + nVLSNConsistencyWaits.get()
+                                + " Lag wait time: " + nVLSNConsistencyWaitMs.get() + "ms.");
             }
         }
 
@@ -1419,8 +1280,8 @@ public class Replica {
                  */
                 lag = System.currentTimeMillis() - masterNow;
             } else {
-               /* commit leapfrogged the heartbeat */
-               lag = System.currentTimeMillis() - masterNow;
+                /* commit leapfrogged the heartbeat */
+                lag = System.currentTimeMillis() - masterNow;
             }
             return lag;
         }
@@ -1429,7 +1290,7 @@ public class Replica {
          * Frees all the threads that are waiting on latches.
          *
          * @param exception the exception to be thrown to explain the reason
-         * behind the latches being forced.
+         *            behind the latches being forced.
          */
         synchronized void forceTripLatches(DatabaseException exception) {
             assert (exception != null);
@@ -1442,8 +1303,7 @@ public class Replica {
             lastReplayedTxnVLSN = lastReplayedTxn.getTxnVLSN().getSequence();
             masterTxnEndTime = lastReplayedTxn.getMasterTxnEndTime();
 
-            if ((lastReplayedTxnVLSN > masterTxnEndVLSN) &&
-                (masterTxnEndTime >= masterNow)) {
+            if ((lastReplayedTxnVLSN > masterTxnEndVLSN) && (masterTxnEndTime >= masterNow)) {
                 masterTxnEndVLSN = lastReplayedTxnVLSN;
                 masterNow = masterTxnEndTime;
             }
@@ -1469,19 +1329,15 @@ public class Replica {
         }
 
         public void lagAwait(TimeConsistencyPolicy consistencyPolicy)
-            throws InterruptedException,
-                   ReplicaConsistencyException,
-                   DatabaseException {
+                throws InterruptedException, ReplicaConsistencyException, DatabaseException {
 
             long currentLag = currentLag();
-            long lag =
-                consistencyPolicy.getPermissibleLag(TimeUnit.MILLISECONDS);
+            long lag = consistencyPolicy.getPermissibleLag(TimeUnit.MILLISECONDS);
             if (currentLag <= lag) {
                 return;
             }
             long waitStart = System.currentTimeMillis();
-            ExceptionAwareCountDownLatch waitLagLatch =
-                lagLatches.getOrCreate(lag);
+            ExceptionAwareCountDownLatch waitLagLatch = lagLatches.getOrCreate(lag);
             await(waitLagLatch, consistencyPolicy);
             nLagConsistencyWaits.increment();
             nLagConsistencyWaitMs.add(System.currentTimeMillis() - waitStart);
@@ -1490,21 +1346,16 @@ public class Replica {
         /**
          * Wait until the log record identified by VLSN has gone by.
          */
-        public void awaitVLSN(long vlsn,
-                              ReplicaConsistencyPolicy consistencyPolicy)
-            throws InterruptedException,
-                   ReplicaConsistencyException,
-                   DatabaseException {
+        public void awaitVLSN(long vlsn, ReplicaConsistencyPolicy consistencyPolicy)
+                throws InterruptedException, ReplicaConsistencyException, DatabaseException {
 
             long waitStart = System.currentTimeMillis();
 
             ExceptionAwareCountDownLatch waitVLSNLatch = null;
 
-            synchronized(this) {
-                final long compareVLSN =
-                   (consistencyPolicy instanceof CommitPointConsistencyPolicy)?
-                    lastReplayedTxnVLSN :
-                    lastReplayedVLSN.getSequence();
+            synchronized (this) {
+                final long compareVLSN = (consistencyPolicy instanceof CommitPointConsistencyPolicy)
+                        ? lastReplayedTxnVLSN : lastReplayedVLSN.getSequence();
                 if (vlsn <= compareVLSN) {
                     return;
                 }
@@ -1522,22 +1373,16 @@ public class Replica {
          *
          * @throws InterruptedException
          */
-        private void await(ExceptionAwareCountDownLatch consistencyLatch,
-                           ReplicaConsistencyPolicy consistencyPolicy)
-            throws ReplicaConsistencyException,
-                   DatabaseException,
-                   InterruptedException {
+        private void await(ExceptionAwareCountDownLatch consistencyLatch, ReplicaConsistencyPolicy consistencyPolicy)
+                throws ReplicaConsistencyException, DatabaseException, InterruptedException {
 
-            if (!consistencyLatch.awaitOrException
-                 (consistencyPolicy.getTimeout(TimeUnit.MILLISECONDS),
-                  TimeUnit.MILLISECONDS)) {
+            if (!consistencyLatch.awaitOrException(consistencyPolicy.getTimeout(TimeUnit.MILLISECONDS),
+                    TimeUnit.MILLISECONDS)) {
                 /* Timed out. */
                 final RepImpl rimpl = repNode.getRepImpl();
                 final boolean inactive = !rimpl.getState().isActive();
                 final String rnName = rimpl.getNameIdPair().getName();
-                throw new ReplicaConsistencyException(consistencyPolicy,
-                                                      rnName,
-                                                      inactive);
+                throw new ReplicaConsistencyException(consistencyPolicy, rnName, inactive);
             }
         }
 
@@ -1550,31 +1395,28 @@ public class Replica {
         }
 
         /**
-         * Shutdown the consistency tracker. This is typically done as part
-         * of the shutdown of a replication node. It counts down all open
-         * latches, so the threads waiting on them can make progress. It's
-         * the responsibility of the waiting threads to check whether the
-         * latch countdown was due to a shutdown, and take appropriate action.
+         * Shutdown the consistency tracker. This is typically done as part of
+         * the shutdown of a replication node. It counts down all open latches,
+         * so the threads waiting on them can make progress. It's the
+         * responsibility of the waiting threads to check whether the latch
+         * countdown was due to a shutdown, and take appropriate action.
          */
         public void shutdown() {
-            final Exception savedShutdownException =
-                repNode.getSavedShutdownException();
+            final Exception savedShutdownException = repNode.getSavedShutdownException();
 
             /*
-             * Don't wrap in another level of EnvironmentFailureException
-             * if we have one in hand already. It can confuse any catch
-             * handlers which are expecting a specific exception e.g.
-             * RollBackException while waiting for read consistency.
+             * Don't wrap in another level of EnvironmentFailureException if we
+             * have one in hand already. It can confuse any catch handlers which
+             * are expecting a specific exception e.g. RollBackException while
+             * waiting for read consistency.
              */
-            final EnvironmentFailureException latchException =
-                (savedShutdownException instanceof
-                 EnvironmentFailureException) ?
+            final EnvironmentFailureException latchException = (savedShutdownException instanceof EnvironmentFailureException)
+                    ?
 
-                ((EnvironmentFailureException)savedShutdownException) :
+                    ((EnvironmentFailureException) savedShutdownException) :
 
-                EnvironmentFailureException.unexpectedException
-                    ("Node: " + repNode.getNameIdPair() + " was shut down.",
-                     savedShutdownException);
+                    EnvironmentFailureException.unexpectedException(
+                            "Node: " + repNode.getNameIdPair() + " was shut down.", savedShutdownException);
 
             forceTripLatches(latchException);
         }
@@ -1585,10 +1427,9 @@ public class Replica {
      */
     private abstract class OrderedLatches {
 
-        final EnvironmentImpl envImpl;
+        final EnvironmentImpl                               envImpl;
 
-        final SortedMap<Long, ExceptionAwareCountDownLatch> latchMap =
-            new TreeMap<Long, ExceptionAwareCountDownLatch>();
+        final SortedMap<Long, ExceptionAwareCountDownLatch> latchMap = new TreeMap<Long, ExceptionAwareCountDownLatch>();
 
         abstract boolean tripPredicate(long key, long tripValue);
 
@@ -1609,11 +1450,11 @@ public class Replica {
          * Trip all latches until the first latch that will not trip.
          *
          * @param tripValue
-         * @param exception the exception to be thrown by the waiter upon
-         * exit from the await. It can be null if no exception need be thrown.
+         * @param exception the exception to be thrown by the waiter upon exit
+         *            from the await. It can be null if no exception need be
+         *            thrown.
          */
-        synchronized void trip(long tripValue,
-                               DatabaseException exception) {
+        synchronized void trip(long tripValue, DatabaseException exception) {
             while (latchMap.size() > 0) {
                 Long key = latchMap.firstKey();
                 if (!tripPredicate(key, tripValue)) {
@@ -1636,9 +1477,7 @@ public class Replica {
         final int retries;
         final int retrySleepMs;
 
-        RetryException(String message,
-                       int retries,
-                       int retrySleepMs) {
+        RetryException(String message, int retries, int retrySleepMs) {
             super(message);
             this.retries = retries;
             this.retrySleepMs = retrySleepMs;
@@ -1646,17 +1485,14 @@ public class Replica {
 
         @Override
         public String getMessage() {
-          return "Failed after retries: " + retries +
-                 " with retry interval: " + retrySleepMs + "ms.";
+            return "Failed after retries: " + retries + " with retry interval: " + retrySleepMs + "ms.";
         }
     }
 
     @SuppressWarnings("serial")
     static class ConnectRetryException extends RetryException {
 
-        ConnectRetryException(String message,
-                              int retries,
-                              int retrySleepMs) {
+        ConnectRetryException(String message, int retries, int retrySleepMs) {
             super(message, retries, retrySleepMs);
         }
     }
@@ -1670,12 +1506,10 @@ public class Replica {
     public static class HardRecoveryElectionException extends Exception {
 
         final NameIdPair masterNameIdPair;
-        final VLSN lastTxnEnd;
-        final VLSN matchpointVLSN;
+        final VLSN       lastTxnEnd;
+        final VLSN       matchpointVLSN;
 
-        public HardRecoveryElectionException(NameIdPair masterNameIdPair,
-                                             VLSN lastTxnEnd,
-                                             VLSN matchpointVLSN) {
+        public HardRecoveryElectionException(NameIdPair masterNameIdPair, VLSN lastTxnEnd, VLSN matchpointVLSN) {
 
             this.masterNameIdPair = masterNameIdPair;
             this.lastTxnEnd = lastTxnEnd;
@@ -1691,31 +1525,27 @@ public class Replica {
 
         @Override
         public String getMessage() {
-            return "Need election preceding hard recovery to verify master:" +
-                    masterNameIdPair +
-                   " last txn end:" + lastTxnEnd +
-                   " matchpoint VLSN:" + matchpointVLSN;
+            return "Need election preceding hard recovery to verify master:" + masterNameIdPair + " last txn end:"
+                    + lastTxnEnd + " matchpoint VLSN:" + matchpointVLSN;
         }
     }
 
     /**
      * Sets a test hook for installation into Replica class instances to be
-     * created in the future.  This is needed when the test hook must be
+     * created in the future. This is needed when the test hook must be
      * installed before the {@code ReplicatedEnvironment} handle constructor
      * returns, so that a test may influence the replay of the sync-up
      * transaction backlog.
      */
-    static public void setInitialReplayHook
-    (com.sleepycat.je.utilint.TestHook<Message> hook) {
+    static public void setInitialReplayHook(com.sleepycat.je.utilint.TestHook<Message> hook) {
         initialReplayHook = hook;
     }
 
     /**
-     * Set a test hook which is executed when the ReplicaFeederSyncup
-     * finishes. This differs from the static method
+     * Set a test hook which is executed when the ReplicaFeederSyncup finishes.
+     * This differs from the static method
      * ReplicaFeederSyncup.setGlobalSyncupHook in that it sets the hook for a
      * specific node, whereas the other method is static and sets it globally.
-     *
      * This method is required when a test is trying to set the hook for only
      * one node, and the node already exists. The other method is useful when a
      * test is trying to set the hook before a node exists.

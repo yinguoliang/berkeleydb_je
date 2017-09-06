@@ -21,13 +21,11 @@ import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.TransactionConfig;
 
 public class JERequestInfo implements ConnectionRequestInfo {
-    private File rootDir;
+    private File              rootDir;
     private EnvironmentConfig envConfig;
     private TransactionConfig transConfig;
 
-    public JERequestInfo(File rootDir,
-                         EnvironmentConfig envConfig,
-                         TransactionConfig transConfig) {
+    public JERequestInfo(File rootDir, EnvironmentConfig envConfig, TransactionConfig transConfig) {
         this.rootDir = rootDir;
         this.envConfig = envConfig;
         this.transConfig = transConfig;

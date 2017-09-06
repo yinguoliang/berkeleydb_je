@@ -19,20 +19,20 @@ import com.sleepycat.je.log.LogUtils;
 import com.sleepycat.je.log.Loggable;
 
 /**
- * Per-DB-per-file utilization counters.  The DatabaseImpl stores a persistent
+ * Per-DB-per-file utilization counters. The DatabaseImpl stores a persistent
  * map of file number to DbFileSummary.
  */
 public class DbFileSummary implements Loggable, Cloneable {
 
     /* Persistent fields. */
-    public int totalINCount;    // Number of IN log entries
-    public int totalINSize;     // Byte size of IN log entries
-    public int totalLNCount;    // Number of LN log entries
-    public int totalLNSize;     // Byte size of LN log entries
-    public int obsoleteINCount; // Number of obsolete IN log entries
-    public int obsoleteLNCount; // Number of obsolete LN log entries
-    public int obsoleteLNSize;  // Byte size of obsolete LN log entries
-    public int obsoleteLNSizeCounted;  // Number obsolete LNs with size counted
+    public int totalINCount;          // Number of IN log entries
+    public int totalINSize;           // Byte size of IN log entries
+    public int totalLNCount;          // Number of LN log entries
+    public int totalLNSize;           // Byte size of LN log entries
+    public int obsoleteINCount;       // Number of obsolete IN log entries
+    public int obsoleteLNCount;       // Number of obsolete LN log entries
+    public int obsoleteLNSize;        // Byte size of obsolete LN log entries
+    public int obsoleteLNSizeCounted; // Number obsolete LNs with size counted
 
     /**
      * Creates an empty summary.
@@ -59,15 +59,10 @@ public class DbFileSummary implements Loggable, Cloneable {
      * @see Loggable#getLogSize
      */
     public int getLogSize() {
-        return
-            LogUtils.getPackedIntLogSize(totalINCount) +
-            LogUtils.getPackedIntLogSize(totalINSize) +
-            LogUtils.getPackedIntLogSize(totalLNCount) +
-            LogUtils.getPackedIntLogSize(totalLNSize) +
-            LogUtils.getPackedIntLogSize(obsoleteINCount) +
-            LogUtils.getPackedIntLogSize(obsoleteLNCount) +
-            LogUtils.getPackedIntLogSize(obsoleteLNSize) +
-            LogUtils.getPackedIntLogSize(obsoleteLNSizeCounted);
+        return LogUtils.getPackedIntLogSize(totalINCount) + LogUtils.getPackedIntLogSize(totalINSize)
+                + LogUtils.getPackedIntLogSize(totalLNCount) + LogUtils.getPackedIntLogSize(totalLNSize)
+                + LogUtils.getPackedIntLogSize(obsoleteINCount) + LogUtils.getPackedIntLogSize(obsoleteLNCount)
+                + LogUtils.getPackedIntLogSize(obsoleteLNSize) + LogUtils.getPackedIntLogSize(obsoleteLNSizeCounted);
     }
 
     /**
@@ -126,6 +121,7 @@ public class DbFileSummary implements Loggable, Cloneable {
 
     /**
      * Never called.
+     * 
      * @see Loggable#getTransactionId
      */
     public long getTransactionId() {
@@ -133,8 +129,8 @@ public class DbFileSummary implements Loggable, Cloneable {
     }
 
     /**
-     * @see Loggable#logicalEquals
-     * Always return false, this item should never be compared.
+     * @see Loggable#logicalEquals Always return false, this item should never
+     *      be compared.
      */
     public boolean logicalEquals(Loggable other) {
         return false;

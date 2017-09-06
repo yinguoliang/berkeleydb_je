@@ -23,36 +23,40 @@ import com.sleepycat.persist.StoreConfig;
 
 /**
  * A collection of mutations for configuring class evolution.
- *
- * <p>Mutations are configured when a store is opened via {@link
- * StoreConfig#setMutations StoreConfig.setMutations}.  For example:</p>
+ * <p>
+ * Mutations are configured when a store is opened via
+ * {@link StoreConfig#setMutations StoreConfig.setMutations}. For example:
+ * </p>
  *
  * <pre class="code">
- *  Mutations mutations = new Mutations();
- *  // Add mutations...
- *  StoreConfig config = new StoreConfig();
- *  config.setMutations(mutations);
- *  EntityStore store = new EntityStore(env, "myStore", config);</pre>
- *
- * <p>Mutations cause data conversion to occur lazily as instances are read
- * from the store.  The {@link EntityStore#evolve EntityStore.evolve} method
- * may also be used to perform eager conversion.</p>
- *
- * <p>Not all incompatible class changes can be handled via mutations.  For
- * example, complex refactoring may require a transformation that manipulates
- * multiple entity instances at once.  Such changes are not possible with
- * mutations but can made by performing a <a
- * href="package-summary.html#storeConversion">store conversion</a>.</p>
+ * Mutations mutations = new Mutations();
+ * // Add mutations...
+ * StoreConfig config = new StoreConfig();
+ * config.setMutations(mutations);
+ * EntityStore store = new EntityStore(env, "myStore", config);
+ * </pre>
+ * <p>
+ * Mutations cause data conversion to occur lazily as instances are read from
+ * the store. The {@link EntityStore#evolve EntityStore.evolve} method may also
+ * be used to perform eager conversion.
+ * </p>
+ * <p>
+ * Not all incompatible class changes can be handled via mutations. For example,
+ * complex refactoring may require a transformation that manipulates multiple
+ * entity instances at once. Such changes are not possible with mutations but
+ * can made by performing a <a href="package-summary.html#storeConversion">store
+ * conversion</a>.
+ * </p>
  *
  * @see com.sleepycat.persist.evolve Class Evolution
  * @author Mark Hayes
  */
 public class Mutations implements Serializable {
 
-    private static final long serialVersionUID = -1744401530444812916L;
+    private static final long        serialVersionUID = -1744401530444812916L;
 
-    private Map<Mutation, Renamer> renamers;
-    private Map<Mutation, Deleter> deleters;
+    private Map<Mutation, Renamer>   renamers;
+    private Map<Mutation, Deleter>   deleters;
     private Map<Mutation, Converter> converters;
 
     /**
@@ -70,9 +74,7 @@ public class Mutations implements Serializable {
      * @return true if no mutations are present.
      */
     public boolean isEmpty() {
-        return renamers.isEmpty() &&
-               deleters.isEmpty() &&
-               converters.isEmpty();
+        return renamers.isEmpty() && deleters.isEmpty() && converters.isEmpty();
     }
 
     /**
@@ -86,20 +88,15 @@ public class Mutations implements Serializable {
 
     /**
      * Returns the renamer mutation for the given class, version and field, or
-     * null if none exists.  A null field name should be specified to get a
-     * class renamer.
+     * null if none exists. A null field name should be specified to get a class
+     * renamer.
      *
      * @param className the class name.
-     *
      * @param classVersion the class version.
-     *
      * @param fieldName the field name in the given class version.
-     *
      * @return the Renamer, or null.
      */
-    public Renamer getRenamer(String className,
-                              int classVersion,
-                              String fieldName) {
+    public Renamer getRenamer(String className, int classVersion, String fieldName) {
         return renamers.get(new Key(className, classVersion, fieldName));
     }
 
@@ -123,20 +120,15 @@ public class Mutations implements Serializable {
 
     /**
      * Returns the deleter mutation for the given class, version and field, or
-     * null if none exists.  A null field name should be specified to get a
-     * class deleter.
+     * null if none exists. A null field name should be specified to get a class
+     * deleter.
      *
      * @param className the class name.
-     *
      * @param classVersion the class version.
-     *
      * @param fieldName the field name.
-     *
      * @return the Deleter, or null.
      */
-    public Deleter getDeleter(String className,
-                              int classVersion,
-                              String fieldName) {
+    public Deleter getDeleter(String className, int classVersion, String fieldName) {
         return deleters.get(new Key(className, classVersion, fieldName));
     }
 
@@ -159,21 +151,16 @@ public class Mutations implements Serializable {
     }
 
     /**
-     * Returns the converter mutation for the given class, version and field,
-     * or null if none exists.  A null field name should be specified to get a
-     * class converter.
+     * Returns the converter mutation for the given class, version and field, or
+     * null if none exists. A null field name should be specified to get a class
+     * converter.
      *
      * @param className the class name.
-     *
      * @param classVersion the class version.
-     *
      * @param fieldName the field name.
-     *
      * @return the Converter, or null.
      */
-    public Converter getConverter(String className,
-                                  int classVersion,
-                                  String fieldName) {
+    public Converter getConverter(String className, int classVersion, String fieldName) {
         return converters.get(new Key(className, classVersion, fieldName));
     }
 
@@ -194,9 +181,7 @@ public class Mutations implements Serializable {
         }
 
         Key(Mutation mutation) {
-            super(mutation.getClassName(),
-                  mutation.getClassVersion(),
-                  mutation.getFieldName());
+            super(mutation.getClassName(), mutation.getClassVersion(), mutation.getFieldName());
         }
     }
 
@@ -208,9 +193,7 @@ public class Mutations implements Serializable {
     public boolean equals(Object other) {
         if (other instanceof Mutations) {
             Mutations o = (Mutations) other;
-            return renamers.equals(o.renamers) &&
-                   deleters.equals(o.deleters) &&
-                   converters.equals(o.converters);
+            return renamers.equals(o.renamers) && deleters.equals(o.deleters) && converters.equals(o.converters);
         } else {
             return false;
         }
@@ -218,9 +201,7 @@ public class Mutations implements Serializable {
 
     @Override
     public int hashCode() {
-        return renamers.hashCode() +
-               deleters.hashCode() +
-               converters.hashCode();
+        return renamers.hashCode() + deleters.hashCode() + converters.hashCode();
     }
 
     @Override

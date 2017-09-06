@@ -31,33 +31,31 @@ import com.sleepycat.je.txn.Txn;
  * <p>
  * Implementation notes:
  * <ul>
- * <li>
- * The methods are not synchronized, since it's used exclusively from the
+ * <li>The methods are not synchronized, since it's used exclusively from the
  * single threaded replay thread.</li>
- * <li>
- * The timeout mechanism is coarse and is implemented by a lightweight tick
- * mechanism that minimizes calls to the system clock, since we expect the
- * cache to be consulted very frequently and need to minimize the overhead. The
- * tick method should be invoked with a period that's less than the timeout
- * interval if it is to work effectively.</li>
+ * <li>The timeout mechanism is coarse and is implemented by a lightweight tick
+ * mechanism that minimizes calls to the system clock, since we expect the cache
+ * to be consulted very frequently and need to minimize the overhead. The tick
+ * method should be invoked with a period that's less than the timeout interval
+ * if it is to work effectively.</li>
  * </ul>
  */
 
 @SuppressWarnings("serial")
-public class DbCache  {
+public class DbCache {
 
     private final DbCacheLinkedHashMap map;
 
-    private final DbTree dbTree;
-    private volatile int maxEntries;
-    private volatile int timeoutMs;
+    private final DbTree               dbTree;
+    private volatile int               maxEntries;
+    private volatile int               timeoutMs;
 
     /*
-     * The current tick and its associated timestamp. It's updated by the
-     * tick() method.
+     * The current tick and its associated timestamp. It's updated by the tick()
+     * method.
      */
-    private int tick = 1;
-    private long tickTime = System.currentTimeMillis();
+    private int                        tick     = 1;
+    private long                       tickTime = System.currentTimeMillis();
 
     /**
      * Creates an instance of a DbCache.
@@ -65,8 +63,8 @@ public class DbCache  {
      * @param dbTree the source of the data being cached
      * @param maxEntries the max MRU entries to be retained in the cache
      * @param timeoutMs the timeout used to remove stale entries. A timeout
-     * value of zero means that each call to tick() will move the "clock"
-     * forward. It's useful for testing purposes.
+     *            value of zero means that each call to tick() will move the
+     *            "clock" forward. It's useful for testing purposes.
      */
     DbCache(DbTree dbTree, int maxEntries, int timeoutMs) {
         assert dbTree != null;
@@ -84,8 +82,7 @@ public class DbCache  {
      */
     public void tick() {
 
-        if ((timeoutMs > 0) &&
-            (System.currentTimeMillis() - tickTime) <= timeoutMs) {
+        if ((timeoutMs > 0) && (System.currentTimeMillis() - tickTime) <= timeoutMs) {
             return;
         }
 
@@ -113,7 +110,6 @@ public class DbCache  {
      * this was the first write reference.
      *
      * @param dbId the dbId that is to be resolved.
-     *
      * @return the corresponding DatabaseImpl
      */
     public DatabaseImpl get(DatabaseId dbId, Txn txn) {
@@ -145,6 +141,7 @@ public class DbCache  {
      * operation. This incremental cache size reduction is not expected to be a
      * significant drawback in practice.
      * <p>
+     * 
      * @param configMgr the configuration holding the cache parameters
      */
     public void setConfig(RepConfigManager configMgr) {
@@ -181,7 +178,7 @@ public class DbCache  {
     }
 
     /* For testing only. */
-    LinkedHashMap<DatabaseId,DbCache.Info>  getMap() {
+    LinkedHashMap<DatabaseId, DbCache.Info> getMap() {
         return map;
     }
 
@@ -189,7 +186,7 @@ public class DbCache  {
      * Struct to associate a tick with the dbImpl
      */
     private class Info {
-        int lastAccess;
+        int                lastAccess;
         final DatabaseImpl dbImpl;
 
         public Info(DatabaseImpl dbImpl) {
@@ -203,11 +200,10 @@ public class DbCache  {
      * Subclass supplies the method used to remove the LRU entry and the
      * bookkeeping that goes along with it.
      */
-    private class DbCacheLinkedHashMap
-        extends LinkedHashMap<DatabaseId,DbCache.Info> {
+    private class DbCacheLinkedHashMap extends LinkedHashMap<DatabaseId, DbCache.Info> {
 
         @Override
-        protected boolean removeEldestEntry(Map.Entry<DatabaseId,Info> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<DatabaseId, Info> eldest) {
             if (size() <= maxEntries) {
                 return false;
             }

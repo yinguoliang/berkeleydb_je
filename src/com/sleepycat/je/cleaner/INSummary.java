@@ -15,7 +15,7 @@ package com.sleepycat.je.cleaner;
 
 /**
  * Used to trace the relative numbers of full INs and BIN-deltas that are
- * obsolete vs active.  May be used in the future for adjusting utilization.
+ * obsolete vs active. May be used in the future for adjusting utilization.
  */
 public class INSummary {
     public int totalINCount;

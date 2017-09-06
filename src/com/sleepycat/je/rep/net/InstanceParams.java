@@ -19,14 +19,14 @@ package com.sleepycat.je.rep.net;
  */
 public class InstanceParams {
     private final InstanceContext context;
-    private final String classParams;
+    private final String          classParams;
 
     /**
      * Creates an InstanceParams instance.
-     * @param context the configuration context from which an instantiation
-     * is being generated.
-     * @param classParams a class-specific parameter argument, which may
-     * be null
+     * 
+     * @param context the configuration context from which an instantiation is
+     *            being generated.
+     * @param classParams a class-specific parameter argument, which may be null
      */
     public InstanceParams(InstanceContext context, String classParams) {
         this.context = context;

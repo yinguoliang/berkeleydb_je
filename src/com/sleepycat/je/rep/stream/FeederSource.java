@@ -26,11 +26,10 @@ import com.sleepycat.je.utilint.VLSN;
  */
 public interface FeederSource {
 
-    public void init(VLSN startVLSN) 
-        throws DatabaseException, IOException, InterruptedException;
+    public void init(VLSN startVLSN) throws DatabaseException, IOException, InterruptedException;
 
     public OutputWireRecord getWireRecord(VLSN vlsn, int waitTime)
-        throws DatabaseException, InterruptedException, IOException;
+            throws DatabaseException, InterruptedException, IOException;
 
     public String dumpState();
 }

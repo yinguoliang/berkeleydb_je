@@ -23,16 +23,14 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
 import com.sleepycat.je.utilint.StatGroup;
 
 /**
- * An exclusive latch without stats.
- *
- * SharedLatch (not just Latch) is implemented to support exclusive-only BIN
- * latches.
+ * An exclusive latch without stats. SharedLatch (not just Latch) is implemented
+ * to support exclusive-only BIN latches.
  */
 @SuppressWarnings("serial")
 public class LatchImpl extends ReentrantLock implements SharedLatch {
 
     private final LatchContext context;
-    private OwnerInfo lastOwnerInfo;
+    private OwnerInfo          lastOwnerInfo;
 
     LatchImpl(final LatchContext context) {
         this.context = context;
@@ -51,20 +49,16 @@ public class LatchImpl extends ReentrantLock implements SharedLatch {
     public void acquireExclusive() {
 
         if (isHeldByCurrentThread()) {
-            throw unexpectedState(
-                context.getEnvImplForFatalException(),
-                "Latch already held: " + debugString());
+            throw unexpectedState(context.getEnvImplForFatalException(), "Latch already held: " + debugString());
         }
 
         if (LatchSupport.INTERRUPTIBLE_WITH_TIMEOUT) {
             try {
-                if (!tryLock(
-                    context.getLatchTimeoutMs(), TimeUnit.MILLISECONDS)) {
+                if (!tryLock(context.getLatchTimeoutMs(), TimeUnit.MILLISECONDS)) {
                     throw LatchSupport.handleTimeout(this, context);
                 }
             } catch (InterruptedException e) {
-                throw new ThreadInterruptedException(
-                    context.getEnvImplForFatalException(), e);
+                throw new ThreadInterruptedException(context.getEnvImplForFatalException(), e);
             }
         } else {
             lock();
@@ -83,9 +77,7 @@ public class LatchImpl extends ReentrantLock implements SharedLatch {
     public boolean acquireExclusiveNoWait() {
 
         if (isHeldByCurrentThread()) {
-            throw unexpectedState(
-                context.getEnvImplForFatalException(),
-                "Latch already held: " + debugString());
+            throw unexpectedState(context.getEnvImplForFatalException(), "Latch already held: " + debugString());
         }
 
         if (!tryLock()) {
@@ -110,9 +102,7 @@ public class LatchImpl extends ReentrantLock implements SharedLatch {
     @Override
     public void release() {
         if (!isHeldByCurrentThread()) {
-            throw unexpectedState(
-                context.getEnvImplForFatalException(),
-                "Latch not held: " + debugString());
+            throw unexpectedState(context.getEnvImplForFatalException(), "Latch not held: " + debugString());
         }
         if (LatchSupport.TRACK_LATCHES) {
             LatchSupport.trackRelease(this, context);

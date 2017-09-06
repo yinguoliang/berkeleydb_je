@@ -19,31 +19,33 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The metadata for a persistent class.  A persistent class may be specified
- * with the {@link Entity} or {@link Persistent} annotation.
- *
- * <p>{@code ClassMetadata} objects are thread-safe.  Multiple threads may
- * safely call the methods of a shared {@code ClassMetadata} object.</p>
- *
- * <p>This and other metadata classes are classes rather than interfaces to
- * allow adding properties to the model at a future date without causing
- * incompatibilities.  Any such property will be given a default value and
- * its use will be optional.</p>
+ * The metadata for a persistent class. A persistent class may be specified with
+ * the {@link Entity} or {@link Persistent} annotation.
+ * <p>
+ * {@code ClassMetadata} objects are thread-safe. Multiple threads may safely
+ * call the methods of a shared {@code ClassMetadata} object.
+ * </p>
+ * <p>
+ * This and other metadata classes are classes rather than interfaces to allow
+ * adding properties to the model at a future date without causing
+ * incompatibilities. Any such property will be given a default value and its
+ * use will be optional.
+ * </p>
  *
  * @author Mark Hayes
  */
 public class ClassMetadata implements Serializable {
 
-    private static final long serialVersionUID = -2520207423701776679L;
+    private static final long                 serialVersionUID = -2520207423701776679L;
 
-    private String className;
-    private int version;
-    private String proxiedClassName;
-    private boolean entityClass;
-    private PrimaryKeyMetadata primaryKey;
+    private String                            className;
+    private int                               version;
+    private String                            proxiedClassName;
+    private boolean                           entityClass;
+    private PrimaryKeyMetadata                primaryKey;
     private Map<String, SecondaryKeyMetadata> secondaryKeys;
-    private List<FieldMetadata> compositeKeyFields;
-    private Collection<FieldMetadata> persistentFields;
+    private List<FieldMetadata>               compositeKeyFields;
+    private Collection<FieldMetadata>         persistentFields;
 
     /**
      * Used by an {@code EntityModel} to construct persistent class metadata.
@@ -57,16 +59,12 @@ public class ClassMetadata implements Serializable {
      * @param secondaryKeys the secondary key metadata.
      * @param compositeKeyFields the composite key field metadata.
      */
-    public ClassMetadata(String className,
-                         int version,
-                         String proxiedClassName,
-                         boolean entityClass,
-                         PrimaryKeyMetadata primaryKey,
-                         Map<String, SecondaryKeyMetadata> secondaryKeys,
+    public ClassMetadata(String className, int version, String proxiedClassName, boolean entityClass,
+                         PrimaryKeyMetadata primaryKey, Map<String, SecondaryKeyMetadata> secondaryKeys,
                          List<FieldMetadata> compositeKeyFields) {
 
-        this(className, version, proxiedClassName, entityClass, primaryKey,
-             secondaryKeys, compositeKeyFields, null /*persistentFields*/);
+        this(className, version, proxiedClassName, entityClass, primaryKey, secondaryKeys, compositeKeyFields,
+                null /* persistentFields */);
     }
 
     /**
@@ -81,14 +79,9 @@ public class ClassMetadata implements Serializable {
      * @param compositeKeyFields the composite key field metadata.
      * @param persistentFields the persistent field metadata.
      */
-    public ClassMetadata(String className,
-                         int version,
-                         String proxiedClassName,
-                         boolean entityClass,
-                         PrimaryKeyMetadata primaryKey,
-                         Map<String, SecondaryKeyMetadata> secondaryKeys,
-                         List<FieldMetadata> compositeKeyFields,
-                         Collection<FieldMetadata> persistentFields) {
+    public ClassMetadata(String className, int version, String proxiedClassName, boolean entityClass,
+                         PrimaryKeyMetadata primaryKey, Map<String, SecondaryKeyMetadata> secondaryKeys,
+                         List<FieldMetadata> compositeKeyFields, Collection<FieldMetadata> persistentFields) {
         this.className = className;
         this.version = version;
         this.proxiedClassName = proxiedClassName;
@@ -109,9 +102,8 @@ public class ClassMetadata implements Serializable {
     }
 
     /**
-     * Returns the version of this persistent class.  This may be specified
-     * using the {@link Entity#version} or {@link Persistent#version}
-     * annotation.
+     * Returns the version of this persistent class. This may be specified using
+     * the {@link Entity#version} or {@link Persistent#version} annotation.
      *
      * @return the version of this persistent class.
      */
@@ -120,8 +112,8 @@ public class ClassMetadata implements Serializable {
     }
 
     /**
-     * Returns the class name of the proxied class if this class is a {@link
-     * PersistentProxy}, or null otherwise.
+     * Returns the class name of the proxied class if this class is a
+     * {@link PersistentProxy}, or null otherwise.
      *
      * @return the class name of the proxied class, or null.
      */
@@ -140,8 +132,8 @@ public class ClassMetadata implements Serializable {
 
     /**
      * Returns the primary key metadata for a key declared in this class, or
-     * null if none is declared.  This may be specified using the {@link
-     * PrimaryKey} annotation.
+     * null if none is declared. This may be specified using the
+     * {@link PrimaryKey} annotation.
      *
      * @return the primary key metadata, or null.
      */
@@ -152,8 +144,8 @@ public class ClassMetadata implements Serializable {
     /**
      * Returns an unmodifiable map of key name (which may be different from
      * field name) to secondary key metadata for all secondary keys declared in
-     * this class, or null if no secondary keys are declared in this class.
-     * This metadata may be specified using {@link SecondaryKey} annotations.
+     * this class, or null if no secondary keys are declared in this class. This
+     * metadata may be specified using {@link SecondaryKey} annotations.
      *
      * @return the unmodifiable map, or null.
      */
@@ -163,11 +155,11 @@ public class ClassMetadata implements Serializable {
 
     /**
      * Returns an unmodifiable list of metadata for the fields making up a
-     * composite key, or null if this is a not a composite key class.  The
-     * order of the fields in the returned list determines their stored order
-     * and may be specified using the {@link KeyField} annotation.  When the
-     * composite key class does not implement {@link Comparable}, the order of
-     * the fields is the relative sort order.
+     * composite key, or null if this is a not a composite key class. The order
+     * of the fields in the returned list determines their stored order and may
+     * be specified using the {@link KeyField} annotation. When the composite
+     * key class does not implement {@link Comparable}, the order of the fields
+     * is the relative sort order.
      *
      * @return the unmodifiable list, or null.
      */
@@ -178,15 +170,16 @@ public class ClassMetadata implements Serializable {
     /**
      * Returns an unmodifiable list of metadata for the persistent fields in
      * this class, or null if the default rules for persistent fields should be
-     * used.  All fields returned must be declared in this class and must be
+     * used. All fields returned must be declared in this class and must be
      * non-static.
-     *
-     * <p>By default (if null is returned) the persistent fields of a class
-     * will be all declared instance fields that are non-transient (are not
-     * declared with the <code>transient</code> keyword).  The default rules
-     * may be overridden by an {@link EntityModel}.  For example, the {@link
-     * AnnotationModel} overrides the default rules when the {@link
-     * NotPersistent} or {@link NotTransient} annotation is specified.</p>
+     * <p>
+     * By default (if null is returned) the persistent fields of a class will be
+     * all declared instance fields that are non-transient (are not declared
+     * with the <code>transient</code> keyword). The default rules may be
+     * overridden by an {@link EntityModel}. For example, the
+     * {@link AnnotationModel} overrides the default rules when the
+     * {@link NotPersistent} or {@link NotTransient} annotation is specified.
+     * </p>
      *
      * @return the unmodifiable list, or null.
      */
@@ -198,13 +191,10 @@ public class ClassMetadata implements Serializable {
     public boolean equals(Object other) {
         if (other instanceof ClassMetadata) {
             ClassMetadata o = (ClassMetadata) other;
-            return version == o.version &&
-                   entityClass == o.entityClass &&
-                   nullOrEqual(className, o.className) &&
-                   nullOrEqual(proxiedClassName, o.proxiedClassName) &&
-                   nullOrEqual(primaryKey, o.primaryKey) &&
-                   nullOrEqual(secondaryKeys, o.secondaryKeys) &&
-                   nullOrEqual(compositeKeyFields, o.compositeKeyFields);
+            return version == o.version && entityClass == o.entityClass && nullOrEqual(className, o.className)
+                    && nullOrEqual(proxiedClassName, o.proxiedClassName) && nullOrEqual(primaryKey, o.primaryKey)
+                    && nullOrEqual(secondaryKeys, o.secondaryKeys)
+                    && nullOrEqual(compositeKeyFields, o.compositeKeyFields);
         } else {
             return false;
         }
@@ -212,13 +202,8 @@ public class ClassMetadata implements Serializable {
 
     @Override
     public int hashCode() {
-        return version +
-               (entityClass ? 1 : 0) +
-               hashCode(className) +
-               hashCode(proxiedClassName) +
-               hashCode(primaryKey) +
-               hashCode(secondaryKeys) +
-               hashCode(compositeKeyFields);
+        return version + (entityClass ? 1 : 0) + hashCode(className) + hashCode(proxiedClassName) + hashCode(primaryKey)
+                + hashCode(secondaryKeys) + hashCode(compositeKeyFields);
     }
 
     static boolean nullOrEqual(Object o1, Object o2) {

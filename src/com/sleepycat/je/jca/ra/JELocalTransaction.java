@@ -21,26 +21,21 @@ import com.sleepycat.je.Transaction;
 import com.sleepycat.je.TransactionConfig;
 import com.sleepycat.je.XAEnvironment;
 
-public class JELocalTransaction
-    implements javax.resource.cci.LocalTransaction,
-               javax.resource.spi.LocalTransaction {
+public class JELocalTransaction implements javax.resource.cci.LocalTransaction, javax.resource.spi.LocalTransaction {
 
-    private static boolean DEBUG = false;
+    private static boolean                DEBUG = false;
 
-    private transient XAEnvironment env;
-    private transient TransactionConfig transConfig;
+    private transient XAEnvironment       env;
+    private transient TransactionConfig   transConfig;
     private transient JEManagedConnection mgdConn;
 
-    JELocalTransaction(XAEnvironment env,
-                       TransactionConfig transConfig,
-                       JEManagedConnection mgdConn) {
+    JELocalTransaction(XAEnvironment env, TransactionConfig transConfig, JEManagedConnection mgdConn) {
         this.env = env;
         this.transConfig = transConfig;
         this.mgdConn = mgdConn;
     }
 
-    public Transaction getTransaction()
-        throws DatabaseException {
+    public Transaction getTransaction() throws DatabaseException {
 
         return env.getThreadTransaction();
     }
@@ -49,8 +44,7 @@ public class JELocalTransaction
         return env;
     }
 
-    private void checkEnv(String methodName)
-        throws ResourceException {
+    private void checkEnv(String methodName) throws ResourceException {
 
         if (env == null) {
             throw new ResourceException("env is null in " + methodName);
@@ -61,8 +55,7 @@ public class JELocalTransaction
      * Methods for LocalTransaction.
      */
 
-    public void begin()
-        throws ResourceException {
+    public void begin() throws ResourceException {
 
         checkEnv("begin");
         long id = -1;
@@ -74,8 +67,7 @@ public class JELocalTransaction
             throw new ResourceException("During begin: " + DE.toString());
         }
 
-        ConnectionEvent connEvent = new ConnectionEvent
-            (mgdConn, ConnectionEvent.LOCAL_TRANSACTION_STARTED);
+        ConnectionEvent connEvent = new ConnectionEvent(mgdConn, ConnectionEvent.LOCAL_TRANSACTION_STARTED);
         connEvent.setConnectionHandle(mgdConn);
         mgdConn.sendConnectionEvent(connEvent);
 
@@ -84,8 +76,7 @@ public class JELocalTransaction
         }
     }
 
-    public void commit()
-        throws ResourceException {
+    public void commit() throws ResourceException {
 
         checkEnv("commit");
         try {
@@ -98,8 +89,7 @@ public class JELocalTransaction
             env.setThreadTransaction(null);
         }
 
-        ConnectionEvent connEvent = new ConnectionEvent
-            (mgdConn, ConnectionEvent.LOCAL_TRANSACTION_COMMITTED);
+        ConnectionEvent connEvent = new ConnectionEvent(mgdConn, ConnectionEvent.LOCAL_TRANSACTION_COMMITTED);
         connEvent.setConnectionHandle(mgdConn);
         mgdConn.sendConnectionEvent(connEvent);
 
@@ -108,8 +98,7 @@ public class JELocalTransaction
         }
     }
 
-    public void rollback()
-        throws ResourceException {
+    public void rollback() throws ResourceException {
 
         checkEnv("rollback");
         try {
@@ -122,8 +111,7 @@ public class JELocalTransaction
             env.setThreadTransaction(null);
         }
 
-        ConnectionEvent connEvent = new ConnectionEvent
-            (mgdConn, ConnectionEvent.LOCAL_TRANSACTION_ROLLEDBACK);
+        ConnectionEvent connEvent = new ConnectionEvent(mgdConn, ConnectionEvent.LOCAL_TRANSACTION_ROLLEDBACK);
         connEvent.setConnectionHandle(mgdConn);
         mgdConn.sendConnectionEvent(connEvent);
 

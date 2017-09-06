@@ -22,22 +22,22 @@ import com.sleepycat.je.utilint.Timestamp;
  */
 public abstract class TxnEnd implements Loggable {
 
-    long id;
+    long      id;
     Timestamp time;
-    long lastLsn;
+    long      lastLsn;
 
     /* For replication - master node which wrote this record. */
-    int repMasterNodeId;
+    int       repMasterNodeId;
 
     /**
      * The txn commit VLSN that was acknowledged by at least a majority of the
      * nodes either at the time of this commit, or eventually via a heartbeat.
-     * This VLSN must typically be less than the VLSN associated with the
-     * TxnEnd itself, when it's written to the log. In cases of mixed mode
-     * operation (when a pre-DTVLSN is serving as a feeder to a DTVLSN aware
-     * replica) it may be equal to the VLSN associated with the TxnEnd.
+     * This VLSN must typically be less than the VLSN associated with the TxnEnd
+     * itself, when it's written to the log. In cases of mixed mode operation
+     * (when a pre-DTVLSN is serving as a feeder to a DTVLSN aware replica) it
+     * may be equal to the VLSN associated with the TxnEnd.
      */
-    long dtvlsn;
+    long      dtvlsn;
 
     TxnEnd(long id, long lastLsn, int repMasterNodeId, long dtvlsn) {
         this.id = id;
@@ -88,10 +88,10 @@ public abstract class TxnEnd implements Loggable {
 
     /**
      * Returns true if there are changes that have been logged for this entry.
-     * It's unusual for such a record to not have associated changes, since
-     * such commit/abort entries are typically optimized away. When present
-     * they typically represent records used to persist uptodate DTVLSN
-     * information as part of the entry.
+     * It's unusual for such a record to not have associated changes, since such
+     * commit/abort entries are typically optimized away. When present they
+     * typically represent records used to persist uptodate DTVLSN information
+     * as part of the entry.
      */
     public boolean hasLoggedEntries() {
         return (lastLsn != DbLsn.NULL_LSN);

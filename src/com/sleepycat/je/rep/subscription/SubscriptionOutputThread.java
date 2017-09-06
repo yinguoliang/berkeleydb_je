@@ -22,37 +22,31 @@ import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 
 /**
- * Object of the output thread created by subscription to respond the
- * heartbeat ping from feeder
+ * Object of the output thread created by subscription to respond the heartbeat
+ * ping from feeder
  */
 class SubscriptionOutputThread extends ReplicaOutputThreadBase {
 
     /* handle to statistics */
     private final SubscriptionStat stats;
 
-    public SubscriptionOutputThread(RepImpl repImpl,
-                                    BlockingQueue<Long> outputQueue,
-                                    Protocol protocol,
-                                    DataChannel replicaFeederChannel,
-                                    SubscriptionStat stats) {
-        super(repImpl, repImpl.getRepNode(), outputQueue, protocol,
-              replicaFeederChannel);
+    public SubscriptionOutputThread(RepImpl repImpl, BlockingQueue<Long> outputQueue, Protocol protocol,
+                                    DataChannel replicaFeederChannel, SubscriptionStat stats) {
+        super(repImpl, repImpl.getRepNode(), outputQueue, protocol, replicaFeederChannel);
         this.stats = stats;
     }
 
     /**
      * Implement the heartbeat response for output thread
      *
-     * @param txnId  txn id
+     * @param txnId txn id
      * @throws IOException
      */
     @Override
     public void writeHeartbeat(Long txnId) throws IOException {
 
         /* report the most recently received VLSN to feeder */
-        HeartbeatResponse response =
-            protocol.new HeartbeatResponse(stats.getHighVLSN(),
-                                           stats.getHighVLSN());
+        HeartbeatResponse response = protocol.new HeartbeatResponse(stats.getHighVLSN(), stats.getHighVLSN());
 
         protocol.write(response, replicaFeederChannel);
         stats.getNumMsgResponded().increment();

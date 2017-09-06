@@ -18,16 +18,14 @@ package com.sleepycat.util;
  *
  * @author Mark Hayes
  */
-public class RuntimeExceptionWrapper extends RuntimeException
-    implements ExceptionWrapper {
+public class RuntimeExceptionWrapper extends RuntimeException implements ExceptionWrapper {
 
     /**
      * Wraps the given exception if it is not a {@code RuntimeException}.
      *
      * @param e any exception.
-     *
      * @return {@code e} if it is a {@code RuntimeException}, otherwise a
-     * {@code RuntimeExceptionWrapper} for {@code e}.
+     *         {@code RuntimeExceptionWrapper} for {@code e}.
      */
     public static RuntimeException wrapIfNeeded(Throwable e) {
         if (e instanceof RuntimeException) {

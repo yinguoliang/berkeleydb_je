@@ -17,15 +17,14 @@ import com.sleepycat.je.utilint.LoggerUtils;
 
 class OwnerInfo {
 
-    private final Thread thread;
-    private final long acquireTime;
+    private final Thread    thread;
+    private final long      acquireTime;
     private final Throwable acquireStack;
 
     OwnerInfo(final LatchContext context) {
         thread = Thread.currentThread();
         acquireTime = System.currentTimeMillis();
-        acquireStack =
-            new Exception("Latch Acquired: " + context.getLatchName());
+        acquireStack = new Exception("Latch Acquired: " + context.getLatchName());
     }
 
     void toString(StringBuilder builder) {

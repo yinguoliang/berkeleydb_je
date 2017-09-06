@@ -16,37 +16,38 @@ package com.sleepycat.je.cleaner;
 import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
- * List of LSN offsets as a linked list of segments.  The reasons for using a
+ * List of LSN offsets as a linked list of segments. The reasons for using a
  * list of this type and not a java.util.List are:
  * <ul>
  * <li>Segements reduce memory overhead by storing long primitives rather than
- * Long objects.  Many longs per segment reduce link overhead.</li>
+ * Long objects. Many longs per segment reduce link overhead.</li>
  * <li>Memory is only allocated for new segments, reducing the number of calls
  * to update the memory budget.</li>
  * <li>This is an append-only list that supports a single appender thread and
- * multiple unsynchronized reader threads.  The caller is responsible for
- * synchronizing such that only one thread calls add() at one time.  The reader
+ * multiple unsynchronized reader threads. The caller is responsible for
+ * synchronizing such that only one thread calls add() at one time. The reader
  * threads see data as it is changing but do not see inconsistent data (corrupt
  * longs) and do not require synchronization for thread safety.</li>
  * </ul>
- *
- * <p>The algorithms here use traversal of the list segments rather than
- * recursion to avoid using a lot of stack space.</p>
+ * <p>
+ * The algorithms here use traversal of the list segments rather than recursion
+ * to avoid using a lot of stack space.
+ * </p>
  */
 public class OffsetList {
 
-    static final int SEGMENT_CAPACITY = 100;
+    static final int SEGMENT_CAPACITY       = 100;
 
     /*
      * Once the size of the list goes over this limit, we should not assert
-     * (self-check) by doing sequential searches though the list.  Assertions
+     * (self-check) by doing sequential searches though the list. Assertions
      * can't be too expensive or they interfere with normal operation.
      */
     static final int TOO_BIG_FOR_SELF_CHECK = 100;
 
-    private Segment head;
-    private Segment tail;
-    private int size;
+    private Segment  head;
+    private Segment  tail;
+    private int      size;
 
     public OffsetList() {
         head = new Segment();
@@ -59,11 +60,8 @@ public class OffsetList {
     public boolean add(long value, boolean checkDupOffsets) {
 
         /* Each value added should be unique. */
-        assert !checkDupOffsets ||
-               size > TOO_BIG_FOR_SELF_CHECK ||
-               !contains(value) :
-               LoggerUtils.getStackTrace
-                   (new Exception("Dup Offset " + Long.toHexString(value)));
+        assert !checkDupOffsets || size > TOO_BIG_FOR_SELF_CHECK || !contains(value) : LoggerUtils
+                .getStackTrace(new Exception("Dup Offset " + Long.toHexString(value)));
 
         /*
          * Do not increment the size until the value is added so that reader
@@ -108,9 +106,9 @@ public class OffsetList {
     }
 
     /**
-     * Returns an array of all values as longs.  If a writer thread is
-     * appending to the list while this method is executing, some values may be
-     * missing from the returned array, but the operation is safe.
+     * Returns an array of all values as longs. If a writer thread is appending
+     * to the list while this method is executing, some values may be missing
+     * from the returned array, but the operation is safe.
      */
     public long[] toArray() {
 
@@ -152,8 +150,8 @@ public class OffsetList {
      */
     public static class Segment {
 
-        private int index;
-        private Segment next;
+        private int         index;
+        private Segment     next;
         private final int[] values;
 
         /* public for Sizeof. */
@@ -162,8 +160,8 @@ public class OffsetList {
         }
 
         /**
-         * Call this method on the tail.  The new tail is returned, if
-         * allocating a new tail is necessary.
+         * Call this method on the tail. The new tail is returned, if allocating
+         * a new tail is necessary.
          */
         Segment add(long value) {
             if (index < values.length) {

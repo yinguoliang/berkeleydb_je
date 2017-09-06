@@ -23,13 +23,14 @@ import java.util.Set;
 public class LatchTable {
 
     private ThreadLocal<Set<Object>> latchesByThread;
-            
+
     LatchTable() {
         latchesByThread = new ThreadLocal<Set<Object>>();
     }
 
     /**
      * Adds latch acquired by this thread.
+     * 
      * @return true if added, false if already present.
      */
     boolean add(Object latch) {
@@ -43,6 +44,7 @@ public class LatchTable {
 
     /**
      * Removes latch acquired by this thread.
+     * 
      * @return true if removed, false if not present.
      */
     boolean remove(Object latch) {

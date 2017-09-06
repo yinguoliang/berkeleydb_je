@@ -25,18 +25,13 @@ import com.sleepycat.je.log.ReplicationContext;
  */
 public class PreparedTxn extends Txn {
 
-    private PreparedTxn(EnvironmentImpl envImpl,
-                       TransactionConfig config,
-                       long mandatedId)
-        throws DatabaseException {
+    private PreparedTxn(EnvironmentImpl envImpl, TransactionConfig config, long mandatedId) throws DatabaseException {
 
         super(envImpl, config, ReplicationContext.NO_REPLICATE, mandatedId);
     }
 
-    public static PreparedTxn createPreparedTxn(EnvironmentImpl envImpl,
-                                                TransactionConfig config,
-                                                long mandatedId)
-        throws DatabaseException {
+    public static PreparedTxn createPreparedTxn(EnvironmentImpl envImpl, TransactionConfig config, long mandatedId)
+            throws DatabaseException {
 
         PreparedTxn ret = null;
         try {

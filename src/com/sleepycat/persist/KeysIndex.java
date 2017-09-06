@@ -37,47 +37,39 @@ import com.sleepycat.je.ReadOptions;
 import com.sleepycat.je.Transaction;
 
 /**
- * The EntityIndex returned by SecondaryIndex.keysIndex().  This index maps
- * secondary key to primary key.  In Berkeley DB internal terms, this is a
+ * The EntityIndex returned by SecondaryIndex.keysIndex(). This index maps
+ * secondary key to primary key. In Berkeley DB internal terms, this is a
  * secondary database that is opened without associating it with a primary.
  *
  * @author Mark Hayes
  */
 class KeysIndex<SK, PK> extends BasicIndex<SK, PK> {
 
-    private EntryBinding pkeyBinding;
+    private EntryBinding      pkeyBinding;
     private SortedMap<SK, PK> map;
 
-    KeysIndex(Database db,
-              Class<SK> keyClass,
-              EntryBinding keyBinding,
-              Class<PK> pkeyClass,
-              EntryBinding pkeyBinding)
-        throws DatabaseException {
+    KeysIndex(Database db, Class<SK> keyClass, EntryBinding keyBinding, Class<PK> pkeyClass, EntryBinding pkeyBinding)
+            throws DatabaseException {
 
-        super(db, keyClass, keyBinding,
-              new DataValueAdapter<PK>(pkeyClass, pkeyBinding));
+        super(db, keyClass, keyBinding, new DataValueAdapter<PK>(pkeyClass, pkeyBinding));
         this.pkeyBinding = pkeyBinding;
     }
 
     /*
      * Of the EntityIndex methods only get()/map()/sortedMap() are implemented
-     * here.  All other methods are implemented by BasicIndex.
+     * here. All other methods are implemented by BasicIndex.
      */
 
-    public PK get(SK key)
-        throws DatabaseException {
+    public PK get(SK key) throws DatabaseException {
 
         return get(null, key, null);
     }
 
-    public PK get(Transaction txn, SK key, LockMode lockMode)
-        throws DatabaseException {
+    public PK get(Transaction txn, SK key, LockMode lockMode) throws DatabaseException {
 
         /* <!-- begin JE only --> */
         if (DbCompat.IS_JE) {
-            EntityResult<PK> result = get(
-                txn, key, Get.SEARCH, DbInternal.getReadOptions(lockMode));
+            EntityResult<PK> result = get(txn, key, Get.SEARCH, DbInternal.getReadOptions(lockMode));
             return result != null ? result.value() : null;
         }
         /* <!-- end JE only --> */
@@ -96,11 +88,7 @@ class KeysIndex<SK, PK> extends BasicIndex<SK, PK> {
     }
 
     /* <!-- begin JE only --> */
-    public EntityResult<PK> get(Transaction txn,
-                                SK key,
-                                Get getType,
-                                ReadOptions options)
-        throws DatabaseException {
+    public EntityResult<PK> get(Transaction txn, SK key, Get getType, ReadOptions options) throws DatabaseException {
 
         checkGetType(getType);
 
@@ -108,13 +96,10 @@ class KeysIndex<SK, PK> extends BasicIndex<SK, PK> {
         DatabaseEntry pkeyEntry = new DatabaseEntry();
         keyBinding.objectToEntry(key, keyEntry);
 
-        OperationResult result = db.get(
-            txn, keyEntry, pkeyEntry, getType, options);
+        OperationResult result = db.get(txn, keyEntry, pkeyEntry, getType, options);
 
         if (result != null) {
-            return new EntityResult<>(
-                (PK) pkeyBinding.entryToObject(pkeyEntry),
-                result);
+            return new EntityResult<>((PK) pkeyBinding.entryToObject(pkeyEntry), result);
         } else {
             return null;
         }

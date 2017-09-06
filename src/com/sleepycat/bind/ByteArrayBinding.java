@@ -42,8 +42,7 @@ public class ByteArrayBinding implements EntryBinding<byte[]> {
             return ZERO_LENGTH_BYTE_ARRAY;
         } else {
             byte[] bytes = new byte[len];
-            System.arraycopy(entry.getData(), entry.getOffset(),
-                             bytes, 0, bytes.length);
+            System.arraycopy(entry.getData(), entry.getOffset(), bytes, 0, bytes.length);
             return bytes;
         }
     }

@@ -19,9 +19,9 @@ import com.sleepycat.je.tree.LN;
 
 /**
  * Classifies all databases as specific internal databases or user databases.
- * This can be thought of as a substitute for having DatabaseImpl subclasses
- * for different types of databases.  It also identifies each internal database
- * by name.
+ * This can be thought of as a substitute for having DatabaseImpl subclasses for
+ * different types of databases. It also identifies each internal database by
+ * name.
  */
 public enum DbType {
 
@@ -30,14 +30,17 @@ public enum DbType {
         public boolean mayCreateDeletedLN() {
             return false;
         }
+
         @Override
         public LN createDeletedLN(EnvironmentImpl envImpl) {
             throw EnvironmentFailureException.unexpectedState();
         }
+
         @Override
         public boolean mayCreateUpdatedLN() {
             return false;
         }
+
         @Override
         public LN createUpdatedLN(EnvironmentImpl envImpl, byte[] newData) {
             throw EnvironmentFailureException.unexpectedState();
@@ -49,14 +52,17 @@ public enum DbType {
         public boolean mayCreateDeletedLN() {
             return false;
         }
+
         @Override
         public LN createDeletedLN(EnvironmentImpl envImpl) {
             throw EnvironmentFailureException.unexpectedState();
         }
+
         @Override
         public boolean mayCreateUpdatedLN() {
             return false;
         }
+
         @Override
         public LN createUpdatedLN(EnvironmentImpl envImpl, byte[] newData) {
             throw EnvironmentFailureException.unexpectedState();
@@ -68,10 +74,12 @@ public enum DbType {
         public LN createDeletedLN(EnvironmentImpl envImpl) {
             return FileSummaryLN.makeDeletedLN();
         }
+
         @Override
         public boolean mayCreateUpdatedLN() {
             return false;
         }
+
         @Override
         public LN createUpdatedLN(EnvironmentImpl envImpl, byte[] newData) {
             throw EnvironmentFailureException.unexpectedState();
@@ -122,11 +130,10 @@ public enum DbType {
 
     /**
      * Creates an updated LN for use in an optimization in
-     * CursorImpl.putCurrentAlreadyLatchedAndLocked.  Without this method it
-     * would be necessary to fetch the existing LN and call LN.modify.
-     *
-     * Does NOT copy the byte array, so after calling this method the array is
-     * "owned" by the Btree and should not be modified.
+     * CursorImpl.putCurrentAlreadyLatchedAndLocked. Without this method it
+     * would be necessary to fetch the existing LN and call LN.modify. Does NOT
+     * copy the byte array, so after calling this method the array is "owned" by
+     * the Btree and should not be modified.
      *
      * @throws EnvironmentFailureException if this is not allowed.
      */

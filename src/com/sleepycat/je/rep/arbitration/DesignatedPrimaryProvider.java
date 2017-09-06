@@ -23,22 +23,22 @@ import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
  * Designated Primary arbitration relies on the configuration parameter
- * je.rep.designatedPrimary. This form of arbitration is only effective when
- * the electable group size is 2. When one of the two electable nodes goes
- * down, the remaining node is permitted to win elections, retain authoritative
+ * je.rep.designatedPrimary. This form of arbitration is only effective when the
+ * electable group size is 2. When one of the two electable nodes goes down, the
+ * remaining node is permitted to win elections, retain authoritative
  * mastership, and commit transactions without any participation from its dead
  * sibling, if and only if it has been configured as designated primary.
  * <p>
  * The user is responsible for ensuring that only one node at any time is
  * annointed as the designated primary. There is some sanity checking that
- * designated primary is only set by one node by master/replica syncups.  The
+ * designated primary is only set by one node by master/replica syncups. The
  * parameter is mutable.
  */
 public class DesignatedPrimaryProvider implements ArbiterProvider {
 
     private final RepImpl repImpl;
 
-    private final Logger logger;
+    private final Logger  logger;
 
     DesignatedPrimaryProvider(RepImpl repImpl) {
         this.repImpl = repImpl;
@@ -46,28 +46,24 @@ public class DesignatedPrimaryProvider implements ArbiterProvider {
     }
 
     /**
-     * Try to activate this node as a Primary, if it has been configured as
-     * such and if the group size is two. This method is invoked when an
-     * operation falls short of quorum requirements and is ready to trade
-     * durability for availability. More specifically it's invoked when an
-     * election fails, or there is an insufficient number of replicas during
-     * a begin transaction or a transaction commit.
-     *
-     * Active arbitration ends when the Non-Primary contacts it.
+     * Try to activate this node as a Primary, if it has been configured as such
+     * and if the group size is two. This method is invoked when an operation
+     * falls short of quorum requirements and is ready to trade durability for
+     * availability. More specifically it's invoked when an election fails, or
+     * there is an insufficient number of replicas during a begin transaction or
+     * a transaction commit. Active arbitration ends when the Non-Primary
+     * contacts it.
      *
      * @return true if the primary was activated.
      */
     @Override
     public boolean attemptActivation() {
         if (checkDesignatedPrimary()) {
-            LoggerUtils.info(logger, repImpl,
-                             "Primary activated; quorum is one.");
+            LoggerUtils.info(logger, repImpl, "Primary activated; quorum is one.");
             return true;
         }
 
-        LoggerUtils.fine(logger, repImpl,
-                         "Attempted unsuccessfully to activate designated " +
-                         "primary");
+        LoggerUtils.fine(logger, repImpl, "Attempted unsuccessfully to activate designated " + "primary");
         return false;
     }
 
@@ -95,8 +91,7 @@ public class DesignatedPrimaryProvider implements ArbiterProvider {
      */
     private boolean checkDesignatedPrimary() {
         return (repImpl != null) && /* repImpl can be null in unit tests */
-            repImpl.isDesignatedPrimary() &&
-            repImpl.getRepNode().getGroup().getElectableGroupSize() == 2;
+                repImpl.isDesignatedPrimary() && repImpl.getRepNode().getGroup().getElectableGroupSize() == 2;
     }
 
     /**
@@ -109,9 +104,8 @@ public class DesignatedPrimaryProvider implements ArbiterProvider {
     }
 
     /**
-     * Always returns 0, no replica acks are needed when acting under
-     * designated primary arbitration.
-     * TODO: is this still true with non voting nodes?
+     * Always returns 0, no replica acks are needed when acting under designated
+     * primary arbitration. TODO: is this still true with non voting nodes?
      */
     @Override
     public int getAckCount(ReplicaAckPolicy ackPolicy) {

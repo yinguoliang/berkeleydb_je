@@ -19,8 +19,7 @@ import java.beans.PropertyDescriptor;
 import com.sleepycat.util.ConfigBeanInfoBase;
 
 /**
- * @hidden
- * Getter/Setters for JavaBean based tools.
+ * @hidden Getter/Setters for JavaBean based tools.
  */
 public class ReplicationMutableConfigBeanInfo extends ConfigBeanInfoBase {
 

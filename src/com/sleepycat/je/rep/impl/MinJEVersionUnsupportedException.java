@@ -23,13 +23,13 @@ public class MinJEVersionUnsupportedException extends Exception {
     private static final long serialVersionUID = 1;
 
     /** The minimum JE version. */
-    public final JEVersion minVersion;
+    public final JEVersion    minVersion;
 
     /** The name of the node where the requested version is not supported. */
-    public final String nodeName;
+    public final String       nodeName;
 
     /** The node version, or null if not known. */
-    public final JEVersion nodeVersion;
+    public final JEVersion    nodeVersion;
 
     /**
      * Creates an instance of this class.
@@ -38,8 +38,7 @@ public class MinJEVersionUnsupportedException extends Exception {
      * @param nodeName the name of the node where the version is not supported
      * @param nodeVersion the node version, or {@code null} if not known
      */
-    public MinJEVersionUnsupportedException(final JEVersion minVersion,
-                                            final String nodeName,
+    public MinJEVersionUnsupportedException(final JEVersion minVersion, final String nodeName,
                                             final JEVersion nodeVersion) {
         if (minVersion == null) {
             throw new NullPointerException("The minVersion must not be null");
@@ -54,9 +53,7 @@ public class MinJEVersionUnsupportedException extends Exception {
 
     @Override
     public String getMessage() {
-        return "Version is not supported:" +
-            " minVersion: " + minVersion +
-            ", nodeName: " + nodeName +
-            ", nodeVersion: " + nodeVersion;
+        return "Version is not supported:" + " minVersion: " + minVersion + ", nodeName: " + nodeName
+                + ", nodeVersion: " + nodeVersion;
     }
 }

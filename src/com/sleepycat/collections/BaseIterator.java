@@ -16,7 +16,7 @@ package com.sleepycat.collections;
 import java.util.ListIterator;
 
 /**
- * Common interface for BlockIterator and StoredIterator.  This is an abstract
+ * Common interface for BlockIterator and StoredIterator. This is an abstract
  * class rather than in interface to prevent exposing these methods in javadoc.
  */
 abstract class BaseIterator<E> implements ListIterator<E> {

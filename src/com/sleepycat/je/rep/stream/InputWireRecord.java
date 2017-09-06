@@ -26,9 +26,8 @@ import com.sleepycat.je.utilint.VLSN;
 /**
  * Format for messages received at across the wire for replication. Instead of
  * sending a direct copy of the log entry as it is stored on the JE log files
- * (LogEntryHeader + LogEntry), select parts of the header are sent.
- *
- * An InputWireRecord de-serializes the logEntry from the message bytes and
+ * (LogEntryHeader + LogEntry), select parts of the header are sent. An
+ * InputWireRecord de-serializes the logEntry from the message bytes and
  * releases any claim on the backing ByteBuffer.
  */
 public class InputWireRecord extends WireRecord {
@@ -38,20 +37,18 @@ public class InputWireRecord extends WireRecord {
     /**
      * Make a InputWireRecord from an incoming replication message buffer for
      * applying at a replica.
+     * 
      * @throws DatabaseException
      */
-    InputWireRecord(final EnvironmentImpl envImpl,
-                    final ByteBuffer msgBuffer,
-                    final BaseProtocol protocol)
-        throws DatabaseException {
+    InputWireRecord(final EnvironmentImpl envImpl, final ByteBuffer msgBuffer, final BaseProtocol protocol)
+            throws DatabaseException {
 
         super(createLogEntryHeader(msgBuffer, protocol));
 
         logEntry = instantiateEntry(envImpl, msgBuffer);
     }
 
-    private static LogEntryHeader createLogEntryHeader(
-        final ByteBuffer msgBuffer, final BaseProtocol protocol) {
+    private static LogEntryHeader createLogEntryHeader(final ByteBuffer msgBuffer, final BaseProtocol protocol) {
 
         final byte entryType = msgBuffer.get();
         int entryVersion = LogUtils.readInt(msgBuffer);
@@ -59,11 +56,10 @@ public class InputWireRecord extends WireRecord {
         final VLSN vlsn = new VLSN(LogUtils.readLong(msgBuffer));
 
         /*
-         * Check to see if we need to fix the entry's log version to work
-         * around [#25222].
+         * Check to see if we need to fix the entry's log version to work around
+         * [#25222].
          */
-        if ((entryVersion > LogEntryType.LOG_VERSION_EXPIRE_INFO)
-            && protocol.getFixLogVersion12Entries()) {
+        if ((entryVersion > LogEntryType.LOG_VERSION_EXPIRE_INFO) && protocol.getFixLogVersion12Entries()) {
             entryVersion = LogEntryType.LOG_VERSION_EXPIRE_INFO;
         }
 
@@ -72,19 +68,15 @@ public class InputWireRecord extends WireRecord {
 
     /**
      * Unit test support.
+     * 
      * @throws DatabaseException
      */
-    InputWireRecord(final EnvironmentImpl envImpl,
-                    final byte entryType,
-                    final int entryVersion,
-                    final int itemSize,
-                    final VLSN vlsn,
-                    final ByteBuffer entryBuffer)
-        throws DatabaseException {
+    InputWireRecord(final EnvironmentImpl envImpl, final byte entryType, final int entryVersion, final int itemSize,
+                    final VLSN vlsn, final ByteBuffer entryBuffer)
+            throws DatabaseException {
 
         super(new LogEntryHeader(entryType, entryVersion, itemSize, vlsn));
-        logEntry = LogEntryType.findType(header.getType()).
-            getNewLogEntry();
+        logEntry = LogEntryType.findType(header.getType()).getNewLogEntry();
         logEntry.readEntry(envImpl, header, entryBuffer);
 
     }

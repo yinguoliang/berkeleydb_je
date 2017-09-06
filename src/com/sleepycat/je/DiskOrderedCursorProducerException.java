@@ -22,24 +22,24 @@ package com.sleepycat.je;
  */
 public class DiskOrderedCursorProducerException extends OperationFailureException {
 
-	private static final long serialVersionUID = 1;
+    private static final long serialVersionUID = 1;
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	public DiskOrderedCursorProducerException(String message, Throwable cause) {
-		super(null /* locker */, false /* abortOnly */, message, cause);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    public DiskOrderedCursorProducerException(String message, Throwable cause) {
+        super(null /* locker */, false /* abortOnly */, message, cause);
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	@Override
-	public OperationFailureException wrapSelf(String msg) {
-		return new DiskOrderedCursorProducerException(msg, this);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    @Override
+    public OperationFailureException wrapSelf(String msg) {
+        return new DiskOrderedCursorProducerException(msg, this);
+    }
 }

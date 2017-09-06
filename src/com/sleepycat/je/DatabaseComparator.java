@@ -25,12 +25,11 @@ import java.util.Comparator;
  */
 public interface DatabaseComparator extends Comparator<byte[]>, Serializable {
 
-	/**
-	 * Called to initialize a comparator object after it is instantiated or
-	 * deserialized, and before it is used.
-	 *
-	 * @param loader
-	 *            is the environment's ClassLoader property.
-	 */
-	public void initialize(ClassLoader loader);
+    /**
+     * Called to initialize a comparator object after it is instantiated or
+     * deserialized, and before it is used.
+     *
+     * @param loader is the environment's ClassLoader property.
+     */
+    public void initialize(ClassLoader loader);
 }

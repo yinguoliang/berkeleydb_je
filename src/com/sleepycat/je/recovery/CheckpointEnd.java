@@ -27,7 +27,7 @@ import com.sleepycat.je.utilint.Timestamp;
  */
 public class CheckpointEnd implements Loggable {
 
-    private static final byte ROOT_LSN_MASK = (byte) 0x1;
+    private static final byte ROOT_LSN_MASK      = (byte) 0x1;
     private static final byte CLEANED_FILES_MASK = (byte) 0x2;
 
     /*
@@ -35,39 +35,30 @@ public class CheckpointEnd implements Loggable {
      * based debugging. It will tell us whether the checkpoint was invoked by
      * recovery, the daemon, the api, or the cleaner.
      */
-    private String invoker;
+    private String            invoker;
 
-    private Timestamp endTime;
-    private long checkpointStartLsn;
-    private boolean rootLsnExists;
-    private long rootLsn;
-    private long firstActiveLsn;
-    private long lastLocalNodeId;
-    private long lastReplicatedNodeId;
-    private long lastLocalDbId;
-    private long lastReplicatedDbId;
-    private long lastLocalTxnId;
-    private long lastReplicatedTxnId;
-    private long id;
+    private Timestamp         endTime;
+    private long              checkpointStartLsn;
+    private boolean           rootLsnExists;
+    private long              rootLsn;
+    private long              firstActiveLsn;
+    private long              lastLocalNodeId;
+    private long              lastReplicatedNodeId;
+    private long              lastLocalDbId;
+    private long              lastReplicatedDbId;
+    private long              lastLocalTxnId;
+    private long              lastReplicatedTxnId;
+    private long              id;
 
-    /* 
-     * True if there were cleaned files to delete after this checkpoint.
-     * Used to govern HA recovery truncation. Defaults to true.
+    /*
+     * True if there were cleaned files to delete after this checkpoint. Used to
+     * govern HA recovery truncation. Defaults to true.
      */
-    private boolean cleanedFilesToDelete;
+    private boolean           cleanedFilesToDelete;
 
-    public CheckpointEnd(String invoker,
-                         long checkpointStartLsn,
-                         long rootLsn,
-                         long firstActiveLsn,
-                         long lastLocalNodeId,
-                         long lastReplicatedNodeId,
-                         long lastLocalDbId,
-                         long lastReplicatedDbId,
-                         long lastLocalTxnId,
-                         long lastReplicatedTxnId,
-                         long id,
-                         boolean cleanedFilesToDelete) {
+    public CheckpointEnd(String invoker, long checkpointStartLsn, long rootLsn, long firstActiveLsn,
+                         long lastLocalNodeId, long lastReplicatedNodeId, long lastLocalDbId, long lastReplicatedDbId,
+                         long lastLocalTxnId, long lastReplicatedTxnId, long id, boolean cleanedFilesToDelete) {
         if (invoker == null) {
             this.invoker = "";
         } else {
@@ -104,7 +95,7 @@ public class CheckpointEnd implements Loggable {
         rootLsn = DbLsn.NULL_LSN;
         firstActiveLsn = DbLsn.NULL_LSN;
     }
-    
+
     public String getInvoker() {
         return invoker;
     }
@@ -117,19 +108,13 @@ public class CheckpointEnd implements Loggable {
      * @see Loggable#getLogSize
      */
     public int getLogSize() {
-        int size =
-            LogUtils.getStringLogSize(invoker) +    // invoker
-            LogUtils.getTimestampLogSize(endTime) + // endTime
-            LogUtils.getPackedLongLogSize(checkpointStartLsn) +
-            1 +           // flags: rootLsnExists, cleanedFilesToDelete
-            LogUtils.getPackedLongLogSize(firstActiveLsn) +
-            LogUtils.getPackedLongLogSize(lastLocalNodeId) +
-            LogUtils.getPackedLongLogSize(lastReplicatedNodeId) +
-            LogUtils.getPackedLongLogSize(lastLocalDbId) +
-            LogUtils.getPackedLongLogSize(lastReplicatedDbId) +
-            LogUtils.getPackedLongLogSize(lastLocalTxnId) +
-            LogUtils.getPackedLongLogSize(lastReplicatedTxnId) +
-            LogUtils.getPackedLongLogSize(id);
+        int size = LogUtils.getStringLogSize(invoker) + // invoker
+                LogUtils.getTimestampLogSize(endTime) + // endTime
+                LogUtils.getPackedLongLogSize(checkpointStartLsn) + 1 + // flags: rootLsnExists, cleanedFilesToDelete
+                LogUtils.getPackedLongLogSize(firstActiveLsn) + LogUtils.getPackedLongLogSize(lastLocalNodeId)
+                + LogUtils.getPackedLongLogSize(lastReplicatedNodeId) + LogUtils.getPackedLongLogSize(lastLocalDbId)
+                + LogUtils.getPackedLongLogSize(lastReplicatedDbId) + LogUtils.getPackedLongLogSize(lastLocalTxnId)
+                + LogUtils.getPackedLongLogSize(lastReplicatedTxnId) + LogUtils.getPackedLongLogSize(id);
 
         if (rootLsnExists) {
             size += LogUtils.getPackedLongLogSize(rootLsn);
@@ -178,8 +163,7 @@ public class CheckpointEnd implements Loggable {
      */
     public void readFromLog(ByteBuffer logBuffer, int entryVersion) {
         boolean version6OrLater = (entryVersion >= 6);
-        invoker = LogUtils.readString(logBuffer, !version6OrLater,
-                                      entryVersion);
+        invoker = LogUtils.readString(logBuffer, !version6OrLater, entryVersion);
         endTime = LogUtils.readTimestamp(logBuffer, !version6OrLater);
         checkpointStartLsn = LogUtils.readLong(logBuffer, !version6OrLater);
         byte flags = logBuffer.get();
@@ -191,10 +175,10 @@ public class CheckpointEnd implements Loggable {
 
         if (entryVersion >= 7) {
             cleanedFilesToDelete = ((flags & CLEANED_FILES_MASK) != 0);
-        }  else {
+        } else {
             cleanedFilesToDelete = true;
         }
- 
+
         firstActiveLsn = LogUtils.readLong(logBuffer, !version6OrLater);
 
         lastLocalNodeId = LogUtils.readLong(logBuffer, !version6OrLater);
@@ -269,8 +253,8 @@ public class CheckpointEnd implements Loggable {
     }
 
     /**
-     * @see Loggable#logicalEquals
-     * Always return false, this item should never be compared.
+     * @see Loggable#logicalEquals Always return false, this item should never
+     *      be compared.
      */
     public boolean logicalEquals(Loggable other) {
         return false;
@@ -288,13 +272,11 @@ public class CheckpointEnd implements Loggable {
         sb.append(" lastReplicatedTxnId=").append(lastReplicatedTxnId);
         sb.append(" id=").append(id);
         sb.append(" rootExists=").append(rootLsnExists);
-        sb.append(" ckptStartLsn=").append
-            (DbLsn.getNoFormatString(checkpointStartLsn));
+        sb.append(" ckptStartLsn=").append(DbLsn.getNoFormatString(checkpointStartLsn));
         if (rootLsnExists) {
             sb.append(" root=").append(DbLsn.getNoFormatString(rootLsn));
         }
-        sb.append(" firstActive=").
-           append(DbLsn.getNoFormatString(firstActiveLsn));
+        sb.append(" firstActive=").append(DbLsn.getNoFormatString(firstActiveLsn));
         return sb.toString();
     }
 
@@ -340,7 +322,7 @@ public class CheckpointEnd implements Loggable {
     public long getId() {
         return id;
     }
-    
+
     public boolean getCleanedFilesToDelete() {
         return cleanedFilesToDelete;
     }

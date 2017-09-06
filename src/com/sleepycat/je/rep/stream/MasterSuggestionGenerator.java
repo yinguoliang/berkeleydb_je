@@ -21,27 +21,24 @@ import com.sleepycat.je.rep.impl.node.RepNode;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * A Basic suggestion generator.
- *
- * A more sophisticated version may contact other replica nodes to see if it
- * has sufficient connectivity to implement the commit policy in effect for
- * the Replication Group. KIS for now.
+ * A Basic suggestion generator. A more sophisticated version may contact other
+ * replica nodes to see if it has sufficient connectivity to implement the
+ * commit policy in effect for the Replication Group. KIS for now.
  */
-public class MasterSuggestionGenerator
-    implements Acceptor.SuggestionGenerator {
+public class MasterSuggestionGenerator implements Acceptor.SuggestionGenerator {
 
-    private final RepNode repNode;
+    private final RepNode        repNode;
 
-    /* Determines whether to use pre-emptive ranking to make this
-     * node the Master during the next election */
-    private boolean forceAsMaster = false;
+    /*
+     * Determines whether to use pre-emptive ranking to make this node the
+     * Master during the next election
+     */
+    private boolean              forceAsMaster     = false;
 
     /* Used during a forced election to guarantee this proposal as a winner. */
-    private static final Ranking PREMPTIVE_RANKING =
-        new Ranking(Long.MAX_VALUE, 0);
+    private static final Ranking PREMPTIVE_RANKING = new Ranking(Long.MAX_VALUE, 0);
     /* The ranking used to ensure that a current master is reselected. */
-    private static final Ranking MASTER_RANKING =
-        new Ranking(Long.MAX_VALUE - 1, 0);
+    private static final Ranking MASTER_RANKING    = new Ranking(Long.MAX_VALUE - 1, 0);
 
     public MasterSuggestionGenerator(RepNode repNode) {
         this.repNode = repNode;
@@ -50,9 +47,7 @@ public class MasterSuggestionGenerator
     @Override
     public Value get(Proposal proposal) {
         /* Suggest myself as master */
-        return new MasterValue(repNode.getHostName(),
-                               repNode.getPort(),
-                               repNode.getNameIdPair());
+        return new MasterValue(repNode.getHostName(), repNode.getPort(), repNode.getNameIdPair());
     }
 
     @Override
@@ -67,13 +62,12 @@ public class MasterSuggestionGenerator
         }
 
         final long dtvlsn = repNode.getDTVLSN();
-        final long vlsn = repNode.getVLSNIndex().getRange().
-                           getLast().getSequence();
+        final long vlsn = repNode.getVLSNIndex().getRange().getLast().getSequence();
 
         if (dtvlsn == VLSN.UNINITIALIZED_VLSN_SEQUENCE) {
             /*
-             * In a preDTVLSN stream segment on a postDTVLSN replica. No
-             * DTVLSN information as yet.
+             * In a preDTVLSN stream segment on a postDTVLSN replica. No DTVLSN
+             * information as yet.
              */
             return new Ranking(vlsn, 0);
         }
@@ -82,10 +76,9 @@ public class MasterSuggestionGenerator
     }
 
     /**
-     * This entry point is for testing only.
-     *
-     * It will submit a Proposal with a premptive ranking so that it's
-     * guaranteed to be the selected as the master at the next election.
+     * This entry point is for testing only. It will submit a Proposal with a
+     * premptive ranking so that it's guaranteed to be the selected as the
+     * master at the next election.
      *
      * @param force determines whether the forced proposal is in effect
      */

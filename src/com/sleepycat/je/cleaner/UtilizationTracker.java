@@ -20,22 +20,23 @@ import com.sleepycat.je.dbi.MemoryBudget;
 import com.sleepycat.je.log.LogEntryType;
 
 /**
- * Tracks changes to the utilization profile since the last checkpoint.  This
- * is the "global" tracker for an environment that tracks changes as they
- * occur in live operations.  Other "local" tracker classes are used to count
- * utilization locally and then later transfer the information to the global
- * tracker, this tracker.
- *
- * <p>All changes to this object occur must under the log write latch.  It is
- * possible to read tracked info without holding the latch.  This is done by
- * the cleaner when selecting a file and by the checkpointer when determining
- * what FileSummaryLNs need to be written.  To read tracked info outside the
- * log write latch, call getTrackedFile or getTrackedFiles.</p>
+ * Tracks changes to the utilization profile since the last checkpoint. This is
+ * the "global" tracker for an environment that tracks changes as they occur in
+ * live operations. Other "local" tracker classes are used to count utilization
+ * locally and then later transfer the information to the global tracker, this
+ * tracker.
+ * <p>
+ * All changes to this object occur must under the log write latch. It is
+ * possible to read tracked info without holding the latch. This is done by the
+ * cleaner when selecting a file and by the checkpointer when determining what
+ * FileSummaryLNs need to be written. To read tracked info outside the log write
+ * latch, call getTrackedFile or getTrackedFiles.
+ * </p>
  */
 public class UtilizationTracker extends BaseUtilizationTracker {
 
     /**
-     * Creates an empty tracker.  The cleaner field of the environment object
+     * Creates an empty tracker. The cleaner field of the environment object
      * must be initialized before using this constructor.
      */
     public UtilizationTracker(EnvironmentImpl env) {
@@ -43,8 +44,8 @@ public class UtilizationTracker extends BaseUtilizationTracker {
     }
 
     /**
-     * Constructor used by the cleaner constructor, prior to setting the
-     * cleaner field of the environment.
+     * Constructor used by the cleaner constructor, prior to setting the cleaner
+     * field of the environment.
      */
     UtilizationTracker(EnvironmentImpl env, Cleaner cleaner) {
         super(env, cleaner);
@@ -56,16 +57,16 @@ public class UtilizationTracker extends BaseUtilizationTracker {
     }
 
     /**
-     * Evicts tracked detail if the budget for the tracker is exceeded.  Evicts
-     * only one file summary LN at most to keep eviction batches small.
-     * Returns the number of bytes freed.
-     *
-     * <p>When flushFileSummary is called, the TrackedFileSummary is cleared
-     * via its reset method, which is called by FileSummaryLN.writeToLog.  This
-     * is how memory is subtracted from the budget.</p>
+     * Evicts tracked detail if the budget for the tracker is exceeded. Evicts
+     * only one file summary LN at most to keep eviction batches small. Returns
+     * the number of bytes freed.
+     * <p>
+     * When flushFileSummary is called, the TrackedFileSummary is cleared via
+     * its reset method, which is called by FileSummaryLN.writeToLog. This is
+     * how memory is subtracted from the budget.
+     * </p>
      */
-    public long evictMemory()
-        throws DatabaseException {
+    public long evictMemory() throws DatabaseException {
 
         /* If not tracking detail, there is nothing to evict. */
         if (!cleaner.trackDetail) {
@@ -74,7 +75,7 @@ public class UtilizationTracker extends BaseUtilizationTracker {
 
         /*
          * Do not start eviction until after recovery, since the
-         * UtilizationProfile will not be initialized properly.  UP
+         * UtilizationProfile will not be initialized properly. UP
          * initialization requires that all LNs have been replayed.
          */
         if (!env.isValid()) {
@@ -83,8 +84,8 @@ public class UtilizationTracker extends BaseUtilizationTracker {
 
         /*
          * In a read-only env, we cannot free memory by flushing a
-         * FileSummaryLN.  Normally utilization information is not accumulated
-         * in a read-only env, but this may ocur during recovery.
+         * FileSummaryLN. Normally utilization information is not accumulated in
+         * a read-only env, but this may ocur during recovery.
          */
         if (env.isReadOnly()) {
             return 0;
@@ -120,84 +121,74 @@ public class UtilizationTracker extends BaseUtilizationTracker {
 
     /**
      * Counts the addition of all new log entries including LNs.
-     *
-     * <p>Must be called under the log write latch.</p>
+     * <p>
+     * Must be called under the log write latch.
+     * </p>
      */
-    public void countNewLogEntry(long lsn,
-                                 LogEntryType type,
-                                 int size,
-                                 DatabaseImpl db) {
+    public void countNewLogEntry(long lsn, LogEntryType type, int size, DatabaseImpl db) {
         countNew(lsn, db, type, size);
     }
 
     /**
      * Counts a node that has become obsolete and tracks the LSN offset, if
      * non-zero, to avoid a lookup during cleaning.
-     *
-     * <p>A zero LSN offset is used as a special value when obsolete offset
-     * tracking is not desired. [#15365]  The file header entry (at offset
-     * zero) is never counted as obsolete, it is assumed to be obsolete by the
-     * cleaner.</p>
-     *
-     * <p>This method should only be called for LNs and INs (i.e, only for
-     * nodes).  If type is null we assume it is an LN.</p>
-     *
-     * <p>Must be called under the log write latch.</p>
+     * <p>
+     * A zero LSN offset is used as a special value when obsolete offset
+     * tracking is not desired. [#15365] The file header entry (at offset zero)
+     * is never counted as obsolete, it is assumed to be obsolete by the
+     * cleaner.
+     * </p>
+     * <p>
+     * This method should only be called for LNs and INs (i.e, only for nodes).
+     * If type is null we assume it is an LN.
+     * </p>
+     * <p>
+     * Must be called under the log write latch.
+     * </p>
      */
-    public void countObsoleteNode(long lsn,
-                                  LogEntryType type,
-                                  int size,
-                                  DatabaseImpl db) {
-        countObsolete
-            (lsn, db, type, size,
-             true,   // countPerFile
-             true,   // countPerDb
-             true,   // trackOffset
-             true);  // checkDupOffsets
+    public void countObsoleteNode(long lsn, LogEntryType type, int size, DatabaseImpl db) {
+        countObsolete(lsn, db, type, size, true, // countPerFile
+                true, // countPerDb
+                true, // trackOffset
+                true); // checkDupOffsets
     }
 
     /**
      * Counts as countObsoleteNode does, but since the LSN may be inexact, does
      * not track the obsolete LSN offset.
-     *
-     * <p>This method should only be called for LNs and INs (i.e, only for
-     * nodes).  If type is null we assume it is an LN.</p>
-     *
-     * <p>Must be called under the log write latch.</p>
+     * <p>
+     * This method should only be called for LNs and INs (i.e, only for nodes).
+     * If type is null we assume it is an LN.
+     * </p>
+     * <p>
+     * Must be called under the log write latch.
+     * </p>
      */
-    public void countObsoleteNodeInexact(long lsn,
-                                         LogEntryType type,
-                                         int size,
-                                         DatabaseImpl db) {
-        countObsolete
-            (lsn, db, type, size,
-             true,   // countPerFile
-             true,   // countPerDb
-             false,  // trackOffset
-             false); // checkDupOffsets
+    public void countObsoleteNodeInexact(long lsn, LogEntryType type, int size, DatabaseImpl db) {
+        countObsolete(lsn, db, type, size, true, // countPerFile
+                true, // countPerDb
+                false, // trackOffset
+                false); // checkDupOffsets
     }
 
     /**
      * Counts as countObsoleteNode does, tracks the obsolete LSN offset, but
-     * does not fire an assert if the offset has already been counted.  Use
-     * this method when the same LSN offset may be counted twice in certain
+     * does not fire an assert if the offset has already been counted. Use this
+     * method when the same LSN offset may be counted twice in certain
      * circumstances.
-     *
-     * <p>This method should only be called for LNs and INs (i.e, only for
-     * nodes).  If type is null we assume it is an LN.</p>
-     *
-     * <p>Must be called under the log write latch.</p>
+     * <p>
+     * This method should only be called for LNs and INs (i.e, only for nodes).
+     * If type is null we assume it is an LN.
+     * </p>
+     * <p>
+     * Must be called under the log write latch.
+     * </p>
      */
-    public void countObsoleteNodeDupsAllowed(long lsn,
-                                             LogEntryType type,
-                                             int size,
-                                             DatabaseImpl db) {
-        countObsolete
-            (lsn, db, type, size,
-             true,   // countPerFile
-             true,   // countPerDb
-             true,   // trackOffset
-             false); // checkDupOffsets
+    public void countObsoleteNodeDupsAllowed(long lsn, LogEntryType type, int size, DatabaseImpl db) {
+        countObsolete(lsn, db, type, size, true, // countPerFile
+                true, // countPerDb
+                true, // trackOffset
+                false); // checkDupOffsets
     }
 
     /**
@@ -212,17 +203,18 @@ public class UtilizationTracker extends BaseUtilizationTracker {
     /**
      * Allocates DbFileSummary information in the DatabaseImpl, which is the
      * database key.
+     * <p>
+     * Must be called under the log write latch, and the returned object may
+     * only be accessed under the log write latch.
+     * </p>
      *
-     * <p>Must be called under the log write latch, and the returned object
-     * may only be accessed under the log write latch.</p>
-     *
-     * @return the summary, or null if the DB should not be tracked because
-     * the file has been deleted, or null if the databaseKey param is null.
+     * @return the summary, or null if the DB should not be tracked because the
+     *         file has been deleted, or null if the databaseKey param is null.
      */
     DbFileSummary getDbFileSummary(Object databaseKey, long fileNum) {
         DatabaseImpl db = (DatabaseImpl) databaseKey;
         if (db != null) {
-            return db.getDbFileSummary(fileNum, true /*willModify*/);
+            return db.getDbFileSummary(fileNum, true /* willModify */);
         } else {
             return null;
         }

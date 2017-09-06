@@ -38,22 +38,19 @@ import com.sleepycat.je.rep.utilint.ServiceDispatcher.ExecutingService;
 /**
  * Implementation of the LDiff service that process requests from the LDiff
  * client. It's the network level interface to the remote processing done as
- * part of the ldiff implementation.
- *
- * Note that the service only processes one request at a time, so as not to
- * overload the node.
+ * part of the ldiff implementation. Note that the service only processes one
+ * request at a time, so as not to overload the node.
  */
 public class LDiffService extends ExecutingService {
 
     /* The service name. */
-    public static final String NAME = "LDiff";
+    public static final String      NAME = "LDiff";
 
     /*
-     * Determines whether the service is busy and will accept a new
-     * request.
+     * Determines whether the service is busy and will accept a new request.
      */
-    private final AtomicBoolean busy = new AtomicBoolean(false);
-    private final RepImpl repImpl;
+    private final AtomicBoolean     busy = new AtomicBoolean(false);
+    private final RepImpl           repImpl;
     private final ServiceDispatcher dispatcher;
 
     public LDiffService(ServiceDispatcher dispatcher, RepImpl repImpl) {
@@ -78,16 +75,15 @@ public class LDiffService extends ExecutingService {
     @Override
     public Runnable getRunnable(DataChannel dataChannel) {
         if (!busy.compareAndSet(false, true)) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Service is already busy");
+            throw EnvironmentFailureException.unexpectedState("Service is already busy");
         }
         return new LDiffServiceRunnable(dataChannel);
     }
 
     class LDiffServiceRunnable implements Runnable {
-        final DataChannel channel;
+        final DataChannel             channel;
         private ReplicatedEnvironment env;
-        private DatabaseConfig dbConfig = new DatabaseConfig();
+        private DatabaseConfig        dbConfig = new DatabaseConfig();
 
         LDiffServiceRunnable(DataChannel dataChannel) {
             this.channel = dataChannel;
@@ -95,14 +91,12 @@ public class LDiffService extends ExecutingService {
             dbConfig.setAllowCreate(false);
         }
 
-        public void runLDiff(DbBlocks request, Protocol protocol)
-            throws IOException {
+        public void runLDiff(DbBlocks request, Protocol protocol) throws IOException {
 
             Database db = null;
             Cursor cursor = null;
-            try{
-                db = env.openDatabase
-                    (null, request.getDbName(), dbConfig);
+            try {
+                db = env.openDatabase(null, request.getDbName(), dbConfig);
                 protocol.write(protocol.new BlockListStart(), channel);
                 LDiffConfig cfg = new LDiffConfig();
                 cfg.setBlockSize(request.getBlockSize());
@@ -110,8 +104,7 @@ public class LDiffService extends ExecutingService {
                 /* Use the Iterator to stream the blocks across the wire. */
                 Iterator<Block> blocks = ldf.iterator(db);
                 while (blocks.hasNext()) {
-                    protocol.write(protocol.new BlockInfo(blocks.next()),
-                            channel);
+                    protocol.write(protocol.new BlockInfo(blocks.next()), channel);
                 }
                 protocol.write(protocol.new BlockListEnd(), channel);
 
@@ -122,12 +115,10 @@ public class LDiffService extends ExecutingService {
                     sendDiffArea(cursor, (RemoteDiffRequest) msg, protocol);
                     runDiffAnalysis(cursor, protocol);
                 } else if (msg.getOp() != Protocol.DONE) {
-                    protocol.write(protocol.new ProtocolError
-                            ("Invalid message: " + msg), channel);
+                    protocol.write(protocol.new ProtocolError("Invalid message: " + msg), channel);
                 }
             } catch (DatabaseNotFoundException e) {
-                protocol.write(protocol.new DbMismatch(e.getMessage()),
-                               channel);
+                protocol.write(protocol.new DbMismatch(e.getMessage()), channel);
             } finally {
                 if (cursor != null) {
                     cursor.close();
@@ -139,9 +130,7 @@ public class LDiffService extends ExecutingService {
         }
 
         /* Get records for all different areas and send out. */
-        private void runDiffAnalysis(Cursor cursor,
-                                     Protocol protocol)
-            throws IOException {
+        private void runDiffAnalysis(Cursor cursor, Protocol protocol) throws IOException {
 
             while (true) {
                 Message msg = protocol.read(channel);
@@ -149,8 +138,7 @@ public class LDiffService extends ExecutingService {
                     sendDiffArea(cursor, (RemoteDiffRequest) msg, protocol);
                 } else {
                     if (msg.getOp() != Protocol.DONE) {
-                        protocol.write(protocol.new ProtocolError
-                                ("Invalid message: " + msg), channel);
+                        protocol.write(protocol.new ProtocolError("Invalid message: " + msg), channel);
                     }
                     break;
                 }
@@ -158,10 +146,7 @@ public class LDiffService extends ExecutingService {
         }
 
         /* Send the different records of an area to the requested machine. */
-        private void sendDiffArea(Cursor cursor,
-                                  RemoteDiffRequest request,
-                                  Protocol protocol)
-            throws IOException {
+        private void sendDiffArea(Cursor cursor, RemoteDiffRequest request, Protocol protocol) throws IOException {
 
             /* Get the records in the different area. */
             HashSet<Record> records = null;
@@ -174,17 +159,15 @@ public class LDiffService extends ExecutingService {
 
             /* Write them out to the requested machine. */
             protocol.write(protocol.new DiffAreaStart(), channel);
-            for (Record record: records) {
+            for (Record record : records) {
                 protocol.write(protocol.new RemoteRecord(record), channel);
             }
             protocol.write(protocol.new DiffAreaEnd(), channel);
         }
 
-        public void runEnvDiff(EnvDiff request, Protocol protocol)
-            throws IOException {
+        public void runEnvDiff(EnvDiff request, Protocol protocol) throws IOException {
 
-            protocol.write(protocol.new EnvInfo
-                           (env.getDatabaseNames().size()), channel);
+            protocol.write(protocol.new EnvInfo(env.getDatabaseNames().size()), channel);
         }
 
         @Override
@@ -198,15 +181,13 @@ public class LDiffService extends ExecutingService {
                     channel.getSocketChannel().configureBlocking(true);
                     Message msg = protocol.read(channel);
                     if (msg.getOp() == Protocol.DB_BLOCKS) {
-                        runLDiff((DbBlocks)msg, protocol);
+                        runLDiff((DbBlocks) msg, protocol);
                     } else if (msg.getOp() == Protocol.ENV_DIFF) {
-                        runEnvDiff((EnvDiff)msg, protocol);
+                        runEnvDiff((EnvDiff) msg, protocol);
                     }
                 } catch (ProtocolException e) {
                     /* Unexpected message. */
-                    protocol.write
-                        (protocol.new ProtocolError(e.getMessage()),
-                         channel);
+                    protocol.write(protocol.new ProtocolError(e.getMessage()), channel);
                 } finally {
                     if (channel.isOpen()) {
                         channel.close();
@@ -215,16 +196,14 @@ public class LDiffService extends ExecutingService {
             } catch (IOException e) {
 
                 /*
-                 * Channel has already been closed, or the close itself
-                 * failed.
+                 * Channel has already been closed, or the close itself failed.
                  */
             } finally {
                 if (env != null) {
                     env.close();
                 }
                 if (!busy.compareAndSet(true, false)) {
-                    throw EnvironmentFailureException.unexpectedState
-                        ("Service is not busy");
+                    throw EnvironmentFailureException.unexpectedState("Service is not busy");
                 }
             }
         }

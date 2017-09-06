@@ -25,7 +25,5 @@ public interface RepEnvConfigObserver {
      * Notifies the observer that one or more mutable rep properties have been
      * changed.
      */
-    void repEnvConfigUpdate(RepConfigManager configMgr,
-                            ReplicationMutableConfig newConfig)
-        throws DatabaseException;
+    void repEnvConfigUpdate(RepConfigManager configMgr, ReplicationMutableConfig newConfig) throws DatabaseException;
 }

@@ -16,11 +16,12 @@ package com.sleepycat.persist.model;
 import java.io.Serializable;
 
 /**
- * The metadata for a key field.  This class defines common properties for
+ * The metadata for a key field. This class defines common properties for
  * singular and composite key fields.
- *
- * <p>{@code FieldMetadata} objects are thread-safe.  Multiple threads may
- * safely call the methods of a shared {@code FieldMetadata} object.</p>
+ * <p>
+ * {@code FieldMetadata} objects are thread-safe. Multiple threads may safely
+ * call the methods of a shared {@code FieldMetadata} object.
+ * </p>
  *
  * @author Mark Hayes
  */
@@ -28,9 +29,9 @@ public class FieldMetadata implements Serializable {
 
     private static final long serialVersionUID = -9037650229184174279L;
 
-    private String name;
-    private String className;
-    private String declaringClassName;
+    private String            name;
+    private String            className;
+    private String            declaringClassName;
 
     /**
      * Used by an {@code EntityModel} to construct field metadata.
@@ -38,11 +39,9 @@ public class FieldMetadata implements Serializable {
      * @param name the field name.
      * @param className the class name.
      * @param declaringClassName the name of the class where the field is
-     * declared.
+     *            declared.
      */
-    public FieldMetadata(String name,
-                         String className,
-                         String declaringClassName) {
+    public FieldMetadata(String name, String className, String declaringClassName) {
         this.name = name;
         this.className = className;
         this.declaringClassName = declaringClassName;
@@ -79,10 +78,8 @@ public class FieldMetadata implements Serializable {
     public boolean equals(Object other) {
         if (other instanceof FieldMetadata) {
             FieldMetadata o = (FieldMetadata) other;
-            return ClassMetadata.nullOrEqual(name, o.name) &&
-                   ClassMetadata.nullOrEqual(className, o.className) &&
-                   ClassMetadata.nullOrEqual(declaringClassName,
-                                             o.declaringClassName);
+            return ClassMetadata.nullOrEqual(name, o.name) && ClassMetadata.nullOrEqual(className, o.className)
+                    && ClassMetadata.nullOrEqual(declaringClassName, o.declaringClassName);
         } else {
             return false;
         }
@@ -90,14 +87,13 @@ public class FieldMetadata implements Serializable {
 
     @Override
     public int hashCode() {
-        return ClassMetadata.hashCode(name) +
-               ClassMetadata.hashCode(className) +
-               ClassMetadata.hashCode(declaringClassName);
+        return ClassMetadata.hashCode(name) + ClassMetadata.hashCode(className)
+                + ClassMetadata.hashCode(declaringClassName);
     }
 
     @Override
     public String toString() {
-        return "[FieldMetadata name: " + name + " className: " + className +
-               " declaringClassName: " + declaringClassName + ']';
+        return "[FieldMetadata name: " + name + " className: " + className + " declaringClassName: "
+                + declaringClassName + ']';
     }
 }

@@ -28,33 +28,31 @@ import com.sleepycat.utilint.StringUtils;
  */
 public class LogUtils {
     /* Storage sizes for int, long in log. */
-    public static final int SHORT_BYTES = 2;
-    public static final int INT_BYTES = 4;
-    public static final int LONG_BYTES = 8;
-    public static final int UNSIGNED_INT_BYTES = 4;
+    public static final int      SHORT_BYTES            = 2;
+    public static final int      INT_BYTES              = 4;
+    public static final int      LONG_BYTES             = 8;
+    public static final int      UNSIGNED_INT_BYTES     = 4;
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG                  = false;
 
     /*
      * We can return the same byte[] for 0 length arrays.
      */
-    public static final byte[] ZERO_LENGTH_BYTE_ARRAY = new byte[0];
+    public static final byte[]   ZERO_LENGTH_BYTE_ARRAY = new byte[0];
 
     /*
      * The je.logCharset system property can be specified when running
      * DbPrintLog to work around the charset issue in JE 5.0 and earlier (see
-     * [#15296] below).  For example, because of this issue, on a z/OS system
-     * the trace messages and other internal strings (such as the checkpoint
-     * invoker) are stored in the log in EBCDIC encoding.  The following system
+     * [#15296] below). For example, because of this issue, on a z/OS system the
+     * trace messages and other internal strings (such as the checkpoint
+     * invoker) are stored in the log in EBCDIC encoding. The following system
      * property allows such strings to be viewed correctly in the DbPrintLog
-     * output:
-     *      -Dje.logCharset=IBM1047
-     *
-     * WARNING: Do not specify this property when running an application that
-     * writes to the log.  It is only for reading a log (such as with
-     * DbPrintLog) that was written with a non-ANSI-based default charset.
+     * output: -Dje.logCharset=IBM1047 WARNING: Do not specify this property
+     * when running an application that writes to the log. It is only for
+     * reading a log (such as with DbPrintLog) that was written with a
+     * non-ANSI-based default charset.
      */
-    private static Charset logCharset = null;
+    private static Charset       logCharset             = null;
     static {
         final String charsetName = System.getProperty("je.logCharset");
         if (charsetName != null && charsetName.length() > 0) {
@@ -106,8 +104,7 @@ public class LogUtils {
      * Read a short from the log.
      */
     public static short readShort(ByteBuffer logBuf) {
-        return (short) (((logBuf.get() & 0xFF) << 0) +
-                        ((logBuf.get() & 0xFF) << 8));
+        return (short) (((logBuf.get() & 0xFF) << 0) + ((logBuf.get() & 0xFF) << 8));
     }
 
     /**
@@ -158,9 +155,7 @@ public class LogUtils {
      */
     public static void writePackedInt(ByteBuffer logBuf, int i) {
         int off = logBuf.arrayOffset();
-        int newPos =
-            PackedInteger.writeInt(logBuf.array(),
-                                   logBuf.position() + off, i);
+        int newPos = PackedInteger.writeInt(logBuf.array(), logBuf.position() + off, i);
         logBuf.position(newPos - off);
     }
 
@@ -185,7 +180,7 @@ public class LogUtils {
     }
 
     /**
-     * Write an int into the log in MSB order.  Used for ordered keys.
+     * Write an int into the log in MSB order. Used for ordered keys.
      */
     public static void writeIntMSB(ByteBuffer logBuf, int i) {
         byte b = (byte) ((i >> 24) & 0xff);
@@ -199,7 +194,7 @@ public class LogUtils {
     }
 
     /**
-     * Read a int from the log in MSB order.  Used for ordered keys.
+     * Read a int from the log in MSB order. Used for ordered keys.
      */
     public static int readIntMSB(ByteBuffer logBuf) {
         int ret = (logBuf.get() & 0xFF) << 24;
@@ -213,21 +208,21 @@ public class LogUtils {
      * Write a long into the log.
      */
     public static void writeLong(ByteBuffer logBuf, long l) {
-        byte b =(byte) (l >>> 0);
+        byte b = (byte) (l >>> 0);
         logBuf.put(b);
-        b =(byte) (l >>> 8);
+        b = (byte) (l >>> 8);
         logBuf.put(b);
-        b =(byte) (l >>> 16);
+        b = (byte) (l >>> 16);
         logBuf.put(b);
-        b =(byte) (l >>> 24);
+        b = (byte) (l >>> 24);
         logBuf.put(b);
-        b =(byte) (l >>> 32);
+        b = (byte) (l >>> 32);
         logBuf.put(b);
-        b =(byte) (l >>> 40);
+        b = (byte) (l >>> 40);
         logBuf.put(b);
-        b =(byte) (l >>> 48);
+        b = (byte) (l >>> 48);
         logBuf.put(b);
-        b =(byte) (l >>> 56);
+        b = (byte) (l >>> 56);
         logBuf.put(b);
     }
 
@@ -269,9 +264,7 @@ public class LogUtils {
      */
     public static void writePackedLong(ByteBuffer logBuf, long l) {
         int off = logBuf.arrayOffset();
-        int newPos =
-            PackedInteger.writeLong(logBuf.array(),
-                                    logBuf.position() + off, l);
+        int newPos = PackedInteger.writeLong(logBuf.array(), logBuf.position() + off, l);
         logBuf.position(newPos - off);
     }
 
@@ -309,7 +302,7 @@ public class LogUtils {
         writePackedInt(logBuf, b.length);
 
         /* Add the data itself. */
-        logBuf.put(b);                     // data
+        logBuf.put(b); // data
     }
 
     /**
@@ -318,8 +311,7 @@ public class LogUtils {
     public static byte[] readByteArray(ByteBuffer logBuf, boolean unpacked) {
         int size = readInt(logBuf, unpacked);
         if (DEBUG) {
-            System.out.println("pos = " + logBuf.position() +
-                               " byteArray is " + size + " on read");
+            System.out.println("pos = " + logBuf.position() + " byteArray is " + size + " on read");
         }
 
         if (size < 0) {
@@ -331,7 +323,7 @@ public class LogUtils {
         }
 
         byte[] b = new byte[size];
-        logBuf.get(b);               // read it out
+        logBuf.get(b); // read it out
         return b;
     }
 
@@ -357,12 +349,11 @@ public class LogUtils {
     }
 
     /**
-     * Read a byte array from the log.  The size is not stored.
+     * Read a byte array from the log. The size is not stored.
      */
     public static byte[] readBytesNoLength(ByteBuffer logBuf, int size) {
         if (DEBUG) {
-            System.out.println("pos = " + logBuf.position() +
-                               " byteArray is " + size + " on read");
+            System.out.println("pos = " + logBuf.position() + " byteArray is " + size + " on read");
         }
 
         if (size == 0) {
@@ -370,29 +361,26 @@ public class LogUtils {
         }
 
         byte[] b = new byte[size];
-        logBuf.get(b);               // read it out
+        logBuf.get(b); // read it out
         return b;
     }
 
     /**
      * Write a string into the log. The size is stored first as an integer.
      */
-    public static void writeString(ByteBuffer logBuf,
-                                   String stringVal) {
+    public static void writeString(ByteBuffer logBuf, String stringVal) {
         writeByteArray(logBuf, StringUtils.toUTF8(stringVal));
     }
 
     /**
      * Read a string from the log. The size is stored first as an integer.
      */
-    public static String readString(ByteBuffer logBuf,
-                                    boolean unpacked,
-                                    int entryVersion) {
+    public static String readString(ByteBuffer logBuf, boolean unpacked, int entryVersion) {
         final byte[] bytes = readByteArray(logBuf, unpacked);
 
         /*
-         * Use logCharset only prior to version 9, since in version 9
-         * UTF8 is always used.  See logCharset for details.
+         * Use logCharset only prior to version 9, since in version 9 UTF8 is
+         * always used. See logCharset for details.
          */
         if (entryVersion >= 9) {
             return StringUtils.fromUTF8(bytes);
@@ -420,8 +408,7 @@ public class LogUtils {
     /**
      * Read a timestamp from the log.
      */
-    public static Timestamp readTimestamp(ByteBuffer logBuf,
-                                          boolean unpacked) {
+    public static Timestamp readTimestamp(ByteBuffer logBuf, boolean unpacked) {
         long millis = readLong(logBuf, unpacked);
         return new Timestamp(millis);
     }
@@ -459,9 +446,7 @@ public class LogUtils {
     /*
      * Dumping support.
      */
-    public static boolean dumpBoolean(ByteBuffer itemBuffer,
-                                      StringBuilder sb,
-                                      String tag) {
+    public static boolean dumpBoolean(ByteBuffer itemBuffer, StringBuilder sb, String tag) {
         sb.append("<");
         sb.append(tag);
         sb.append(" exists = \"");
@@ -477,19 +462,18 @@ public class LogUtils {
     }
 
     /**
-     * The byte[]'s in Xid's are known to be 255 or less in length.  So instead
+     * The byte[]'s in Xid's are known to be 255 or less in length. So instead
      * of using read/writeByteArray(), we can save 6 bytes per record by making
      * the byte[] length be 1 byte instead of 4.
      */
     public static int getXidSize(Xid xid) {
         byte[] gid = xid.getGlobalTransactionId();
         byte[] bqual = xid.getBranchQualifier();
-        return
-            INT_BYTES +                         // FormatId
-            1 +                                 // gxid length byte
-            1 +                                 // bqual length byte
-            (gid == null ? 0 : gid.length) +    // gid bytes
-            (bqual == null ? 0 : bqual.length); // bqual bytes
+        return INT_BYTES + // FormatId
+                1 + // gxid length byte
+                1 + // bqual length byte
+                (gid == null ? 0 : gid.length) + // gid bytes
+                (bqual == null ? 0 : bqual.length); // bqual bytes
     }
 
     /*
@@ -542,7 +526,7 @@ public class LogUtils {
     }
 
     public static class XidImpl implements Xid {
-        private int formatId;
+        private int    formatId;
         private byte[] gid;
         private byte[] bqual;
 
@@ -575,8 +559,8 @@ public class LogUtils {
             if (xid.getFormatId() != formatId) {
                 return false;
             }
-            if (compareByteArrays(xid.getGlobalTransactionId(), gid) &&
-                compareByteArrays(xid.getBranchQualifier(), bqual)) {
+            if (compareByteArrays(xid.getGlobalTransactionId(), gid)
+                    && compareByteArrays(xid.getBranchQualifier(), bqual)) {
                 return true;
             }
 
@@ -600,8 +584,7 @@ public class LogUtils {
         }
 
         private boolean compareByteArrays(byte[] b1, byte[] b2) {
-            if (b1 == null ||
-                b2 == null) {
+            if (b1 == null || b2 == null) {
                 return b1 == b2;
             }
 

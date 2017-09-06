@@ -21,21 +21,15 @@ import com.sleepycat.je.EnvironmentFailureException;
 public class IntegralLongAvgStat extends Stat<IntegralLongAvg> {
 
     private static final long serialVersionUID = 1L;
-    private IntegralLongAvg value;
+    private IntegralLongAvg   value;
 
-    public IntegralLongAvgStat(StatGroup group,
-                               StatDefinition definition,
-                               long numerator,
-                               long denominator,
+    public IntegralLongAvgStat(StatGroup group, StatDefinition definition, long numerator, long denominator,
                                long factor) {
         super(group, definition);
         value = new IntegralLongAvg(numerator, denominator, factor);
     }
 
-    public IntegralLongAvgStat(StatGroup group,
-                               StatDefinition definition,
-                               long numerator,
-                               long denominator) {
+    public IntegralLongAvgStat(StatGroup group, StatDefinition definition, long numerator, long denominator) {
         super(group, definition);
         value = new IntegralLongAvg(numerator, denominator);
     }
@@ -88,9 +82,7 @@ public class IntegralLongAvgStat extends Stat<IntegralLongAvg> {
 
     @Override
     protected String getFormattedValue() {
-        return (value != null) ?
-                Stat.FORMAT.format(get()) :
-                Stat.FORMAT.format(0);
+        return (value != null) ? Stat.FORMAT.format(get()) : Stat.FORMAT.format(0);
     }
 
     @Override

@@ -44,12 +44,9 @@ public class SimpleChannelFactory implements DataChannelFactory {
     }
 
     @Override
-    public DataChannel connect(InetSocketAddress addr,
-                               ConnectOptions connectOptions)
-        throws IOException {
+    public DataChannel connect(InetSocketAddress addr, ConnectOptions connectOptions) throws IOException {
 
-        final SocketChannel socketChannel =
-            RepUtils.openSocketChannel(addr, connectOptions);
+        final SocketChannel socketChannel = RepUtils.openSocketChannel(addr, connectOptions);
         return new SimpleDataChannel(socketChannel);
     }
 }

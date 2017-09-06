@@ -20,21 +20,21 @@ import java.util.WeakHashMap;
 import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
- * LockInfo is a class that embodies information about a lock instance.  The
- * holding thread and the locktype are all contained in the object.
- *
- * This class is public for unit tests.
+ * LockInfo is a class that embodies information about a lock instance. The
+ * holding thread and the locktype are all contained in the object. This class
+ * is public for unit tests.
  */
 public class LockInfo implements Cloneable {
-    protected Locker locker;
-    protected LockType lockType;
+    protected Locker                                   locker;
+    protected LockType                                 lockType;
 
-    private static boolean deadlockStackTrace = false;
-    private static Map<LockInfo, StackTraceAtLockTime> traceExceptionMap =
-        Collections.synchronizedMap(new WeakHashMap<LockInfo, 
-                                    StackTraceAtLockTime>());
+    private static boolean                             deadlockStackTrace = false;
+    private static Map<LockInfo, StackTraceAtLockTime> traceExceptionMap  = Collections
+            .synchronizedMap(new WeakHashMap<LockInfo, StackTraceAtLockTime>());
+
     @SuppressWarnings("serial")
-    private static class StackTraceAtLockTime extends Exception {}
+    private static class StackTraceAtLockTime extends Exception {
+    }
 
     /**
      * Called when the je.txn.deadlockStackTrace property is changed.
@@ -51,7 +51,7 @@ public class LockInfo implements Cloneable {
     }
 
     /**
-     * Construct a new LockInfo.  public for Sizeof program.
+     * Construct a new LockInfo. public for Sizeof program.
      */
     public LockInfo(Locker locker, LockType lockType) {
         this.locker = locker;
@@ -63,7 +63,7 @@ public class LockInfo implements Cloneable {
     }
 
     /**
-     * Clone from given LockInfo.  Use this constructor when copying a LockInfo
+     * Clone from given LockInfo. Use this constructor when copying a LockInfo
      * and its identity should be copied (e.g., when mutating a thin lock to a
      * thick lock) to ensure that debugging info is retained.
      */
@@ -105,8 +105,7 @@ public class LockInfo implements Cloneable {
     }
 
     @Override
-    public Object clone()
-        throws CloneNotSupportedException {
+    public Object clone() throws CloneNotSupportedException {
 
         return super.clone();
     }

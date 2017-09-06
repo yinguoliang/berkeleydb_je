@@ -23,7 +23,7 @@ import com.sleepycat.je.utilint.StatDefinition.StatType;
 public class AtomicLongStat extends Stat<Long> {
     private static final long serialVersionUID = 1L;
 
-    private final AtomicLong counter;
+    private final AtomicLong  counter;
 
     public AtomicLongStat(StatGroup group, StatDefinition definition) {
         super(group, definition);
@@ -82,7 +82,7 @@ public class AtomicLongStat extends Stat<Long> {
 
             /*
              * Negate the value atomically, retrying if another change
-             * intervenes.  This loop emulates the behavior of
+             * intervenes. This loop emulates the behavior of
              * AtomicLong.getAndIncrement.
              */
             while (true) {

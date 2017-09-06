@@ -22,26 +22,19 @@ import com.sleepycat.je.evictor.Evictor;
  * <p>
  * Each representation assumes that all read operations are done under a shared
  * latch and all updates (set, copy and compact) are done under an exclusive
- * latch. As a result, the representations themselves do not make any
- * provisions for synchronization.
+ * latch. As a result, the representations themselves do not make any provisions
+ * for synchronization.
  * <p>
  * The callers of all the potentially representation mutating methods:
  * <ol>
- * <li>
- * {@link #set(int, Object, IN)}
- * </li>
- * <li>
- * {@link #copy(int, int, int, IN)}
- * </li>
- * <li>
- * {@link #compact(IN)}
- * </li>
+ * <li>{@link #set(int, Object, IN)}</li>
+ * <li>{@link #copy(int, int, int, IN)}</li>
+ * <li>{@link #compact(IN)}</li>
  * </ol>
  * must be careful to save the result value and use it for subsequent
  * operations, since it could represent the new mutated object.
  */
-public abstract class INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE,
-                                 ELEMENT_TYPE> {
+public abstract class INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE, ELEMENT_TYPE> {
 
     public INArrayRep() {
     }
@@ -55,7 +48,6 @@ public abstract class INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE,
      *
      * @param idx the index to be set
      * @param e the array elelement at the idx
-     *
      * @return either this, or the new representation if there was a mutation.
      */
     public abstract ARRAY_BASE_TYPE set(int idx, ELEMENT_TYPE e, IN parent);
@@ -73,18 +65,17 @@ public abstract class INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE,
      * @param from the source (inclusive) of the copy
      * @param to the target (inclusive) of the copy
      * @param n the number of elements to be copied.
-     *
      * @return either this, or the new representation if there was a mutation.
      */
     public abstract ARRAY_BASE_TYPE copy(int from, int to, int n, IN parent);
 
     /**
-     * Chooses a more compact representation, if that's possible, otherwise
-     * does nothing.
+     * Chooses a more compact representation, if that's possible, otherwise does
+     * nothing.
      * <p>
      * WARNING: This method must not change the memory size of the current
      * representation and return 'this', without explicitly adjusting memory
-     * usage (via noteRepChange) before returning.  Returning a new instance is
+     * usage (via noteRepChange) before returning. Returning a new instance is
      * the trigger for adjusting memory usage in the parent.
      *
      * @return this or a more compact representation.
@@ -111,8 +102,8 @@ public abstract class INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE,
     /**
      * Update the cache statistics for this representation.
      *
-     * @param increment true the stat should be incremented, false if it must
-     * be decremented
+     * @param increment true the stat should be incremented, false if it must be
+     *            decremented
      * @param evictor the evictor that shoulds ths stat counters
      */
     abstract void updateCacheStats(boolean increment, Evictor evictor);
@@ -122,8 +113,8 @@ public abstract class INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE,
      * should be invoked upon every creation, every rep change and finally when
      * the IN node is decached.
      *
-     * @param increment true if the stat is to be incremented, false if it is
-     * to be decremented
+     * @param increment true if the stat is to be incremented, false if it is to
+     *            be decremented
      */
     final void updateCacheStats(boolean increment, IN parent) {
 
@@ -141,17 +132,14 @@ public abstract class INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE,
      *
      * @param newRep the new representation that is replacing this one.
      */
-    final void noteRepChange(
-        INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE, ELEMENT_TYPE> newRep,
-        IN parent) {
+    final void noteRepChange(INArrayRep<ARRAY_BASE_TYPE, REP_ENUM_TYPE, ELEMENT_TYPE> newRep, IN parent) {
 
         if (parent == null) {
             /* Only true in unit tests. */
             return;
         }
 
-        parent.updateMemorySize(newRep.calculateMemorySize() -
-                                calculateMemorySize());
+        parent.updateMemorySize(newRep.calculateMemorySize() - calculateMemorySize());
         updateCacheStats(false, parent);
         newRep.updateCacheStats(true, parent);
     }

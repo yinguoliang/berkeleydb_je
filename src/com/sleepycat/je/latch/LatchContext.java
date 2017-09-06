@@ -16,10 +16,10 @@ package com.sleepycat.je.latch;
 import com.sleepycat.je.dbi.EnvironmentImpl;
 
 /**
- * Provides information about a latch, to avoid requiring this information to
- * be stored with every latch object.  This is implemented by the IN class to
- * reduce memory usage.  LatchFactory provides a default implementation for
- * cases where creating an extra object is not an issue.
+ * Provides information about a latch, to avoid requiring this information to be
+ * stored with every latch object. This is implemented by the IN class to reduce
+ * memory usage. LatchFactory provides a default implementation for cases where
+ * creating an extra object is not an issue.
  */
 public interface LatchContext {
 

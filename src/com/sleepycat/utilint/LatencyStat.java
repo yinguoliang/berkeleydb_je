@@ -18,8 +18,8 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * A stat that keeps track of latency in milliseconds and presents average,
- * min, max, 95th and 99th percentile values.
+ * A stat that keeps track of latency in milliseconds and presents average, min,
+ * max, 95th and 99th percentile values.
  */
 public class LatencyStat implements Cloneable {
 
@@ -29,36 +29,36 @@ public class LatencyStat implements Cloneable {
      * The maximum tracked latency, in milliseconds, it's also the size of the
      * configurable array which is used to save latencies.
      */
-    private final int maxTrackedLatencyMillis;
+    private final int         maxTrackedLatencyMillis;
 
     private static class Values {
 
         /* The number of total operations that have been tracked. */
-        final AtomicInteger numOps;
+        final AtomicInteger      numOps;
 
         /* The number of total requests that have been tracked. */
-        final AtomicInteger numRequests;
+        final AtomicInteger      numRequests;
 
         /* The number of total nanoseconds that have been tracked. */
-        final AtomicLong totalNanos;
+        final AtomicLong         totalNanos;
 
         /*
-         * Array is indexed by latency in millis and elements contain the
-         * number of ops for that latency.
+         * Array is indexed by latency in millis and elements contain the number
+         * of ops for that latency.
          */
         final AtomicIntegerArray histogram;
 
         /*
-         * Min and max latency. They may both exceed maxTrackedLatencyMillis.
-         * A volatile int rather than an AtomicInteger is used because
+         * Min and max latency. They may both exceed maxTrackedLatencyMillis. A
+         * volatile int rather than an AtomicInteger is used because
          * AtomicInteger has no min() or max() method, so there is no advantage
          * to using it.
          */
-        volatile int minIncludingOverflow;
-        volatile int maxIncludingOverflow;
+        volatile int             minIncludingOverflow;
+        volatile int             maxIncludingOverflow;
 
         /* Number of requests whose latency exceed maxTrackedLatencyMillis. */
-        final AtomicInteger requestsOverflow;
+        final AtomicInteger      requestsOverflow;
 
         Values(final int maxTrackedLatencyMillis) {
             histogram = new AtomicIntegerArray(maxTrackedLatencyMillis);
@@ -72,34 +72,31 @@ public class LatencyStat implements Cloneable {
     }
 
     /*
-     * Contains the values tracked by set() and reported by calculate().
-     *
-     * To clear the values, this field is assigned a new instance.  This
-     * prevents uninitialized values when set() and clear() run concurrently.
-     * Methods that access the values (set and calculate) should assign
-     * trackedValues to a local var and perform all access using the local var,
-     * so that clear() will not impact the computation.
-     *
-     * Concurrent access by set() and calculate() is handled differently.  The
-     * numOps and numRequests fields are incremented by set() last, and are
-     * checked first by calculate().  If numOps or numRequests is zero,
-     * calculate() will return an empty Latency object.  If numOps and
-     * numRequests are non-zero, calculate() may still return latency values
-     * that are inconsistent, when set() runs concurrently.  But at least
-     * calculate() won't return uninitialized latency values.  Without
-     * synchronizing set(), this is the best we can do.  Synchronizing set()
-     * might introduce contention during CRUD operations.
+     * Contains the values tracked by set() and reported by calculate(). To
+     * clear the values, this field is assigned a new instance. This prevents
+     * uninitialized values when set() and clear() run concurrently. Methods
+     * that access the values (set and calculate) should assign trackedValues to
+     * a local var and perform all access using the local var, so that clear()
+     * will not impact the computation. Concurrent access by set() and
+     * calculate() is handled differently. The numOps and numRequests fields are
+     * incremented by set() last, and are checked first by calculate(). If
+     * numOps or numRequests is zero, calculate() will return an empty Latency
+     * object. If numOps and numRequests are non-zero, calculate() may still
+     * return latency values that are inconsistent, when set() runs
+     * concurrently. But at least calculate() won't return uninitialized latency
+     * values. Without synchronizing set(), this is the best we can do.
+     * Synchronizing set() might introduce contention during CRUD operations.
      */
     private volatile Values trackedValues;
 
-    private int saveMin;
-    private int saveMax;
-    private float saveAvg;
-    private int saveNumOps;
-    private int saveNumRequests;
-    private int save95;
-    private int save99;
-    private int saveRequestsOverflow;
+    private int             saveMin;
+    private int             saveMax;
+    private float           saveAvg;
+    private int             saveNumOps;
+    private int             saveNumRequests;
+    private int             save95;
+    private int             save99;
+    private int             saveRequestsOverflow;
 
     public LatencyStat(long maxTrackedLatencyMillis) {
         this.maxTrackedLatencyMillis = (int) maxTrackedLatencyMillis;
@@ -117,7 +114,7 @@ public class LatencyStat implements Cloneable {
         final Values values = trackedValues;
 
         /*
-         * Create a new instance to support concurrent access.  See {@link
+         * Create a new instance to support concurrent access. See {@link
          * #trackedValues}.
          */
         trackedValues = new Values(maxTrackedLatencyMillis);
@@ -142,23 +139,23 @@ public class LatencyStat implements Cloneable {
     }
 
     /**
-     * Calculate may be called on a stat that is concurrently updating, so
-     * while it has to be thread safe, it's a bit inaccurate when there's
-     * concurrent activity. That tradeoff is made in order to avoid the cost of
-     * synchronization during the set() method.  See {@link #trackedValues}.
+     * Calculate may be called on a stat that is concurrently updating, so while
+     * it has to be thread safe, it's a bit inaccurate when there's concurrent
+     * activity. That tradeoff is made in order to avoid the cost of
+     * synchronization during the set() method. See {@link #trackedValues}.
      */
     private synchronized Latency calculate(boolean clear) {
 
         /*
-         * Use a local var to support concurrent access.  See {@link
+         * Use a local var to support concurrent access. See {@link
          * #trackedValues}.
          */
         final Values values = clear ? clearInternal() : trackedValues;
 
         /*
          * Check numOps and numReqests first and return an empty Latency if
-         * either one is zero.  This ensures that we don't report partially
-         * computed values when they are zero.  This works because the other
+         * either one is zero. This ensures that we don't report partially
+         * computed values when they are zero. This works because the other
          * values are calculated first by set(), and numOps and numRequests are
          * incremented last.
          */
@@ -184,7 +181,7 @@ public class LatencyStat implements Cloneable {
 
         /*
          * Min/max can be inaccurate because of concurrent set() calls, i.e.,
-         * values may be from a mixture of different set() calls.  Bound the
+         * values may be from a mixture of different set() calls. Bound the
          * min/max to the average, so they are sensible.
          */
         final int avgMsInt = Math.round(avgMs);
@@ -242,9 +239,8 @@ public class LatencyStat implements Cloneable {
         save99 = percent99;
         saveRequestsOverflow = nOverflow;
 
-        return new Latency(maxTrackedLatencyMillis, saveMin, saveMax, saveAvg,
-                           saveNumOps, saveNumRequests, save95, save99,
-                           saveRequestsOverflow);
+        return new Latency(maxTrackedLatencyMillis, saveMin, saveMax, saveAvg, saveNumOps, saveNumRequests, save95,
+                save99, saveRequestsOverflow);
     }
 
     /**
@@ -267,14 +263,13 @@ public class LatencyStat implements Cloneable {
         }
 
         /*
-         * Use a local var to support concurrent access.  See {@link
+         * Use a local var to support concurrent access. See {@link
          * #trackedValues}.
          */
         final Values values = trackedValues;
 
         /* Round the latency to determine where to mark the histogram. */
-        final int millisRounded =
-            (int) ((nanoLatency + (1000000l / 2)) / 1000000l);
+        final int millisRounded = (int) ((nanoLatency + (1000000l / 2)) / 1000000l);
 
         /* Record this latency. */
         if (millisRounded >= maxTrackedLatencyMillis) {
@@ -284,7 +279,7 @@ public class LatencyStat implements Cloneable {
         }
 
         /*
-         * Update the min/max latency if necessary.  This is not atomic, so we
+         * Update the min/max latency if necessary. This is not atomic, so we
          * loop to account for lost updates.
          */
         while (values.maxIncludingOverflow < millisRounded) {
@@ -309,16 +304,13 @@ public class LatencyStat implements Cloneable {
     }
 
     public boolean isEmpty() {
-        return (trackedValues.numOps.get() == 0) ||
-               (trackedValues.numRequests.get() == 0);
+        return (trackedValues.numOps.get() == 0) || (trackedValues.numRequests.get() == 0);
     }
 
     @Override
     public String toString() {
-        final Latency results =
-            new Latency(maxTrackedLatencyMillis, saveMin, saveMax, saveAvg,
-                        saveNumRequests, saveNumOps, save95, save99,
-                        saveRequestsOverflow);
+        final Latency results = new Latency(maxTrackedLatencyMillis, saveMin, saveMax, saveAvg, saveNumRequests,
+                saveNumOps, save95, save99, saveRequestsOverflow);
         return results.toString();
     }
 }

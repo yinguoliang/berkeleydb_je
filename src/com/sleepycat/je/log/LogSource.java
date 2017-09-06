@@ -18,8 +18,8 @@ import java.nio.ByteBuffer;
 import com.sleepycat.je.DatabaseException;
 
 /**
- * A class that implements LogSource can return portions of the log.
- * Is public for unit testing.
+ * A class that implements LogSource can return portions of the log. Is public
+ * for unit testing.
  */
 public interface LogSource {
 
@@ -35,11 +35,10 @@ public interface LogSource {
     ByteBuffer getBytes(long fileOffset) throws DatabaseException;
 
     /**
-     * Fill the destination byte array with the requested number of bytes.  The
+     * Fill the destination byte array with the requested number of bytes. The
      * offset indicates the absolute position in the log file.
      */
-    ByteBuffer getBytes(long fileOffset, int numBytes)
-        throws DatabaseException;
+    ByteBuffer getBytes(long fileOffset, int numBytes) throws DatabaseException;
 
     /**
      * Returns the log version of the log entries from this source.

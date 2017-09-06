@@ -21,11 +21,9 @@ import com.sleepycat.je.dbi.EnvironmentImpl;
 /**
  * Redirects logging messages to the the owning environment's file handler, so
  * that messages can be prefixed with an environment name and sent to the
- * correct logging file.
- *
- * This class must not extend FileHandler itself, since FileHandlers open their
- * target log files at construction time, and this FileHandler is meant to be
- * stateless.
+ * correct logging file. This class must not extend FileHandler itself, since
+ * FileHandlers open their target log files at construction time, and this
+ * FileHandler is meant to be stateless.
  */
 public class FileRedirectHandler extends Handler {
 
@@ -35,8 +33,7 @@ public class FileRedirectHandler extends Handler {
 
     @Override
     public void publish(LogRecord record) {
-        EnvironmentImpl envImpl =
-            LoggerUtils.envMap.get(Thread.currentThread());
+        EnvironmentImpl envImpl = LoggerUtils.envMap.get(Thread.currentThread());
 
         /*
          * Prefer to lose logging output, rather than risk a
@@ -49,9 +46,9 @@ public class FileRedirectHandler extends Handler {
 
         /*
          * The FileHandler is not always created for an environment, because
-         * creating a FileHandler automatically creates a logging file, and
-         * we avoid doing that for read only environments. Because of that,
-         * there may legitimately be no environment file handler.
+         * creating a FileHandler automatically creates a logging file, and we
+         * avoid doing that for read only environments. Because of that, there
+         * may legitimately be no environment file handler.
          */
         if (envImpl.getFileHandler() == null) {
             return;
@@ -61,12 +58,11 @@ public class FileRedirectHandler extends Handler {
     }
 
     @Override
-    public void close()
-        throws SecurityException {
+    public void close() throws SecurityException {
 
         /*
-         * Nothing to do. The redirect target file handler is closed by
-         * the environment.
+         * Nothing to do. The redirect target file handler is closed by the
+         * environment.
          */
     }
 
@@ -74,8 +70,8 @@ public class FileRedirectHandler extends Handler {
     public void flush() {
 
         /*
-         * Nothing to do. If we want to flush this logger explicitly, flush
-         * the underlying envImpl's handler.
+         * Nothing to do. If we want to flush this logger explicitly, flush the
+         * underlying envImpl's handler.
          */
     }
 }

@@ -19,7 +19,6 @@ import com.sleepycat.je.txn.Locker;
  * Thrown when an attempt is made to delete a key from a foreign key database,
  * when that key is referenced by a secondary database, and the secondary is
  * configured to cause an abort in this situation.
- *
  * <p>
  * When using the base API ({@code com.sleepycat.je}), this can occur when a
  * {@link SecondaryDatabase} is configured to be associated with a foreign key
@@ -28,7 +27,6 @@ import com.sleepycat.je.txn.Locker;
  * {@link SecondaryConfig#setForeignKeyDeleteAction}). Note that {@code ABORT}
  * is the default setting.
  * </p>
- *
  * <p>
  * When using the DPL ({@code com.sleepycat.persist}), this can occur when a
  * {@link com.sleepycat.persist.model.SecondaryKey} is defined with a
@@ -37,46 +35,44 @@ import com.sleepycat.je.txn.Locker;
  * {@link com.sleepycat.persist.model.DeleteAction#ABORT} (which is the
  * default).
  * </p>
- *
  * <p>
  * The {@link Transaction} handle is invalidated as a result of this exception.
  * </p>
  *
  * @see <a href="SecondaryDatabase.html#transactions">Special considerations for
  *      using Secondary Databases with and without Transactions</a>
- *
  * @since 4.0
  */
 public class DeleteConstraintException extends SecondaryConstraintException {
 
-	private static final long serialVersionUID = 1;
+    private static final long serialVersionUID = 1;
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	public DeleteConstraintException(Locker locker, String message, String secDbName, DatabaseEntry secKey,
-			DatabaseEntry priKey, long expirationTime) {
-		super(locker, message, secDbName, secKey, priKey, expirationTime);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    public DeleteConstraintException(Locker locker, String message, String secDbName, DatabaseEntry secKey,
+                                     DatabaseEntry priKey, long expirationTime) {
+        super(locker, message, secDbName, secKey, priKey, expirationTime);
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	private DeleteConstraintException(String message, DeleteConstraintException cause) {
-		super(message, cause);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    private DeleteConstraintException(String message, DeleteConstraintException cause) {
+        super(message, cause);
+    }
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	@Override
-	public OperationFailureException wrapSelf(String msg) {
-		return new DeleteConstraintException(msg, this);
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    @Override
+    public OperationFailureException wrapSelf(String msg) {
+        return new DeleteConstraintException(msg, this);
+    }
 }

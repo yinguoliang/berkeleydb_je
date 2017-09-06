@@ -27,26 +27,25 @@ import com.sleepycat.je.rep.txn.MasterTxn;
  * {@code ReplicaAckPolicy} of {@link ReplicaAckPolicy#NONE NONE} is in effect.
  * <p>
  * Note that an {@link InsufficientAcksException} means the transaction has
- * already committed at the master. The transaction may also have been
- * committed at one or more Replicas, but the lack of replica acknowledgments
- * means that the number of replicas that committed could not be
- * established. If the transaction was in fact committed by less than a simple
- * majority of the nodes, it could result in a {@link RollbackException} when
- * the node subsequently attempts to rejoin the group as a Replica.
+ * already committed at the master. The transaction may also have been committed
+ * at one or more Replicas, but the lack of replica acknowledgments means that
+ * the number of replicas that committed could not be established. If the
+ * transaction was in fact committed by less than a simple majority of the
+ * nodes, it could result in a {@link RollbackException} when the node
+ * subsequently attempts to rejoin the group as a Replica.
  * <p>
- * The application can handle the exception and choose to respond in a number
- * of ways. For example, it can
+ * The application can handle the exception and choose to respond in a number of
+ * ways. For example, it can
  * <ul>
  * <li>do nothing, assuming that the transaction will eventually propagate to
  * enough replicas to become durable,
  * <li>retry the operation in a new transaction, which may succeed or fail
  * depending on whether the underlying problems have been resolved,
- * <li>retry using a larger timeout interval and return to the original
- * timeout interval at a later time,
+ * <li>retry using a larger timeout interval and return to the original timeout
+ * interval at a later time,
  * <li>fall back temporarily to a read-only mode,
- * <li>increase the durability of the transaction on the Master by ensuring
- * that the changes are flushed to the operating system's buffers or to
- * the disk, or
+ * <li>increase the durability of the transaction on the Master by ensuring that
+ * the changes are flushed to the operating system's buffers or to the disk, or
  * <li>give up and report an error at a higher level, perhaps to allow an
  * administrator to check the underlying cause of the failure.
  * </ul>
@@ -56,35 +55,26 @@ import com.sleepycat.je.rep.txn.MasterTxn;
 public class InsufficientAcksException extends OperationFailureException {
     private static final long serialVersionUID = 1;
 
-    private final int acksPending;
-    private final int acksRequired;
-    private final int ackTimeoutMs;
-    private final String feederState;
+    private final int         acksPending;
+    private final int         acksRequired;
+    private final int         ackTimeoutMs;
+    private final String      feederState;
 
     /**
-     * @hidden
-     * Creates a InsufficientAcksException.
-     *
+     * @hidden Creates a InsufficientAcksException.
      * @param acksPending the number of missing acknowledgments
      * @param ackTimeoutMs the current acknowledgment timeout value in
-     * milliseconds
+     *            milliseconds
      */
-    public InsufficientAcksException(MasterTxn txn,
-                                     int acksPending,
-                                     int ackTimeoutMs,
-                                     String feederState) {
-        super(null, false /*abortOnly*/,
-              "Transaction: " + txn.getId() +
-              "  VLSN: " + txn.getCommitVLSN() +
-              ", initiated at: " + String.format("%1tT. ", txn.getStartMs()) +
-              " Insufficient acks for policy:" +
-              txn.getCommitDurability().getReplicaAck() + ". " +
-              "Need replica acks: " + txn.getRequiredAckCount() + ". " +
-              "Missing replica acks: " + acksPending + ". " +
-              "Timeout: " + ackTimeoutMs + "ms. " +
-              "FeederState=" + feederState,
-              null /*cause*/);
-        assert(acksPending <= txn.getRequiredAckCount());
+    public InsufficientAcksException(MasterTxn txn, int acksPending, int ackTimeoutMs, String feederState) {
+        super(null, false /* abortOnly */,
+                "Transaction: " + txn.getId() + "  VLSN: " + txn.getCommitVLSN() + ", initiated at: "
+                        + String.format("%1tT. ", txn.getStartMs()) + " Insufficient acks for policy:"
+                        + txn.getCommitDurability().getReplicaAck() + ". " + "Need replica acks: "
+                        + txn.getRequiredAckCount() + ". " + "Missing replica acks: " + acksPending + ". " + "Timeout: "
+                        + ackTimeoutMs + "ms. " + "FeederState=" + feederState,
+                null /* cause */);
+        assert (acksPending <= txn.getRequiredAckCount());
         this.acksPending = acksPending;
         this.acksRequired = txn.getRequiredAckCount();
         this.ackTimeoutMs = ackTimeoutMs;
@@ -93,6 +83,7 @@ public class InsufficientAcksException extends OperationFailureException {
 
     /**
      * For testing only.
+     * 
      * @hidden
      */
     public InsufficientAcksException(String message) {
@@ -105,10 +96,10 @@ public class InsufficientAcksException extends OperationFailureException {
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    private InsufficientAcksException(String message,
-                                      InsufficientAcksException cause) {
+    private InsufficientAcksException(String message, InsufficientAcksException cause) {
         super(message, cause);
         this.acksPending = cause.acksPending;
         this.acksRequired = cause.acksRequired;
@@ -118,6 +109,7 @@ public class InsufficientAcksException extends OperationFailureException {
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     @Override

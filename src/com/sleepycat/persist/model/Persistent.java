@@ -22,19 +22,21 @@ import java.lang.annotation.Target;
 
 /**
  * Identifies a persistent class that is not an {@link Entity} class or a
- * <a href="{@docRoot}/com/sleepycat/persist/model/Entity.html#simpleTypes">simple type</a>.
+ * <a href="{@docRoot}/com/sleepycat/persist/model/Entity.html#simpleTypes"
+ * >simple type</a>.
  *
  * @author Mark Hayes
  */
-@Documented @Retention(RUNTIME) @Target(TYPE)
+@Documented
+@Retention(RUNTIME)
+@Target(TYPE)
 public @interface Persistent {
 
     /**
-     * Identifies a new version of a class when an incompatible class change
-     * has been made.
+     * Identifies a new version of a class when an incompatible class change has
+     * been made.
      *
      * @return the version.
-     *
      * @see Entity#version
      */
     int version() default 0;
@@ -44,7 +46,6 @@ public @interface Persistent {
      * instance.
      *
      * @return the Class.
-     *
      * @see PersistentProxy
      */
     Class proxyFor() default void.class;

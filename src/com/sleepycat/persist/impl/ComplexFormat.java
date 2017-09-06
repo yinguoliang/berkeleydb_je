@@ -48,77 +48,69 @@ import com.sleepycat.persist.raw.RawObject;
  */
 public class ComplexFormat extends Format {
 
-    private static final long serialVersionUID = -2847843033590454917L;
+    private static final long                        serialVersionUID          = -2847843033590454917L;
 
-    private ClassMetadata clsMeta;
-    private EntityMetadata entityMeta;
-    private FieldInfo priKeyField;
-    private List<FieldInfo> secKeyFields;
-    private List<FieldInfo> nonKeyFields;
-    private FieldReader secKeyFieldReader;
-    private FieldReader nonKeyFieldReader;
-    private Map<String, String> oldToNewKeyMap;
-    private Map<String, String> newToOldFieldMap;
-    private boolean evolveNeeded;
-    private transient Accessor objAccessor;
-    private transient Accessor rawAccessor;
-    private transient ComplexFormat entityFormat;
-    private transient Map<String, FieldAddress> secKeyAddresses;
+    private ClassMetadata                            clsMeta;
+    private EntityMetadata                           entityMeta;
+    private FieldInfo                                priKeyField;
+    private List<FieldInfo>                          secKeyFields;
+    private List<FieldInfo>                          nonKeyFields;
+    private FieldReader                              secKeyFieldReader;
+    private FieldReader                              nonKeyFieldReader;
+    private Map<String, String>                      oldToNewKeyMap;
+    private Map<String, String>                      newToOldFieldMap;
+    private boolean                                  evolveNeeded;
+    private transient Accessor                       objAccessor;
+    private transient Accessor                       rawAccessor;
+    private transient ComplexFormat                  entityFormat;
+    private transient Map<String, FieldAddress>      secKeyAddresses;
     private transient volatile Map<String, RawField> rawFields;
-    private transient volatile FieldInfo[] rawInputFields;
-    private transient volatile int[] rawInputLevels;
-    private transient volatile int rawInputDepth;
+    private transient volatile FieldInfo[]           rawInputFields;
+    private transient volatile int[]                 rawInputLevels;
+    private transient volatile int                   rawInputDepth;
 
     /**
      * This field contains the names of secondary keys that are incorrectly
      * ordered because, in an earlier version, we failed to set the dup
-     * comparator.  This bug applies only when the primary key has a
-     * comparator.  The bug was fixed by setting the dup comparator to the
-     * primary key comparator, for all new secondary databases.  [#17252]
-     *
-     * A field containing an empty set signifies that no keys are incorrectly
-     * ordered, while a null field signifies that all keys are incorrect (when
-     * the primary key has a comparator).  The field is assigned to an empty
-     * set when declared, so that it will be null only when a pre-fix version
-     * of the format is deserialized. (With Java serialization, when a field is
-     * added to a class and a previously serialized instance is deserialized,
-     * the new field will always be null).
-     *
-     * This field is used to determine when a dup comparator should be set.  We
-     * cannot set the comparator for secondary databases created prior to the
-     * bug fix, since ordering cannot be changed for existing records.  See
-     * isSecKeyIncorrectlyOrdered and setSecKeyCorrectlyOrdered.
-     *
-     * This field does not count in comparisons of formats during evolution.
-     * When the user wants to correct the ordering for an incorrectly ordered
-     * secondary database, she must delete the database but does not need to
-     * increment the class version.  In other words, this is information about
-     * the database order but is not considered class metadata.
+     * comparator. This bug applies only when the primary key has a comparator.
+     * The bug was fixed by setting the dup comparator to the primary key
+     * comparator, for all new secondary databases. [#17252] A field containing
+     * an empty set signifies that no keys are incorrectly ordered, while a null
+     * field signifies that all keys are incorrect (when the primary key has a
+     * comparator). The field is assigned to an empty set when declared, so that
+     * it will be null only when a pre-fix version of the format is
+     * deserialized. (With Java serialization, when a field is added to a class
+     * and a previously serialized instance is deserialized, the new field will
+     * always be null). This field is used to determine when a dup comparator
+     * should be set. We cannot set the comparator for secondary databases
+     * created prior to the bug fix, since ordering cannot be changed for
+     * existing records. See isSecKeyIncorrectlyOrdered and
+     * setSecKeyCorrectlyOrdered. This field does not count in comparisons of
+     * formats during evolution. When the user wants to correct the ordering for
+     * an incorrectly ordered secondary database, she must delete the database
+     * but does not need to increment the class version. In other words, this is
+     * information about the database order but is not considered class
+     * metadata.
      */
-    private Set<String> incorrectlyOrderedSecKeys = new HashSet<String>();
+    private Set<String>                              incorrectlyOrderedSecKeys = new HashSet<String>();
 
     /**
-     * In JE 5.0 we changed the format for String fields.  Instead of treating
+     * In JE 5.0 we changed the format for String fields. Instead of treating
      * the String as an object with a format ID embedded in the serialized
-     * bytes, we treat it as a primitive and do not include the format ID.
-     * This works well because a field declared to be type String cannot be
-     * used to store any other object, and because the String tuple format
-     * supports null values.
-     *
-     * A field containing false signifies that the old String format was used
-     * when the entity was written, while a true value signifies that the new
-     * String format was used.  The field is assigned to true when declared, so
-     * that it will be false only when a pre-JE 5.0 version of the format is
+     * bytes, we treat it as a primitive and do not include the format ID. This
+     * works well because a field declared to be type String cannot be used to
+     * store any other object, and because the String tuple format supports null
+     * values. A field containing false signifies that the old String format was
+     * used when the entity was written, while a true value signifies that the
+     * new String format was used. The field is assigned to true when declared,
+     * so that it will be false only when a pre-JE 5.0 version of the format is
      * deserialized. (With Java serialization, when a boolean field is added to
      * a class and a previously serialized instance is deserialized, the new
      * field will always be false).
      */
-    private boolean newStringFormat = true;
+    private boolean                                  newStringFormat           = true;
 
-    ComplexFormat(Catalog catalog,
-                  Class cls,
-                  ClassMetadata clsMeta,
-                  EntityMetadata entityMeta) {
+    ComplexFormat(Catalog catalog, Class cls, ClassMetadata clsMeta, EntityMetadata entityMeta) {
         super(catalog, cls);
         this.clsMeta = clsMeta;
         this.entityMeta = entityMeta;
@@ -133,9 +125,8 @@ public class ComplexFormat extends Format {
             String fieldName = clsMeta.getPrimaryKey().getName();
             FieldInfo field = FieldInfo.getField(nonKeyFields, fieldName);
             if (field == null) {
-                throw new IllegalArgumentException
-                    ("Primary key field does not exist: " +
-                     getClassName() + '.' + fieldName);
+                throw new IllegalArgumentException(
+                        "Primary key field does not exist: " + getClassName() + '.' + fieldName);
             }
             nonKeyFields.remove(field);
             priKeyField = field;
@@ -146,38 +137,29 @@ public class ComplexFormat extends Format {
          * nonKeyFields to secKeyFields.
          */
         if (clsMeta.getSecondaryKeys() != null) {
-            for (SecondaryKeyMetadata secKeyMeta :
-                 clsMeta.getSecondaryKeys().values()) {
+            for (SecondaryKeyMetadata secKeyMeta : clsMeta.getSecondaryKeys().values()) {
                 String fieldName = secKeyMeta.getName();
                 FieldInfo field = FieldInfo.getField(nonKeyFields, fieldName);
                 if (field == null) {
-                    throw new IllegalArgumentException
-                        ("Secondary key field does not exist: " +
-                         getClassName() + '.' + fieldName);
+                    throw new IllegalArgumentException(
+                            "Secondary key field does not exist: " + getClassName() + '.' + fieldName);
                 }
                 Class fieldCls = field.getFieldClass(getCatalog());
                 Relationship rel = secKeyMeta.getRelationship();
-                if (rel == Relationship.ONE_TO_MANY ||
-                    rel == Relationship.MANY_TO_MANY) {
+                if (rel == Relationship.ONE_TO_MANY || rel == Relationship.MANY_TO_MANY) {
                     if (!PersistKeyCreator.isManyType(fieldCls)) {
-                        throw new IllegalArgumentException
-                            ("ONE_TO_MANY and MANY_TO_MANY keys must" +
-                             " have an array or Collection type: " +
-                             getClassName() + '.' + fieldName);
+                        throw new IllegalArgumentException("ONE_TO_MANY and MANY_TO_MANY keys must"
+                                + " have an array or Collection type: " + getClassName() + '.' + fieldName);
                     }
                 } else {
                     if (PersistKeyCreator.isManyType(fieldCls)) {
-                        throw new IllegalArgumentException
-                            ("ONE_TO_ONE and MANY_TO_ONE keys must not" +
-                             " have an array or Collection type: " +
-                             getClassName() + '.' + fieldName);
+                        throw new IllegalArgumentException("ONE_TO_ONE and MANY_TO_ONE keys must not"
+                                + " have an array or Collection type: " + getClassName() + '.' + fieldName);
                     }
                 }
-                if (fieldCls.isPrimitive() &&
-                    secKeyMeta.getDeleteAction() == DeleteAction.NULLIFY) {
-                    throw new IllegalArgumentException
-                        ("NULLIFY may not be used with primitive fields: " +
-                         getClassName() + '.' + fieldName);
+                if (fieldCls.isPrimitive() && secKeyMeta.getDeleteAction() == DeleteAction.NULLIFY) {
+                    throw new IllegalArgumentException(
+                            "NULLIFY may not be used with primitive fields: " + getClassName() + '.' + fieldName);
                 }
                 nonKeyFields.remove(field);
                 secKeyFields.add(field);
@@ -204,7 +186,7 @@ public class ComplexFormat extends Format {
     }
 
     /**
-     * Returns getSuperFormat cast to ComplexFormat.  It is guaranteed that all
+     * Returns getSuperFormat cast to ComplexFormat. It is guaranteed that all
      * super formats of a ComplexFormat are a ComplexFormat.
      */
     ComplexFormat getComplexSuper() {
@@ -212,8 +194,8 @@ public class ComplexFormat extends Format {
     }
 
     /**
-     * Returns getLatestVersion cast to ComplexFormat.  It is guaranteed that
-     * all versions of a ComplexFormat are a ComplexFormat.
+     * Returns getLatestVersion cast to ComplexFormat. It is guaranteed that all
+     * versions of a ComplexFormat are a ComplexFormat.
      */
     private ComplexFormat getComplexLatest() {
         return (ComplexFormat) getLatestVersion();
@@ -260,15 +242,13 @@ public class ComplexFormat extends Format {
 
             /*
              * If not initialized, the entity format can be found by traversing
-             * the super formats.  However, this is only possible for an
-             * existing format which has its superFormat field set.
+             * the super formats. However, this is only possible for an existing
+             * format which has its superFormat field set.
              */
             if (isNew()) {
                 throw DbCompat.unexpectedState(toString());
             }
-            for (ComplexFormat format = this;
-                 format != null;
-                 format = format.getComplexSuper()) {
+            for (ComplexFormat format = this; format != null; format = format.getComplexSuper()) {
                 if (format.isEntity()) {
                     return format;
                 }
@@ -299,9 +279,9 @@ public class ComplexFormat extends Format {
     public Map<String, RawField> getFields() {
 
         /*
-         * Synchronization is not required since rawFields is immutable.  If
-         * by chance we create two maps when two threads execute this block, no
-         * harm is done.  But be sure to assign the rawFields field only after
+         * Synchronization is not required since rawFields is immutable. If by
+         * chance we create two maps when two threads execute this block, no
+         * harm is done. But be sure to assign the rawFields field only after
          * the map is fully populated.
          */
         if (rawFields == null) {
@@ -321,8 +301,7 @@ public class ComplexFormat extends Format {
     }
 
     @Override
-    void collectRelatedFormats(Catalog catalog,
-                               Map<String, Format> newFormats) {
+    void collectRelatedFormats(Catalog catalog, Map<String, Format> newFormats) {
         Class cls = getType();
         /* Collect field formats. */
         if (priKeyField != null) {
@@ -336,8 +315,7 @@ public class ComplexFormat extends Format {
         }
         /* Collect TO_MANY secondary key field element class formats. */
         if (entityMeta != null) {
-            for (SecondaryKeyMetadata secKeyMeta :
-                 entityMeta.getSecondaryKeys().values()) {
+            for (SecondaryKeyMetadata secKeyMeta : entityMeta.getSecondaryKeys().values()) {
                 String elemClsName = secKeyMeta.getElementClassName();
                 if (elemClsName != null) {
                     Class elemCls = catalog.resolveKeyClass(elemClsName);
@@ -350,10 +328,8 @@ public class ComplexFormat extends Format {
         if (superCls != Object.class) {
             Format superFormat = catalog.createFormat(superCls, newFormats);
             if (!(superFormat instanceof ComplexFormat)) {
-                throw new IllegalArgumentException
-                    ("The superclass of a complex type must not be a" +
-                     " composite key class or a simple type class: " +
-                     superCls.getName());
+                throw new IllegalArgumentException("The superclass of a complex type must not be a"
+                        + " composite key class or a simple type class: " + superCls.getName());
             }
         }
         /* Collect proxied format. */
@@ -386,8 +362,7 @@ public class ComplexFormat extends Format {
         if (type != null && superFormat == null) {
             Class superCls = type.getSuperclass();
             if (superCls != Object.class) {
-                superFormat =
-                    (ComplexFormat) catalog.getFormat(superCls.getName());
+                superFormat = (ComplexFormat) catalog.getFormat(superCls.getName());
                 setSuperFormat(superFormat);
             }
         }
@@ -398,25 +373,19 @@ public class ComplexFormat extends Format {
             if (type != null && superAccessor != null) {
                 if (useEnhanced) {
                     if (!(superAccessor instanceof EnhancedAccessor)) {
-                        throw new IllegalStateException
-                            ("The superclass of an enhanced class must also " +
-                             "be enhanced: " + getClassName() +
-                             " extends " + superFormat.getClassName());
+                        throw new IllegalStateException("The superclass of an enhanced class must also "
+                                + "be enhanced: " + getClassName() + " extends " + superFormat.getClassName());
                     }
                 } else {
                     if (!(superAccessor instanceof ReflectionAccessor)) {
-                        throw new IllegalStateException
-                            ("The superclass of an unenhanced class must " +
-                             "not be enhanced: " + getClassName() +
-                             " extends " + superFormat.getClassName());
+                        throw new IllegalStateException("The superclass of an unenhanced class must "
+                                + "not be enhanced: " + getClassName() + " extends " + superFormat.getClassName());
                     }
                 }
             }
         }
         /* Find entity format, if any. */
-        for (ComplexFormat format = this;
-             format != null;
-             format = format.getComplexSuper()) {
+        for (ComplexFormat format = this; format != null; format = format.getComplexSuper()) {
             if (format.isEntity()) {
                 entityFormat = format;
                 break;
@@ -424,12 +393,12 @@ public class ComplexFormat extends Format {
         }
 
         /*
-         * Ensure that the current entity metadata is always referenced in
-         * order to return it to the user and to properly construct secondary
-         * key addresses.  Secondary key metadata can change in an entity
-         * subclass or be created when a new subclass is used, but this will
-         * not cause evolution of the entity class; instead, the metadata is
-         * updated here.  [#16467]
+         * Ensure that the current entity metadata is always referenced in order
+         * to return it to the user and to properly construct secondary key
+         * addresses. Secondary key metadata can change in an entity subclass or
+         * be created when a new subclass is used, but this will not cause
+         * evolution of the entity class; instead, the metadata is updated here.
+         * [#16467]
          */
         if (isEntity() && isCurrentVersion()) {
             entityMeta = model.getEntityMetadata(getClassName());
@@ -437,39 +406,30 @@ public class ComplexFormat extends Format {
 
         /* Disallow proxy class that extends an entity class. [#15950] */
         if (clsMeta.getProxiedClassName() != null && entityFormat != null) {
-            throw new IllegalArgumentException
-                ("A proxy may not be an entity: " + getClassName());
+            throw new IllegalArgumentException("A proxy may not be an entity: " + getClassName());
         }
-        /* Disallow primary keys on entity subclasses.  [#15757] */
-        if (entityFormat != null &&
-            entityFormat != this &&
-            priKeyField != null) {
-            throw new IllegalArgumentException
-                ("A PrimaryKey may not appear on an Entity subclass: " +
-                 getClassName() + " field: " + priKeyField.getName());
+        /* Disallow primary keys on entity subclasses. [#15757] */
+        if (entityFormat != null && entityFormat != this && priKeyField != null) {
+            throw new IllegalArgumentException("A PrimaryKey may not appear on an Entity subclass: " + getClassName()
+                    + " field: " + priKeyField.getName());
         }
         /* Create the accessors. */
         if (type != null) {
             if (useEnhanced) {
                 objAccessor = new EnhancedAccessor(catalog, type, this);
             } else {
-                Accessor superObjAccessor =
-                    (superFormat != null) ?  superFormat.objAccessor : null;
-                objAccessor = new ReflectionAccessor
-                    (catalog, type, superObjAccessor, priKeyField,
-                     secKeyFields, nonKeyFields);
+                Accessor superObjAccessor = (superFormat != null) ? superFormat.objAccessor : null;
+                objAccessor = new ReflectionAccessor(catalog, type, superObjAccessor, priKeyField, secKeyFields,
+                        nonKeyFields);
             }
         }
-        Accessor superRawAccessor =
-            (superFormat != null) ? superFormat.rawAccessor : null;
-        rawAccessor = new RawAccessor
-            (this, superRawAccessor, priKeyField, secKeyFields, nonKeyFields);
+        Accessor superRawAccessor = (superFormat != null) ? superFormat.rawAccessor : null;
+        rawAccessor = new RawAccessor(this, superRawAccessor, priKeyField, secKeyFields, nonKeyFields);
 
         /* Initialize secondary key field addresses. */
         EntityMetadata latestEntityMeta = null;
         if (entityFormat != null) {
-            latestEntityMeta =
-                entityFormat.getLatestVersion().getEntityMetadata();
+            latestEntityMeta = entityFormat.getLatestVersion().getEntityMetadata();
         }
         if (latestEntityMeta != null) {
             secKeyAddresses = new HashMap<String, FieldAddress>();
@@ -477,48 +437,36 @@ public class ComplexFormat extends Format {
             if (thisLatest != this) {
                 thisLatest.initializeIfNeeded(catalog, model);
             }
-            nextKeyLoop:
-            for (SecondaryKeyMetadata secKeyMeta :
-                 latestEntityMeta.getSecondaryKeys().values()) {
+            nextKeyLoop: for (SecondaryKeyMetadata secKeyMeta : latestEntityMeta.getSecondaryKeys().values()) {
                 String clsName = secKeyMeta.getDeclaringClassName();
                 String fieldName = secKeyMeta.getName();
                 int superLevel = 0;
-                for (ComplexFormat format = this;
-                     format != null;
-                     format = format.getComplexSuper()) {
-                    if (clsName.equals
-                            (format.getLatestVersion().getClassName())) {
+                for (ComplexFormat format = this; format != null; format = format.getComplexSuper()) {
+                    if (clsName.equals(format.getLatestVersion().getClassName())) {
                         String useFieldName = null;
-                        if (format.newToOldFieldMap != null &&
-                            format.newToOldFieldMap.containsKey(fieldName)) {
-                            useFieldName =
-                                format.newToOldFieldMap.get(fieldName);
+                        if (format.newToOldFieldMap != null && format.newToOldFieldMap.containsKey(fieldName)) {
+                            useFieldName = format.newToOldFieldMap.get(fieldName);
                         } else {
                             useFieldName = fieldName;
                         }
                         boolean isSecField;
                         int fieldNum;
-                        FieldInfo info = FieldInfo.getField
-                            (format.secKeyFields, useFieldName);
+                        FieldInfo info = FieldInfo.getField(format.secKeyFields, useFieldName);
                         if (info != null) {
                             isSecField = true;
                             fieldNum = format.secKeyFields.indexOf(info);
                         } else {
                             isSecField = false;
-                            info = FieldInfo.getField
-                                (format.nonKeyFields, useFieldName);
+                            info = FieldInfo.getField(format.nonKeyFields, useFieldName);
                             if (info == null) {
                                 /* Field not present in old format. */
                                 assert thisLatest != this;
-                                thisLatest.checkNewSecKeyInitializer
-                                    (secKeyMeta);
+                                thisLatest.checkNewSecKeyInitializer(secKeyMeta);
                                 continue nextKeyLoop;
                             }
                             fieldNum = format.nonKeyFields.indexOf(info);
                         }
-                        FieldAddress addr = new FieldAddress
-                            (isSecField, fieldNum, superLevel, format,
-                             info.getType());
+                        FieldAddress addr = new FieldAddress(isSecField, fieldNum, superLevel, format, info.getType());
                         secKeyAddresses.put(secKeyMeta.getKeyName(), addr);
                     }
                     superLevel += 1;
@@ -533,34 +481,28 @@ public class ComplexFormat extends Format {
      */
     private void checkNewSecKeyInitializer(SecondaryKeyMetadata secKeyMeta) {
         if (objAccessor != null) {
-        
-            /* 
+
+            /*
              * If this format represents an abstract class, we will not do the
-             * following check. When initializing this abstract class's 
-             * subclass, which is not abstract, the new added secondary key 
-             * will be checked then. [#19358]
+             * following check. When initializing this abstract class's
+             * subclass, which is not abstract, the new added secondary key will
+             * be checked then. [#19358]
              */
             if (Modifier.isAbstract(this.getType().getModifiers())) {
                 return;
             }
             FieldAddress addr = secKeyAddresses.get(secKeyMeta.getKeyName());
             Object obj = objAccessor.newInstance();
-            Object val = objAccessor.getField
-                (obj, addr.fieldNum, addr.superLevel, addr.isSecField);
+            Object val = objAccessor.getField(obj, addr.fieldNum, addr.superLevel, addr.isSecField);
             if (val != null) {
                 if (addr.keyFormat.isPrimitive()) {
-                    throw new IllegalArgumentException
-                        ("For a new secondary key field the field type must " +
-                         "not be a primitive -- class: " +
-                         secKeyMeta.getDeclaringClassName() + " field: " +
-                         secKeyMeta.getName());
+                    throw new IllegalArgumentException(
+                            "For a new secondary key field the field type must " + "not be a primitive -- class: "
+                                    + secKeyMeta.getDeclaringClassName() + " field: " + secKeyMeta.getName());
                 } else {
-                    throw new IllegalArgumentException
-                        ("For a new secondary key field the default " +
-                         "constructor must not initialize the field to a " +
-                         "non-null value -- class: " +
-                         secKeyMeta.getDeclaringClassName() + " field: " +
-                         secKeyMeta.getName());
+                    throw new IllegalArgumentException("For a new secondary key field the default "
+                            + "constructor must not initialize the field to a " + "non-null value -- class: "
+                            + secKeyMeta.getDeclaringClassName() + " field: " + secKeyMeta.getName());
                 }
             }
         }
@@ -586,8 +528,7 @@ public class ComplexFormat extends Format {
     }
 
     @Override
-    public Object readObject(Object o, EntityInput input, boolean rawAccess)
-        throws RefreshException {
+    public Object readObject(Object o, EntityInput input, boolean rawAccess) throws RefreshException {
 
         Accessor accessor = rawAccess ? rawAccessor : objAccessor;
         accessor.readSecKeyFields(o, input, 0, Accessor.MAX_FIELD_NUM, -1);
@@ -596,8 +537,7 @@ public class ComplexFormat extends Format {
     }
 
     @Override
-    void writeObject(Object o, EntityOutput output, boolean rawAccess)
-        throws RefreshException {
+    void writeObject(Object o, EntityOutput output, boolean rawAccess) throws RefreshException {
 
         Accessor accessor = rawAccess ? rawAccessor : objAccessor;
         accessor.writeSecKeyFields(o, output);
@@ -605,16 +545,13 @@ public class ComplexFormat extends Format {
     }
 
     @Override
-    Object convertRawObject(Catalog catalog,
-                            boolean rawAccess,
-                            RawObject rawObject,
-                            IdentityHashMap converted)
-        throws RefreshException {
+    Object convertRawObject(Catalog catalog, boolean rawAccess, RawObject rawObject, IdentityHashMap converted)
+            throws RefreshException {
 
         /*
          * Synchronization is not required since rawInputFields, rawInputLevels
-         * and rawInputDepth are immutable.  If by chance we create duplicate
-         * values when two threads execute this block, no harm is done.  But be
+         * and rawInputDepth are immutable. If by chance we create duplicate
+         * values when two threads execute this block, no harm is done. But be
          * sure to assign the fields only after the values are fully populated.
          */
         FieldInfo[] fields = rawInputFields;
@@ -623,23 +560,19 @@ public class ComplexFormat extends Format {
         if (fields == null || levels == null || depth == 0) {
 
             /*
-             * The volatile fields are not yet set.  Prepare to process the
-             * class hierarchy, storing class formats in order from the highest
+             * The volatile fields are not yet set. Prepare to process the class
+             * hierarchy, storing class formats in order from the highest
              * superclass down to the current class.
              */
             depth = 0;
             int nFields = 0;
-            for (ComplexFormat format = this;
-                 format != null;
-                 format = format.getComplexSuper()) {
+            for (ComplexFormat format = this; format != null; format = format.getComplexSuper()) {
                 nFields += format.getNFields();
                 depth += 1;
             }
             ComplexFormat[] hierarchy = new ComplexFormat[depth];
             int level = depth;
-            for (ComplexFormat format = this;
-                 format != null;
-                 format = format.getComplexSuper()) {
+            for (ComplexFormat format = this; format != null; format = format.getComplexSuper()) {
                 level -= 1;
                 hierarchy[level] = format;
             }
@@ -651,9 +584,9 @@ public class ComplexFormat extends Format {
             int index = 0;
 
             /*
-             * The primary key is the first field read/written.  We use the
-             * first primary key field encountered going from this class upward
-             * in the class hierarchy.
+             * The primary key is the first field read/written. We use the first
+             * primary key field encountered going from this class upward in the
+             * class hierarchy.
              */
             if (getEntityFormat() != null) {
                 for (level = depth - 1; level >= 0; level -= 1) {
@@ -669,8 +602,8 @@ public class ComplexFormat extends Format {
             }
 
             /*
-             * Secondary key fields are read/written next, from the highest
-             * base class downward.
+             * Secondary key fields are read/written next, from the highest base
+             * class downward.
              */
             for (level = 0; level < depth; level += 1) {
                 ComplexFormat format = hierarchy[level];
@@ -703,25 +636,23 @@ public class ComplexFormat extends Format {
 
         /*
          * Create an objects array that is parallel to the fields and levels
-         * arrays, but contains the RawObject for each slot from which the
-         * field value can be retrieved.  The predetermined level for each
-         * field determines which RawObject in the instance hierarchy to use.
+         * arrays, but contains the RawObject for each slot from which the field
+         * value can be retrieved. The predetermined level for each field
+         * determines which RawObject in the instance hierarchy to use.
          */
         RawObject[] objectsByLevel = new RawObject[depth];
         int level = depth;
         for (RawObject raw = rawObject; raw != null; raw = raw.getSuper()) {
             if (level == 0) {
-                throw new IllegalArgumentException
-                    ("RawObject has too many superclasses: " +
-                     rawObject.getType().getClassName());
+                throw new IllegalArgumentException(
+                        "RawObject has too many superclasses: " + rawObject.getType().getClassName());
             }
             level -= 1;
             objectsByLevel[level] = raw;
         }
         if (level > 0) {
-            throw new IllegalArgumentException
-                ("RawObject has too few superclasses: " +
-                 rawObject.getType().getClassName());
+            throw new IllegalArgumentException(
+                    "RawObject has too few superclasses: " + rawObject.getType().getClassName());
         }
         assert level == 0;
         RawObject[] objects = new RawObject[fields.length];
@@ -730,8 +661,7 @@ public class ComplexFormat extends Format {
         }
 
         /* Create the persistent object and convert all RawObject fields. */
-        EntityInput in = new RawComplexInput
-            (catalog, rawAccess, converted, fields, objects);
+        EntityInput in = new RawComplexInput(catalog, rawAccess, converted, fields, objects);
         Object o = newInstance(in, rawAccess);
         converted.put(rawObject, o);
         if (getEntityFormat() != null) {
@@ -747,16 +677,14 @@ public class ComplexFormat extends Format {
     }
 
     @Override
-    void writePriKey(Object o, EntityOutput output, boolean rawAccess)
-        throws RefreshException {
+    void writePriKey(Object o, EntityOutput output, boolean rawAccess) throws RefreshException {
 
         Accessor accessor = rawAccess ? rawAccessor : objAccessor;
         accessor.writePriKeyField(o, output);
     }
 
     @Override
-    public void readPriKey(Object o, EntityInput input, boolean rawAccess)
-        throws RefreshException {
+    public void readPriKey(Object o, EntityInput input, boolean rawAccess) throws RefreshException {
 
         Accessor accessor = rawAccess ? rawAccessor : objAccessor;
         accessor.readPriKeyField(o, input);
@@ -764,8 +692,7 @@ public class ComplexFormat extends Format {
 
     @Override
     public String getOldKeyName(final String keyName) {
-        if (newToOldFieldMap != null &&
-            newToOldFieldMap.containsKey(keyName)) {
+        if (newToOldFieldMap != null && newToOldFieldMap.containsKey(keyName)) {
             return newToOldFieldMap.get(keyName);
         } else {
             return keyName;
@@ -773,17 +700,13 @@ public class ComplexFormat extends Format {
     }
 
     @Override
-    boolean nullifySecKey(Catalog catalog,
-                          Object entity,
-                          String keyName,
-                          Object keyElement) {
+    boolean nullifySecKey(Catalog catalog, Object entity, String keyName, Object keyElement) {
         if (secKeyAddresses == null) {
             throw DbCompat.unexpectedState();
         }
         FieldAddress addr = secKeyAddresses.get(keyName);
         if (addr != null) {
-            Object oldVal = rawAccessor.getField
-                (entity, addr.fieldNum, addr.superLevel, addr.isSecField);
+            Object oldVal = rawAccessor.getField(entity, addr.fieldNum, addr.superLevel, addr.isSecField);
             if (oldVal != null) {
                 if (keyElement != null) {
                     RawObject container = (RawObject) oldVal;
@@ -800,11 +723,8 @@ public class ComplexFormat extends Format {
                                 System.arraycopy(a1, 0, a2, 0, i);
                                 System.arraycopy(a1, i + 1, a2, i, len - i);
                                 if (isArray) {
-                                    rawAccessor.setField
-                                        (entity, addr.fieldNum,
-                                         addr.superLevel, addr.isSecField,
-                                         new RawObject
-                                            (container.getType(), a2));
+                                    rawAccessor.setField(entity, addr.fieldNum, addr.superLevel, addr.isSecField,
+                                            new RawObject(container.getType(), a2));
                                 } else {
                                     CollectionProxy.setElements(container, a2);
                                 }
@@ -814,9 +734,7 @@ public class ComplexFormat extends Format {
                     }
                     return false;
                 } else {
-                    rawAccessor.setField
-                        (entity, addr.fieldNum, addr.superLevel,
-                         addr.isSecField, null);
+                    rawAccessor.setField(entity, addr.fieldNum, addr.superLevel, addr.isSecField, null);
                     return true;
                 }
             } else {
@@ -828,23 +746,20 @@ public class ComplexFormat extends Format {
     }
 
     @Override
-    void skipContents(RecordInput input)
-        throws RefreshException {
+    void skipContents(RecordInput input) throws RefreshException {
 
         skipToSecKeyField(input, Accessor.MAX_FIELD_NUM);
         skipToNonKeyField(input, Accessor.MAX_FIELD_NUM);
     }
 
     @Override
-    void copySecMultiKey(RecordInput input, Format keyFormat, Set results)
-        throws RefreshException {
+    void copySecMultiKey(RecordInput input, Format keyFormat, Set results) throws RefreshException {
 
         CollectionProxy.copyElements(input, this, keyFormat, results);
     }
 
     @Override
-    Format skipToSecKey(RecordInput input, String keyName)
-        throws RefreshException {
+    Format skipToSecKey(RecordInput input, String keyName) throws RefreshException {
 
         if (secKeyAddresses == null) {
             throw DbCompat.unexpectedState();
@@ -864,13 +779,10 @@ public class ComplexFormat extends Format {
     }
 
     private int getNFields() {
-        return ((priKeyField != null) ? 1 : 0) +
-               secKeyFields.size() +
-               nonKeyFields.size();
+        return ((priKeyField != null) ? 1 : 0) + secKeyFields.size() + nonKeyFields.size();
     }
 
-    private void skipToSecKeyField(RecordInput input, int toFieldNum)
-        throws RefreshException {
+    private void skipToSecKeyField(RecordInput input, int toFieldNum) throws RefreshException {
 
         ComplexFormat superFormat = getComplexSuper();
         if (superFormat != null) {
@@ -882,8 +794,7 @@ public class ComplexFormat extends Format {
         }
     }
 
-    private void skipToNonKeyField(RecordInput input, int toFieldNum)
-        throws RefreshException {
+    private void skipToNonKeyField(RecordInput input, int toFieldNum) throws RefreshException {
 
         ComplexFormat superFormat = getComplexSuper();
         if (superFormat != null) {
@@ -897,17 +808,13 @@ public class ComplexFormat extends Format {
 
     private static class FieldAddress {
 
-        boolean isSecField;
-        int fieldNum;
-        int superLevel;
+        boolean       isSecField;
+        int           fieldNum;
+        int           superLevel;
         ComplexFormat clsFormat;
-        Format keyFormat;
+        Format        keyFormat;
 
-        FieldAddress(boolean isSecField,
-                     int fieldNum,
-                     int superLevel,
-                     ComplexFormat clsFormat,
-                     Format keyFormat) {
+        FieldAddress(boolean isSecField, int fieldNum, int superLevel, ComplexFormat clsFormat, Format keyFormat) {
             this.isSecField = isSecField;
             this.fieldNum = fieldNum;
             this.superLevel = superLevel;
@@ -921,10 +828,8 @@ public class ComplexFormat extends Format {
 
         /* Disallow evolution to a non-complex format. */
         if (!(newFormatParam instanceof ComplexFormat)) {
-            evolver.addMissingMutation
-                (this, newFormatParam,
-                 "Converter is required when a complex type is changed " +
-                 "to a simple type or enum type");
+            evolver.addMissingMutation(this, newFormatParam,
+                    "Converter is required when a complex type is changed " + "to a simple type or enum type");
             return false;
         }
         ComplexFormat newFormat = (ComplexFormat) newFormatParam;
@@ -940,8 +845,8 @@ public class ComplexFormat extends Format {
 
         /*
          * Keep track of the old and new entity class names for use in deleting
-         * and renaming secondary keys below.  If the oldEntityClass is
-         * non-null this also signifies an entity class or subclass.  Note that
+         * and renaming secondary keys below. If the oldEntityClass is non-null
+         * this also signifies an entity class or subclass. Note that
          * getEntityFormat cannot be called on a newly created format during
          * evolution because its super format property is not yet initialized.
          * [#16253]
@@ -958,20 +863,15 @@ public class ComplexFormat extends Format {
 
         /*
          * Evolve all superclass formats, even when a deleted class appears in
-         * the hierarchy.  This ensures that the super format's
+         * the hierarchy. This ensures that the super format's
          * getLatestVersion/getComplexLatest method can be used accurately
          * below.
          */
-        for (ComplexFormat oldSuper = getComplexSuper();
-             oldSuper != null;
-             oldSuper = oldSuper.getComplexSuper()) {
-            Converter converter = mutations.getConverter
-                (oldSuper.getClassName(), oldSuper.getVersion(), null);
+        for (ComplexFormat oldSuper = getComplexSuper(); oldSuper != null; oldSuper = oldSuper.getComplexSuper()) {
+            Converter converter = mutations.getConverter(oldSuper.getClassName(), oldSuper.getVersion(), null);
             if (converter != null) {
-                evolver.addMissingMutation
-                    (this, newFormatParam,
-                     "Converter is required for this subclass when a " +
-                     "Converter appears on its superclass: " + converter);
+                evolver.addMissingMutation(this, newFormatParam, "Converter is required for this subclass when a "
+                        + "Converter appears on its superclass: " + converter);
                 return false;
             }
             if (!evolver.evolveFormat(oldSuper)) {
@@ -992,12 +892,10 @@ public class ComplexFormat extends Format {
 
         /*
          * Compare the old and new class hierarhies and decide whether each
-         * change is allowed or not:
-         * + Old deleted and removed superclass -- allowed
-         * + Old empty and removed superclass -- allowed
-         * + Old non-empty and removed superclass -- not allowed
-         * + Old superclass repositioned in the hierarchy -- not allowed
-         * + New inserted superclass -- allowed
+         * change is allowed or not: + Old deleted and removed superclass --
+         * allowed + Old empty and removed superclass -- allowed + Old non-empty
+         * and removed superclass -- not allowed + Old superclass repositioned
+         * in the hierarchy -- not allowed + New inserted superclass -- allowed
          */
         Class newFormatCls = newFormat.getExistingType();
         Class newSuper = newFormatCls;
@@ -1015,24 +913,20 @@ public class ComplexFormat extends Format {
                 hierarchyChanged = true;
             }
         } else {
-            if (!getSuperFormat().getLatestVersion().getClassName().equals
-                    (newFormatCls.getSuperclass().getName())) {
+            if (!getSuperFormat().getLatestVersion().getClassName().equals(newFormatCls.getSuperclass().getName())) {
                 thisChanged = true;
                 hierarchyChanged = true;
             }
         }
 
-        for (ComplexFormat oldSuper = getComplexSuper();
-             oldSuper != null;
-             oldSuper = oldSuper.getComplexSuper()) {
+        for (ComplexFormat oldSuper = getComplexSuper(); oldSuper != null; oldSuper = oldSuper.getComplexSuper()) {
 
             /* Find the matching superclass in the new hierarchy. */
             String oldSuperName = oldSuper.getLatestVersion().getClassName();
             Class foundNewSuper = null;
             int tryNewLevel = newLevel;
-            for (Class newSuper2 = newSuper.getSuperclass();
-                 newSuper2 != Object.class;
-                 newSuper2 = newSuper2.getSuperclass()) {
+            for (Class newSuper2 = newSuper.getSuperclass(); newSuper2 != Object.class; newSuper2 = newSuper2
+                    .getSuperclass()) {
                 tryNewLevel += 1;
                 if (oldSuperName.equals(newSuper2.getName())) {
                     foundNewSuper = newSuper2;
@@ -1050,13 +944,12 @@ public class ComplexFormat extends Format {
             if (foundNewSuper != null) {
 
                 /*
-                 * We found the old superclass in the new hierarchy.  Traverse
+                 * We found the old superclass in the new hierarchy. Traverse
                  * through the superclass formats that were skipped over above
                  * when finding it.
                  */
-                for (Class newSuper2 = newSuper.getSuperclass();
-                     newSuper2 != foundNewSuper;
-                     newSuper2 = newSuper2.getSuperclass()) {
+                for (Class newSuper2 = newSuper.getSuperclass(); newSuper2 != foundNewSuper; newSuper2 = newSuper2
+                        .getSuperclass()) {
 
                     /*
                      * The class hierarchy changed -- a new class was inserted.
@@ -1067,17 +960,12 @@ public class ComplexFormat extends Format {
                      * Check that the new formats skipped over above are not at
                      * a different position in the old hierarchy.
                      */
-                    for (ComplexFormat oldSuper2 = oldSuper.getComplexSuper();
-                         oldSuper2 != null;
-                         oldSuper2 = oldSuper2.getComplexSuper()) {
-                        String oldSuper2Name =
-                            oldSuper2.getLatestVersion().getClassName();
+                    for (ComplexFormat oldSuper2 = oldSuper.getComplexSuper(); oldSuper2 != null; oldSuper2 = oldSuper2
+                            .getComplexSuper()) {
+                        String oldSuper2Name = oldSuper2.getLatestVersion().getClassName();
                         if (oldSuper2Name.equals(newSuper2.getName())) {
-                            evolver.addMissingMutation
-                                (this, newFormatParam,
-                                 "Class Converter is required when a " +
-                                 "superclass is moved in the class " +
-                                 "hierarchy: " + newSuper2.getName());
+                            evolver.addMissingMutation(this, newFormatParam, "Class Converter is required when a "
+                                    + "superclass is moved in the class " + "hierarchy: " + newSuper2.getName());
                             return false;
                         }
                     }
@@ -1087,35 +975,29 @@ public class ComplexFormat extends Format {
             } else {
 
                 /*
-                 * We did not find the old superclass in the new hierarchy.
-                 * The class hierarchy changed, since an old class no longer
+                 * We did not find the old superclass in the new hierarchy. The
+                 * class hierarchy changed, since an old class no longer
                  * appears.
                  */
                 hierarchyChanged = true;
 
                 /* Check that the old class can be safely removed. */
                 if (!oldSuper.isDeleted()) {
-                    ComplexFormat oldSuperLatest =
-                        oldSuper.getComplexLatest();
+                    ComplexFormat oldSuperLatest = oldSuper.getComplexLatest();
                     if (oldSuperLatest.getNFields() != 0) {
-                        evolver.addMissingMutation
-                            (this, newFormatParam,
-                             "When a superclass is removed from the class " +
-                             "hierarchy, the superclass or all of its " +
-                             "persistent fields must be deleted with a " +
-                             "Deleter: " +
-                             oldSuperLatest.getClassName());
+                        evolver.addMissingMutation(this, newFormatParam,
+                                "When a superclass is removed from the class "
+                                        + "hierarchy, the superclass or all of its "
+                                        + "persistent fields must be deleted with a " + "Deleter: "
+                                        + oldSuperLatest.getClassName());
                         return false;
                     }
                 }
 
                 if (oldEntityClass != null && isCurrentVersion()) {
-                    Map<String, SecondaryKeyMetadata> secKeys =
-                        oldSuper.clsMeta.getSecondaryKeys();
+                    Map<String, SecondaryKeyMetadata> secKeys = oldSuper.clsMeta.getSecondaryKeys();
                     for (FieldInfo field : oldSuper.secKeyFields) {
-                        SecondaryKeyMetadata meta =
-                            getSecondaryKeyMetadataByFieldName
-                                (secKeys, field.getName());
+                        SecondaryKeyMetadata meta = getSecondaryKeyMetadataByFieldName(secKeys, field.getName());
                         assert meta != null;
                         allKeyNameMap.put(meta.getKeyName(), null);
                     }
@@ -1142,40 +1024,30 @@ public class ComplexFormat extends Format {
         }
 
         /* Require new version number if this class was changed. */
-        if (thisChanged &&
-            !evolver.checkUpdatedVersion
-                ("Changes to the fields or superclass were detected", this,
-                 newFormat)) {
+        if (thisChanged
+                && !evolver.checkUpdatedVersion("Changes to the fields or superclass were detected", this, newFormat)) {
             return false;
         }
 
         /* Rename and delete the secondary databases. */
-        if (allKeyNameMap.size() > 0 &&
-            oldEntityClass != null &&
-            newEntityClass != null &&
-            isCurrentVersion()) {
+        if (allKeyNameMap.size() > 0 && oldEntityClass != null && newEntityClass != null && isCurrentVersion()) {
             for (Map.Entry<String, String> entry : allKeyNameMap.entrySet()) {
                 String oldKeyName = entry.getKey();
                 String newKeyName = entry.getValue();
                 if (newKeyName != null) {
-                    evolver.renameSecondaryDatabase
-                        (oldEntityClass, newEntityClass,
-                         oldKeyName, newKeyName);
+                    evolver.renameSecondaryDatabase(oldEntityClass, newEntityClass, oldKeyName, newKeyName);
                 } else {
-                    evolver.deleteSecondaryDatabase
-                        (oldEntityClass, oldKeyName);
+                    evolver.deleteSecondaryDatabase(oldEntityClass, oldKeyName);
                 }
             }
         }
 
         /*
-         * Use an EvolveReader if needed.
-         *
-         * We force evolution to occur if the old format did not use the new
-         * String format.  We do not require the user to bump the version
-         * number, since the format change is internal.  Note that we could
-         * optimize by only forcing evolution if this format may contain
-         * Strings. [#19247]
+         * Use an EvolveReader if needed. We force evolution to occur if the old
+         * format did not use the new String format. We do not require the user
+         * to bump the version number, since the format change is internal. Note
+         * that we could optimize by only forcing evolution if this format may
+         * contain Strings. [#19247]
          */
         if (hierarchyChanged || thisChanged || !newStringFormat) {
             Reader reader = new EvolveReader(newLevels);
@@ -1187,18 +1059,14 @@ public class ComplexFormat extends Format {
     }
 
     @Override
-    boolean evolveMetadata(Format newFormatParam,
-                           Converter converter,
-                           Evolver evolver) {
+    boolean evolveMetadata(Format newFormatParam, Converter converter, Evolver evolver) {
         assert !isDeleted();
         assert isEntity();
         assert newFormatParam.isEntity();
         ComplexFormat newFormat = (ComplexFormat) newFormatParam;
 
-        if (!checkKeyTypeChange
-                (newFormat, entityMeta.getPrimaryKey(),
-                 newFormat.entityMeta.getPrimaryKey(), "primary key",
-                 evolver)) {
+        if (!checkKeyTypeChange(newFormat, entityMeta.getPrimaryKey(), newFormat.entityMeta.getPrimaryKey(),
+                "primary key", evolver)) {
             return false;
         }
 
@@ -1210,12 +1078,9 @@ public class ComplexFormat extends Format {
             deletedKeys = Collections.emptySet();
         }
 
-        Map<String, SecondaryKeyMetadata> oldSecondaryKeys =
-            entityMeta.getSecondaryKeys();
-        Map<String, SecondaryKeyMetadata> newSecondaryKeys =
-            newFormat.entityMeta.getSecondaryKeys();
-        Set<String> insertedKeys =
-            new HashSet<String>(newSecondaryKeys.keySet());
+        Map<String, SecondaryKeyMetadata> oldSecondaryKeys = entityMeta.getSecondaryKeys();
+        Map<String, SecondaryKeyMetadata> newSecondaryKeys = newFormat.entityMeta.getSecondaryKeys();
+        Set<String> insertedKeys = new HashSet<String>(newSecondaryKeys.keySet());
 
         for (SecondaryKeyMetadata oldMeta : oldSecondaryKeys.values()) {
             String keyName = oldMeta.getKeyName();
@@ -1226,30 +1091,24 @@ public class ComplexFormat extends Format {
             } else {
                 SecondaryKeyMetadata newMeta = newSecondaryKeys.get(keyName);
                 if (newMeta == null) {
-                    evolver.addInvalidMutation
-                        (this, newFormat, converter,
-                         "Existing key not found in new entity metadata: " +
-                          keyName);
+                    evolver.addInvalidMutation(this, newFormat, converter,
+                            "Existing key not found in new entity metadata: " + keyName);
                     return false;
                 }
                 insertedKeys.remove(keyName);
                 String keyLabel = "secondary key: " + keyName;
-                if (!checkKeyTypeChange
-                        (newFormat, oldMeta, newMeta, keyLabel, evolver)) {
+                if (!checkKeyTypeChange(newFormat, oldMeta, newMeta, keyLabel, evolver)) {
                     return false;
                 }
-                if (!checkSecKeyMetadata
-                        (newFormat, oldMeta, newMeta, evolver)) {
+                if (!checkSecKeyMetadata(newFormat, oldMeta, newMeta, evolver)) {
                     return false;
                 }
             }
         }
 
         if (!insertedKeys.isEmpty()) {
-            evolver.addEvolveError
-                (this, newFormat, "Error",
-                 "New keys " + insertedKeys +
-                 " not allowed when using a Converter with an entity class");
+            evolver.addEvolveError(this, newFormat, "Error",
+                    "New keys " + insertedKeys + " not allowed when using a Converter with an entity class");
         }
 
         return true;
@@ -1258,19 +1117,13 @@ public class ComplexFormat extends Format {
     /**
      * Checks that changes to secondary key metadata are legal.
      */
-    private boolean checkSecKeyMetadata(Format newFormat,
-                                        SecondaryKeyMetadata oldMeta,
-                                        SecondaryKeyMetadata newMeta,
+    private boolean checkSecKeyMetadata(Format newFormat, SecondaryKeyMetadata oldMeta, SecondaryKeyMetadata newMeta,
                                         Evolver evolver) {
         if (oldMeta.getRelationship() != newMeta.getRelationship()) {
-            evolver.addEvolveError
-                (this, newFormat,
-                 "Change detected in the relate attribute (Relationship) " +
-                 "of a secondary key",
-                 "Old key: " + oldMeta.getKeyName() +
-                 " relate: " + oldMeta.getRelationship() +
-                 " new key: " + newMeta.getKeyName() +
-                 " relate: " + newMeta.getRelationship());
+            evolver.addEvolveError(this, newFormat,
+                    "Change detected in the relate attribute (Relationship) " + "of a secondary key",
+                    "Old key: " + oldMeta.getKeyName() + " relate: " + oldMeta.getRelationship() + " new key: "
+                            + newMeta.getKeyName() + " relate: " + newMeta.getRelationship());
             return false;
         }
         return true;
@@ -1280,31 +1133,20 @@ public class ComplexFormat extends Format {
      * Checks that the type of a key field did not change, as known from
      * metadata when a class conversion is used.
      */
-    private boolean checkKeyTypeChange(Format newFormat,
-                                       FieldMetadata oldMeta,
-                                       FieldMetadata newMeta,
-                                       String keyLabel,
+    private boolean checkKeyTypeChange(Format newFormat, FieldMetadata oldMeta, FieldMetadata newMeta, String keyLabel,
                                        Evolver evolver) {
         String oldClass = oldMeta.getClassName();
         String newClass = newMeta.getClassName();
         if (!oldClass.equals(newClass)) {
             Format oldType = getCatalog().getFormat(oldClass);
             Format newType = getCatalog().getFormat(newClass);
-            if (oldType == null || newType == null ||
-                ((oldType.getWrapperFormat() == null ||
-                  oldType.getWrapperFormat().getId() !=
-                  newType.getId()) &&
-                 (newType.getWrapperFormat() == null ||
-                  newType.getWrapperFormat().getId() !=
-                  oldType.getId()))) {
-                evolver.addEvolveError
-                    (this, newFormat,
-                     "Type change detected for " + keyLabel,
-                     "Old field type: " + oldClass +
-                     " is not compatible with the new type: " +
-                     newClass +
-                     " old field: " + oldMeta.getName() +
-                     " new field: " + newMeta.getName());
+            if (oldType == null || newType == null
+                    || ((oldType.getWrapperFormat() == null || oldType.getWrapperFormat().getId() != newType.getId())
+                            && (newType.getWrapperFormat() == null
+                                    || newType.getWrapperFormat().getId() != oldType.getId()))) {
+                evolver.addEvolveError(this, newFormat, "Type change detected for " + keyLabel,
+                        "Old field type: " + oldClass + " is not compatible with the new type: " + newClass
+                                + " old field: " + oldMeta.getName() + " new field: " + newMeta.getName());
                 return false;
             }
         }
@@ -1318,14 +1160,9 @@ public class ComplexFormat extends Format {
     private boolean evolveDeletedClass(Evolver evolver) {
         assert isDeleted();
         if (secKeyFieldReader == null || nonKeyFieldReader == null) {
-            if (priKeyField != null &&
-                getEntityFormat() != null &&
-                !getEntityFormat().isDeleted()) {
-                evolver.addEvolveError
-                    (this, this,
-                     "Class containing primary key field was deleted ",
-                     "Primary key is needed in an entity class hierarchy: " +
-                     priKeyField.getName());
+            if (priKeyField != null && getEntityFormat() != null && !getEntityFormat().isDeleted()) {
+                evolver.addEvolveError(this, this, "Class containing primary key field was deleted ",
+                        "Primary key is needed in an entity class hierarchy: " + priKeyField.getName());
                 return false;
             } else {
                 secKeyFieldReader = new SkipFieldReader(0, secKeyFields);
@@ -1339,7 +1176,7 @@ public class ComplexFormat extends Format {
 
     /**
      * Creates a FieldReader for secondary key fields and non-key fields if
-     * necessary.  Checks the primary key field if necessary.  Does not evolve
+     * necessary. Checks the primary key field if necessary. Does not evolve
      * superclass format fields.
      */
     private int evolveAllFields(ComplexFormat newFormat, Evolver evolver) {
@@ -1353,22 +1190,20 @@ public class ComplexFormat extends Format {
         boolean evolveFailure = false;
         boolean localEvolveNeeded = false;
         if (priKeyField != null) {
-            int result = evolver.evolveRequiredKeyField
-                (this, newFormat, priKeyField, newFormat.priKeyField);
+            int result = evolver.evolveRequiredKeyField(this, newFormat, priKeyField, newFormat.priKeyField);
             if (result == Evolver.EVOLVE_FAILURE) {
                 evolveFailure = true;
             } else if (result == Evolver.EVOLVE_NEEDED) {
                 localEvolveNeeded = true;
             }
         }
-        
+
         /* Copy the incorrectlyOrderedSecKeys from old format to new format. */
         copyIncorrectlyOrderedSecKeys(newFormat);
 
         /* Evolve secondary key fields. */
-        FieldReader reader = evolveFieldList
-            (secKeyFields, newFormat.secKeyFields, true,
-             newFormat.nonKeyFields, newFormat, evolver);
+        FieldReader reader = evolveFieldList(secKeyFields, newFormat.secKeyFields, true, newFormat.nonKeyFields,
+                newFormat, evolver);
         if (reader == FieldReader.EVOLVE_FAILURE) {
             evolveFailure = true;
         } else if (reader != null) {
@@ -1379,9 +1214,8 @@ public class ComplexFormat extends Format {
         }
 
         /* Evolve non-key fields. */
-        reader = evolveFieldList
-            (nonKeyFields, newFormat.nonKeyFields, false,
-             newFormat.secKeyFields, newFormat, evolver);
+        reader = evolveFieldList(nonKeyFields, newFormat.nonKeyFields, false, newFormat.secKeyFields, newFormat,
+                evolver);
         if (reader == FieldReader.EVOLVE_FAILURE) {
             evolveFailure = true;
         } else if (reader != null) {
@@ -1402,11 +1236,10 @@ public class ComplexFormat extends Format {
     }
 
     /**
-     * Returns a FieldReader that reads no fields.
-     *
-     * Instead of adding a DoNothingFieldReader class, we use a
-     * MultiFieldReader with an empty field list.  We do not add a new
-     * FieldReader class to avoid changing the catalog format.  [#15524]
+     * Returns a FieldReader that reads no fields. Instead of adding a
+     * DoNothingFieldReader class, we use a MultiFieldReader with an empty field
+     * list. We do not add a new FieldReader class to avoid changing the catalog
+     * format. [#15524]
      */
     private FieldReader getDoNothingFieldReader() {
         List<FieldReader> emptyList = Collections.emptyList();
@@ -1418,14 +1251,11 @@ public class ComplexFormat extends Format {
      * single class format.
      *
      * @return a FieldReader if field evolution is needed, null if no evolution
-     * is needed, or FieldReader.EVOLVE_FAILURE if an evolution error occurs.
+     *         is needed, or FieldReader.EVOLVE_FAILURE if an evolution error
+     *         occurs.
      */
-    private FieldReader evolveFieldList(List<FieldInfo> oldFields,
-                                        List<FieldInfo> newFields,
-                                        boolean isOldSecKeyField,
-                                        List<FieldInfo> otherNewFields,
-                                        ComplexFormat newFormat,
-                                        Evolver evolver) {
+    private FieldReader evolveFieldList(List<FieldInfo> oldFields, List<FieldInfo> newFields, boolean isOldSecKeyField,
+                                        List<FieldInfo> otherNewFields, ComplexFormat newFormat, Evolver evolver) {
         Mutations mutations = evolver.getMutations();
         boolean evolveFailure = false;
         boolean localEvolveNeeded = false;
@@ -1438,69 +1268,59 @@ public class ComplexFormat extends Format {
          * Add FieldReaders to the list in old field storage order, since that
          * is the order in which field values must be read.
          */
-        fieldLoop:
-        for (int oldFieldIndex = 0;
-             oldFieldIndex < oldFields.size();
-             oldFieldIndex += 1) {
+        fieldLoop: for (int oldFieldIndex = 0; oldFieldIndex < oldFields.size(); oldFieldIndex += 1) {
 
             FieldInfo oldField = oldFields.get(oldFieldIndex);
             String oldName = oldField.getName();
             SecondaryKeyMetadata oldMeta = null;
             if (isOldSecKeyField) {
-                oldMeta = getSecondaryKeyMetadataByFieldName
-                    (clsMeta.getSecondaryKeys(), oldName);
+                oldMeta = getSecondaryKeyMetadataByFieldName(clsMeta.getSecondaryKeys(), oldName);
                 assert oldMeta != null;
             }
 
             /* Get field mutations. */
-            Renamer renamer = mutations.getRenamer
-                (getClassName(), getVersion(), oldName);
-            Deleter deleter = mutations.getDeleter
-                (getClassName(), getVersion(), oldName);
-            Converter converter = mutations.getConverter
-                (getClassName(), getVersion(), oldName);
+            Renamer renamer = mutations.getRenamer(getClassName(), getVersion(), oldName);
+            Deleter deleter = mutations.getDeleter(getClassName(), getVersion(), oldName);
+            Converter converter = mutations.getConverter(getClassName(), getVersion(), oldName);
             if (deleter != null && (converter != null || renamer != null)) {
-                evolver.addInvalidMutation
-                    (this, newFormat, deleter,
-                     "Field Deleter is not allowed along with a Renamer or " +
-                     "Converter for the same field: " + oldName);
+                evolver.addInvalidMutation(this, newFormat, deleter,
+                        "Field Deleter is not allowed along with a Renamer or " + "Converter for the same field: "
+                                + oldName);
                 evolveFailure = true;
                 continue fieldLoop;
             }
 
             /*
              * Match old and new field by name, taking into account the Renamer
-             * mutation.  If the @SecondaryKey annotation was added or removed,
+             * mutation. If the @SecondaryKey annotation was added or removed,
              * the field will have moved from one of the two field lists to the
              * other.
              */
-            String newName = (renamer != null) ?
-                renamer.getNewName() : oldName;
+            String newName = (renamer != null) ? renamer.getNewName() : oldName;
             boolean nameChanged = false;
             if (!oldName.equals(newName)) {
                 if (newToOldFieldMap == null) {
                     newToOldFieldMap = new HashMap<String, String>();
                 }
                 newToOldFieldMap.put(newName, oldName);
-                nameChanged = true; 
+                nameChanged = true;
             }
             int newFieldIndex = FieldInfo.getFieldIndex(newFields, newName);
             FieldInfo newField = null;
             boolean isNewSecKeyField = isOldSecKeyField;
             if (newFieldIndex >= 0) {
                 newField = newFields.get(newFieldIndex);
-                
-                /* 
+
+                /*
                  * Change the key name in incorrectlyOrderedSecKeys of the new
                  * format.
                  */
-                if (nameChanged &&
-                    newFormat.incorrectlyOrderedSecKeys != null && 
-                    newFormat.incorrectlyOrderedSecKeys.remove(oldName)) {
+                if (nameChanged && newFormat.incorrectlyOrderedSecKeys != null
+                        && newFormat.incorrectlyOrderedSecKeys.remove(oldName)) {
                     newFormat.incorrectlyOrderedSecKeys.add(newName);
                 }
-                
-                /* 
+
+                /*
                  * [#18961] If the order of the field has been changed, we will
                  * create a PlainFieldReader for it.
                  */
@@ -1509,16 +1329,15 @@ public class ComplexFormat extends Format {
                     readerNeeded = true;
                 }
             } else {
-                newFieldIndex = FieldInfo.getFieldIndex
-                    (otherNewFields, newName);
+                newFieldIndex = FieldInfo.getFieldIndex(otherNewFields, newName);
                 if (newFieldIndex >= 0) {
                     newField = otherNewFields.get(newFieldIndex);
                     isNewSecKeyField = !isOldSecKeyField;
                 }
                 localEvolveNeeded = true;
                 readerNeeded = true;
-                
-                /* 
+
+                /*
                  * Remove the key in incorrectlyOrderedSecKeys of the new
                  * format.
                  */
@@ -1530,20 +1349,16 @@ public class ComplexFormat extends Format {
             /* Apply field Deleter and continue. */
             if (deleter != null) {
                 if (newField != null) {
-                    evolver.addInvalidMutation
-                        (this, newFormat, deleter,
-                         "Field Deleter is not allowed when the persistent " +
-                         "field is still present: " + oldName);
+                    evolver.addInvalidMutation(this, newFormat, deleter,
+                            "Field Deleter is not allowed when the persistent " + "field is still present: " + oldName);
                     evolveFailure = true;
                 }
                 /* A SkipFieldReader can read multiple sequential fields. */
-                if (currentReader instanceof SkipFieldReader &&
-                    currentReader.acceptField
-                        (oldFieldIndex, newFieldIndex, isNewSecKeyField)) {
+                if (currentReader instanceof SkipFieldReader
+                        && currentReader.acceptField(oldFieldIndex, newFieldIndex, isNewSecKeyField)) {
                     currentReader.addField(oldField);
                 } else {
-                    currentReader = new SkipFieldReader
-                        (oldFieldIndex, oldField);
+                    currentReader = new SkipFieldReader(oldFieldIndex, oldField);
                     fieldReaders.add(currentReader);
                     readerNeeded = true;
                     localEvolveNeeded = true;
@@ -1557,10 +1372,7 @@ public class ComplexFormat extends Format {
                 continue fieldLoop;
             } else {
                 if (newField == null) {
-                    evolver.addMissingMutation
-                        (this, newFormat,
-                         "Field is not present or not persistent: " +
-                         oldName);
+                    evolver.addMissingMutation(this, newFormat, "Field is not present or not persistent: " + oldName);
                     evolveFailure = true;
                     continue fieldLoop;
                 }
@@ -1575,13 +1387,11 @@ public class ComplexFormat extends Format {
             /* Get and process secondary key metadata changes. */
             SecondaryKeyMetadata newMeta = null;
             if (isOldSecKeyField && isNewSecKeyField) {
-                newMeta = getSecondaryKeyMetadataByFieldName
-                    (newFormat.clsMeta.getSecondaryKeys(), newName);
+                newMeta = getSecondaryKeyMetadataByFieldName(newFormat.clsMeta.getSecondaryKeys(), newName);
                 assert newMeta != null;
 
                 /* Validate metadata changes. */
-                if (!checkSecKeyMetadata
-                        (newFormat, oldMeta, newMeta, evolver)) {
+                if (!checkSecKeyMetadata(newFormat, oldMeta, newMeta, evolver)) {
                     evolveFailure = true;
                     continue fieldLoop;
                 }
@@ -1610,15 +1420,11 @@ public class ComplexFormat extends Format {
             /* Apply field Converter and continue. */
             if (converter != null) {
                 if (isOldSecKeyField) {
-                    evolver.addInvalidMutation
-                        (this, newFormat, converter,
-                         "Field Converter is not allowed for secondary key " +
-                         "fields: " + oldName);
+                    evolver.addInvalidMutation(this, newFormat, converter,
+                            "Field Converter is not allowed for secondary key " + "fields: " + oldName);
                     evolveFailure = true;
                 } else {
-                    currentReader = new ConvertFieldReader
-                        (converter, oldFieldIndex, newFieldIndex,
-                         isNewSecKeyField);
+                    currentReader = new ConvertFieldReader(converter, oldFieldIndex, newFieldIndex, isNewSecKeyField);
                     fieldReaders.add(currentReader);
                     readerNeeded = true;
                     localEvolveNeeded = true;
@@ -1628,33 +1434,29 @@ public class ComplexFormat extends Format {
 
             /*
              * Evolve the declared version of the field format and all versions
-             * more recent, and the formats for all of their subclasses.  While
+             * more recent, and the formats for all of their subclasses. While
              * we're at it, check to see if all possible classes are converted.
              */
             boolean allClassesConverted = true;
             Format oldFieldFormat = oldField.getType();
-            for (Format formatVersion = oldFieldFormat.getLatestVersion();
-                 true;
-                 formatVersion = formatVersion.getPreviousVersion()) {
+            for (Format formatVersion = oldFieldFormat.getLatestVersion(); true; formatVersion = formatVersion
+                    .getPreviousVersion()) {
                 assert formatVersion != null;
                 if (!evolver.evolveFormat(formatVersion)) {
                     evolveFailure = true;
                     continue fieldLoop;
                 }
-                if (!formatVersion.isNew() &&
-                    !evolver.isClassConverted(formatVersion)) {
+                if (!formatVersion.isNew() && !evolver.isClassConverted(formatVersion)) {
                     allClassesConverted = false;
                 }
-                Set<Format> subclassFormats =
-                    evolver.getSubclassFormats(formatVersion);
+                Set<Format> subclassFormats = evolver.getSubclassFormats(formatVersion);
                 if (subclassFormats != null) {
                     for (Format format2 : subclassFormats) {
                         if (!evolver.evolveFormat(format2)) {
                             evolveFailure = true;
                             continue fieldLoop;
                         }
-                        if (!format2.isNew() &&
-                            !evolver.isClassConverted(format2)) {
+                        if (!format2.isNew() && !evolver.isClassConverted(format2)) {
                             allClassesConverted = false;
                         }
                     }
@@ -1666,34 +1468,27 @@ public class ComplexFormat extends Format {
 
             /*
              * Check for compatible field types and apply a field widener if
-             * needed.  If no widener is needed, fall through and apply a
+             * needed. If no widener is needed, fall through and apply a
              * PlainFieldReader.
              */
             Format oldLatestFormat = oldFieldFormat.getLatestVersion();
             Format newFieldFormat = newField.getType();
-            if (oldLatestFormat.getClassName().equals
-                    (newFieldFormat.getClassName()) &&
-                !oldLatestFormat.isDeleted()) {
-                /* Formats are identical.  Fall through. */
+            if (oldLatestFormat.getClassName().equals(newFieldFormat.getClassName()) && !oldLatestFormat.isDeleted()) {
+                /* Formats are identical. Fall through. */
             } else if (allClassesConverted) {
-                /* All old classes will be converted.  Fall through. */
+                /* All old classes will be converted. Fall through. */
                 localEvolveNeeded = true;
-            } else if (WidenerInput.isWideningSupported
-                        (oldLatestFormat, newFieldFormat, isOldSecKeyField)) {
+            } else if (WidenerInput.isWideningSupported(oldLatestFormat, newFieldFormat, isOldSecKeyField)) {
                 /* Apply field widener and continue. */
-                currentReader = new WidenFieldReader
-                    (oldLatestFormat, newFieldFormat, newFieldIndex,
-                     isNewSecKeyField);
+                currentReader = new WidenFieldReader(oldLatestFormat, newFieldFormat, newFieldIndex, isNewSecKeyField);
                 fieldReaders.add(currentReader);
                 readerNeeded = true;
                 localEvolveNeeded = true;
                 continue fieldLoop;
             } else {
                 boolean refWidened = false;
-                if (!newFieldFormat.isPrimitive() &&
-                    !oldLatestFormat.isPrimitive() &&
-                    !oldLatestFormat.isDeleted() &&
-                    !evolver.isClassConverted(oldLatestFormat)) {
+                if (!newFieldFormat.isPrimitive() && !oldLatestFormat.isPrimitive() && !oldLatestFormat.isDeleted()
+                        && !evolver.isClassConverted(oldLatestFormat)) {
                     Class oldCls = oldLatestFormat.getExistingType();
                     Class newCls = newFieldFormat.getExistingType();
                     if (newCls.isAssignableFrom(oldCls)) {
@@ -1701,43 +1496,39 @@ public class ComplexFormat extends Format {
                     }
                 }
                 if (refWidened) {
-                    /* A reference type has been widened.  Fall through. */
+                    /* A reference type has been widened. Fall through. */
                     localEvolveNeeded = true;
                 } else {
                     /* Types are not compatible. */
-                    evolver.addMissingMutation
-                        (this, newFormat,
-                         "Old field type: " + oldLatestFormat.getClassName() +
-                         " is not compatible with the new type: " +
-                         newFieldFormat.getClassName() +
-                         " for field: " + oldName);
+                    evolver.addMissingMutation(this, newFormat,
+                            "Old field type: " + oldLatestFormat.getClassName()
+                                    + " is not compatible with the new type: " + newFieldFormat.getClassName()
+                                    + " for field: " + oldName);
                     evolveFailure = true;
                     continue fieldLoop;
                 }
             }
 
             /*
-             * Old to new field conversion is not needed or is automatic.  Read
-             * fields as if no evolution is needed.  A PlainFieldReader can
-             * read multiple sequential fields.
+             * Old to new field conversion is not needed or is automatic. Read
+             * fields as if no evolution is needed. A PlainFieldReader can read
+             * multiple sequential fields.
              */
-            if (currentReader instanceof PlainFieldReader &&
-                currentReader.acceptField
-                    (oldFieldIndex, newFieldIndex, isNewSecKeyField)) {
+            if (currentReader instanceof PlainFieldReader
+                    && currentReader.acceptField(oldFieldIndex, newFieldIndex, isNewSecKeyField)) {
                 currentReader.addField(oldField);
             } else {
-                currentReader = new PlainFieldReader
-                    (oldFieldIndex, newFieldIndex, isNewSecKeyField);
+                currentReader = new PlainFieldReader(oldFieldIndex, newFieldIndex, isNewSecKeyField);
                 fieldReaders.add(currentReader);
             }
         }
 
         /*
          * If there are new fields, then the old fields must be read using a
-         * reader, even if the old field list is empty.  Using the accessor
+         * reader, even if the old field list is empty. Using the accessor
          * directly will read fields in the wrong order and will read fields
          * that were moved between lists (when adding and dropping
-         * @SecondaryKey).  [#15524]
+         * @SecondaryKey). [#15524]
          */
         if (newFieldsMatched < newFields.size()) {
             localEvolveNeeded = true;
@@ -1762,32 +1553,25 @@ public class ComplexFormat extends Format {
     }
 
     /**
-     * Base class for all FieldReader subclasses.  A FieldReader reads one or
+     * Base class for all FieldReader subclasses. A FieldReader reads one or
      * more fields in the old format data, and may call the new format Accessor
      * to set the field values.
      */
     private static abstract class FieldReader implements Serializable {
 
-        static final FieldReader EVOLVE_NEEDED =
-            new PlainFieldReader(0, 0, false);
-        static final FieldReader EVOLVE_FAILURE =
-            new PlainFieldReader(0, 0, false);
+        static final FieldReader  EVOLVE_NEEDED    = new PlainFieldReader(0, 0, false);
+        static final FieldReader  EVOLVE_FAILURE   = new PlainFieldReader(0, 0, false);
 
         private static final long serialVersionUID = 866041475399255164L;
 
         FieldReader() {
         }
 
-        void initialize(Catalog catalog,
-                        int initVersion,
-                        ComplexFormat oldParentFormat,
-                        ComplexFormat newParentFormat,
+        void initialize(Catalog catalog, int initVersion, ComplexFormat oldParentFormat, ComplexFormat newParentFormat,
                         boolean isOldSecKey) {
         }
 
-        boolean acceptField(int oldFieldIndex,
-                            int newFieldIndex,
-                            boolean isNewSecKeyField) {
+        boolean acceptField(int oldFieldIndex, int newFieldIndex, boolean isNewSecKeyField) {
             return false;
         }
 
@@ -1795,11 +1579,8 @@ public class ComplexFormat extends Format {
             throw DbCompat.unexpectedState();
         }
 
-        abstract void readFields(Object o,
-                                 EntityInput input,
-                                 Accessor accessor,
-                                 int superLevel)
-            throws RefreshException;
+        abstract void readFields(Object o, EntityInput input, Accessor accessor, int superLevel)
+                throws RefreshException;
     }
 
     /**
@@ -1810,14 +1591,12 @@ public class ComplexFormat extends Format {
 
         private static final long serialVersionUID = 1795593463439931402L;
 
-        private int startField;
-        private int endField;
-        private boolean secKeyField;
-        private transient int endOldField;
+        private int               startField;
+        private int               endField;
+        private boolean           secKeyField;
+        private transient int     endOldField;
 
-        PlainFieldReader(int oldFieldIndex,
-                         int newFieldIndex,
-                         boolean isNewSecKeyField) {
+        PlainFieldReader(int oldFieldIndex, int newFieldIndex, boolean isNewSecKeyField) {
             endOldField = oldFieldIndex;
             startField = newFieldIndex;
             endField = newFieldIndex;
@@ -1825,12 +1604,8 @@ public class ComplexFormat extends Format {
         }
 
         @Override
-        boolean acceptField(int oldFieldIndex,
-                            int newFieldIndex,
-                            boolean isNewSecKeyField) {
-            return oldFieldIndex == endOldField + 1 &&
-                   newFieldIndex == endField + 1 &&
-                   secKeyField == isNewSecKeyField;
+        boolean acceptField(int oldFieldIndex, int newFieldIndex, boolean isNewSecKeyField) {
+            return oldFieldIndex == endOldField + 1 && newFieldIndex == endField + 1 && secKeyField == isNewSecKeyField;
         }
 
         @Override
@@ -1840,18 +1615,12 @@ public class ComplexFormat extends Format {
         }
 
         @Override
-        final void readFields(Object o,
-                              EntityInput input,
-                              Accessor accessor,
-                              int superLevel)
-            throws RefreshException {
+        final void readFields(Object o, EntityInput input, Accessor accessor, int superLevel) throws RefreshException {
 
             if (secKeyField) {
-                accessor.readSecKeyFields
-                    (o, input, startField, endField, superLevel);
+                accessor.readSecKeyFields(o, input, startField, endField, superLevel);
             } else {
-                accessor.readNonKeyFields
-                    (o, input, startField, endField, superLevel);
+                accessor.readNonKeyFields(o, input, startField, endField, superLevel);
             }
         }
     }
@@ -1864,8 +1633,8 @@ public class ComplexFormat extends Format {
 
         private static final long serialVersionUID = -3060281692155253098L;
 
-        private List<Format> fieldFormats;
-        private transient int endField;
+        private List<Format>      fieldFormats;
+        private transient int     endField;
 
         SkipFieldReader(int startField, List<FieldInfo> fields) {
             endField = startField + fields.size() - 1;
@@ -1882,9 +1651,7 @@ public class ComplexFormat extends Format {
         }
 
         @Override
-        boolean acceptField(int oldFieldIndex,
-                            int newFieldIndex,
-                            boolean isNewSecKeyField) {
+        boolean acceptField(int oldFieldIndex, int newFieldIndex, boolean isNewSecKeyField) {
             return oldFieldIndex == endField + 1;
         }
 
@@ -1895,11 +1662,7 @@ public class ComplexFormat extends Format {
         }
 
         @Override
-        final void readFields(Object o,
-                              EntityInput input,
-                              Accessor accessor,
-                              int superLevel)
-            throws RefreshException {
+        final void readFields(Object o, EntityInput input, Accessor accessor, int superLevel) throws RefreshException {
 
             for (Format format : fieldFormats) {
                 input.skipField(format);
@@ -1914,17 +1677,14 @@ public class ComplexFormat extends Format {
 
         private static final long serialVersionUID = 8736410481633998710L;
 
-        private Converter converter;
-        private int oldFieldNum;
-        private int fieldNum;
-        private boolean secKeyField;
-        private transient Format oldFormat;
-        private transient Format newFormat;
+        private Converter         converter;
+        private int               oldFieldNum;
+        private int               fieldNum;
+        private boolean           secKeyField;
+        private transient Format  oldFormat;
+        private transient Format  newFormat;
 
-        ConvertFieldReader(Converter converter,
-                           int oldFieldIndex,
-                           int newFieldIndex,
-                           boolean isNewSecKeyField) {
+        ConvertFieldReader(Converter converter, int oldFieldIndex, int newFieldIndex, boolean isNewSecKeyField) {
             this.converter = converter;
             oldFieldNum = oldFieldIndex;
             fieldNum = newFieldIndex;
@@ -1932,16 +1692,13 @@ public class ComplexFormat extends Format {
         }
 
         @Override
-        void initialize(Catalog catalog,
-                        int initVersion,
-                        ComplexFormat oldParentFormat,
-                        ComplexFormat newParentFormat,
+        void initialize(Catalog catalog, int initVersion, ComplexFormat oldParentFormat, ComplexFormat newParentFormat,
                         boolean isOldSecKey) {
 
             /*
-             * The oldFieldNum field was added as part of a bug fix.  If not
+             * The oldFieldNum field was added as part of a bug fix. If not
              * present in this version of the catalog, we assume it is equal to
-             * the new field index.  The code prior to the bug fix assumes the
+             * the new field index. The code prior to the bug fix assumes the
              * old and new fields have the same index. [#15797]
              */
             if (initVersion < 1) {
@@ -1949,27 +1706,19 @@ public class ComplexFormat extends Format {
             }
 
             if (isOldSecKey) {
-                oldFormat =
-                    oldParentFormat.secKeyFields.get(oldFieldNum).getType();
+                oldFormat = oldParentFormat.secKeyFields.get(oldFieldNum).getType();
             } else {
-                oldFormat =
-                    oldParentFormat.nonKeyFields.get(oldFieldNum).getType();
+                oldFormat = oldParentFormat.nonKeyFields.get(oldFieldNum).getType();
             }
             if (secKeyField) {
-                newFormat =
-                    newParentFormat.secKeyFields.get(fieldNum).getType();
+                newFormat = newParentFormat.secKeyFields.get(fieldNum).getType();
             } else {
-                newFormat =
-                    newParentFormat.nonKeyFields.get(fieldNum).getType();
+                newFormat = newParentFormat.nonKeyFields.get(fieldNum).getType();
             }
         }
 
         @Override
-        final void readFields(Object o,
-                              EntityInput input,
-                              Accessor accessor,
-                              int superLevel)
-            throws RefreshException {
+        final void readFields(Object o, EntityInput input, Accessor accessor, int superLevel) throws RefreshException {
 
             /* Create and read the old format instance in raw mode. */
             boolean currentRawMode = input.setRawAccess(true);
@@ -1991,15 +1740,12 @@ public class ComplexFormat extends Format {
             value = converter.getConversion().convert(value);
 
             /* Use a RawSingleInput to convert and type-check the value. */
-            EntityInput rawInput = new RawSingleInput
-                (catalog, currentRawMode, null, value, newFormat);
+            EntityInput rawInput = new RawSingleInput(catalog, currentRawMode, null, value, newFormat);
 
             if (secKeyField) {
-                accessor.readSecKeyFields
-                    (o, rawInput, fieldNum, fieldNum, superLevel);
+                accessor.readSecKeyFields(o, rawInput, fieldNum, fieldNum, superLevel);
             } else {
-                accessor.readNonKeyFields
-                    (o, rawInput, fieldNum, fieldNum, superLevel);
+                accessor.readNonKeyFields(o, rawInput, fieldNum, fieldNum, superLevel);
             }
         }
     }
@@ -2011,15 +1757,12 @@ public class ComplexFormat extends Format {
 
         private static final long serialVersionUID = -2054520670170407282L;
 
-        private int fromFormatId;
-        private int toFormatId;
-        private int fieldNum;
-        private boolean secKeyField;
+        private int               fromFormatId;
+        private int               toFormatId;
+        private int               fieldNum;
+        private boolean           secKeyField;
 
-        WidenFieldReader(Format oldFormat,
-                         Format newFormat,
-                         int newFieldIndex,
-                         boolean isNewSecKeyField) {
+        WidenFieldReader(Format oldFormat, Format newFormat, int newFieldIndex, boolean isNewSecKeyField) {
             fromFormatId = oldFormat.getId();
             toFormatId = newFormat.getId();
             fieldNum = newFieldIndex;
@@ -2027,29 +1770,22 @@ public class ComplexFormat extends Format {
         }
 
         @Override
-        final void readFields(Object o,
-                              EntityInput input,
-                              Accessor accessor,
-                              int superLevel)
-            throws RefreshException {
+        final void readFields(Object o, EntityInput input, Accessor accessor, int superLevel) throws RefreshException {
 
             /* The Accessor reads the field value from a WidenerInput. */
-            EntityInput widenerInput = new WidenerInput
-                (input, fromFormatId, toFormatId);
+            EntityInput widenerInput = new WidenerInput(input, fromFormatId, toFormatId);
 
             if (secKeyField) {
-                accessor.readSecKeyFields
-                    (o, widenerInput, fieldNum, fieldNum, superLevel);
+                accessor.readSecKeyFields(o, widenerInput, fieldNum, fieldNum, superLevel);
             } else {
-                accessor.readNonKeyFields
-                    (o, widenerInput, fieldNum, fieldNum, superLevel);
+                accessor.readNonKeyFields(o, widenerInput, fieldNum, fieldNum, superLevel);
             }
         }
     }
 
     /**
      * A FieldReader composed of other FieldReaders, and that calls them in
-     * sequence.  Used when more than one FieldReader is needed for a list of
+     * sequence. Used when more than one FieldReader is needed for a list of
      * fields.
      */
     private static class MultiFieldReader extends FieldReader {
@@ -2063,24 +1799,15 @@ public class ComplexFormat extends Format {
         }
 
         @Override
-        void initialize(Catalog catalog,
-                        int initVersion,
-                        ComplexFormat oldParentFormat,
-                        ComplexFormat newParentFormat,
+        void initialize(Catalog catalog, int initVersion, ComplexFormat oldParentFormat, ComplexFormat newParentFormat,
                         boolean isOldSecKey) {
             for (FieldReader reader : subReaders) {
-                reader.initialize
-                    (catalog, initVersion, oldParentFormat, newParentFormat,
-                     isOldSecKey);
+                reader.initialize(catalog, initVersion, oldParentFormat, newParentFormat, isOldSecKey);
             }
         }
 
         @Override
-        final void readFields(Object o,
-                              EntityInput input,
-                              Accessor accessor,
-                              int superLevel)
-            throws RefreshException {
+        final void readFields(Object o, EntityInput input, Accessor accessor, int superLevel) throws RefreshException {
 
             for (FieldReader reader : subReaders) {
                 reader.readFields(o, input, accessor, superLevel);
@@ -2089,20 +1816,20 @@ public class ComplexFormat extends Format {
     }
 
     /**
-     * The Reader for evolving ComplexFormat instances.  Reads the old format
-     * data one class (one level in the class hierarchy) at a time.  If an
+     * The Reader for evolving ComplexFormat instances. Reads the old format
+     * data one class (one level in the class hierarchy) at a time. If an
      * Accessor is used at a given level, the Accessor is used for the
      * corresponding level in the new class hierarchy (classes may be
-     * inserted/deleted during evolution).  At each level, a FieldReader is
+     * inserted/deleted during evolution). At each level, a FieldReader is
      * called to evolve the secondary key and non-key lists of fields.
      */
     private static class EvolveReader implements Reader {
 
-        static final int DO_NOT_READ_ACCESSOR = Integer.MAX_VALUE;
+        static final int                  DO_NOT_READ_ACCESSOR = Integer.MAX_VALUE;
 
-        private static final long serialVersionUID = -1016140948306913283L;
+        private static final long         serialVersionUID     = -1016140948306913283L;
 
-        private transient ComplexFormat newFormat;
+        private transient ComplexFormat   newFormat;
 
         /**
          * oldHierarchy contains the formats of the old class hierarchy in most
@@ -2115,7 +1842,7 @@ public class ComplexFormat extends Format {
          * hierarchy for each format in oldHierarchy. newHierarchyLevels is
          * indexed by the oldHierarchy index.
          */
-        private int[] newHierarchyLevels;
+        private int[]                     newHierarchyLevels;
 
         EvolveReader(List<Integer> newHierarchyLevelsList) {
             int oldDepth = newHierarchyLevelsList.size();
@@ -2126,10 +1853,7 @@ public class ComplexFormat extends Format {
             }
         }
 
-        public void initializeReader(Catalog catalog,
-                                     EntityModel model,
-                                     int initVersion,
-                                     Format oldFormatParam) {
+        public void initializeReader(Catalog catalog, EntityModel model, int initVersion, Format oldFormatParam) {
 
             ComplexFormat oldFormat = (ComplexFormat) oldFormatParam;
             newFormat = oldFormat.getComplexLatest();
@@ -2137,16 +1861,12 @@ public class ComplexFormat extends Format {
 
             /* Create newHierarchy array. */
             int newDepth = 0;
-            for (Format format = newFormat;
-                 format != null;
-                 format = format.getSuperFormat()) {
+            for (Format format = newFormat; format != null; format = format.getSuperFormat()) {
                 newDepth += 1;
             }
             ComplexFormat[] newHierarchy = new ComplexFormat[newDepth];
             int level = 0;
-            for (ComplexFormat format = newFormat;
-                 format != null;
-                 format = format.getComplexSuper()) {
+            for (ComplexFormat format = newFormat; format != null; format = format.getComplexSuper()) {
                 newHierarchy[level] = format;
                 level += 1;
             }
@@ -2156,21 +1876,16 @@ public class ComplexFormat extends Format {
             int oldDepth = newHierarchyLevels.length;
             oldHierarchy = new ComplexFormat[oldDepth];
             level = 0;
-            for (ComplexFormat oldFormat2 = oldFormat;
-                 oldFormat2 != null;
-                 oldFormat2 = oldFormat2.getComplexSuper()) {
+            for (ComplexFormat oldFormat2 = oldFormat; oldFormat2 != null; oldFormat2 = oldFormat2.getComplexSuper()) {
                 oldHierarchy[level] = oldFormat2;
                 int level2 = newHierarchyLevels[level];
-                ComplexFormat newFormat2 = (level2 != DO_NOT_READ_ACCESSOR) ?
-                    newHierarchy[level2] : null;
+                ComplexFormat newFormat2 = (level2 != DO_NOT_READ_ACCESSOR) ? newHierarchy[level2] : null;
                 level += 1;
                 if (oldFormat2.secKeyFieldReader != null) {
-                    oldFormat2.secKeyFieldReader.initialize
-                        (catalog, initVersion, oldFormat2, newFormat2, true);
+                    oldFormat2.secKeyFieldReader.initialize(catalog, initVersion, oldFormat2, newFormat2, true);
                 }
                 if (oldFormat2.nonKeyFieldReader != null) {
-                    oldFormat2.nonKeyFieldReader.initialize
-                        (catalog, initVersion, oldFormat2, newFormat2, false);
+                    oldFormat2.nonKeyFieldReader.initialize(catalog, initVersion, oldFormat2, newFormat2, false);
                 }
             }
             assert level == oldDepth;
@@ -2180,23 +1895,16 @@ public class ComplexFormat extends Format {
             return newFormat.newInstance(input, rawAccess);
         }
 
-        public void readPriKey(Object o,
-                               EntityInput input,
-                               boolean rawAccess)
-            throws RefreshException {
+        public void readPriKey(Object o, EntityInput input, boolean rawAccess) throws RefreshException {
 
             /* No conversion necessary for primary keys. */
             newFormat.readPriKey(o, input, rawAccess);
         }
 
-        public Object readObject(Object o,
-                                 EntityInput input,
-                                 boolean rawAccess)
-            throws RefreshException {
+        public Object readObject(Object o, EntityInput input, boolean rawAccess) throws RefreshException {
 
             /* Use the Accessor for the new format. */
-            Accessor accessor = rawAccess ? newFormat.rawAccessor
-                                          : newFormat.objAccessor;
+            Accessor accessor = rawAccess ? newFormat.rawAccessor : newFormat.objAccessor;
 
             /* Read old format fields from the top-most class downward. */
             int maxMinusOne = oldHierarchy.length - 1;
@@ -2208,8 +1916,7 @@ public class ComplexFormat extends Format {
                 if (reader != null) {
                     reader.readFields(o, input, accessor, newLevel);
                 } else if (newLevel != DO_NOT_READ_ACCESSOR) {
-                    accessor.readSecKeyFields
-                        (o, input, 0, Accessor.MAX_FIELD_NUM, newLevel);
+                    accessor.readSecKeyFields(o, input, 0, Accessor.MAX_FIELD_NUM, newLevel);
                 }
             }
 
@@ -2220,13 +1927,12 @@ public class ComplexFormat extends Format {
                 if (reader != null) {
                     reader.readFields(o, input, accessor, newLevel);
                 } else if (newLevel != DO_NOT_READ_ACCESSOR) {
-                    accessor.readNonKeyFields
-                        (o, input, 0, Accessor.MAX_FIELD_NUM, newLevel);
+                    accessor.readNonKeyFields(o, input, 0, Accessor.MAX_FIELD_NUM, newLevel);
                 }
             }
             return o;
         }
-        
+
         public Accessor getAccessor(boolean rawAccess) {
             return newFormat.getAccessor(rawAccess);
         }
@@ -2234,15 +1940,13 @@ public class ComplexFormat extends Format {
 
     /**
      * The secondary key metadata map (ClassMetadata.getSecondaryKeys) is keyed
-     * by key name, not field name.  Key name can be different than field name
-     * when a @SecondaryKey name property is specified.  To look up metadata
-     * by field name, we must do a linear search.  Luckily, the number of keys
-     * per class is never very large. [#16819]
+     * by key name, not field name. Key name can be different than field name
+     * when a @SecondaryKey name property is specified. To look up metadata by
+     * field name, we must do a linear search. Luckily, the number of keys per
+     * class is never very large. [#16819]
      */
-    static SecondaryKeyMetadata
-        getSecondaryKeyMetadataByFieldName(Map<String, SecondaryKeyMetadata>
-                                             secKeys,
-                                           String fieldName) {
+    static SecondaryKeyMetadata getSecondaryKeyMetadataByFieldName(Map<String, SecondaryKeyMetadata> secKeys,
+                                                                   String fieldName) {
         for (SecondaryKeyMetadata meta : secKeys.values()) {
             if (meta.getName().equals(fieldName)) {
                 return meta;
@@ -2252,24 +1956,23 @@ public class ComplexFormat extends Format {
     }
 
     /**
-     * Called when opening an existing secondary database that should have a
-     * dup comparator configured.  If true is returned, then this secondary
-     * index may have been previously opened without a dup comparator set, and
-     * therefore no dup comparator should be set on this database.  If false is
-     * returned, the dup comparator should be set by the caller.
+     * Called when opening an existing secondary database that should have a dup
+     * comparator configured. If true is returned, then this secondary index may
+     * have been previously opened without a dup comparator set, and therefore
+     * no dup comparator should be set on this database. If false is returned,
+     * the dup comparator should be set by the caller.
      */
     boolean isSecKeyIncorrectlyOrdered(String keyName) {
-        return incorrectlyOrderedSecKeys == null ||
-               incorrectlyOrderedSecKeys.contains(keyName);
+        return incorrectlyOrderedSecKeys == null || incorrectlyOrderedSecKeys.contains(keyName);
     }
 
     /**
      * Called when creating a new secondary database that should have a dup
-     * comparator configured.  If true is returned, then this secondary index
-     * may have been previously opened without a dup comparator set; this
-     * method will update this format to indicate that the dup comparator is
-     * now allowed, and the caller should flush the catalog.  If false is
-     * returned, the caller need not flush the catalog.
+     * comparator configured. If true is returned, then this secondary index may
+     * have been previously opened without a dup comparator set; this method
+     * will update this format to indicate that the dup comparator is now
+     * allowed, and the caller should flush the catalog. If false is returned,
+     * the caller need not flush the catalog.
      */
     boolean setSecKeyCorrectlyOrdered(String keyName) {
         if (incorrectlyOrderedSecKeys != null) {
@@ -2284,28 +1987,26 @@ public class ComplexFormat extends Format {
         }
         return true;
     }
-    
-    /* 
-     * Copy the incorrectlyOrderedSecKeys of old format to new format. Used 
+
+    /*
+     * Copy the incorrectlyOrderedSecKeys of old format to new format. Used
      * during evolution.
      */
     private void copyIncorrectlyOrderedSecKeys(ComplexFormat newFormat) {
         /* Only copy from the latest version format. */
         if (this == this.getLatestVersion()) {
-            newFormat.incorrectlyOrderedSecKeys = 
-                this.incorrectlyOrderedSecKeys == null ?
-                null : 
-                new HashSet<String>(this.incorrectlyOrderedSecKeys);
+            newFormat.incorrectlyOrderedSecKeys = this.incorrectlyOrderedSecKeys == null ? null
+                    : new HashSet<String>(this.incorrectlyOrderedSecKeys);
         }
     }
-    
+
     /**
      * For unit testing.
      */
     public Set<String> getIncorrectlyOrderedSecKeys() {
         return incorrectlyOrderedSecKeys;
     }
-    
+
     @Override
     public Accessor getAccessor(boolean rawAccess) {
         return rawAccess ? rawAccessor : objAccessor;

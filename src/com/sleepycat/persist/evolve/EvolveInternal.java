@@ -15,10 +15,9 @@ package com.sleepycat.persist.evolve;
 
 /**
  * <!-- begin JE only -->
- * @hidden
- * <!-- end JE only -->
- * Internal access class that should not be used by applications.
- *
+ * 
+ * @hidden <!-- end JE only --> Internal access class that should not be used by
+ *         applications.
  * @author Mark Hayes
  */
 public class EvolveInternal {
@@ -40,10 +39,7 @@ public class EvolveInternal {
      * @param nRead the number read.
      * @param nConverted the number converted.
      */
-    public static void updateEvent(EvolveEvent event,
-                                   String entityClassName,
-                                   int nRead,
-                                   int nConverted) {
+    public static void updateEvent(EvolveEvent event, String entityClassName, int nRead, int nConverted) {
         event.update(entityClassName);
         event.getStats().add(nRead, nConverted);
     }

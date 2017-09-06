@@ -23,20 +23,20 @@ import java.beans.PropertyDescriptor;
  */
 public class DiskOrderedCursorConfigBeanInfo extends ConfigBeanInfoBase {
 
-	@Override
-	public BeanDescriptor getBeanDescriptor() {
-		return getBdescriptor(DiskOrderedCursorConfig.class);
-	}
+    @Override
+    public BeanDescriptor getBeanDescriptor() {
+        return getBdescriptor(DiskOrderedCursorConfig.class);
+    }
 
-	@Override
-	public PropertyDescriptor[] getPropertyDescriptors() {
+    @Override
+    public PropertyDescriptor[] getPropertyDescriptors() {
 
-		/*
-		 * setMaxSeedTestHook is only used for unit test, and
-		 * setMaxSeedTestHookVoid method is not necessary, so add
-		 * "setMaxSeedTestHook" into ignoreMethods list.
-		 */
-		ignoreMethods.add("setMaxSeedTestHook");
-		return getPdescriptor(DiskOrderedCursorConfig.class);
-	}
+        /*
+         * setMaxSeedTestHook is only used for unit test, and
+         * setMaxSeedTestHookVoid method is not necessary, so add
+         * "setMaxSeedTestHook" into ignoreMethods list.
+         */
+        ignoreMethods.add("setMaxSeedTestHook");
+        return getPdescriptor(DiskOrderedCursorConfig.class);
+    }
 }

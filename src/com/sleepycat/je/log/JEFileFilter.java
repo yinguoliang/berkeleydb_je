@@ -22,16 +22,16 @@ import java.util.StringTokenizer;
  */
 class JEFileFilter implements FilenameFilter {
     String[] suffix;
-    long minFileNumber = 0;
-    long maxFileNumber = -1;
+    long     minFileNumber = 0;
+    long     maxFileNumber = -1;
 
     JEFileFilter(String[] suffix) {
         this.suffix = suffix;
     }
 
     /**
-     * @param maxFileNumber this filter will only return
-     * files that are numbers <= maxFileNumber.
+     * @param maxFileNumber this filter will only return files that are numbers
+     *            <= maxFileNumber.
      */
     JEFileFilter(String[] suffix, long maxFileNumber) {
         this.suffix = suffix;
@@ -40,9 +40,9 @@ class JEFileFilter implements FilenameFilter {
 
     /**
      * @param minFileNumber this filter will only return files that are >=
-     * minFileNumber.
-     * @param maxFileNumber this filter will only return
-     * files that are numbers <= maxFileNumber.
+     *            minFileNumber.
+     * @param maxFileNumber this filter will only return files that are numbers
+     *            <= maxFileNumber.
      */
     JEFileFilter(String[] suffix, long minFileNumber, long maxFileNumber) {
         this.suffix = suffix;
@@ -74,8 +74,7 @@ class JEFileFilter implements FilenameFilter {
             String fileVersion = (hasVersion ? tokenizer.nextToken() : null);
 
             /* Check the length and the suffix. */
-            if ((fileNumber.length() == 8) &&
-                matches(fileSuffix)) {
+            if ((fileNumber.length() == 8) && matches(fileSuffix)) {
                 //(fileSuffix.equalsIgnoreCase(suffix))) {
 
                 /* The first part should be a number. */
@@ -83,8 +82,7 @@ class JEFileFilter implements FilenameFilter {
                     long fileNum = Long.parseLong(fileNumber, 16);
                     if (fileNum < minFileNumber) {
                         ok = false;
-                    } else if ((fileNum <= maxFileNumber) ||
-                               (maxFileNumber == -1)) {
+                    } else if ((fileNum <= maxFileNumber) || (maxFileNumber == -1)) {
                         ok = true;
                     }
                 } catch (NumberFormatException e) {

@@ -18,13 +18,12 @@ import com.sleepycat.je.DatabaseEntry;
 
 /**
  * A concrete <code>EntryBinding</code> that uses the <code>TupleInput</code>
- * object as the key or data object.
- *
- * A concrete tuple binding for key or data entries which are {@link
- * TupleInput} objects.  This binding is used when tuples themselves are the
- * objects, rather than using application defined objects. A {@link TupleInput}
- * must always be used.  To convert a {@link TupleOutput} to a {@link
- * TupleInput}, use the {@link TupleInput#TupleInput(TupleOutput)} constructor.
+ * object as the key or data object. A concrete tuple binding for key or data
+ * entries which are {@link TupleInput} objects. This binding is used when
+ * tuples themselves are the objects, rather than using application defined
+ * objects. A {@link TupleInput} must always be used. To convert a
+ * {@link TupleOutput} to a {@link TupleInput}, use the
+ * {@link TupleInput#TupleInput(TupleOutput)} constructor.
  *
  * @author Mark Hayes
  */

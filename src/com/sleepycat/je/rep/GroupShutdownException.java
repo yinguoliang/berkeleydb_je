@@ -23,77 +23,63 @@ import com.sleepycat.je.utilint.LoggerUtils;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * Thrown when an attempt is made to access an environment  that was
- * shutdown by the Master as a result of a call to
+ * Thrown when an attempt is made to access an environment that was shutdown by
+ * the Master as a result of a call to
  * {@link ReplicatedEnvironment#shutdownGroup(long, TimeUnit)}.
  */
 public class GroupShutdownException extends EnvironmentFailureException {
     private static final long serialVersionUID = 1;
 
     /* The time that the shutdown was initiated on the master. */
-    private final long shutdownTimeMs;
+    private final long        shutdownTimeMs;
 
     /* The master node that initiated the shutdown. */
-    private final String masterNodeName;
+    private final String      masterNodeName;
 
     /* The VLSN at the time of shutdown */
-    private final VLSN shutdownVLSN;
+    private final VLSN        shutdownVLSN;
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    public GroupShutdownException(Logger logger,
-                                  RepNode repNode,
-                                  long shutdownTimeMs) {
-        super(repNode.getRepImpl(),
-              EnvironmentFailureReason.SHUTDOWN_REQUESTED,
-              String.format("Master:%s, initiated shutdown at %1tc.",
-                            repNode.getMasterStatus().getNodeMasterNameId().
-                                getName(),
-                            shutdownTimeMs));
+    public GroupShutdownException(Logger logger, RepNode repNode, long shutdownTimeMs) {
+        super(repNode.getRepImpl(), EnvironmentFailureReason.SHUTDOWN_REQUESTED,
+                String.format("Master:%s, initiated shutdown at %1tc.",
+                        repNode.getMasterStatus().getNodeMasterNameId().getName(), shutdownTimeMs));
 
         shutdownVLSN = repNode.getVLSNIndex().getRange().getLast();
-        masterNodeName =
-            repNode.getMasterStatus().getNodeMasterNameId().getName();
+        masterNodeName = repNode.getMasterStatus().getNodeMasterNameId().getName();
         this.shutdownTimeMs = shutdownTimeMs;
 
-        LoggerUtils.warning(logger, repNode.getRepImpl(),
-                            "Explicit shutdown request from Master:" +
-                            masterNodeName);
+        LoggerUtils.warning(logger, repNode.getRepImpl(), "Explicit shutdown request from Master:" + masterNodeName);
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    public GroupShutdownException(Logger logger,
-                                 RepImpl repImpl,
-                                 String masterNodeName,
-                                 VLSN shutdownVLSN,
-                                 long shutdownTimeMs) {
-        super(repImpl,
-                EnvironmentFailureReason.SHUTDOWN_REQUESTED,
-                String.format("Master:%s, initiated shutdown at %1tc.",
-                              masterNodeName,
-                              shutdownTimeMs));
+    public GroupShutdownException(Logger logger, RepImpl repImpl, String masterNodeName, VLSN shutdownVLSN,
+                                  long shutdownTimeMs) {
+        super(repImpl, EnvironmentFailureReason.SHUTDOWN_REQUESTED,
+                String.format("Master:%s, initiated shutdown at %1tc.", masterNodeName, shutdownTimeMs));
 
-          this.shutdownVLSN = shutdownVLSN;
-          this.masterNodeName = masterNodeName;
-          this.shutdownTimeMs = shutdownTimeMs;
+        this.shutdownVLSN = shutdownVLSN;
+        this.masterNodeName = masterNodeName;
+        this.shutdownTimeMs = shutdownTimeMs;
 
-          LoggerUtils.warning(logger, repImpl,
-                              "Explicit shutdown request from Master:" +
-                              masterNodeName);
+        LoggerUtils.warning(logger, repImpl, "Explicit shutdown request from Master:" + masterNodeName);
 
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    private GroupShutdownException(String message,
-                                   GroupShutdownException shutdownException) {
+    private GroupShutdownException(String message, GroupShutdownException shutdownException) {
         super(message, shutdownException);
         shutdownVLSN = shutdownException.shutdownVLSN;
         shutdownTimeMs = shutdownException.shutdownTimeMs;
@@ -102,6 +88,7 @@ public class GroupShutdownException extends EnvironmentFailureException {
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     @Override
@@ -110,10 +97,8 @@ public class GroupShutdownException extends EnvironmentFailureException {
     }
 
     /**
-     * For internal use only.
-     *
-     * Returns the shutdownVLSN, if it was available, at the time of the
-     * exception
+     * For internal use only. Returns the shutdownVLSN, if it was available, at
+     * the time of the exception
      *
      * @hidden
      */

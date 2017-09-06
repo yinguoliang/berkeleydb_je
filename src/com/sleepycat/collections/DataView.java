@@ -35,64 +35,63 @@ import com.sleepycat.util.keyrange.KeyRangeException;
 /**
  * Represents a Berkeley DB database and adds support for indices, bindings and
  * key ranges.
- *
- * <p>This class defines a view and takes care of reading and updating indices,
- * calling bindings, constraining access to a key range, etc.</p>
+ * <p>
+ * This class defines a view and takes care of reading and updating indices,
+ * calling bindings, constraining access to a key range, etc.
+ * </p>
  *
  * @author Mark Hayes
  */
 final class DataView implements Cloneable {
 
-    Database db;
-    SecondaryDatabase secDb;
-    CurrentTransaction currentTxn;
-    KeyRange range;
-    EntryBinding keyBinding;
-    EntryBinding valueBinding;
-    EntityBinding entityBinding;
-    PrimaryKeyAssigner keyAssigner;
+    Database            db;
+    SecondaryDatabase   secDb;
+    CurrentTransaction  currentTxn;
+    KeyRange            range;
+    EntryBinding        keyBinding;
+    EntryBinding        valueBinding;
+    EntityBinding       entityBinding;
+    PrimaryKeyAssigner  keyAssigner;
     SecondaryKeyCreator secKeyCreator;
-    CursorConfig cursorConfig;      // Used for all operations via this view
-    boolean writeAllowed;           // Read-write view
-    boolean ordered;                // Not a HASH Db
-    boolean keyRangesAllowed;       // BTREE only
-    boolean recNumAllowed;          // QUEUE, RECNO, or BTREE-RECNUM Db
-    boolean recNumAccess;           // recNumAllowed && using a rec num binding
-    boolean btreeRecNumDb;          // BTREE-RECNUM Db
-    boolean btreeRecNumAccess;      // recNumAccess && BTREE-RECNUM Db
-    boolean recNumRenumber;         // RECNO-RENUM Db
-    boolean keysRenumbered;         // recNumRenumber || btreeRecNumAccess
-    boolean dupsAllowed;            // Dups configured
-    boolean dupsOrdered;            // Sorted dups configured
-    boolean transactional;          // Db is transactional
-    boolean readUncommittedAllowed; // Read-uncommited is optional in DB-CORE
+    CursorConfig        cursorConfig;           // Used for all operations via this view
+    boolean             writeAllowed;           // Read-write view
+    boolean             ordered;                // Not a HASH Db
+    boolean             keyRangesAllowed;       // BTREE only
+    boolean             recNumAllowed;          // QUEUE, RECNO, or BTREE-RECNUM Db
+    boolean             recNumAccess;           // recNumAllowed && using a rec num binding
+    boolean             btreeRecNumDb;          // BTREE-RECNUM Db
+    boolean             btreeRecNumAccess;      // recNumAccess && BTREE-RECNUM Db
+    boolean             recNumRenumber;         // RECNO-RENUM Db
+    boolean             keysRenumbered;         // recNumRenumber || btreeRecNumAccess
+    boolean             dupsAllowed;            // Dups configured
+    boolean             dupsOrdered;            // Sorted dups configured
+    boolean             transactional;          // Db is transactional
+    boolean             readUncommittedAllowed; // Read-uncommited is optional in DB-CORE
 
     /*
      * If duplicatesView is called, dupsView will be true and dupsKey will be
-     * the secondary key used as the "single key" range.  dupRange will be set
-     * as the range of the primary key values if subRange is subsequently
-     * called, to further narrow the view.
+     * the secondary key used as the "single key" range. dupRange will be set as
+     * the range of the primary key values if subRange is subsequently called,
+     * to further narrow the view.
      */
-    DatabaseEntry dupsKey;
-    boolean dupsView;
-    KeyRange dupsRange;
+    DatabaseEntry       dupsKey;
+    boolean             dupsView;
+    KeyRange            dupsRange;
 
     /**
-     * Creates a view for a given database and bindings.  The initial key range
+     * Creates a view for a given database and bindings. The initial key range
      * of the view will be open.
      */
-    DataView(Database database, EntryBinding keyBinding,
-             EntryBinding valueBinding, EntityBinding entityBinding,
+    DataView(Database database, EntryBinding keyBinding, EntryBinding valueBinding, EntityBinding entityBinding,
              boolean writeAllowed, PrimaryKeyAssigner keyAssigner)
-        throws IllegalArgumentException {
+            throws IllegalArgumentException {
 
         if (database == null) {
             throw new IllegalArgumentException("database is null");
         }
         db = database;
         try {
-            currentTxn =
-                CurrentTransaction.getInstanceInternal(db.getEnvironment());
+            currentTxn = CurrentTransaction.getInstanceInternal(db.getEnvironment());
             DatabaseConfig dbConfig;
             if (db instanceof SecondaryDatabase) {
                 secDb = (SecondaryDatabase) database;
@@ -104,15 +103,12 @@ final class DataView implements Cloneable {
             }
             ordered = !DbCompat.isTypeHash(dbConfig);
             keyRangesAllowed = DbCompat.isTypeBtree(dbConfig);
-            recNumAllowed = DbCompat.isTypeQueue(dbConfig) ||
-                            DbCompat.isTypeRecno(dbConfig) ||
-                            DbCompat.getBtreeRecordNumbers(dbConfig);
+            recNumAllowed = DbCompat.isTypeQueue(dbConfig) || DbCompat.isTypeRecno(dbConfig)
+                    || DbCompat.getBtreeRecordNumbers(dbConfig);
             recNumRenumber = DbCompat.getRenumbering(dbConfig);
-            dupsAllowed = DbCompat.getSortedDuplicates(dbConfig) ||
-                          DbCompat.getUnsortedDuplicates(dbConfig);
+            dupsAllowed = DbCompat.getSortedDuplicates(dbConfig) || DbCompat.getUnsortedDuplicates(dbConfig);
             dupsOrdered = DbCompat.getSortedDuplicates(dbConfig);
-            transactional = currentTxn.isTxnMode() &&
-                            dbConfig.getTransactional();
+            transactional = currentTxn.isTxnMode() && dbConfig.getTransactional();
             readUncommittedAllowed = DbCompat.getReadUncommitted(dbConfig);
             btreeRecNumDb = recNumAllowed && DbCompat.isTypeBtree(dbConfig);
             range = new KeyRange(dbConfig.getBtreeComparator());
@@ -127,14 +123,12 @@ final class DataView implements Cloneable {
         cursorConfig = CursorConfig.DEFAULT;
 
         if (valueBinding != null && entityBinding != null)
-            throw new IllegalArgumentException
-                ("both valueBinding and entityBinding are non-null");
+            throw new IllegalArgumentException("both valueBinding and entityBinding are non-null");
 
         if (keyBinding instanceof com.sleepycat.bind.RecordNumberBinding) {
             if (!recNumAllowed) {
-                throw new IllegalArgumentException
-                    ("RecordNumberBinding requires DB_BTREE/DB_RECNUM, " +
-                     "DB_RECNO, or DB_QUEUE");
+                throw new IllegalArgumentException(
+                        "RecordNumberBinding requires DB_BTREE/DB_RECNUM, " + "DB_RECNO, or DB_QUEUE");
             }
             recNumAccess = true;
             if (btreeRecNumDb) {
@@ -157,8 +151,8 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Return a new key-set view derived from this view by setting the
-     * entity and value binding to null.
+     * Return a new key-set view derived from this view by setting the entity
+     * and value binding to null.
      *
      * @return the derived view.
      */
@@ -174,16 +168,15 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Return a new value-set view derived from this view by setting the
-     * key binding to null.
+     * Return a new value-set view derived from this view by setting the key
+     * binding to null.
      *
      * @return the derived view.
      */
     DataView valueSetView() {
 
         if (valueBinding == null && entityBinding == null) {
-            throw new UnsupportedOperationException
-                ("Must have valueBinding or entityBinding");
+            throw new UnsupportedOperationException("Must have valueBinding or entityBinding");
         }
         DataView view = cloneView();
         view.keyBinding = null;
@@ -194,20 +187,16 @@ final class DataView implements Cloneable {
      * Return a new value-set view for single key range.
      *
      * @param singleKey the single key value.
-     *
      * @return the derived view.
-     *
      * @throws DatabaseException if a database problem occurs.
-     *
      * @throws KeyRangeException if the specified range is not within the
-     * current range.
+     *             current range.
      */
-    DataView valueSetView(Object singleKey)
-        throws DatabaseException, KeyRangeException {
+    DataView valueSetView(Object singleKey) throws DatabaseException, KeyRangeException {
 
         /*
-         * Must do subRange before valueSetView since the latter clears the
-         * key binding needed for the former.
+         * Must do subRange before valueSetView since the latter clears the key
+         * binding needed for the former.
          */
         KeyRange singleKeyRange = subRange(range, singleKey);
         DataView view = valueSetView();
@@ -216,30 +205,28 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Return a new value-set view for key range, optionally changing
-     * the key binding.
+     * Return a new value-set view for key range, optionally changing the key
+     * binding.
      */
-    DataView subView(Object beginKey, boolean beginInclusive,
-                     Object endKey, boolean endInclusive,
+    DataView subView(Object beginKey, boolean beginInclusive, Object endKey, boolean endInclusive,
                      EntryBinding keyBinding)
-        throws DatabaseException, KeyRangeException {
+            throws DatabaseException, KeyRangeException {
 
         DataView view = cloneView();
         view.setRange(beginKey, beginInclusive, endKey, endInclusive);
-        if (keyBinding != null) view.keyBinding = keyBinding;
+        if (keyBinding != null)
+            view.keyBinding = keyBinding;
         return view;
     }
 
     /**
      * Return a new duplicates view for a given secondary key.
      */
-    DataView duplicatesView(Object secondaryKey,
-                            EntryBinding primaryKeyBinding)
-        throws DatabaseException, KeyRangeException {
+    DataView duplicatesView(Object secondaryKey, EntryBinding primaryKeyBinding)
+            throws DatabaseException, KeyRangeException {
 
         if (!isSecondary()) {
-            throw new UnsupportedOperationException
-                ("Only allowed for maps on secondary databases");
+            throw new UnsupportedOperationException("Only allowed for maps on secondary databases");
         }
         if (dupsView) {
             throw DbCompat.unexpectedState();
@@ -258,8 +245,7 @@ final class DataView implements Cloneable {
     DataView configuredView(CursorConfig config) {
 
         DataView view = cloneView();
-        view.cursorConfig = (config != null) ?
-            DbCompat.cloneCursorConfig(config) : CursorConfig.DEFAULT;
+        view.cursorConfig = (config != null) ? DbCompat.cloneCursorConfig(config) : CursorConfig.DEFAULT;
         return view;
     }
 
@@ -275,17 +261,14 @@ final class DataView implements Cloneable {
     /**
      * Sets this view's range to a subrange with the given parameters.
      */
-    private void setRange(Object beginKey, boolean beginInclusive,
-                          Object endKey, boolean endInclusive)
-        throws DatabaseException, KeyRangeException {
+    private void setRange(Object beginKey, boolean beginInclusive, Object endKey, boolean endInclusive)
+            throws DatabaseException, KeyRangeException {
 
         if ((beginKey != null || endKey != null) && !keyRangesAllowed) {
-            throw new UnsupportedOperationException
-                ("Key ranges allowed only for BTREE databases");
+            throw new UnsupportedOperationException("Key ranges allowed only for BTREE databases");
         }
         KeyRange useRange = useSubRange();
-        useRange = subRange
-            (useRange, beginKey, beginInclusive, endKey, endInclusive);
+        useRange = subRange(useRange, beginKey, beginInclusive, endKey, endInclusive);
         if (dupsView) {
             dupsRange = useRange;
         } else {
@@ -311,8 +294,8 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Returns whether this is a view on a secondary database rather
-     * than directly on a primary database.
+     * Returns whether this is a view on a secondary database rather than
+     * directly on a primary database.
      */
     final boolean isSecondary() {
 
@@ -320,12 +303,10 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Returns whether no records are present in the view.
-     *
-     * Auto-commit must be performed by the caller.
+     * Returns whether no records are present in the view. Auto-commit must be
+     * performed by the caller.
      */
-    boolean isEmpty()
-        throws DatabaseException {
+    boolean isEmpty() throws DatabaseException {
 
         DataCursor cursor = new DataCursor(this, false);
         try {
@@ -336,22 +317,17 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Appends a value and returns the new key.  If a key assigner is used
-     * it assigns the key, otherwise a QUEUE or RECNO database is required.
-     *
+     * Appends a value and returns the new key. If a key assigner is used it
+     * assigns the key, otherwise a QUEUE or RECNO database is required.
      * Auto-commit must be performed by the caller.
      */
-    OperationStatus append(Object value,
-                           Object[] retPrimaryKey,
-                           Object[] retValue)
-        throws DatabaseException {
+    OperationStatus append(Object value, Object[] retPrimaryKey, Object[] retValue) throws DatabaseException {
 
         /*
-         * Flags will be NOOVERWRITE if used with assigner, or APPEND
-         * otherwise.
-         * Requires: if value param, value or entity binding
-         * Requires: if retPrimaryKey, primary key binding (no index).
-         * Requires: if retValue, value or entity binding
+         * Flags will be NOOVERWRITE if used with assigner, or APPEND otherwise.
+         * Requires: if value param, value or entity binding Requires: if
+         * retPrimaryKey, primary key binding (no index). Requires: if retValue,
+         * value or entity binding
          */
         DatabaseEntry keyThang = new DatabaseEntry();
         DatabaseEntry valueThang = new DatabaseEntry();
@@ -360,33 +336,27 @@ final class DataView implements Cloneable {
         if (keyAssigner != null) {
             keyAssigner.assignKey(keyThang);
             if (!range.check(keyThang)) {
-                throw new IllegalArgumentException
-                    ("assigned key out of range");
+                throw new IllegalArgumentException("assigned key out of range");
             }
             DataCursor cursor = new DataCursor(this, true);
             try {
-                status = cursor.getCursor().putNoOverwrite(keyThang,
-                                                           valueThang);
+                status = cursor.getCursor().putNoOverwrite(keyThang, valueThang);
             } finally {
                 cursor.close();
             }
         } else {
             /* Assume QUEUE/RECNO access method. */
             if (currentTxn.isCDBCursorOpen(db)) {
-                throw new IllegalStateException
-                    ("cannot open CDB write cursor when read cursor is open");
+                throw new IllegalStateException("cannot open CDB write cursor when read cursor is open");
             }
-            status = DbCompat.append(db, useTransaction(),
-                                     keyThang, valueThang);
+            status = DbCompat.append(db, useTransaction(), keyThang, valueThang);
             if (status == OperationStatus.SUCCESS && !range.check(keyThang)) {
                 db.delete(useTransaction(), keyThang);
-                throw new IllegalArgumentException
-                    ("appended record number out of range");
+                throw new IllegalArgumentException("appended record number out of range");
             }
         }
         if (status == OperationStatus.SUCCESS) {
-            returnPrimaryKeyAndValue(keyThang, valueThang,
-                                     retPrimaryKey, retValue);
+            returnPrimaryKeyAndValue(keyThang, valueThang, retPrimaryKey, retValue);
         }
         return status;
     }
@@ -396,16 +366,14 @@ final class DataView implements Cloneable {
      * if the database is not transactional or there is no current transaction.
      */
     Transaction useTransaction() {
-        return transactional ?  currentTxn.getTransaction() : null;
+        return transactional ? currentTxn.getTransaction() : null;
     }
 
     /**
-     * Deletes all records in the current range.
-     *
-     * Auto-commit must be performed by the caller.
+     * Deletes all records in the current range. Auto-commit must be performed
+     * by the caller.
      */
-    void clear()
-        throws DatabaseException {
+    void clear() throws DatabaseException {
 
         DataCursor cursor = new DataCursor(this, true);
         try {
@@ -429,9 +397,7 @@ final class DataView implements Cloneable {
      * Returns a cursor for this view that reads only records having the
      * specified index key values.
      */
-    DataCursor join(DataView[] indexViews, Object[] indexKeys,
-                    JoinConfig joinConfig)
-        throws DatabaseException {
+    DataCursor join(DataView[] indexViews, Object[] indexKeys, JoinConfig joinConfig) throws DatabaseException {
 
         DataCursor joinCursor = null;
         DataCursor[] indexCursors = new DataCursor[indexViews.length];
@@ -447,8 +413,9 @@ final class DataView implements Cloneable {
                 // An exception is being thrown, so close cursors we opened.
                 for (int i = 0; i < indexCursors.length; i += 1) {
                     if (indexCursors[i] != null) {
-                        try { indexCursors[i].close(); }
-                        catch (Exception e) {
+                        try {
+                            indexCursors[i].close();
+                        } catch (Exception e) {
                             /* FindBugs, this is ok. */
                         }
                     }
@@ -458,11 +425,10 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Returns a cursor for this view that reads only records having the
-     * index key values at the specified cursors.
+     * Returns a cursor for this view that reads only records having the index
+     * key values at the specified cursors.
      */
-    DataCursor join(DataCursor[] indexCursors, JoinConfig joinConfig)
-        throws DatabaseException {
+    DataCursor join(DataCursor[] indexCursors, JoinConfig joinConfig) throws DatabaseException {
 
         return new DataCursor(this, indexCursors, joinConfig, false);
     }
@@ -470,20 +436,16 @@ final class DataView implements Cloneable {
     /**
      * Returns primary key and value if return parameters are non-null.
      */
-    private void returnPrimaryKeyAndValue(DatabaseEntry keyThang,
-                                          DatabaseEntry valueThang,
-                                          Object[] retPrimaryKey,
+    private void returnPrimaryKeyAndValue(DatabaseEntry keyThang, DatabaseEntry valueThang, Object[] retPrimaryKey,
                                           Object[] retValue) {
         // Requires: if retPrimaryKey, primary key binding (no index).
         // Requires: if retValue, value or entity binding
 
         if (retPrimaryKey != null) {
             if (keyBinding == null) {
-                throw new IllegalArgumentException
-                    ("returning key requires primary key binding");
+                throw new IllegalArgumentException("returning key requires primary key binding");
             } else if (isSecondary()) {
-                throw new IllegalArgumentException
-                    ("returning key requires unindexed view");
+                throw new IllegalArgumentException("returning key requires unindexed view");
             } else {
                 retPrimaryKey[0] = keyBinding.entryToObject(keyThang);
             }
@@ -496,14 +458,11 @@ final class DataView implements Cloneable {
     /**
      * Populates the key entry and returns whether the key is within range.
      */
-    boolean useKey(Object key, Object value, DatabaseEntry keyThang,
-                   KeyRange checkRange)
-        throws DatabaseException {
+    boolean useKey(Object key, Object value, DatabaseEntry keyThang, KeyRange checkRange) throws DatabaseException {
 
         if (key != null) {
             if (keyBinding == null) {
-                throw new IllegalArgumentException
-                    ("non-null key with null key binding");
+                throw new IllegalArgumentException("non-null key with null key binding");
             }
             keyBinding.objectToEntry(key, keyThang);
         } else {
@@ -511,16 +470,14 @@ final class DataView implements Cloneable {
                 throw new IllegalArgumentException("null key and null value");
             }
             if (entityBinding == null) {
-                throw new IllegalStateException
-                    ("EntityBinding required to derive key from value");
+                throw new IllegalStateException("EntityBinding required to derive key from value");
             }
             if (!dupsView && isSecondary()) {
                 DatabaseEntry primaryKeyThang = new DatabaseEntry();
                 entityBinding.objectToKey(value, primaryKeyThang);
                 DatabaseEntry valueThang = new DatabaseEntry();
                 entityBinding.objectToData(value, valueThang);
-                secKeyCreator.createSecondaryKey(secDb, primaryKeyThang,
-                                                 valueThang, keyThang);
+                secKeyCreator.createSecondaryKey(secDb, primaryKeyThang, valueThang, keyThang);
             } else {
                 entityBinding.objectToKey(value, keyThang);
             }
@@ -535,8 +492,8 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Returns whether data keys can be derived from the value/entity binding
-     * of this view, which determines whether a value/entity object alone is
+     * Returns whether data keys can be derived from the value/entity binding of
+     * this view, which determines whether a value/entity object alone is
      * sufficient for operations that require keys.
      */
     final boolean canDeriveKeyFromValue() {
@@ -548,29 +505,25 @@ final class DataView implements Cloneable {
      * Populates the value entry and throws an exception if the primary key
      * would be changed via an entity binding.
      */
-    void useValue(Object value, DatabaseEntry valueThang,
-                  DatabaseEntry checkKeyThang) {
+    void useValue(Object value, DatabaseEntry valueThang, DatabaseEntry checkKeyThang) {
         if (valueBinding != null) {
             /* Allow binding to handle null value. */
             valueBinding.objectToEntry(value, valueThang);
         } else if (entityBinding != null) {
             if (value == null) {
-                throw new IllegalArgumentException
-                    ("null value with entity binding");
+                throw new IllegalArgumentException("null value with entity binding");
             }
             entityBinding.objectToData(value, valueThang);
             if (checkKeyThang != null) {
                 DatabaseEntry thang = new DatabaseEntry();
                 entityBinding.objectToKey(value, thang);
                 if (!KeyRange.equalBytes(thang, checkKeyThang)) {
-                    throw new IllegalArgumentException
-                        ("cannot change primary key");
+                    throw new IllegalArgumentException("cannot change primary key");
                 }
             }
         } else {
             if (value != null) {
-                throw new IllegalArgumentException
-                    ("non-null value with null value/entity binding");
+                throw new IllegalArgumentException("non-null value with null value/entity binding");
             }
             valueThang.setData(KeyRange.ZERO_LENGTH_BYTE_ARRAY);
             valueThang.setOffset(0);
@@ -604,11 +557,9 @@ final class DataView implements Cloneable {
         if (valueBinding != null) {
             value = valueBinding.entryToObject(valueThang);
         } else if (entityBinding != null) {
-            value = entityBinding.entryToObject(primaryKeyThang,
-                                                    valueThang);
+            value = entityBinding.entryToObject(primaryKeyThang, valueThang);
         } else {
-            throw new UnsupportedOperationException
-                ("Requires valueBinding or entityBinding");
+            throw new UnsupportedOperationException("Requires valueBinding or entityBinding");
         }
         return value;
     }
@@ -616,8 +567,7 @@ final class DataView implements Cloneable {
     /**
      * Intersects the given key and the current range.
      */
-    KeyRange subRange(KeyRange useRange, Object singleKey)
-        throws DatabaseException, KeyRangeException {
+    KeyRange subRange(KeyRange useRange, Object singleKey) throws DatabaseException, KeyRangeException {
 
         return useRange.subRange(makeRangeKey(singleKey));
     }
@@ -625,40 +575,32 @@ final class DataView implements Cloneable {
     /**
      * Intersects the given range and the current range.
      */
-    KeyRange subRange(KeyRange useRange,
-                      Object beginKey, boolean beginInclusive,
-                      Object endKey, boolean endInclusive)
-        throws DatabaseException, KeyRangeException {
+    KeyRange subRange(KeyRange useRange, Object beginKey, boolean beginInclusive, Object endKey, boolean endInclusive)
+            throws DatabaseException, KeyRangeException {
 
         if (beginKey == endKey && beginInclusive && endInclusive) {
             return subRange(useRange, beginKey);
         }
         if (!ordered) {
-            throw new UnsupportedOperationException
-                ("Cannot use key ranges on an unsorted database");
+            throw new UnsupportedOperationException("Cannot use key ranges on an unsorted database");
         }
-        DatabaseEntry beginThang =
-            (beginKey != null) ? makeRangeKey(beginKey) : null;
-        DatabaseEntry endThang =
-            (endKey != null) ? makeRangeKey(endKey) : null;
+        DatabaseEntry beginThang = (beginKey != null) ? makeRangeKey(beginKey) : null;
+        DatabaseEntry endThang = (endKey != null) ? makeRangeKey(endKey) : null;
 
-        return useRange.subRange(beginThang, beginInclusive,
-                                 endThang, endInclusive);
+        return useRange.subRange(beginThang, beginInclusive, endThang, endInclusive);
     }
 
     /**
-     * Returns the range to use for sub-ranges.  Returns range if this is not a
+     * Returns the range to use for sub-ranges. Returns range if this is not a
      * dupsView, or the dupsRange if this is a dupsView, creating dupsRange if
      * necessary.
      */
-    KeyRange useSubRange()
-        throws DatabaseException {
+    KeyRange useSubRange() throws DatabaseException {
 
         if (dupsView) {
             synchronized (this) {
                 if (dupsRange == null) {
-                    DatabaseConfig config =
-                        secDb.getPrimaryDatabase().getConfig();
+                    DatabaseConfig config = secDb.getPrimaryDatabase().getConfig();
                     dupsRange = new KeyRange(config.getBtreeComparator());
                 }
             }
@@ -671,8 +613,7 @@ final class DataView implements Cloneable {
     /**
      * Given a key object, make a key entry that can be used in a range.
      */
-    private DatabaseEntry makeRangeKey(Object key)
-        throws DatabaseException {
+    private DatabaseEntry makeRangeKey(Object key) throws DatabaseException {
 
         DatabaseEntry thang = new DatabaseEntry();
         if (keyBinding != null) {

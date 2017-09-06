@@ -24,62 +24,58 @@ import com.sleepycat.util.keyrange.KeyRange;
 
 /**
  * An iterator that does not need closing because a cursor is not kept open
- * across method calls.  A cursor is opened to read a block of records at a
- * time and then closed before the method returns.
+ * across method calls. A cursor is opened to read a block of records at a time
+ * and then closed before the method returns.
  *
  * @author Mark Hayes
  */
 class BlockIterator<E> extends BaseIterator<E> {
 
     private StoredCollection<E> coll;
-    private boolean writeAllowed;
+    private boolean             writeAllowed;
 
     /**
-     * Slots for a block of record keys and values.  The priKeys array is only
+     * Slots for a block of record keys and values. The priKeys array is only
      * used for secondary databases; otherwise it is set to the keys array.
      */
-    private byte[][] keys;
-    private byte[][] priKeys;
-    private byte[][] values;
+    private byte[][]            keys;
+    private byte[][]            priKeys;
+    private byte[][]            values;
 
     /**
-     * The slot index of the record that would be returned by next().
-     * nextIndex is always greater or equal to zero.  If the next record is not
-     * available, then nextIndex is equal to keys.length or keys[nextIndex] is
-     * null.
-     *
-     * If the block is empty, then either the iterator is uninitialized or the
-     * key range is empty.  Either way, nextIndex will be the array length and
-     * all array values will be null.  This is the initial state set by the
-     * constructor.  If remove() is used to delete all records in the key
-     * range, it will restore the iterator to this initial state.  The block
-     * must never be allowed to become empty when the key range is non-empty,
-     * since then the iterator's position would be lost.  [#15858]
+     * The slot index of the record that would be returned by next(). nextIndex
+     * is always greater or equal to zero. If the next record is not available,
+     * then nextIndex is equal to keys.length or keys[nextIndex] is null. If the
+     * block is empty, then either the iterator is uninitialized or the key
+     * range is empty. Either way, nextIndex will be the array length and all
+     * array values will be null. This is the initial state set by the
+     * constructor. If remove() is used to delete all records in the key range,
+     * it will restore the iterator to this initial state. The block must never
+     * be allowed to become empty when the key range is non-empty, since then
+     * the iterator's position would be lost. [#15858]
      */
-    private int nextIndex;
+    private int                 nextIndex;
 
     /**
      * The slot index of the record last returned by next() or previous(), or
-     * the record inserted by add().  dataIndex is -1 if the data record is not
-     * available.  If greater or equal to zero, the slot at dataIndex is always
+     * the record inserted by add(). dataIndex is -1 if the data record is not
+     * available. If greater or equal to zero, the slot at dataIndex is always
      * non-null.
      */
-    private int dataIndex;
+    private int                 dataIndex;
 
     /**
-     * The iterator data last returned by next() or previous().  This value is
+     * The iterator data last returned by next() or previous(). This value is
      * set to null if dataIndex is -1, or if the state of the iterator is such
-     * that set() or remove() cannot be called.  For example, after add() this
+     * that set() or remove() cannot be called. For example, after add() this
      * field is set to null, even though the dataIndex is still valid.
      */
-    private E dataObject;
+    private E                   dataObject;
 
     /**
      * Creates an iterator.
      */
-    BlockIterator(StoredCollection<E> coll,
-                  boolean writeAllowed,
-                  int blockSize) {
+    BlockIterator(StoredCollection<E> coll, boolean writeAllowed, int blockSize) {
 
         this.coll = coll;
         this.writeAllowed = writeAllowed;
@@ -129,8 +125,7 @@ class BlockIterator<E> extends BaseIterator<E> {
      */
     private boolean isNextAvailable() {
 
-        return (nextIndex < keys.length) &&
-               (keys[nextIndex] != null);
+        return (nextIndex < keys.length) && (keys[nextIndex] != null);
     }
 
     /**
@@ -138,8 +133,7 @@ class BlockIterator<E> extends BaseIterator<E> {
      */
     private boolean isPrevAvailable() {
 
-        return (nextIndex > 0) &&
-               (keys[nextIndex - 1] != null);
+        return (nextIndex > 0) && (keys[nextIndex - 1] != null);
     }
 
     /**
@@ -173,13 +167,10 @@ class BlockIterator<E> extends BaseIterator<E> {
 
         int i = dataIndex;
         DatabaseEntry keyEntry = new DatabaseEntry(keys[i]);
-        DatabaseEntry priKeyEntry = (keys != priKeys)
-                                    ? (new DatabaseEntry(priKeys[i]))
-                                    : keyEntry;
+        DatabaseEntry priKeyEntry = (keys != priKeys) ? (new DatabaseEntry(priKeys[i])) : keyEntry;
         DatabaseEntry valuesEntry = new DatabaseEntry(values[i]);
 
-        dataObject = coll.makeIteratorData(this, keyEntry, priKeyEntry,
-                                           valuesEntry);
+        dataObject = coll.makeIteratorData(this, keyEntry, priKeyEntry, valuesEntry);
     }
 
     /**
@@ -202,8 +193,7 @@ class BlockIterator<E> extends BaseIterator<E> {
         keys[i] = KeyRange.getByteArray(cursor.getKeyThang());
 
         if (keys != priKeys) {
-            priKeys[i] = KeyRange.getByteArray
-                (cursor.getPrimaryKeyThang());
+            priKeys[i] = KeyRange.getByteArray(cursor.getPrimaryKeyThang());
         }
 
         values[i] = KeyRange.getByteArray(cursor.getValueThang());
@@ -211,7 +201,7 @@ class BlockIterator<E> extends BaseIterator<E> {
 
     /**
      * Inserts an added record at a given slot position and shifts other slots
-     * accordingly.  Also adjusts nextIndex and sets dataIndex to -1.
+     * accordingly. Also adjusts nextIndex and sets dataIndex to -1.
      */
     private void insertSlot(int i, DataCursor cursor) {
 
@@ -251,8 +241,7 @@ class BlockIterator<E> extends BaseIterator<E> {
     private void bumpRecordNumber(int i) {
 
         DatabaseEntry entry = new DatabaseEntry(keys[i]);
-        DbCompat.setRecordNumber(entry,
-                                 DbCompat.getRecordNumber(entry) + 1);
+        DbCompat.setRecordNumber(entry, DbCompat.getRecordNumber(entry) + 1);
         keys[i] = entry.getData();
     }
 
@@ -278,11 +267,10 @@ class BlockIterator<E> extends BaseIterator<E> {
     }
 
     /**
-     * Moves the cursor to the key/data at the given slot, and returns false
-     * if the reposition (search) fails.
+     * Moves the cursor to the key/data at the given slot, and returns false if
+     * the reposition (search) fails.
      */
-    private boolean moveCursor(int i, DataCursor cursor)
-        throws DatabaseException {
+    private boolean moveCursor(int i, DataCursor cursor) throws DatabaseException {
 
         return cursor.repositionExact(keys[i], priKeys[i], values[i], false);
     }
@@ -309,14 +297,13 @@ class BlockIterator<E> extends BaseIterator<E> {
                 }
             } else {
                 /* Reposition to the last known key/data pair. */
-                int repos = cursor.repositionRange
-                    (keys[prev], priKeys[prev], values[prev], false);
+                int repos = cursor.repositionRange(keys[prev], priKeys[prev], values[prev], false);
 
                 if (repos == DataCursor.REPOS_EXACT) {
 
                     /*
-                     * The last known key/data pair was found and will now be
-                     * in slot zero.
+                     * The last known key/data pair was found and will now be in
+                     * slot zero.
                      */
                     found = true;
                     nextIndex = 1;
@@ -358,9 +345,8 @@ class BlockIterator<E> extends BaseIterator<E> {
                     setSlot(i, cursor);
                     i += 1;
                     if (i < keys.length) {
-                        OperationStatus status = coll.iterateDuplicates() ?
-                                                 cursor.getNext(false) :
-                                                 cursor.getNextNoDup(false);
+                        OperationStatus status = coll.iterateDuplicates() ? cursor.getNext(false)
+                                : cursor.getNextNoDup(false);
                         if (status != OperationStatus.SUCCESS) {
                             done = true;
                         }
@@ -372,8 +358,8 @@ class BlockIterator<E> extends BaseIterator<E> {
             }
 
             /*
-             * If REPOS_EXACT was returned above, make sure we retrieved
-             * the following record.
+             * If REPOS_EXACT was returned above, make sure we retrieved the
+             * following record.
              */
             return isNextAvailable();
         } catch (Exception e) {
@@ -399,15 +385,13 @@ class BlockIterator<E> extends BaseIterator<E> {
             boolean found = false;
 
             /* Reposition to the last known key/data pair. */
-            int repos = cursor.repositionRange
-                (keys[next], priKeys[next], values[next], false);
+            int repos = cursor.repositionRange(keys[next], priKeys[next], values[next], false);
 
-            if (repos == DataCursor.REPOS_EXACT ||
-                repos == DataCursor.REPOS_NEXT) {
+            if (repos == DataCursor.REPOS_EXACT || repos == DataCursor.REPOS_NEXT) {
 
                 /*
-                 * The last known key/data pair, or the record following it,
-                 * was found and will now be in the last slot.
+                 * The last known key/data pair, or the record following it, was
+                 * found and will now be in the last slot.
                  */
                 found = true;
                 nextIndex = last;
@@ -436,9 +420,8 @@ class BlockIterator<E> extends BaseIterator<E> {
                     setSlot(i, cursor);
                     i -= 1;
                     if (i >= 0) {
-                        OperationStatus status = coll.iterateDuplicates() ?
-                                                 cursor.getPrev(false) :
-                                                 cursor.getPrevNoDup(false);
+                        OperationStatus status = coll.iterateDuplicates() ? cursor.getPrev(false)
+                                : cursor.getPrevNoDup(false);
                         if (status != OperationStatus.SUCCESS) {
                             done = true;
                         }
@@ -487,25 +470,19 @@ class BlockIterator<E> extends BaseIterator<E> {
     public int nextIndex() {
 
         if (!coll.view.recNumAccess) {
-            throw new UnsupportedOperationException
-                ("Record number access not supported");
+            throw new UnsupportedOperationException("Record number access not supported");
         }
 
-        return hasNext() ? (getRecordNumber(nextIndex) -
-                            coll.getIndexOffset())
-                         : Integer.MAX_VALUE;
+        return hasNext() ? (getRecordNumber(nextIndex) - coll.getIndexOffset()) : Integer.MAX_VALUE;
     }
 
     public int previousIndex() {
 
         if (!coll.view.recNumAccess) {
-            throw new UnsupportedOperationException
-                ("Record number access not supported");
+            throw new UnsupportedOperationException("Record number access not supported");
         }
 
-        return hasPrevious() ? (getRecordNumber(nextIndex - 1) -
-                                coll.getIndexOffset())
-                             : (-1);
+        return hasPrevious() ? (getRecordNumber(nextIndex - 1) - coll.getIndexOffset()) : (-1);
     }
 
     public void set(E value) {
@@ -559,9 +536,7 @@ class BlockIterator<E> extends BaseIterator<E> {
                 if (nextIndex == 0 && keys[0] == null) {
                     OperationStatus status;
                     for (int i = 0; i < keys.length; i += 1) {
-                        status = coll.iterateDuplicates() ?
-                                 cursor.getNext(false) :
-                                 cursor.getNextNoDup(false);
+                        status = coll.iterateDuplicates() ? cursor.getNext(false) : cursor.getNextNoDup(false);
                         if (status == OperationStatus.SUCCESS) {
                             setSlot(i, cursor);
                         } else {
@@ -571,7 +546,7 @@ class BlockIterator<E> extends BaseIterator<E> {
 
                     /*
                      * If no records are found past the cursor position, try
-                     * moving backward.  If no records are found before the
+                     * moving backward. If no records are found before the
                      * cursor position, leave nextIndex set to keys.length,
                      * which is the same as the initial iterator state and is
                      * appropriate for an empty key range.
@@ -579,9 +554,7 @@ class BlockIterator<E> extends BaseIterator<E> {
                     if (keys[0] == null) {
                         nextIndex = keys.length;
                         for (int i = nextIndex - 1; i >= 0; i -= 1) {
-                            status = coll.iterateDuplicates() ?
-                                     cursor.getPrev(false) :
-                                     cursor.getPrevNoDup(false);
+                            status = coll.iterateDuplicates() ? cursor.getPrev(false) : cursor.getPrevNoDup(false);
                             if (status == OperationStatus.SUCCESS) {
                                 setSlot(i, cursor);
                             } else {
@@ -606,8 +579,8 @@ class BlockIterator<E> extends BaseIterator<E> {
         /*
          * The checkIterAddAllowed method ensures that one of the following two
          * conditions holds and throws UnsupportedOperationException otherwise:
-         * 1- This is a list iterator for a recno-renumber database.
-         * 2- This is a collection iterator for a duplicates database.
+         * 1- This is a list iterator for a recno-renumber database. 2- This is
+         * a collection iterator for a duplicates database.
          */
         coll.checkIterAddAllowed();
         OperationStatus status = OperationStatus.SUCCESS;
@@ -629,8 +602,7 @@ class BlockIterator<E> extends BaseIterator<E> {
                         /* Append to an empty recno-renumber database. */
                         status = coll.view.append(value, null, null);
 
-                    } else if (coll.view.dupsAllowed &&
-                               coll.view.range.isSingleKey()) {
+                    } else if (coll.view.dupsAllowed && coll.view.range.isSingleKey()) {
 
                         /*
                          * When inserting a duplicate into a single-key range,
@@ -643,8 +615,7 @@ class BlockIterator<E> extends BaseIterator<E> {
                         coll.closeCursor(cursor);
                         cursor = null;
                     } else {
-                        throw new IllegalStateException
-                            ("Collection is empty, cannot add() duplicate");
+                        throw new IllegalStateException("Collection is empty, cannot add() duplicate");
                     }
 
                     /*
@@ -659,9 +630,9 @@ class BlockIterator<E> extends BaseIterator<E> {
                 } else {
 
                     /*
-                     * The collection is non-empty.  If hasPrev is true then
-                     * the element at (nextIndex - 1) is available; otherwise
-                     * the element at nextIndex is available.
+                     * The collection is non-empty. If hasPrev is true then the
+                     * element at (nextIndex - 1) is available; otherwise the
+                     * element at nextIndex is available.
                      */
                     cursor = new DataCursor(coll.view, writeAllowed);
                     int insertIndex = hasPrev ? (nextIndex - 1) : nextIndex;
@@ -671,13 +642,12 @@ class BlockIterator<E> extends BaseIterator<E> {
                     }
 
                     /*
-                     * For a recno-renumber database or a database with
-                     * unsorted duplicates, insert before the iterator 'next'
-                     * position, or after the 'prev' position.  Then adjust
-                     * the slots to account for the inserted record.
+                     * For a recno-renumber database or a database with unsorted
+                     * duplicates, insert before the iterator 'next' position,
+                     * or after the 'prev' position. Then adjust the slots to
+                     * account for the inserted record.
                      */
-                    status = hasPrev ? cursor.putAfter(value)
-                                     : cursor.putBefore(value);
+                    status = hasPrev ? cursor.putAfter(value) : cursor.putBefore(value);
                     if (status == OperationStatus.SUCCESS) {
                         insertSlot(nextIndex, cursor);
                     }
@@ -689,16 +659,16 @@ class BlockIterator<E> extends BaseIterator<E> {
                 if (coll.view.range.isSingleKey()) {
 
                     /*
-                     * When inserting a duplicate into a single-key range,
-                     * the main key is fixed.
+                     * When inserting a duplicate into a single-key range, the
+                     * main key is fixed.
                      */
                     cursor.useRangeKey();
                 } else {
 
                     /*
-                     * When inserting into a multi-key range, the main key
-                     * is the last dataIndex accessed by next(), previous()
-                     * or add().
+                     * When inserting into a multi-key range, the main key is
+                     * the last dataIndex accessed by next(), previous() or
+                     * add().
                      */
                     if (dataIndex < 0 || !moveCursor(dataIndex, cursor)) {
                         throw new IllegalStateException();
@@ -706,9 +676,9 @@ class BlockIterator<E> extends BaseIterator<E> {
                 }
 
                 /*
-                 * For a hash/btree with duplicates, insert the duplicate,
-                 * put the new record in slot zero, and set the next index
-                 * to slot one (past the new record).
+                 * For a hash/btree with duplicates, insert the duplicate, put
+                 * the new record in slot zero, and set the next index to slot
+                 * one (past the new record).
                  */
                 status = cursor.putNoDupData(null, value, null, true);
                 if (status == OperationStatus.SUCCESS) {
@@ -756,8 +726,7 @@ class BlockIterator<E> extends BaseIterator<E> {
         DataCursor cursor = null;
         try {
             cursor = new DataCursor(coll.view, writeAllowed);
-            OperationStatus status =
-                cursor.getSearchKey(Integer.valueOf(index), null, false);
+            OperationStatus status = cursor.getSearchKey(Integer.valueOf(index), null, false);
             boolean retVal;
             if (status == OperationStatus.SUCCESS) {
                 clearSlots();

@@ -27,41 +27,22 @@ public class PrintFileReader extends DumpFileReader {
     /**
      * Create this reader to start at a given LSN.
      */
-    public PrintFileReader(EnvironmentImpl env,
-                           int readBufferSize,
-                           long startLsn,
-                           long finishLsn,
-                           long endOfFileLsn,
-                           String entryTypes,
-                           String dbIds,
-                           String txnIds,
-                           boolean verbose,
-                           boolean repEntriesOnly,
+    public PrintFileReader(EnvironmentImpl env, int readBufferSize, long startLsn, long finishLsn, long endOfFileLsn,
+                           String entryTypes, String dbIds, String txnIds, boolean verbose, boolean repEntriesOnly,
                            boolean forwards)
-        throws DatabaseException {
+            throws DatabaseException {
 
-        super(env,
-              readBufferSize,
-              startLsn,
-              finishLsn,
-              endOfFileLsn,
-              entryTypes,
-              dbIds,
-              txnIds,
-              verbose,
-              repEntriesOnly,
-              forwards);
+        super(env, readBufferSize, startLsn, finishLsn, endOfFileLsn, entryTypes, dbIds, txnIds, verbose,
+                repEntriesOnly, forwards);
     }
 
     /**
      * This reader prints the log entry item.
      */
-    protected boolean processEntry(ByteBuffer entryBuffer)
-        throws DatabaseException {
+    protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
         /* Figure out what kind of log entry this is */
-        LogEntryType type =
-            LogEntryType.findType(currentEntryHeader.getType());
+        LogEntryType type = LogEntryType.findType(currentEntryHeader.getType());
 
         /* Read the entry. */
         LogEntry entry = type.getSharedLogEntry();
@@ -74,8 +55,7 @@ public class PrintFileReader extends DumpFileReader {
 
         /* Dump it. */
         StringBuilder sb = new StringBuilder();
-        sb.append("<entry lsn=\"0x").append
-            (Long.toHexString(window.currentFileNum()));
+        sb.append("<entry lsn=\"0x").append(Long.toHexString(window.currentFileNum()));
         sb.append("/0x").append(Long.toHexString(currentEntryOffset));
         sb.append("\" ");
         currentEntryHeader.dumpLogNoTag(sb, verbose);

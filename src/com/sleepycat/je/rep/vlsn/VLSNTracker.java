@@ -42,67 +42,61 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * See @link{VLSNIndex} for an overview of the mapping system. The VLSNTracker
- * packages the VLSNRange and the cached, in-memory VLSNBuckets.
- *
- * The tracker has a notion of the "currentBucket", which is the one receiving
- * updates. All other cached buckets are finished and are awaiting a write to
- * the database. Those finished buckets will only be updated in special
- * circumstances, such as log cleaning or replication stream truncation, when
- * we can assume that there will no readers viewing the buckets.
+ * packages the VLSNRange and the cached, in-memory VLSNBuckets. The tracker has
+ * a notion of the "currentBucket", which is the one receiving updates. All
+ * other cached buckets are finished and are awaiting a write to the database.
+ * Those finished buckets will only be updated in special circumstances, such as
+ * log cleaning or replication stream truncation, when we can assume that there
+ * will no readers viewing the buckets.
  */
 class VLSNTracker {
     private final EnvironmentImpl envImpl;
 
-    /* The first mapping that is is the tracker cache.  */
-    private VLSN firstTrackedVLSN = NULL_VLSN;
+    /* The first mapping that is is the tracker cache. */
+    private VLSN                  firstTrackedVLSN = NULL_VLSN;
 
     /* The last VLSN that is stored on disk. */
-    private VLSN lastOnDiskVLSN = NULL_VLSN;
+    private VLSN                  lastOnDiskVLSN   = NULL_VLSN;
 
     /*
      * A cache of buckets that are not on disk. The map key is the bucket's
      * first VLSN.
      */
-    SortedMap<Long, VLSNBucket> bucketCache;
+    SortedMap<Long, VLSNBucket>   bucketCache;
 
     /*
-     * The range should always be updated through assignment to a new
-     * VLSNRange, to ensure that the values stay consistent. The current bucket
-     * mutex must be taken in order to update this value, so that the current
-     * bucket is updated before the range is updated.  When reading range
-     * fields, the caller must be sure to get a reference to a single range
-     * instance, so that there's no danger of getting inconsistent values.
+     * The range should always be updated through assignment to a new VLSNRange,
+     * to ensure that the values stay consistent. The current bucket mutex must
+     * be taken in order to update this value, so that the current bucket is
+     * updated before the range is updated. When reading range fields, the
+     * caller must be sure to get a reference to a single range instance, so
+     * that there's no danger of getting inconsistent values.
      */
-    protected volatile VLSNRange range;
-    private boolean rangeTruncated;
+    protected volatile VLSNRange  range;
+    private boolean               rangeTruncated;
 
     /*
      * In the future, we may want to vary stride, maxMappings and maxDistance
      * dynamically, in reaction to efficient the mappings look.
      */
-    private final int stride;
-    private final int maxMappings;
-    private final int maxDistance;
+    private final int             stride;
+    private final int             maxMappings;
+    private final int             maxDistance;
 
-    private final LongStat nBucketsCreated;
+    private final LongStat        nBucketsCreated;
 
     /*
      * Create an VLSNTracker, with the range initialized from the mapping db.
      */
-    VLSNTracker(EnvironmentImpl envImpl,
-                DatabaseImpl mappingDbImpl,
-                int stride,
-                int maxMappings,
-                int maxDistance,
+    VLSNTracker(EnvironmentImpl envImpl, DatabaseImpl mappingDbImpl, int stride, int maxMappings, int maxDistance,
                 StatGroup statistics)
-        throws DatabaseException {
+            throws DatabaseException {
 
         this.stride = stride;
         this.maxMappings = maxMappings;
         this.maxDistance = maxDistance;
         this.envImpl = envImpl;
-        nBucketsCreated =
-            new LongStat(statistics, VLSNIndexStatDefinition.N_BUCKETS_CREATED);
+        nBucketsCreated = new LongStat(statistics, VLSNIndexStatDefinition.N_BUCKETS_CREATED);
 
         bucketCache = new TreeMap<Long, VLSNBucket>();
 
@@ -115,13 +109,10 @@ class VLSNTracker {
         Locker locker = null;
         try {
             locker = BasicLocker.createBasicLocker(envImpl);
-            cursor = DbInternal.makeCursor(mappingDbImpl,
-                                           locker,
-                                           CursorConfig.DEFAULT);
+            cursor = DbInternal.makeCursor(mappingDbImpl, locker, CursorConfig.DEFAULT);
             DbInternal.getCursorImpl(cursor).setAllowEviction(false);
 
-            OperationStatus status = cursor.getSearchKey(key, data,
-                                                         LockMode.DEFAULT);
+            OperationStatus status = cursor.getSearchKey(key, data, LockMode.DEFAULT);
             if (status == OperationStatus.SUCCESS) {
                 /* initialize the range from the database. */
                 VLSNRangeBinding rangeBinding = new VLSNRangeBinding();
@@ -131,8 +122,7 @@ class VLSNTracker {
                 /* No mappings exist before. */
                 range = VLSNRange.EMPTY;
             } else {
-                throw EnvironmentFailureException.unexpectedState
-                    ("VLSNTracker init: status=" + status);
+                throw EnvironmentFailureException.unexpectedState("VLSNTracker init: status=" + status);
             }
         } finally {
             if (cursor != null) {
@@ -148,10 +138,7 @@ class VLSNTracker {
     /*
      * Create an empty VLSNTracker. Used during recovery.
      */
-    VLSNTracker(EnvironmentImpl envImpl,
-                int stride,
-                int maxMappings,
-                int maxDistance) {
+    VLSNTracker(EnvironmentImpl envImpl, int stride, int maxMappings, int maxDistance) {
 
         this.envImpl = envImpl;
         this.stride = stride;
@@ -159,12 +146,8 @@ class VLSNTracker {
         this.maxDistance = maxDistance;
 
         /* Set up a temporary stat group for use during recovery */
-        StatGroup statistics =
-            new StatGroup(VLSNIndexStatDefinition.GROUP_NAME,
-                          VLSNIndexStatDefinition.GROUP_DESC);
-        nBucketsCreated =
-            new LongStat(statistics,
-                         VLSNIndexStatDefinition.N_BUCKETS_CREATED);
+        StatGroup statistics = new StatGroup(VLSNIndexStatDefinition.GROUP_NAME, VLSNIndexStatDefinition.GROUP_DESC);
+        nBucketsCreated = new LongStat(statistics, VLSNIndexStatDefinition.N_BUCKETS_CREATED);
 
         initEmpty();
     }
@@ -196,20 +179,18 @@ class VLSNTracker {
         }
 
         /*
-         * If the key is not in the headMap, we must return the next bucket
-         * with mappings that follow on.
+         * If the key is not in the headMap, we must return the next bucket with
+         * mappings that follow on.
          */
         SortedMap<Long, VLSNBucket> tail = bucketCache.tailMap(pivot);
         if (tail.size() > 0) {
             VLSNBucket bucket = tail.get(tail.firstKey());
-            assert (bucket.owns(vlsn) || bucket.follows(vlsn)) :
-               "VLSN " + vlsn + " got wrong bucket " + bucket;
+            assert (bucket.owns(vlsn) || bucket.follows(vlsn)) : "VLSN " + vlsn + " got wrong bucket " + bucket;
             return bucket;
         }
 
-        throw EnvironmentFailureException.unexpectedState
-            (envImpl, "VLSN " + vlsn + " should be held within this tracker. " +
-             this + " prevBucket=" + prevBucket);
+        throw EnvironmentFailureException.unexpectedState(envImpl,
+                "VLSN " + vlsn + " should be held within this tracker. " + this + " prevBucket=" + prevBucket);
     }
 
     /**
@@ -220,8 +201,7 @@ class VLSNTracker {
      */
     synchronized VLSNBucket getLTEBucket(VLSN vlsn) {
 
-        if (firstTrackedVLSN.equals(NULL_VLSN) ||
-            (firstTrackedVLSN.compareTo(vlsn) > 0)) {
+        if (firstTrackedVLSN.equals(NULL_VLSN) || (firstTrackedVLSN.compareTo(vlsn) > 0)) {
             return null;
         }
 
@@ -240,9 +220,8 @@ class VLSNTracker {
         if (tail.size() > 0) {
             nextBucket = tail.get(tail.firstKey());
         }
-        throw EnvironmentFailureException.unexpectedState
-            (envImpl, "VLSN " + vlsn + " should be held within this tracker. " +
-             this + " nextBucket=" + nextBucket);
+        throw EnvironmentFailureException.unexpectedState(envImpl,
+                "VLSN " + vlsn + " should be held within this tracker. " + this + " nextBucket=" + nextBucket);
     }
 
     /**
@@ -258,10 +237,9 @@ class VLSNTracker {
 
             /*
              * This VLSN is a laggard. It belongs to a bucket that has already
-             * gone to disk. Since on disk buckets can't be modified, throw
-             * this mapping away. Do be sure to update the range in case
-             * lastSync or lastTxnEnd should be updated as a result of this
-             * mapping.
+             * gone to disk. Since on disk buckets can't be modified, throw this
+             * mapping away. Do be sure to update the range in case lastSync or
+             * lastTxnEnd should be updated as a result of this mapping.
              */
             updateRange(vlsn, entryTypeNum);
             return;
@@ -269,22 +247,20 @@ class VLSNTracker {
 
         if (bucketCache.size() == 0) {
             /* Nothing in the tracker, add a new bucket. */
-            currentBucket = new VLSNBucket(DbLsn.getFileNumber(lsn), stride,
-                                           maxMappings, maxDistance, vlsn);
+            currentBucket = new VLSNBucket(DbLsn.getFileNumber(lsn), stride, maxMappings, maxDistance, vlsn);
             nBucketsCreated.increment();
 
-            bucketCache.put(currentBucket.getFirst().getSequence(),
-                            currentBucket);
+            bucketCache.put(currentBucket.getFirst().getSequence(), currentBucket);
         } else {
             /* Find the last bucket. Only the last bucket is updateable. */
-            currentBucket =  bucketCache.get(bucketCache.lastKey());
+            currentBucket = bucketCache.get(bucketCache.lastKey());
         }
 
         /*
          * This VLSN is a laggard that was preceded by an earlier mapping which
-         * came unseasonably early. This VLSN can't fit into the current
-         * bucket, and since we only want to update the last bucket, we'll
-         * throw this mapping away.
+         * came unseasonably early. This VLSN can't fit into the current bucket,
+         * and since we only want to update the last bucket, we'll throw this
+         * mapping away.
          */
         if (currentBucket.follows(vlsn)) {
             updateRange(vlsn, entryTypeNum);
@@ -297,16 +273,12 @@ class VLSNTracker {
              * Couldn't put the mapping in this bucket. Close it and move to a
              * new one.
              */
-            currentBucket =
-                new VLSNBucket(DbLsn.getFileNumber(lsn), stride,
-                               maxMappings, maxDistance, vlsn);
+            currentBucket = new VLSNBucket(DbLsn.getFileNumber(lsn), stride, maxMappings, maxDistance, vlsn);
             nBucketsCreated.increment();
-            bucketCache.put(currentBucket.getFirst().getSequence(),
-                            currentBucket);
+            bucketCache.put(currentBucket.getFirst().getSequence(), currentBucket);
             if (!currentBucket.put(vlsn, lsn)) {
-                throw EnvironmentFailureException.unexpectedState
-                    (envImpl, "Couldn't put VLSN " + vlsn + " into " +
-                     currentBucket);
+                throw EnvironmentFailureException.unexpectedState(envImpl,
+                        "Couldn't put VLSN " + vlsn + " into " + currentBucket);
             }
         }
 
@@ -336,39 +308,36 @@ class VLSNTracker {
     }
 
     /**
-     * Flush the tracker cache to disk.
-     * Ideally, we'd allow concurrent VLSN put() calls while a flush to database
-     * is happening. To do that, we need a more sophisticated synchronization
-     * scheme that defines the immutable vs. mutable portion of the tracker
-     * cache. See SR [#17689]
+     * Flush the tracker cache to disk. Ideally, we'd allow concurrent VLSN
+     * put() calls while a flush to database is happening. To do that, we need a
+     * more sophisticated synchronization scheme that defines the immutable vs.
+     * mutable portion of the tracker cache. See SR [#17689]
      */
     synchronized void flushToDatabase(DatabaseImpl mappingDbImpl, Txn txn) {
 
-	VLSNRange flushRange = range;
+        VLSNRange flushRange = range;
 
         if (bucketCache.size() == 0) {
             /*
              * No mappings to write out, but it's possible that the range
              * changed due to a truncation, in which case we must update the
-             * database. RangeTruncated is used to reduce the chance that
-             * we are doing unnecessary writes of the range record to the db.
+             * database. RangeTruncated is used to reduce the chance that we are
+             * doing unnecessary writes of the range record to the db.
              */
             if (rangeTruncated) {
-                lastOnDiskVLSN = flushRange.writeToDatabase(envImpl,
-                	                                    mappingDbImpl, txn);
+                lastOnDiskVLSN = flushRange.writeToDatabase(envImpl, mappingDbImpl, txn);
                 rangeTruncated = false;
             }
             return;
         }
 
         /*
-         * Save information about the portion of the cache that we are trying
-         * to flush. Close off the last bucket, so the flush portion becomes
-         * immutable. In the past, this was in a synchronization block.
-         * This isn't strictly needed right now, since the method is currently
-         * fully synchronized, but is a good practice, and will be
-         * necessary if future changes make it possible to have concurrent
-         * puts.
+         * Save information about the portion of the cache that we are trying to
+         * flush. Close off the last bucket, so the flush portion becomes
+         * immutable. In the past, this was in a synchronization block. This
+         * isn't strictly needed right now, since the method is currently fully
+         * synchronized, but is a good practice, and will be necessary if future
+         * changes make it possible to have concurrent puts.
          */
         VLSNBucket lastBucket = bucketCache.get(bucketCache.lastKey());
         lastBucket.close();
@@ -388,35 +357,28 @@ class VLSNTracker {
             VLSNBucket target = bucketCache.get(key);
 
             /* Do some sanity checking before we write this bucket to disk. */
-            validateBeforeWrite(target,
-                                flushRange,
-                                currentLastVLSN,
-                                target==lastBucket);
+            validateBeforeWrite(target, flushRange, currentLastVLSN, target == lastBucket);
             target.writeToDatabase(envImpl, mappingDbImpl, txn);
             currentLastVLSN = target.getLast();
         }
 
-        lastOnDiskVLSN = flushRange.writeToDatabase(envImpl,
-        	                                    mappingDbImpl, txn);
+        lastOnDiskVLSN = flushRange.writeToDatabase(envImpl, mappingDbImpl, txn);
         rangeTruncated = false;
 
         /*
          * Update the tracker to remove the parts that have been written to
          * disk. Update firstTrackedVLSN, lastOnDiskVLSN, and clear the bucket
-         * cache.
-         *
-         * In the current implementation, bucketCache is guaranteed not to
-         * change, so we can just clear the cache. If we had written the
+         * cache. In the current implementation, bucketCache is guaranteed not
+         * to change, so we can just clear the cache. If we had written the
          * buckets out without synchronization, the cache might have gained
          * mappings, and we wouuld have to be careful to set the
          * firstTrackedVLSN to be the first VLSN of the remaining buckets, and
-         * to set lastTrackedVLSN to be the last VLSN in flushRange.
-         *
-         * We would also have to explicitly call SortedMap.remove() to remove
-         * the written buckets. Do not use TreeMap.tailSet, which would
-         * inadvertently leave us with the semantics of a SubMap, which has
-         * mandated key ranges. With rollbacks, we may end up adding buckets
-         * that are "repeats" in the future.
+         * to set lastTrackedVLSN to be the last VLSN in flushRange. We would
+         * also have to explicitly call SortedMap.remove() to remove the written
+         * buckets. Do not use TreeMap.tailSet, which would inadvertently leave
+         * us with the semantics of a SubMap, which has mandated key ranges.
+         * With rollbacks, we may end up adding buckets that are "repeats" in
+         * the future.
          */
         bucketCache.clear();
         firstTrackedVLSN = NULL_VLSN;
@@ -425,31 +387,24 @@ class VLSNTracker {
     /**
      * Do some sanity checking before the write, to help prevent any corruption.
      */
-    private void validateBeforeWrite(VLSNBucket target,
-                                     VLSNRange flushRange,
-                                     VLSN currentLastVLSN,
+    private void validateBeforeWrite(VLSNBucket target, VLSNRange flushRange, VLSN currentLastVLSN,
                                      boolean isLastBucket) {
 
-        if (!(currentLastVLSN.equals(NULL_VLSN)) &&
-            (target.getFirst().compareTo(currentLastVLSN) <= 0)) {
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl, "target bucket overlaps previous bucket. " +
-                 "currentLastVLSN= " + currentLastVLSN + " target=" +
-                 target);
+        if (!(currentLastVLSN.equals(NULL_VLSN)) && (target.getFirst().compareTo(currentLastVLSN) <= 0)) {
+            throw EnvironmentFailureException.unexpectedState(envImpl, "target bucket overlaps previous bucket. "
+                    + "currentLastVLSN= " + currentLastVLSN + " target=" + target);
         }
 
         if (target.getLast().compareTo(flushRange.getLast()) > 0) {
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl, "target bucket exceeds flush range. " +
-                 "range= " + flushRange + " target=" +
-                 target);
+            throw EnvironmentFailureException.unexpectedState(envImpl,
+                    "target bucket exceeds flush range. " + "range= " + flushRange + " target=" + target);
         }
 
         if (isLastBucket) {
             if (target.getLast().compareTo(flushRange.getLast()) != 0) {
-            throw EnvironmentFailureException.unexpectedState
-                (envImpl, "end of last bucket should match end of range. " +
-                 "range= " + flushRange + " target=" + target);
+                throw EnvironmentFailureException.unexpectedState(envImpl,
+                        "end of last bucket should match end of range. " + "range= " + flushRange + " target="
+                                + target);
             }
         }
     }
@@ -471,31 +426,27 @@ class VLSNTracker {
         rangeTruncated = true;
 
         /*
-         * afterDelete may not == range.getFirst, becayse range.getFirst may
-         * be NULL_VLSN if the entire vlsn index has been deleted.
+         * afterDelete may not == range.getFirst, becayse range.getFirst may be
+         * NULL_VLSN if the entire vlsn index has been deleted.
          */
         VLSN afterDelete = deleteEnd.getNext();
 
         /**
          * Check if the cached buckets needs to be modified. Suppose vlsns 1-8
          * are on disk, and vlsns 12->40 are in the tracker cache, with an out
-         * of order gap from 9 - 11.
-         *
-         * case 1: deleteEnd <= 8, Do not need to truncate anything in the
-         *  bucket cacke, but we may have to make a ghost bucket to fill the
-         *  gap.
-         * case 2: deleteEnd == 11, we don't need to modify the cache or
-         *         create a ghost bucket.
-         * case 3: deleteEnd >8 and < 11 is in the gap, we need to create a
-         *         ghost bucket to hold the beginning of the range..
-         * case 4: deleteEnd >= 12, we need to modify the bucket cache.
+         * of order gap from 9 - 11. case 1: deleteEnd <= 8, Do not need to
+         * truncate anything in the bucket cacke, but we may have to make a
+         * ghost bucket to fill the gap. case 2: deleteEnd == 11, we don't need
+         * to modify the cache or create a ghost bucket. case 3: deleteEnd >8
+         * and < 11 is in the gap, we need to create a ghost bucket to hold the
+         * beginning of the range.. case 4: deleteEnd >= 12, we need to modify
+         * the bucket cache.
          */
-        if (!lastOnDiskVLSN.equals(VLSN.NULL_VLSN) &&
-            (lastOnDiskVLSN.compareTo(deleteEnd) >= 0)) {
+        if (!lastOnDiskVLSN.equals(VLSN.NULL_VLSN) && (lastOnDiskVLSN.compareTo(deleteEnd) >= 0)) {
 
             /*
-             * case 1:  the buckets in the tracker cache are unaffected, all
-             * the pertinent mappings are on disk.
+             * case 1: the buckets in the tracker cache are unaffected, all the
+             * pertinent mappings are on disk.
              */
             if (lastOnDiskVLSN.equals(deleteEnd)) {
                 if (firstTrackedVLSN.compareTo(afterDelete) > 0) {
@@ -506,7 +457,7 @@ class VLSNTracker {
             return;
         }
 
-        assert(!firstTrackedVLSN.equals(NULL_VLSN));
+        assert (!firstTrackedVLSN.equals(NULL_VLSN));
 
         if (firstTrackedVLSN.equals(afterDelete)) {
             /* case 2: The tracker is lined up perfectly with the new range. */
@@ -531,8 +482,8 @@ class VLSNTracker {
         SortedMap<Long, VLSNBucket> tail;
         try {
             /*
-             * We need to chop off part of the bucket cache. Find the portion
-             * to retain.
+             * We need to chop off part of the bucket cache. Find the portion to
+             * retain.
              */
             tail = bucketCache.tailMap(retainBucketKey);
             checkForGhostBucket(tail, deleteFileNum);
@@ -545,8 +496,7 @@ class VLSNTracker {
         lastOnDiskVLSN = NULL_VLSN;
     }
 
-    private void checkForGhostBucket(SortedMap<Long, VLSNBucket> buckets,
-                                     long deleteFileNum) {
+    private void checkForGhostBucket(SortedMap<Long, VLSNBucket> buckets, long deleteFileNum) {
         /*
          * The range has just been truncated. If the first bucket's first vlsn
          * != the first in range, insert a GhostBucket.
@@ -556,50 +506,39 @@ class VLSNTracker {
         VLSN firstRangeVLSN = range.getFirst();
         VLSN firstBucketVLSN = firstBucket.getFirst();
         if (!firstBucketVLSN.equals(firstRangeVLSN)) {
-            long nextFile =
-                envImpl.getFileManager().getFollowingFileNum(deleteFileNum,
-                                                   true /* forward */);
+            long nextFile = envImpl.getFileManager().getFollowingFileNum(deleteFileNum, true /* forward */);
             long lastPossibleLsn = firstBucket.getLsn(firstBucketVLSN);
-            VLSNBucket placeholder = new GhostBucket(firstRangeVLSN,
-                                                     DbLsn.makeLsn(nextFile, 0),
-                                                     lastPossibleLsn);
+            VLSNBucket placeholder = new GhostBucket(firstRangeVLSN, DbLsn.makeLsn(nextFile, 0), lastPossibleLsn);
             buckets.put(firstRangeVLSN.getSequence(), placeholder);
         }
     }
 
     /**
-     * Remove the mappings for VLSNs >= deleteStart.  This should only be used
-     * at syncup, or recovery. We can assume no new mappings are coming in, but
-     * the VLSNIndex may be read during this time; checkpoints continue to
-     * happen during rollbacks. Since syncup is always at a sync-able log
-     * entry, and since we don't roll back past a commit, we can assume that
-     * the lastSync can be changed to deleteStart.getPrev(), and lastTxnEnd is
-     * unchanged.  The VLSNRange itself is updated before the tracker and
-     * on-disk buckets are pruned.
-     *
-     * The VLSNIndex guarantees that the beginning and end vlsns in the range
-     * have mappings so LTE and GTE search operations work. When truncating the
-     * mappings in the tracker, check to see if the new end vlsn has a mapping,
-     * since that may not happen if the buckets are cut in the middle, or have
-     * a gap due to out of order mapping. For example, suppose mapping for vlsn
-     * 20 came before the mappings for vlsn 17, 18 and 19. The buckets would
-     * have this gap:
-     *     Bucket A: vlsns 10-16           
-     *     Bucket B: vlsns 20-25 
-     *     Bucket C: vlsns 26 - 30
-     * If the new end of vlsn range is 11-14, 17, 18, 19, 21 - 24, or 27-29,
-     * we have to end the vlsn tracker with a new mapping of 
-     * (vlsn (deleteStart-1) ->  prevLsn) to cap off the buckets.
-     *
-     * Cases:
-     * End of range is in the gap -- either 17, 18, 19
-     * 1. on disk buckets exist, but don't encompass the gap: bucket A on disk
-     * 2. all buckets are in the tracker cache: bucket A in tracker
-     * 3. on disk buckets encompass the gap: bucket A and B on disk.
+     * Remove the mappings for VLSNs >= deleteStart. This should only be used at
+     * syncup, or recovery. We can assume no new mappings are coming in, but the
+     * VLSNIndex may be read during this time; checkpoints continue to happen
+     * during rollbacks. Since syncup is always at a sync-able log entry, and
+     * since we don't roll back past a commit, we can assume that the lastSync
+     * can be changed to deleteStart.getPrev(), and lastTxnEnd is unchanged. The
+     * VLSNRange itself is updated before the tracker and on-disk buckets are
+     * pruned. The VLSNIndex guarantees that the beginning and end vlsns in the
+     * range have mappings so LTE and GTE search operations work. When
+     * truncating the mappings in the tracker, check to see if the new end vlsn
+     * has a mapping, since that may not happen if the buckets are cut in the
+     * middle, or have a gap due to out of order mapping. For example, suppose
+     * mapping for vlsn 20 came before the mappings for vlsn 17, 18 and 19. The
+     * buckets would have this gap: Bucket A: vlsns 10-16 Bucket B: vlsns 20-25
+     * Bucket C: vlsns 26 - 30 If the new end of vlsn range is 11-14, 17, 18,
+     * 19, 21 - 24, or 27-29, we have to end the vlsn tracker with a new mapping
+     * of (vlsn (deleteStart-1) -> prevLsn) to cap off the buckets. Cases: End
+     * of range is in the gap -- either 17, 18, 19 1. on disk buckets exist, but
+     * don't encompass the gap: bucket A on disk 2. all buckets are in the
+     * tracker cache: bucket A in tracker 3. on disk buckets encompass the gap:
+     * bucket A and B on disk.
      */
     synchronized void truncateFromTail(VLSN deleteStart, long prevLsn) {
-        
-        /* 
+
+        /*
          * Update the range first, it will define the range that the vlsnIndex
          * covers. Then adjust any mappings held in the bucket cache. Don't
          * update the lastOnDiskVLSN marker, which says what is on disk. Since
@@ -641,8 +580,7 @@ class VLSNTracker {
         Long targetKey = targetBucket.getFirst().getSequence();
 
         /* The newCache has buckets that should be preserved. */
-        SortedMap<Long, VLSNBucket> newCache =
-            new TreeMap<Long, VLSNBucket>(bucketCache.headMap(targetKey));
+        SortedMap<Long, VLSNBucket> newCache = new TreeMap<Long, VLSNBucket>(bucketCache.headMap(targetKey));
 
         /*
          * Prune any mappings >= deleteStart out of targetBucket. If it has any
@@ -650,38 +588,32 @@ class VLSNTracker {
          */
         targetBucket.removeFromTail(deleteStart, prevLsn);
         if (!targetBucket.empty()) {
-            newCache.put(targetBucket.getFirst().getSequence(),
-                         targetBucket);
+            newCache.put(targetBucket.getFirst().getSequence(), targetBucket);
         }
 
         bucketCache = newCache;
 
         /*
          * Now all truncated mappings have been removed from the index. Check
-         * that the end point of the vlsn range is represented in this
-         * tracker. Since vlsn mappings can  come out of order, it's
-         * possible that the buckets have a gap, and that truncation will
-         * cleave the bucket cache just at a point where a mapping is
-         * missing. For example, vlsn mappings come in this order:
-         *           vlsn 16, vlsn 18, vlsn 17
-         * causing the buckets to have this gap:
-         *           bucket N: vlsn 10 - 16
-         *           bucket N+1: vlsn 18 - 20
-         * and that the vlsn range is truncated with a deleteStart of vlsn 18.
-         * The new end range becomes 17, but the buckets do not have a
-         * mapping for vlsn 17. If so, create a mapping now.
-         *
-         * If we are at this point, we know that the tracker should contain
-         * a mapping for the last VLSN in the range. Fix it now, so the
-         * datastructure is as tidy as possible.
+         * that the end point of the vlsn range is represented in this tracker.
+         * Since vlsn mappings can come out of order, it's possible that the
+         * buckets have a gap, and that truncation will cleave the bucket cache
+         * just at a point where a mapping is missing. For example, vlsn
+         * mappings come in this order: vlsn 16, vlsn 18, vlsn 17 causing the
+         * buckets to have this gap: bucket N: vlsn 10 - 16 bucket N+1: vlsn 18
+         * - 20 and that the vlsn range is truncated with a deleteStart of vlsn
+         * 18. The new end range becomes 17, but the buckets do not have a
+         * mapping for vlsn 17. If so, create a mapping now. If we are at this
+         * point, we know that the tracker should contain a mapping for the last
+         * VLSN in the range. Fix it now, so the datastructure is as tidy as
+         * possible.
          */
         boolean needEndMapping = false;
         if (bucketCache.isEmpty()) {
             needEndMapping = true;
         } else {
             VLSNBucket lastBucket = bucketCache.get(bucketCache.lastKey());
-            needEndMapping = 
-                    (lastBucket.getLast().compareTo(range.getLast()) < 0);
+            needEndMapping = (lastBucket.getLast().compareTo(range.getLast()) < 0);
         }
 
         if (needEndMapping) {
@@ -691,45 +623,43 @@ class VLSNTracker {
 
     /**
      * Called by the VLSNIndex to see if we have to add a bucket in the tracker
-     * after pruning the on-disk storage. The get{LTE,GTE}Bucket methods 
-     * assume that there are mappings for the first and last VLSN in the range.
-     * But since out of order vlsn mappings can cause non-contiguous buckets,
-     * the pruning may have lost the end mapping. [#23491]
+     * after pruning the on-disk storage. The get{LTE,GTE}Bucket methods assume
+     * that there are mappings for the first and last VLSN in the range. But
+     * since out of order vlsn mappings can cause non-contiguous buckets, the
+     * pruning may have lost the end mapping. [#23491]
      */
     synchronized void ensureRangeEndIsMapped(VLSN lastVLSN, long lastLsn) {
 
         /**
-         * if lastOnDiskVLSN < lastVLSN < firstTrackedVLSN or
-         *    lastOnDiskVLSN < lastVLSN and firstTrackedVLSN is null
-         * then we need to add a mapping for lastVLSN->lastLsn. Otherwise a
-         * mapping already exists.
+         * if lastOnDiskVLSN < lastVLSN < firstTrackedVLSN or lastOnDiskVLSN <
+         * lastVLSN and firstTrackedVLSN is null then we need to add a mapping
+         * for lastVLSN->lastLsn. Otherwise a mapping already exists.
          */
         if (lastOnDiskVLSN.compareTo(lastVLSN) < 0) {
 
-            /* 
-             * The on-disk vlsn mappings aren't sufficient to cover the 
-             * lastVLSN. There needs to be a mapping in the tracker for the
-             * end point of the range.
+            /*
+             * The on-disk vlsn mappings aren't sufficient to cover the
+             * lastVLSN. There needs to be a mapping in the tracker for the end
+             * point of the range.
              */
             if (!firstTrackedVLSN.equals(NULL_VLSN)) {
 
-                /* 
-                 * There are mappings in the tracker, so we can assume
-                 * that they cover the end point, because truncateFromTail() 
-                 * should have adjusted for that. But assert to be sure!
+                /*
+                 * There are mappings in the tracker, so we can assume that they
+                 * cover the end point, because truncateFromTail() should have
+                 * adjusted for that. But assert to be sure!
                  */
-                if (lastVLSN.compareTo(firstTrackedVLSN) < 0) { 
-                    throw EnvironmentFailureException.unexpectedState
-                        (envImpl,
-                         "Expected this tracker to cover vlsn " + lastVLSN +
-                         " after truncateFromTail. LastOnDiskVLSN= " +
-                         lastOnDiskVLSN + " tracker=" + this);
+                if (lastVLSN.compareTo(firstTrackedVLSN) < 0) {
+                    throw EnvironmentFailureException.unexpectedState(envImpl,
+                            "Expected this tracker to cover vlsn " + lastVLSN
+                                    + " after truncateFromTail. LastOnDiskVLSN= " + lastOnDiskVLSN + " tracker="
+                                    + this);
                 }
-                
+
                 return;
             }
 
-            /* 
+            /*
              * There are no mappings in the tracker. The on disk mappings were
              * pruned, and a gap was created between what was on disk and what
              * is in the tracker cache. Add a mapping.
@@ -743,13 +673,10 @@ class VLSNTracker {
      */
     private void addEndMapping(VLSN lastVLSN, long lastLsn) {
         /* Assert that it's in the range */
-        assert (lastVLSN.compareTo(range.getLast()) == 0) :
-            "lastVLSN=" + lastVLSN + " lastLsn = " + lastLsn + 
-            " range=" + range;
+        assert (lastVLSN.compareTo(range.getLast()) == 0) : "lastVLSN=" + lastVLSN + " lastLsn = " + lastLsn + " range="
+                + range;
 
-        VLSNBucket addBucket =
-            new VLSNBucket(DbLsn.getFileNumber(lastLsn), stride,
-                           maxMappings, maxDistance, lastVLSN);
+        VLSNBucket addBucket = new VLSNBucket(DbLsn.getFileNumber(lastLsn), stride, maxMappings, maxDistance, lastVLSN);
         addBucket.put(lastVLSN, lastLsn);
         nBucketsCreated.increment();
         bucketCache.put(addBucket.getFirst().getSequence(), addBucket);
@@ -760,26 +687,20 @@ class VLSNTracker {
 
     /**
      * Attempt to replace the mappings in this vlsnIndex for
-     * deleteStart->lastVLSN with those from the recovery mapper.
-     * Since we do not supply a prevLsn argument, we may not be able to "cap"
-     * the truncated vlsn bucket the same what that we can in
-     * truncateFromTail. Because of that, we may need to remove mappings that
-     * are < deleteStart.
-     *
-     * For example, suppose a bucket holds mappings
-     *   10 -> 101
-     *   15 -> 201
-     *   18 -> 301
-     * If deleteStart == 17, we will have to delete all the way to vlsn 15.
-     *
-     * The maintenance of VLSNRange.lastSync and lastTxnEnd are simplified
-     * because of assumptions we can make because we are about to append
-     * mappings found by the recovery tracker that begin at deleteStart. If
-     * lastSync and lastTxnEnd are <= deleteStart, we know that they will
-     * either stay the same, or be replaced by lastSync and lastTxnEnd from the
-     * recoveryTracker. Even we delete mappings that are < deleteStart, we know
-     * that we did not roll back past an abort or commit, so that we do not
-     * have to updated the lastSync or lastTxnEnd value.
+     * deleteStart->lastVLSN with those from the recovery mapper. Since we do
+     * not supply a prevLsn argument, we may not be able to "cap" the truncated
+     * vlsn bucket the same what that we can in truncateFromTail. Because of
+     * that, we may need to remove mappings that are < deleteStart. For example,
+     * suppose a bucket holds mappings 10 -> 101 15 -> 201 18 -> 301 If
+     * deleteStart == 17, we will have to delete all the way to vlsn 15. The
+     * maintenance of VLSNRange.lastSync and lastTxnEnd are simplified because
+     * of assumptions we can make because we are about to append mappings found
+     * by the recovery tracker that begin at deleteStart. If lastSync and
+     * lastTxnEnd are <= deleteStart, we know that they will either stay the
+     * same, or be replaced by lastSync and lastTxnEnd from the recoveryTracker.
+     * Even we delete mappings that are < deleteStart, we know that we did not
+     * roll back past an abort or commit, so that we do not have to updated the
+     * lastSync or lastTxnEnd value.
      */
     void merge(VLSN prunedLastOnDiskVLSN, VLSNRecoveryTracker recoveryTracker) {
 
@@ -791,11 +712,11 @@ class VLSNTracker {
 
         /*
          * Find the buckets in the bucketCache that have mappings >=
-         * recoveryFirst, and remove their mappings. First establish the
-         * headset of buckets that should be preserved. At this point, we
-         * have already pruned the database, so the bucket set may not
-         * be fully contiguous -- we may have pruned away mappings that
-         * would normally be in the database.
+         * recoveryFirst, and remove their mappings. First establish the headset
+         * of buckets that should be preserved. At this point, we have already
+         * pruned the database, so the bucket set may not be fully contiguous --
+         * we may have pruned away mappings that would normally be in the
+         * database.
          */
         if (bucketCache.size() == 0) {
             /* Just take all the recovery tracker's mappings */
@@ -805,8 +726,7 @@ class VLSNTracker {
             Long targetKey = targetBucket.getFirst().getSequence();
 
             /* The newCache holds buckets that should be preserved. */
-            SortedMap<Long, VLSNBucket> newCache =
-                new TreeMap<Long, VLSNBucket>(bucketCache.headMap(targetKey));
+            SortedMap<Long, VLSNBucket> newCache = new TreeMap<Long, VLSNBucket>(bucketCache.headMap(targetKey));
 
             /*
              * Prune any mappings >= recoveryFirst out of targetBucket. If it
@@ -814,8 +734,7 @@ class VLSNTracker {
              */
             targetBucket.removeFromTail(recoveryFirst, DbLsn.NULL_LSN);
             if (!targetBucket.empty()) {
-                newCache.put(targetBucket.getFirst().getSequence(),
-                             targetBucket);
+                newCache.put(targetBucket.getFirst().getSequence(), targetBucket);
             }
 
             newCache.putAll(recoveryTracker.bucketCache);
@@ -831,19 +750,16 @@ class VLSNTracker {
     void append(VLSNRecoveryTracker recoveryTracker) {
 
         /*
-         * This method assume that there is no overlap between this tracker
-         * and the recovery tracker. Everything in this tracker should precede
-         * the recovery tracker.
+         * This method assume that there is no overlap between this tracker and
+         * the recovery tracker. Everything in this tracker should precede the
+         * recovery tracker.
          */
         if (!range.getLast().isNull()) {
-            if (range.getLast().compareTo
-                (recoveryTracker.getFirstTracked()) >= 0) {
+            if (range.getLast().compareTo(recoveryTracker.getFirstTracked()) >= 0) {
 
-                throw EnvironmentFailureException.unexpectedState
-                    (envImpl,
-                     "Expected this tracker to precede recovery tracker. " +
-                     "This tracker= " + this + " recoveryTracker = " +
-                     recoveryTracker);
+                throw EnvironmentFailureException.unexpectedState(envImpl,
+                        "Expected this tracker to precede recovery tracker. " + "This tracker= " + this
+                                + " recoveryTracker = " + recoveryTracker);
             }
         }
 
@@ -867,7 +783,7 @@ class VLSNTracker {
         sb.append(" firstTracked=").append(firstTrackedVLSN);
         sb.append(" lastOnDiskVLSN=").append(lastOnDiskVLSN);
 
-        for (VLSNBucket bucket: bucketCache.values()) {
+        for (VLSNBucket bucket : bucketCache.values()) {
             sb.append("\n");
             sb.append(bucket);
         }
@@ -899,18 +815,15 @@ class VLSNTracker {
         if (firstVLSN.size() > 0) {
             if (!firstVLSN.get(0).equals(firstTrackedVLSN)) {
                 if (verbose) {
-                    System.err.println("firstBucketVLSN = " +
-                                       firstVLSN.get(0) + " should equal " +
-                                       firstTrackedVLSN);
+                    System.err.println("firstBucketVLSN = " + firstVLSN.get(0) + " should equal " + firstTrackedVLSN);
                 }
                 return false;
             }
 
-            VLSN lastBucketVLSN = lastVLSN.get(lastVLSN.size() -1);
+            VLSN lastBucketVLSN = lastVLSN.get(lastVLSN.size() - 1);
             if (!lastBucketVLSN.equals(range.getLast())) {
                 if (verbose) {
-                    System.err.println("lastBucketVLSN = " + lastBucketVLSN +
-                                       " should equal " + range.getLast());
+                    System.err.println("lastBucketVLSN = " + lastBucketVLSN + " should equal " + range.getLast());
                 }
                 return false;
             }
@@ -920,19 +833,17 @@ class VLSNTracker {
     }
 
     /*
-     * Used to check bucket boundaries for both the in-memory flush list and
-     * the on-disk database buckets. Buckets may not be adjacent, but must be
-     * in order.
+     * Used to check bucket boundaries for both the in-memory flush list and the
+     * on-disk database buckets. Buckets may not be adjacent, but must be in
+     * order.
      */
-    static boolean verifyBucketBoundaries(ArrayList<VLSN> firstVLSN,
-                                          ArrayList<VLSN> lastVLSN) {
+    static boolean verifyBucketBoundaries(ArrayList<VLSN> firstVLSN, ArrayList<VLSN> lastVLSN) {
         for (int i = 1; i < firstVLSN.size(); i++) {
             VLSN first = firstVLSN.get(i);
-            VLSN prevLast = lastVLSN.get(i-1);
+            VLSN prevLast = lastVLSN.get(i - 1);
             if (first.compareTo(prevLast.getNext()) < 0) {
-                System.out.println("Boundary problem: bucket " + i +
-                                   " first " + first +
-                                   " follows bucket.last " + prevLast);
+                System.out.println(
+                        "Boundary problem: bucket " + i + " first " + first + " follows bucket.last " + prevLast);
                 return false;
             }
         }
@@ -952,8 +863,8 @@ class VLSNTracker {
     }
 
     /*
-     * For unit test support only. Can only be called when replication stream
-     * is quiescent.
+     * For unit test support only. Can only be called when replication stream is
+     * quiescent.
      */
     boolean isFlushedToDisk() {
         return lastOnDiskVLSN.equals(range.getLast());

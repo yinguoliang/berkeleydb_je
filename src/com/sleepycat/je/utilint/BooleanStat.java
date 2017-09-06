@@ -19,7 +19,7 @@ package com.sleepycat.je.utilint;
 public class BooleanStat extends Stat<Boolean> {
     private static final long serialVersionUID = 1L;
 
-    private Boolean value;
+    private Boolean           value;
 
     public BooleanStat(StatGroup group, StatDefinition definition) {
         super(group, definition);
@@ -47,7 +47,7 @@ public class BooleanStat extends Stat<Boolean> {
 
     @Override
     public Stat<Boolean> computeInterval(Stat<Boolean> base) {
-       return super.copy();
+        return super.copy();
     }
 
     @Override

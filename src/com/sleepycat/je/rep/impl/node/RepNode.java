@@ -128,161 +128,151 @@ import com.sleepycat.je.utilint.VLSN;
  * Represents a replication node. This class is the locus of operations that
  * manage the state of the node, master, replica, etc. Once the state of a node
  * has been established the thread of control passes over to the Replica or
- * FeederManager instances.
- *
- * Note that both Feeders and the Replica instance may be active in future when
- * we support r2r replication, in addition to m2r replication. For now however,
- * either the FeederManager is active, or the Replica is and the same common
- * thread control can be shared between the two.
+ * FeederManager instances. Note that both Feeders and the Replica instance may
+ * be active in future when we support r2r replication, in addition to m2r
+ * replication. For now however, either the FeederManager is active, or the
+ * Replica is and the same common thread control can be shared between the two.
  */
 public class RepNode extends StoppableThread {
 
     /*
-     * The unique node name and internal id that identifies the node within
-     * the rep group. There is a canonical instance of this that's updated
-     * when the node joins the group.
+     * The unique node name and internal id that identifies the node within the
+     * rep group. There is a canonical instance of this that's updated when the
+     * node joins the group.
      */
-    private final NameIdPair nameIdPair;
+    private final NameIdPair                                       nameIdPair;
 
     /* The service dispatcher used by this replication node. */
-    private final ServiceDispatcher serviceDispatcher;
+    private final ServiceDispatcher                                serviceDispatcher;
 
     /* The election instance for this node */
-    private Elections elections;
+    private Elections                                              elections;
 
     /* The locus of operations when the node is a replica. */
-    private final Replica replica;
+    private final Replica                                          replica;
 
     /* Used when the node is a feeder. */
-    private FeederManager feederManager;
+    private FeederManager                                          feederManager;
 
     /*
      * The status of the Master. Note that this is the leading state as
      * communicated to this node via the Listener. The node itself may not as
      * yet have responded to this state change announced by the Listener. That
-     * is, nodeState, may reflect a different state until the transition to
-     * this state has been completed.
+     * is, nodeState, may reflect a different state until the transition to this
+     * state has been completed.
      */
-    private final MasterStatus masterStatus;
-    private final MasterChangeListener changeListener;
-    private final MasterSuggestionGenerator suggestionGenerator;
+    private final MasterStatus                                     masterStatus;
+    private final MasterChangeListener                             changeListener;
+    private final MasterSuggestionGenerator                        suggestionGenerator;
 
     /*
      * Represents the application visible state of this node. It may lag the
      * state as described by masterStatus.
      */
-    private final NodeState nodeState;
+    private final NodeState                                        nodeState;
 
-    private final RepImpl repImpl;
+    private final RepImpl                                          repImpl;
 
     /* The encapsulated internal replication group database. */
-    final RepGroupDB repGroupDB;
+    final RepGroupDB                                               repGroupDB;
 
     /*
      * The latch used to indicate that the node has a well defined state as a
      * Master or Replica and has finished the node-specific initialization that
-     * will permit it to function immediately in that capacity.
-     *
-     * For a Master it means that it's ready to start accepting connections
-     * from Replicas.
-     *
-     * For a Replica, it means that it has established a connection with a
-     * Feeder, completed the handshake process that validates it as being a
-     * legitimate member of the group, established a sync point, and is ready
-     * to start replaying the replication stream.
+     * will permit it to function immediately in that capacity. For a Master it
+     * means that it's ready to start accepting connections from Replicas. For a
+     * Replica, it means that it has established a connection with a Feeder,
+     * completed the handshake process that validates it as being a legitimate
+     * member of the group, established a sync point, and is ready to start
+     * replaying the replication stream.
      */
-    private volatile ExceptionAwareCountDownLatch readyLatch = null;
+    private volatile ExceptionAwareCountDownLatch                  readyLatch            = null;
 
     /*
      * Latch used to freeze txn commit VLSN advancement during an election.
      */
-    private final CommitFreezeLatch vlsnFreezeLatch = new CommitFreezeLatch();
+    private final CommitFreezeLatch                                vlsnFreezeLatch       = new CommitFreezeLatch();
 
     /**
-     * Describes the nodes that form the group. This information is dynamic
-     * it's initialized at startup and subsequently as a result of changes
-     * made either directly to it, when the node is a master, or via the
-     * replication stream, when it is a Replica.
-     *
-     * Always use the setGroup() method to set this iv, so that needsAck in
-     * particular is updated in unison.
+     * Describes the nodes that form the group. This information is dynamic it's
+     * initialized at startup and subsequently as a result of changes made
+     * either directly to it, when the node is a master, or via the replication
+     * stream, when it is a Replica. Always use the setGroup() method to set
+     * this iv, so that needsAck in particular is updated in unison.
      */
-    volatile private RepGroupImpl group;
+    volatile private RepGroupImpl                                  group;
 
     /**
      * Acks needed. Determines whether durability needs acknowledgments from
      * other nodes, that is, the rep group has more than one data node that's
-     * also electable.
-     *
-     * Only update via the setGroup method.
+     * also electable. Only update via the setGroup method.
      */
-    volatile private boolean needsAcks = false;
+    volatile private boolean                                       needsAcks             = false;
 
     /*
      * Determines the election policy to use when the node holds its very first
      * elections
      */
-    private QuorumPolicy electionQuorumPolicy = QuorumPolicy.SIMPLE_MAJORITY;
+    private QuorumPolicy                                           electionQuorumPolicy  = QuorumPolicy.SIMPLE_MAJORITY;
 
     /*
      * Amount of times to sleep between retries when a new node tries to locate
      * a master.
      */
-    private static final int MASTER_QUERY_INTERVAL = 10000;
+    private static final int                                       MASTER_QUERY_INTERVAL = 10000;
 
     /* Number of times to retry joining on a retryable exception. */
-    private static final int JOIN_RETRIES = 10;
+    private static final int                                       JOIN_RETRIES          = 10;
 
     /*
      * Encapsulates access to current time, to arrange for testing of clock
      * skews.
      */
-    private final Clock clock;
+    private final Clock                                            clock;
 
-    private com.sleepycat.je.rep.impl.networkRestore.FeederManager
-        logFeederManager;
-    private LDiffService ldiff;
-    private NodeStateService nodeStateService;
-    private BinaryNodeStateService binaryNodeStateService;
-    private GroupService groupService;
+    private com.sleepycat.je.rep.impl.networkRestore.FeederManager logFeederManager;
+    private LDiffService                                           ldiff;
+    private NodeStateService                                       nodeStateService;
+    private BinaryNodeStateService                                 binaryNodeStateService;
+    private GroupService                                           groupService;
 
     /* tracks the local CBVLSN for this node. */
-    final LocalCBVLSNTracker cbvlsnTracker;
+    final LocalCBVLSNTracker                                       cbvlsnTracker;
 
     /* The currently in-progress Master Transfer operation, if any. */
-    private MasterTransfer xfrInProgress;
+    private MasterTransfer                                         xfrInProgress;
 
     /* calculates and manages the global, cached CBVLSN */
-    final GlobalCBVLSN globalCBVLSN;
+    final GlobalCBVLSN                                             globalCBVLSN;
 
     /* Determines how long to wait for a replica to catch up on a close. */
-    private long replicaCloseCatchupMs = -1;
+    private long                                                   replicaCloseCatchupMs = -1;
 
     /* Manage and notify MonitorChangeEvents fired by this RepNode. */
-    private MonitorEventManager monitorEventManager;
+    private MonitorEventManager                                    monitorEventManager;
 
     /* The user defined AppStateMonitor which gets the application state. */
-    private AppStateMonitor appStateMonitor;
+    private AppStateMonitor                                        appStateMonitor;
 
     /*
-     * A timer used for misc short-lived scheduled tasks:
-     * ChannelTimeoutTask, Elections.RebroadcastTask.
+     * A timer used for misc short-lived scheduled tasks: ChannelTimeoutTask,
+     * Elections.RebroadcastTask.
      */
-    private final Timer timer;
-    private final ChannelTimeoutTask channelTimeoutTask;
+    private final Timer                                            timer;
+    private final ChannelTimeoutTask                               channelTimeoutTask;
 
-    final Logger logger;
+    final Logger                                                   logger;
 
     /* Locus of election and durability quorum decisions */
-    private final ElectionQuorum electionQuorum;
-    private final DurabilityQuorum durabilityQuorum;
+    private final ElectionQuorum                                   electionQuorum;
+    private final DurabilityQuorum                                 durabilityQuorum;
 
-    private final Arbiter arbiter;
-    private final NodeType nodeType;
+    private final Arbiter                                          arbiter;
+    private final NodeType                                         nodeType;
 
     /** Manages the allocation of node IDs for secondary nodes. */
-    private final TransientIds transientIds =
-        new TransientIds(RepGroupImpl.MAX_NODES_WITH_TRANSIENT_ID);
+    private final TransientIds                                     transientIds          = new TransientIds(
+            RepGroupImpl.MAX_NODES_WITH_TRANSIENT_ID);
 
     /**
      * Synchronize on this object when setting the minimum JE version or adding
@@ -292,86 +282,73 @@ public class RepNode extends StoppableThread {
      * @see #setMinJEVersion
      * @see #addTransientIdNode
      */
-    private final Object minJEVersionLock = new Object();
+    private final Object                                           minJEVersionLock      = new Object();
 
     /**
      * The relative cost of replay as compared with network restore, as
      * specified by
      * {@link com.sleepycat.je.rep.ReplicationConfig#REPLAY_COST_PERCENT}.
      */
-    private final int replayCostPercent;
+    private final int                                              replayCostPercent;
 
     /**
      * The percentage of free disk space to maintain when choosing files to
-     * retain based on replay cost, as specified by {@link
-     * com.sleepycat.je.rep.ReplicationConfig#REPLAY_FREE_DISK_PERCENT}.
+     * retain based on replay cost, as specified by
+     * {@link com.sleepycat.je.rep.ReplicationConfig#REPLAY_FREE_DISK_PERCENT}.
      */
-    private final int replayFreeDiskPercent;
+    private final int                                              replayFreeDiskPercent;
 
     /**
      * The minimum VLSN that should be retained as requested by
      * replayCostPercent and replayFreeDiskPercent, or NULL_VLSN if disabled.
      */
-    private volatile VLSN replayCostMinVLSN = VLSN.NULL_VLSN;
+    private volatile VLSN                                          replayCostMinVLSN     = VLSN.NULL_VLSN;
 
     /* Used by tests only. */
-    private int logVersion = LogEntryType.LOG_VERSION;
+    private int                                                    logVersion            = LogEntryType.LOG_VERSION;
 
     /* For unit testing */
-    private Set<TestHook<Integer>> convertHooks;
+    private Set<TestHook<Integer>>                                 convertHooks;
 
     /**
-     * The in-memory DTVLSN. It represents the highest transaction known to
-     * have been replicated to a majority of the Replicas.
-     *
-     * At a master, knowledge of this replication state may have been
-     * communicated explicitly due to the use of SIMPLE_MAJORITY or ALL ACKs,
-     * or it may have been communicated via a heartbeat indicating the progress
-     * of replication at a replica.
-     *
-     * At a replica, this state is obtained from commit/abort records in the
-     * replication stream.
-     *
-     * This field is initialized from its persistent value whenever the
-     * environment is first opened. It may be the null VLSN value for brand new
-     * environments. This value can only advance as increasing numbers of
-     * transactions are acknowledged.
+     * The in-memory DTVLSN. It represents the highest transaction known to have
+     * been replicated to a majority of the Replicas. At a master, knowledge of
+     * this replication state may have been communicated explicitly due to the
+     * use of SIMPLE_MAJORITY or ALL ACKs, or it may have been communicated via
+     * a heartbeat indicating the progress of replication at a replica. At a
+     * replica, this state is obtained from commit/abort records in the
+     * replication stream. This field is initialized from its persistent value
+     * whenever the environment is first opened. It may be the null VLSN value
+     * for brand new environments. This value can only advance as increasing
+     * numbers of transactions are acknowledged.
      *
      * @see <a href="https://<wikihost>/trac/wiki/JEReplicationDurableTxnVLSN">
-     * DTVLSN</a>
-     *
+     *      DTVLSN</a>
      */
-    private final AtomicLongMax dtvlsn =
-        new AtomicLongMax(VLSN.NULL_VLSN_SEQUENCE);
+    private final AtomicLongMax                                    dtvlsn                = new AtomicLongMax(
+            VLSN.NULL_VLSN_SEQUENCE);
 
     /**
-     * If not null, a test hook that is called with the name of the current
-     * node during the query for group membership before the node sleeps after
-     * failing to obtain information about the group master -- for unit
-     * testing.
+     * If not null, a test hook that is called with the name of the current node
+     * during the query for group membership before the node sleeps after
+     * failing to obtain information about the group master -- for unit testing.
      */
-    public static volatile TestHook<String>
-        queryGroupForMembershipBeforeSleepHook;
+    public static volatile TestHook<String>                        queryGroupForMembershipBeforeSleepHook;
 
     /**
      * If not null, called by queryGroupForMembership with the name of the
-     * current node before querying learners for the master -- for unit
-     * testing.
+     * current node before querying learners for the master -- for unit testing.
      */
-    public static volatile TestHook<String>
-        queryGroupForMembershipBeforeQueryForMaster;
+    public static volatile TestHook<String>                        queryGroupForMembershipBeforeQueryForMaster;
 
     /**
-     * If not null, a test hook that is called with the name of the current
-     * node before attempting to contact each network restore supplier, for
-     * unit testing.
+     * If not null, a test hook that is called with the name of the current node
+     * before attempting to contact each network restore supplier, for unit
+     * testing.
      */
-    public static volatile TestHook<String> beforeFindRestoreSupplierHook;
+    public static volatile TestHook<String>                        beforeFindRestoreSupplierHook;
 
-    public RepNode(RepImpl repImpl,
-                   Replay replay,
-                   NodeState nodeState)
-        throws IOException, DatabaseException {
+    public RepNode(RepImpl repImpl, Replay replay, NodeState nodeState) throws IOException, DatabaseException {
 
         super(repImpl, "RepNode " + repImpl.getNameIdPair());
 
@@ -380,9 +357,7 @@ public class RepNode extends StoppableThread {
         nameIdPair = repImpl.getNameIdPair();
         logger = LoggerUtils.getLogger(getClass());
 
-        this.serviceDispatcher =
-            new ServiceDispatcher(getSocket(), repImpl,
-                                  repImpl.getChannelFactory());
+        this.serviceDispatcher = new ServiceDispatcher(getSocket(), repImpl, repImpl.getChannelFactory());
         serviceDispatcher.start();
         clock = new Clock(RepImpl.getClockSkewMs());
         this.repGroupDB = new RepGroupDB(repImpl);
@@ -412,22 +387,19 @@ public class RepNode extends StoppableThread {
         replayFreeDiskPercent = getReplayFreeDiskPercentParameter();
 
         dtvlsn.updateMax(repImpl.getLoggedDTVLSN());
-        LoggerUtils.info(logger, repImpl,
-                           String.format("DTVLSN at start:%,d", dtvlsn.get()));
+        LoggerUtils.info(logger, repImpl, String.format("DTVLSN at start:%,d", dtvlsn.get()));
     }
 
     private void utilityServicesStart() {
         ldiff = new LDiffService(serviceDispatcher, repImpl);
-        logFeederManager =
-            new com.sleepycat.je.rep.impl.networkRestore.FeederManager
-            (serviceDispatcher, repImpl, nameIdPair);
+        logFeederManager = new com.sleepycat.je.rep.impl.networkRestore.FeederManager(serviceDispatcher, repImpl,
+                nameIdPair);
 
         /* Register the node state querying service. */
         nodeStateService = new NodeStateService(serviceDispatcher, this);
         serviceDispatcher.register(nodeStateService);
 
-        binaryNodeStateService =
-            new BinaryNodeStateService(serviceDispatcher, this);
+        binaryNodeStateService = new BinaryNodeStateService(serviceDispatcher, this);
         groupService = new GroupService(serviceDispatcher, this);
         serviceDispatcher.register(groupService);
     }
@@ -441,11 +413,8 @@ public class RepNode extends StoppableThread {
             FileStoreInfo.checkSupported();
             return value;
         } catch (UnsupportedOperationException e) {
-            LoggerUtils.warning(
-                logger, repImpl,
-                "The " + REPLAY_FREE_DISK_PERCENT.getName() +
-                " parameter was specified, but is not supported: " +
-                e.getMessage());
+            LoggerUtils.warning(logger, repImpl, "The " + REPLAY_FREE_DISK_PERCENT.getName()
+                    + " parameter was specified, but is not supported: " + e.getMessage());
             return 0;
         }
     }
@@ -459,8 +428,7 @@ public class RepNode extends StoppableThread {
         this(NameIdPair.NULL);
     }
 
-    public RepNode(NameIdPair nameIdPair,
-                   ServiceDispatcher serviceDispatcher) {
+    public RepNode(NameIdPair nameIdPair, ServiceDispatcher serviceDispatcher) {
         super("RepNode " + nameIdPair);
         repImpl = null;
         clock = new Clock(0);
@@ -513,9 +481,9 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Returns the accumulated statistics for this node. The method
-     * encapsulates the statistics associated with its two principal components
-     * the FeederManager and the Replica.
+     * Returns the accumulated statistics for this node. The method encapsulates
+     * the statistics associated with its two principal components the
+     * FeederManager and the Replica.
      */
     public ReplicatedEnvironmentStats getStats(StatsConfig config) {
         return RepInternal.makeReplicatedEnvironmentStats(repImpl, config);
@@ -568,8 +536,8 @@ public class RepNode extends StoppableThread {
      * Retrieves the node's current snapshot image of the group definition.
      * <p>
      * There is a very brief period of time, during node start-up, where this
-     * can be <code>null</code>.  But after that it should always return a
-     * valid object.
+     * can be <code>null</code>. But after that it should always return a valid
+     * object.
      */
     public RepGroupImpl getGroup() {
         return group;
@@ -580,8 +548,7 @@ public class RepNode extends StoppableThread {
      */
     public UUID getUUID() {
         if (group == null) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Group info is not available");
+            throw EnvironmentFailureException.unexpectedState("Group info is not available");
         }
         return group.getUUID();
     }
@@ -613,7 +580,7 @@ public class RepNode extends StoppableThread {
     }
 
     public String getHostName() {
-         return repImpl.getHostName();
+        return repImpl.getHostName();
     }
 
     public int getPort() {
@@ -626,19 +593,16 @@ public class RepNode extends StoppableThread {
 
     /**
      * Returns a definitive answer to whether this node is currently the master
-     * by checking both its status as a master and whether the group agrees
-     * that it is the master.
-     *
-     * Such an authoritative answer is needed in a network partition situation
-     * to detect a master that may be isolated on the minority side of a
-     * network partition.
+     * by checking both its status as a master and whether the group agrees that
+     * it is the master. Such an authoritative answer is needed in a network
+     * partition situation to detect a master that may be isolated on the
+     * minority side of a network partition.
      *
      * @return true if the node is definitely the master. False if it's not or
-     * we cannot be sure.
+     *         we cannot be sure.
      */
     public boolean isAuthoritativeMaster() {
-        return (electionQuorum.isAuthoritativeMaster(getMasterStatus(),
-                                                     feederManager));
+        return (electionQuorum.isAuthoritativeMaster(getMasterStatus(), feederManager));
     }
 
     public int getHeartbeatInterval() {
@@ -655,20 +619,17 @@ public class RepNode extends StoppableThread {
     }
 
     public int getElectionPriority() {
-        final int priority =
-            getConfigManager().getInt(RepParams.NODE_PRIORITY);
-        final int defaultPriority =
-            Integer.parseInt(RepParams.NODE_PRIORITY.getDefault());
-        return (getConfigManager().getBoolean(RepParams.DESIGNATED_PRIMARY) &&
-                (priority == defaultPriority)) ?
-            defaultPriority + 1 : /* Raise its priority. */
-            priority; /* Explicit priority, leave it intact. */
+        final int priority = getConfigManager().getInt(RepParams.NODE_PRIORITY);
+        final int defaultPriority = Integer.parseInt(RepParams.NODE_PRIORITY.getDefault());
+        return (getConfigManager().getBoolean(RepParams.DESIGNATED_PRIMARY) && (priority == defaultPriority))
+                ? defaultPriority + 1 : /* Raise its priority. */
+                priority; /* Explicit priority, leave it intact. */
     }
 
     /*
-     * Amount of time to wait for a thread to finish on a shutdown. It's
-     * a multiple of a heartbeat, since a thread typically polls for a
-     * shutdown once per heartbeat.
+     * Amount of time to wait for a thread to finish on a shutdown. It's a
+     * multiple of a heartbeat, since a thread typically polls for a shutdown
+     * once per heartbeat.
      */
     public int getThreadWaitInterval() {
         return getHeartbeatInterval() * 4;
@@ -757,8 +718,7 @@ public class RepNode extends StoppableThread {
 
         /* Application state shouldn't be a zero length byte array. */
         if (appStateMonitor.getAppState().length == 0) {
-            throw new IllegalStateException
-                ("Application state should be a byte array larger than 0.");
+            throw new IllegalStateException("Application state should be a byte array larger than 0.");
         }
 
         return appStateMonitor.getAppState();
@@ -766,8 +726,7 @@ public class RepNode extends StoppableThread {
 
     /* Get the current master name if it exists. */
     public String getMasterName() {
-        if (masterStatus.getGroupMasterNameId().getId() ==
-            NameIdPair.NULL_NODE_ID) {
+        if (masterStatus.getGroupMasterNameId().getId() == NameIdPair.NULL_NODE_ID) {
             return null;
         }
 
@@ -787,11 +746,10 @@ public class RepNode extends StoppableThread {
 
     /**
      * Returns the instantaneous non-null DTVLSN value. The value should be non
-     * null once initialization has been completed.
-     *
-     * The returned value can be VLSN.UNINITIALIZED_VLSN_SEQUENCE if the node
-     * is a replica in a pre-dtvlsn log segment, or a master that has not as
-     * yet seen any acknowledged transactions.
+     * null once initialization has been completed. The returned value can be
+     * VLSN.UNINITIALIZED_VLSN_SEQUENCE if the node is a replica in a pre-dtvlsn
+     * log segment, or a master that has not as yet seen any acknowledged
+     * transactions.
      */
     public long getDTVLSN() {
         final long retValue = dtvlsn.get();
@@ -810,13 +768,12 @@ public class RepNode extends StoppableThread {
 
     /**
      * Updates the DTVLSN with a potentially new DTVLSN value. Note that this
-     * method is only invoked when the node is a Master. The Replica simply
-     * sets the DTVLSN to a specific value.
+     * method is only invoked when the node is a Master. The Replica simply sets
+     * the DTVLSN to a specific value.
      *
      * @param candidateDTVLSN the new candidate DTVLSN
-     *
      * @return the new DTVLSN which is either the candidatDTVLSN or a more
-     * recent DTVLSN > candidateDTVLSN
+     *         recent DTVLSN > candidateDTVLSN
      */
     public long updateDTVLSN(long candidateDTVLSN) {
         if (RepImpl.isSimulatePreDTVLSNMaster()) {
@@ -837,26 +794,23 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Sets the group metadata associated with the RepNode and updates any
-     * local derived data.
+     * Sets the group metadata associated with the RepNode and updates any local
+     * derived data.
      */
     public void setGroup(RepGroupImpl repGroupImpl) {
         group = repGroupImpl;
-        needsAcks = durabilityQuorum.
-            getCurrentRequiredAckCount(ReplicaAckPolicy.SIMPLE_MAJORITY) > 0;
+        needsAcks = durabilityQuorum.getCurrentRequiredAckCount(ReplicaAckPolicy.SIMPLE_MAJORITY) > 0;
     }
 
     /*
      * Testing API used to force this node as a master. The mastership is
      * communicated upon election completion via the Listener. It's the
-     * responsibility of the caller to ensure that only one node is forced
-     * at a time via this API.
-     *
-     * @param force true to force this node as the master, false reverts back
-     *              to use of normal (non-preemptive) elections.
+     * responsibility of the caller to ensure that only one node is forced at a
+     * time via this API.
+     * @param force true to force this node as the master, false reverts back to
+     * use of normal (non-preemptive) elections.
      */
-    public void forceMaster(boolean force)
-        throws InterruptedException, DatabaseException {
+    public void forceMaster(boolean force) throws InterruptedException, DatabaseException {
 
         suggestionGenerator.forceMaster(force);
         /* Initiate elections to make the changed proposal heard. */
@@ -865,15 +819,13 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Starts up the thread in which the node does its processing as a master
-     * or replica. It then waits for the newly started thread to transition it
-     * out of the DETACHED state, and returns upon completion of this
-     * transition.
+     * Starts up the thread in which the node does its processing as a master or
+     * replica. It then waits for the newly started thread to transition it out
+     * of the DETACHED state, and returns upon completion of this transition.
      *
      * @throws DatabaseException
      */
-    private void startup(QuorumPolicy initialElectionPolicy)
-        throws DatabaseException {
+    private void startup(QuorumPolicy initialElectionPolicy) throws DatabaseException {
 
         if (isAlive()) {
             return;
@@ -882,15 +834,12 @@ public class RepNode extends StoppableThread {
         if (nodeState.getRepEnvState().isDetached()) {
             nodeState.changeAndNotify(UNKNOWN, NameIdPair.NULL);
         }
-        elections = new Elections(new RepElectionsConfig(this),
-                                  changeListener,
-                                  suggestionGenerator);
+        elections = new Elections(new RepElectionsConfig(this), changeListener, suggestionGenerator);
 
         repImpl.getStartupTracker().start(Phase.FIND_MASTER);
         try {
 
-            if (repImpl.getConfigManager().
-                getBoolean(RepParams.RESET_REP_GROUP)) {
+            if (repImpl.getConfigManager().getBoolean(RepParams.RESET_REP_GROUP)) {
                 /* Invoked by DbResetRepGroup utility */
                 reinitSelfElect();
             } else {
@@ -922,8 +871,7 @@ public class RepNode extends StoppableThread {
      *
      * @throws DatabaseException
      */
-    public RepGroupImpl refreshCachedGroup()
-        throws DatabaseException {
+    public RepGroupImpl refreshCachedGroup() throws DatabaseException {
 
         setGroup(repGroupDB.getGroup());
 
@@ -934,13 +882,12 @@ public class RepNode extends StoppableThread {
 
                 /*
                  * Don't update the node ID for a secondary node if
-                 * IGNORE_SECONDARY_NODE_ID is true.  In that case, we are
-                 * trying to convert a previously electable node to a secondary
-                 * node, so the information about the electable node ID in the
-                 * local copy of the rep group DB should be ignored.
+                 * IGNORE_SECONDARY_NODE_ID is true. In that case, we are trying
+                 * to convert a previously electable node to a secondary node,
+                 * so the information about the electable node ID in the local
+                 * copy of the rep group DB should be ignored.
                  */
-                if (!nodeType.isSecondary() ||
-                    !getConfigManager().getBoolean(IGNORE_SECONDARY_NODE_ID)) {
+                if (!nodeType.isSecondary() || !getConfigManager().getBoolean(IGNORE_SECONDARY_NODE_ID)) {
                     /* May not be sufficiently current in the rep stream. */
                     nameIdPair.update(n.getNameIdPair());
                 }
@@ -950,51 +897,45 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Removes a node so that it's no longer a member of the group.
-     *
-     * Note that names referring to removed nodes cannot be reused.
+     * Removes a node so that it's no longer a member of the group. Note that
+     * names referring to removed nodes cannot be reused.
      *
      * @param nodeName identifies the node to be removed
-     *
      * @throws MemberNotFoundException if the node denoted by
-     * <code>memberName</code> is not a member of the replication group.
-     *
-     * @throws MasterStateException if the member being removed is currently
-     * the Master
-     *
-     * @see <a href="https://sleepycat.oracle.com/trac/wiki/DynamicGroupMembership#DeletingMembers">Member Deletion</a>
+     *             <code>memberName</code> is not a member of the replication
+     *             group.
+     * @throws MasterStateException if the member being removed is currently the
+     *             Master
+     * @see <a href=
+     *      "https://sleepycat.oracle.com/trac/wiki/DynamicGroupMembership#DeletingMembers">
+     *      Member Deletion</a>
      */
     public void removeMember(String nodeName) {
         removeMember(nodeName, false);
     }
 
     /**
-     * Remove or delete a node from the group.  If deleting a node, the node
-     * must not be active.
-     *
-     * <p>Note that names referring to removed nodes cannot be reused, but
-     * names for deleted nodes can be.
+     * Remove or delete a node from the group. If deleting a node, the node must
+     * not be active.
+     * <p>
+     * Note that names referring to removed nodes cannot be reused, but names
+     * for deleted nodes can be.
      *
      * @param nodeName identifies the node to be removed or deleted
-     *
      * @param delete whether to delete the node rather than just remove it
-     *
-     * @throws MemberActiveException if {@code delete} is {@code true} and
-     * the node is currently active
-     *
+     * @throws MemberActiveException if {@code delete} is {@code true} and the
+     *             node is currently active
      * @throws MemberNotFoundException if the node denoted by
-     * <code>memberName</code> is not a member of the replication group.
-     *
+     *             <code>memberName</code> is not a member of the replication
+     *             group.
      * @throws MasterStateException if the member being removed or deleted is
-     * currently the Master
+     *             currently the Master
      */
     public void removeMember(String nodeName, boolean delete) {
-        checkValidity(
-            nodeName, delete ? "Deleting member" : "Removing member");
+        checkValidity(nodeName, delete ? "Deleting member" : "Removing member");
 
         if (delete && feederManager.activeReplicas().contains(nodeName)) {
-            throw new MemberActiveException(
-                "Attempt to delete an active node: " + nodeName);
+            throw new MemberActiveException("Attempt to delete an active node: " + nodeName);
         }
 
         /*
@@ -1013,25 +954,19 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Update the network address of a node.
-     *
-     * Note that an alive node's address can't be updated, we'll throw an
-     * ReplicaStateException for this case.
+     * Update the network address of a node. Note that an alive node's address
+     * can't be updated, we'll throw an ReplicaStateException for this case.
      *
      * @param nodeName identifies the node to be updated
      * @param newHostName the new host name of this node
      * @param newPort the new port of this node
      */
-    public void updateAddress(String nodeName,
-                              String newHostName,
-                              int newPort) {
-        final RepNodeImpl node =
-            checkValidity(nodeName, "Updating node's address");
+    public void updateAddress(String nodeName, String newHostName, int newPort) {
+        final RepNodeImpl node = checkValidity(nodeName, "Updating node's address");
 
         /* Check whether the node is still alive. */
         if (feederManager.getFeeder(nodeName) != null) {
-            throw new ReplicaStateException
-                ("Can't update the network address for a live node.");
+            throw new ReplicaStateException("Can't update the network address for a live node.");
         }
 
         /* Update the node information in the group database. */
@@ -1044,20 +979,18 @@ public class RepNode extends StoppableThread {
     /**
      * Transfer the master role to one of the specified replicas.
      * <p>
-     * We delegate most of the real work to an instance of the {@link
-     * MasterTransfer} class.  Here, after some simple initial validity
+     * We delegate most of the real work to an instance of the
+     * {@link MasterTransfer} class. Here, after some simple initial validity
      * checking, we're concerned with coordinating the potential for multiple
-     * overlapping Master Transfer operation attempts.  The possible outcomes
+     * overlapping Master Transfer operation attempts. The possible outcomes
      * are:
      * <ol>
      * <li>complete success ({@code done == true})
      * <ul>
-     * <li>
-     * don't unblock txns here; that'll happen automatically as part of the
+     * <li>don't unblock txns here; that'll happen automatically as part of the
      * usual handling when the environment transitions from master->replica
      * state.
-     * <li>
-     * don't clear xfrInProgress, because we don't want to allow another
+     * <li>don't clear xfrInProgress, because we don't want to allow another
      * attempt to supersede
      * </ul>
      * <li>timeout before establishing a winner (no superseder)
@@ -1081,15 +1014,12 @@ public class RepNode extends StoppableThread {
      *
      * @param replicas candidate targets for new master role
      * @param timeout time limit, in msec
-     * @param force whether to replace any existing, in-progress
-     * transfer operation
+     * @param force whether to replace any existing, in-progress transfer
+     *            operation
      */
-    public String transferMaster(Set<String> replicas,
-                                 long timeout,
-                                 boolean force) {
+    public String transferMaster(Set<String> replicas, long timeout, boolean force) {
         if (replicas == null || replicas.isEmpty()) {
-            throw new IllegalArgumentException
-                ("Parameter 'replicas' cannot be null or empty");
+            throw new IllegalArgumentException("Parameter 'replicas' cannot be null or empty");
         }
         if (!nodeState.getRepEnvState().isMaster()) {
             throw new IllegalStateException("Not currently master");
@@ -1097,22 +1027,18 @@ public class RepNode extends StoppableThread {
         if (replicas.contains(getNodeName())) {
 
             /*
-             * The local node is on the list of candidate new masters, and
-             * we're already master: the operation is trivially satisfied.
+             * The local node is on the list of candidate new masters, and we're
+             * already master: the operation is trivially satisfied.
              */
             return getNodeName();
         }
         for (String rep : replicas) {
             RepNodeImpl node = group.getNode(rep);
             if (node == null || node.isRemoved()) {
-                throw new IllegalArgumentException
-                    ("Node '" + rep +
-                     "' is not currently an active member of the group");
+                throw new IllegalArgumentException("Node '" + rep + "' is not currently an active member of the group");
             } else if (!node.getType().isElectable()) {
-                throw new IllegalArgumentException
-                    ("Node '" + rep +
-                     "' must have node type ELECTABLE, but had type " +
-                     node.getType());
+                throw new IllegalArgumentException(
+                        "Node '" + rep + "' must have node type ELECTABLE, but had type " + node.getType());
             }
         }
 
@@ -1132,33 +1058,27 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Sets up a Master Transfer operation, ensuring that only one operation
-     * can be in progress at a time.
+     * Sets up a Master Transfer operation, ensuring that only one operation can
+     * be in progress at a time.
      */
-    synchronized private MasterTransfer setUpTransfer(Set<String> replicas,
-                                                      long timeout,
-                                                      boolean force) {
+    synchronized private MasterTransfer setUpTransfer(Set<String> replicas, long timeout, boolean force) {
         boolean reject = false; // initial guess, refine below if nec.
         if (xfrInProgress != null) {
-            reject = true;      // next best guess, refine below again if nec.
+            reject = true; // next best guess, refine below again if nec.
 
             /*
              * If the new operation is "forcing", see if we can abort the
              * existing one.
              */
-            if (force &&
-                xfrInProgress.abort
-                (new MasterTransferFailureException("superseded"))) {
+            if (force && xfrInProgress.abort(new MasterTransferFailureException("superseded"))) {
                 reject = false;
 
                 repImpl.unblockTxnCompletion();
             }
         }
         if (reject) {
-            throw new MasterTransferFailureException
-                ("another Master Transfer (started at " +
-                 new Date(xfrInProgress.getStartTime()) +
-                 ") is already in progress");
+            throw new MasterTransferFailureException("another Master Transfer (started at "
+                    + new Date(xfrInProgress.getStartTime()) + ") is already in progress");
         }
         xfrInProgress = new MasterTransfer(replicas, timeout, this);
         return xfrInProgress;
@@ -1177,42 +1097,35 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Performs some basic validity checking, common code for some
-     * Group Membership operations.
+     * Performs some basic validity checking, common code for some Group
+     * Membership operations.
      *
-     * @param nodeName name of a replica node on which an operation is
-     * to be performed
-     * @param actionName textual description of the operation (for
-     * exception message)
+     * @param nodeName name of a replica node on which an operation is to be
+     *            performed
+     * @param actionName textual description of the operation (for exception
+     *            message)
      * @return the named node
      */
-    private RepNodeImpl checkValidity(String nodeName, String actionName)
-        throws MemberNotFoundException {
+    private RepNodeImpl checkValidity(String nodeName, String actionName) throws MemberNotFoundException {
 
         if (!nodeState.getRepEnvState().isMaster()) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Not currently a master. " + actionName + " must be " +
-                 "invoked on the node that's currently the master.");
+            throw EnvironmentFailureException.unexpectedState("Not currently a master. " + actionName + " must be "
+                    + "invoked on the node that's currently the master.");
         }
 
         final RepNodeImpl node = group.getNode(nodeName);
         if (node == null) {
-            throw new MemberNotFoundException("Node:" + nodeName +
-                                              "is not a member of the group:" +
-                                              group.getName());
+            throw new MemberNotFoundException("Node:" + nodeName + "is not a member of the group:" + group.getName());
         }
 
         if (node.isRemoved() && node.isQuorumAck()) {
-            throw new MemberNotFoundException("Node:" + nodeName +
-                                              "is not currently a member of " +
-                                              "the group:" + group.getName() +
-                                              " It had been removed.");
+            throw new MemberNotFoundException("Node:" + nodeName + "is not currently a member of " + "the group:"
+                    + group.getName() + " It had been removed.");
         }
 
         /* Check if the node is the master itself. */
         if (nodeName.equals(getNodeName())) {
-            throw new MasterStateException(getRepImpl().
-                                           getStateChangeEvent());
+            throw new MasterStateException(getRepImpl().getStateChangeEvent());
         }
 
         return node;
@@ -1224,19 +1137,16 @@ public class RepNode extends StoppableThread {
      * @param updateNameIdPair the node whose localCBVLSN must be updated.
      * @param barrierState the new node syncup state
      */
-    public void updateGroupInfo(NameIdPair updateNameIdPair,
-                                RepGroupImpl.BarrierState barrierState) {
+    public void updateGroupInfo(NameIdPair updateNameIdPair, RepGroupImpl.BarrierState barrierState) {
 
         RepNodeImpl node = group.getMember(updateNameIdPair.getName());
         if (node == null) {
-            /*  A subsequent refresh will get it, along with the new node. */
+            /* A subsequent refresh will get it, along with the new node. */
             return;
         }
 
-        LoggerUtils.fine(logger, repImpl,
-                         "LocalCBVLSN for " + updateNameIdPair +
-                         " updated to " + barrierState +
-                         " from " + node.getBarrierState().getLastCBVLSN());
+        LoggerUtils.fine(logger, repImpl, "LocalCBVLSN for " + updateNameIdPair + " updated to " + barrierState
+                + " from " + node.getBarrierState().getLastCBVLSN());
         node.setBarrierState(barrierState);
         globalCBVLSN.recalculate(group);
     }
@@ -1266,37 +1176,31 @@ public class RepNode extends StoppableThread {
      *
      * @throws DatabaseException
      */
-    private void findMaster()
-        throws DatabaseException {
+    private void findMaster() throws DatabaseException {
 
         refreshCachedGroup();
         elections.startLearner();
-        LoggerUtils.info(logger, repImpl, "Current group size: " +
-                         group.getElectableGroupSize());
+        LoggerUtils.info(logger, repImpl, "Current group size: " + group.getElectableGroupSize());
         final RepNodeImpl thisNode = group.getNode(nameIdPair.getName());
         if ((thisNode == null) &&
 
-            /*
-             * Secondary nodes are not stored in the group DB, so they will not
-             * be found even though they are not new.  Use group UUID to
-             * distinguish -- it is only unknown if the node is new.
-             */
-            (nodeType.isElectable() || group.hasUnknownUUID())) {
+        /*
+         * Secondary nodes are not stored in the group DB, so they will not be
+         * found even though they are not new. Use group UUID to distinguish --
+         * it is only unknown if the node is new.
+         */
+                (nodeType.isElectable() || group.hasUnknownUUID())) {
 
             /* A new node */
-            LoggerUtils.info(logger, repImpl, "New node " + nameIdPair +
-                             " unknown to rep group");
+            LoggerUtils.info(logger, repImpl, "New node " + nameIdPair + " unknown to rep group");
             Set<InetSocketAddress> helperSockets = repImpl.getHelperSockets();
 
             /*
-             * Not present in the replication group. Use the helper, to get
-             * to a master and enter the group.
+             * Not present in the replication group. Use the helper, to get to a
+             * master and enter the group.
              */
-            if ((group.getElectableGroupSize() == 0) &&
-                (helperSockets.size() == 1) &&
-                nodeType.isElectable() &&
-                serviceDispatcher.getSocketAddress().
-                    equals(helperSockets.iterator().next())) {
+            if ((group.getElectableGroupSize() == 0) && (helperSockets.size() == 1) && nodeType.isElectable()
+                    && serviceDispatcher.getSocketAddress().equals(helperSockets.iterator().next())) {
                 /* A startup situation, should this node become master. */
                 selfElect();
                 elections.updateRepGroup(group);
@@ -1308,19 +1212,17 @@ public class RepNode extends StoppableThread {
                 throw EnvironmentFailureException.unexpectedException(e);
             }
         } else if ((thisNode != null) && thisNode.isRemoved()) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Node: " + nameIdPair.getName() +
-                 " was previously deleted.");
+            throw EnvironmentFailureException
+                    .unexpectedState("Node: " + nameIdPair.getName() + " was previously deleted.");
         } else {
 
             /* An existing node */
             LoggerUtils.info(logger, repImpl,
-                             "Existing node " + nameIdPair.getName() +
-                             " querying for a current master.");
+                    "Existing node " + nameIdPair.getName() + " querying for a current master.");
 
             /*
-             * The group has other members, see if they know of a master,
-             * along with any helpers that were also supplied.
+             * The group has other members, see if they know of a master, along
+             * with any helpers that were also supplied.
              */
             Set<InetSocketAddress> helperSockets = repImpl.getHelperSockets();
             helperSockets.addAll(group.getAllHelperSockets());
@@ -1332,12 +1234,12 @@ public class RepNode extends StoppableThread {
      * This method enforces the requirement that all addresses within a
      * replication group, must be loopback addresses or they must all be
      * non-local ip addresses. Mixing them means that the node with a loopback
-     * address cannot be contacted by a different node.  Addresses specified by
+     * address cannot be contacted by a different node. Addresses specified by
      * hostnames that currently have no DNS entries are assumed to not be
      * loopback addresses.
      *
      * @param helperSockets the helper nodes used by this node when contacting
-     * the master.
+     *            the master.
      */
     private void checkLoopbackAddresses(Set<InetSocketAddress> helperSockets) {
 
@@ -1350,26 +1252,20 @@ public class RepNode extends StoppableThread {
             /*
              * If the node address was specified with a hostname that does not,
              * at least currently, have a DNS entry, then the address will be
-             * null.  We can safely assume this will not happen for loopback
+             * null. We can safely assume this will not happen for loopback
              * addresses, whose host names and addresses are both fixed.
              */
-            final boolean nodeAddressIsLoopback =
-                (nodeAddress != null) && nodeAddress.isLoopbackAddress();
+            final boolean nodeAddressIsLoopback = (nodeAddress != null) && nodeAddress.isLoopbackAddress();
 
             if (nodeAddressIsLoopback == isLoopback) {
                 continue;
             }
-            String message = getSocket() +
-                " the address associated with this node, " +
-                (isLoopback? "is " : "is not ") +  "a loopback address." +
-                " It conflicts with an existing use, by a different node " +
-                " of the address:" +
-                socketAddress +
-                (!isLoopback ? " which is a loopback address." :
-                 " which is not a loopback address.") +
-                " Such mixing of addresses within a group is not allowed, " +
-                "since the nodes will not be able to communicate with " +
-                "each other.";
+            String message = getSocket() + " the address associated with this node, " + (isLoopback ? "is " : "is not ")
+                    + "a loopback address." + " It conflicts with an existing use, by a different node "
+                    + " of the address:" + socketAddress
+                    + (!isLoopback ? " which is a loopback address." : " which is not a loopback address.")
+                    + " Such mixing of addresses within a group is not allowed, "
+                    + "since the nodes will not be able to communicate with " + "each other.";
             throw new IllegalArgumentException(message);
         }
     }
@@ -1378,53 +1274,48 @@ public class RepNode extends StoppableThread {
      * Communicates with existing nodes in the group in order to figure out how
      * to start up, in the case where the local node does not appear to be in
      * the (local copy of the) GroupDB, typically because the node is starting
-     * up with an empty env directory.  It could be that this is a new node
-     * (never before been part of the group).  Or it could be a pre-existing
+     * up with an empty env directory. It could be that this is a new node
+     * (never before been part of the group). Or it could be a pre-existing
      * group member that has lost its env dir contents and wants to be restored
      * via a Network Restore operation.
      * <p>
-     * We first try to find a currently running master node.  (An authoritative
-     * master can easily handle either of the above-mentioned situations.)  If
-     * we can't find a master, we look for other running nodes that may know of
-     * us (by asking them for their Group information).
+     * We first try to find a currently running master node. (An authoritative
+     * master can easily handle either of the above-mentioned situations.) If we
+     * can't find a master, we look for other running nodes that may know of us
+     * (by asking them for their Group information).
      * <p>
-     * We query the designated helpers and all known learners.  The helpers are
+     * We query the designated helpers and all known learners. The helpers are
      * the ones that were identified via the node's configuration, while the
-     * learners are the ones currently in the member database.  We use both in
+     * learners are the ones currently in the member database. We use both in
      * order to cast the widest possible net.
      * <p>
      * Returns normally when the master is found.
      *
      * @throws InterruptedException if the current thread is interrupted,
-     *         typically due to a shutdown
+     *             typically due to a shutdown
      * @throws InsufficientLogException if the environment requires a network
-     *         restore
+     *             restore
      * @see #findRestoreSuppliers
      */
-    private void queryGroupForMembership()
-        throws InterruptedException {
+    private void queryGroupForMembership() throws InterruptedException {
 
         Set<InetSocketAddress> helperSockets = repImpl.getHelperSockets();
 
         checkLoopbackAddresses(helperSockets);
 
         /*
-         * Not in the rep group. Use the designated helpers and other members
-         * of the group to help us figure out how to get started.
+         * Not in the rep group. Use the designated helpers and other members of
+         * the group to help us figure out how to get started.
          */
-        final Set<InetSocketAddress> helpers =
-            new HashSet<InetSocketAddress>(helperSockets);
+        final Set<InetSocketAddress> helpers = new HashSet<InetSocketAddress>(helperSockets);
         helpers.addAll(group.getAllHelperSockets());
         if (helpers.isEmpty()) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Need a helper to add a new node into the group");
+            throw EnvironmentFailureException.unexpectedState("Need a helper to add a new node into the group");
         }
 
         NameIdPair groupMasterNameId;
         while (true) {
-            assert TestHookExecute.doHookIfSet(
-                queryGroupForMembershipBeforeQueryForMaster,
-                nameIdPair.getName());
+            assert TestHookExecute.doHookIfSet(queryGroupForMembershipBeforeQueryForMaster, nameIdPair.getName());
             elections.getLearner().queryForMaster(helpers);
             if (isShutdownOrInvalid()) {
                 throw new InterruptedException("Node is shutdown or invalid");
@@ -1432,8 +1323,7 @@ public class RepNode extends StoppableThread {
             groupMasterNameId = masterStatus.getGroupMasterNameId();
             if (!groupMasterNameId.hasNullId()) {
                 /* A new, or pre-query, group master. */
-                if (nameIdPair.hasNullId() &&
-                    groupMasterNameId.getName().equals(nameIdPair.getName())) {
+                if (nameIdPair.hasNullId() && groupMasterNameId.getName().equals(nameIdPair.getName())) {
 
                     /*
                      * Residual obsolete information in replicas, ignore it.
@@ -1445,8 +1335,7 @@ public class RepNode extends StoppableThread {
                     try {
                         Thread.sleep(MASTER_QUERY_INTERVAL);
                     } catch (InterruptedException e) {
-                        throw EnvironmentFailureException.unexpectedException(
-                            e);
+                        throw EnvironmentFailureException.unexpectedException(e);
                     }
                     continue;
                 }
@@ -1458,17 +1347,15 @@ public class RepNode extends StoppableThread {
             }
 
             /*
-             * If there's no master, or the last known master cannot be
-             * reached, see if anyone thinks we're actually already in the
-             * group, and could supply us with a Network Restore. (Remember,
-             * we're here only if we didn't find ourselves in the local
-             * GroupDB. So we could be in a group restore from backup
-             * situation.)
+             * If there's no master, or the last known master cannot be reached,
+             * see if anyone thinks we're actually already in the group, and
+             * could supply us with a Network Restore. (Remember, we're here
+             * only if we didn't find ourselves in the local GroupDB. So we
+             * could be in a group restore from backup situation.)
              */
             findRestoreSuppliers(helpers);
 
-            assert TestHookExecute.doHookIfSet(
-                queryGroupForMembershipBeforeSleepHook, nameIdPair.getName());
+            assert TestHookExecute.doHookIfSet(queryGroupForMembershipBeforeSleepHook, nameIdPair.getName());
 
             /*
              * The node could have been shutdown or invalidated while we were
@@ -1480,57 +1367,41 @@ public class RepNode extends StoppableThread {
 
             Thread.sleep(MASTER_QUERY_INTERVAL);
         }
-        LoggerUtils.info(logger, repImpl, "New node " + nameIdPair.getName() +
-                         " located master: " + groupMasterNameId);
+        LoggerUtils.info(logger, repImpl, "New node " + nameIdPair.getName() + " located master: " + groupMasterNameId);
     }
 
     /**
-     * Check that the master found by querying other group nodes is indeed
-     * alive and that we are not dealing with obsolete cached information.
+     * Check that the master found by querying other group nodes is indeed alive
+     * and that we are not dealing with obsolete cached information.
      *
      * @return true if the master node could be contacted and was truly alive
-     *
-     * TODO: handle protocol version mismatch here and in DbPing, also
-     * consolidate code so that a single copy is shared.
+     *         TODO: handle protocol version mismatch here and in DbPing, also
+     *         consolidate code so that a single copy is shared.
      */
     private boolean checkGroupMasterIsAlive(NameIdPair groupMasterNameId) {
 
         DataChannel channel = null;
 
         try {
-            final InetSocketAddress masterSocket =
-                masterStatus.getGroupMaster();
+            final InetSocketAddress masterSocket = masterStatus.getGroupMaster();
 
-            final BinaryNodeStateProtocol protocol =
-                new BinaryNodeStateProtocol(NameIdPair.NOCHECK, null);
+            final BinaryNodeStateProtocol protocol = new BinaryNodeStateProtocol(NameIdPair.NOCHECK, null);
 
-            /* Build the connection. Set the parameter connectTimeout.*/
-            channel = repImpl.getChannelFactory().
-                connect(masterSocket,
-                        new ConnectOptions().
-                        setTcpNoDelay(true).
-                        setOpenTimeout(5000).
-                        setReadTimeout(5000));
-            ServiceDispatcher.doServiceHandshake
-                (channel, BinaryNodeStateService.SERVICE_NAME);
+            /* Build the connection. Set the parameter connectTimeout. */
+            channel = repImpl.getChannelFactory().connect(masterSocket,
+                    new ConnectOptions().setTcpNoDelay(true).setOpenTimeout(5000).setReadTimeout(5000));
+            ServiceDispatcher.doServiceHandshake(channel, BinaryNodeStateService.SERVICE_NAME);
 
             /* Send a NodeState request to the node. */
-            protocol.write
-                (protocol.new
-                    BinaryNodeStateRequest(groupMasterNameId.getName(),
-                                           group.getName()),
-                 channel);
+            protocol.write(protocol.new BinaryNodeStateRequest(groupMasterNameId.getName(), group.getName()), channel);
 
             /* Get the response and return the NodeState. */
-            BinaryNodeStateResponse response =
-                protocol.read(channel, BinaryNodeStateResponse.class);
+            BinaryNodeStateResponse response = protocol.read(channel, BinaryNodeStateResponse.class);
 
             ReplicatedEnvironment.State state = response.getNodeState();
-           return (state != null) && state.isMaster();
+            return (state != null) && state.isMaster();
         } catch (Exception e) {
-            LoggerUtils.info(logger, repImpl,
-                             "Queried master:" + groupMasterNameId +
-                             " unavailable. Reason:" + e);
+            LoggerUtils.info(logger, repImpl, "Queried master:" + groupMasterNameId + " unavailable. Reason:" + e);
             return false;
         } finally {
             if (channel != null) {
@@ -1549,30 +1420,26 @@ public class RepNode extends StoppableThread {
      * InsufficientLogException} if possible.
      * <p>
      * Queries each of the supplied helper hosts for their notion of the group
-     * make-up.  If any of them consider us to be already in the group, then
+     * make-up. If any of them consider us to be already in the group, then
      * instead of joining the group as a new node we ought to try a Network
      * Restore; and the node(s) that do already know of us are the suitable
      * suppliers for it.
      *
      * @throws InsufficientLogException in the successful case, if one or more
-     * suitable suppliers for a Network Restore can be found; otherwise just
-     * returns.
-     *
+     *             suitable suppliers for a Network Restore can be found;
+     *             otherwise just returns.
      * @throws InterruptedException if the node was shutdown or invalidated
-     * while we were looking for a network restore supplier
+     *             while we were looking for a network restore supplier
      */
-    public void findRestoreSuppliers(Set<InetSocketAddress> helpers)
-        throws InterruptedException {
+    public void findRestoreSuppliers(Set<InetSocketAddress> helpers) throws InterruptedException {
 
         final Set<ReplicationNode> suppliers = new HashSet<ReplicationNode>();
-        RepGroupProtocol protocol =
-            new RepGroupProtocol(group.getName(), nameIdPair, repImpl,
-                                 repImpl.getChannelFactory());
+        RepGroupProtocol protocol = new RepGroupProtocol(group.getName(), nameIdPair, repImpl,
+                repImpl.getChannelFactory());
 
         for (InetSocketAddress helper : helpers) {
 
-            assert TestHookExecute.doHookIfSet(
-                beforeFindRestoreSupplierHook, nameIdPair.getName());
+            assert TestHookExecute.doHookIfSet(beforeFindRestoreSupplierHook, nameIdPair.getName());
 
             /*
              * The node could have been shutdown or invalidated while we were
@@ -1582,10 +1449,8 @@ public class RepNode extends StoppableThread {
                 throw new InterruptedException("Node is shutdown or invalid");
             }
 
-            MessageExchange msg =
-                protocol.new MessageExchange(helper,
-                                             GroupService.SERVICE_NAME,
-                                             protocol.new GroupRequest());
+            MessageExchange msg = protocol.new MessageExchange(helper, GroupService.SERVICE_NAME,
+                    protocol.new GroupRequest());
 
             /*
              * Just as we did in the queryForMaster() case, quietly ignore any
@@ -1594,13 +1459,10 @@ public class RepNode extends StoppableThread {
              */
             msg.run();
             ResponseMessage response = msg.getResponseMessage();
-            if (response == null ||
-                protocol.RGFAIL_RESP.equals(response.getOp())) {
+            if (response == null || protocol.RGFAIL_RESP.equals(response.getOp())) {
                 continue;
             } else if (!protocol.GROUP_RESP.equals(response.getOp())) {
-                LoggerUtils.warning(logger, repImpl,
-                                    "Expected GROUP_RESP, got " +
-                                    response.getOp() + ": " + response);
+                LoggerUtils.warning(logger, repImpl, "Expected GROUP_RESP, got " + response.getOp() + ": " + response);
                 continue;
             }
             GroupResponse groupResp = (GroupResponse) response;
@@ -1636,24 +1498,19 @@ public class RepNode extends StoppableThread {
      * @throws DatabaseException
      * @throws IllegalStateException if the node type is not ELECTABLE
      */
-    private void selfElect()
-        throws DatabaseException {
+    private void selfElect() throws DatabaseException {
 
         if (!nodeType.isElectable()) {
-            throw new IllegalStateException(
-                "Cannot elect node " + nameIdPair.getName() +
-                " as master because its node type, " + nodeType +
-                ", is not ELECTABLE");
+            throw new IllegalStateException("Cannot elect node " + nameIdPair.getName()
+                    + " as master because its node type, " + nodeType + ", is not ELECTABLE");
         }
         nameIdPair.setId(RepGroupImpl.getFirstNodeId());
 
         /* Master by default of a nascent group. */
         Proposal proposal = new TimebasedProposalGenerator().nextProposal();
-        elections.getLearner().processResult(proposal,
-                                             suggestionGenerator.get(proposal));
-        LoggerUtils.info(logger, repImpl, "Nascent group. " +
-                         nameIdPair.getName() +
-                         " is master by virtue of being the first node.");
+        elections.getLearner().processResult(proposal, suggestionGenerator.get(proposal));
+        LoggerUtils.info(logger, repImpl,
+                "Nascent group. " + nameIdPair.getName() + " is master by virtue of being the first node.");
         masterStatus.sync();
         nodeState.changeAndNotify(MASTER, masterStatus.getNodeMasterNameId());
         repImpl.getVLSNIndex().initAsMaster();
@@ -1669,48 +1526,42 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Establishes this node as the master, after re-initializing the group
-     * with this as the sole node in the group. This method is used solely
-     * as part of the DbResetRepGroup utility.
+     * Establishes this node as the master, after re-initializing the group with
+     * this as the sole node in the group. This method is used solely as part of
+     * the DbResetRepGroup utility.
      *
      * @throws IllegalStateException if the node type is not ELECTABLE
      */
     private void reinitSelfElect() {
         if (!nodeType.isElectable()) {
-            throw new IllegalStateException(
-                "Cannot elect node " + nameIdPair.getName() +
-                " as master because its node type, " + nodeType +
-                ", is not ELECTABLE");
+            throw new IllegalStateException("Cannot elect node " + nameIdPair.getName()
+                    + " as master because its node type, " + nodeType + ", is not ELECTABLE");
         }
 
         /* Establish an empty group so transaction commits can proceed. */
         setGroup(repGroupDB.emptyGroup);
 
-        LoggerUtils.info(logger, repImpl, "Reinitializing group to node " +
-                         nameIdPair);
+        LoggerUtils.info(logger, repImpl, "Reinitializing group to node " + nameIdPair);
 
         /*
          * Unilaterally transition the nodeState to Master, so that write
-         * transactions needed to reset the group and establish this node can
-         * be issued against the environment.
+         * transactions needed to reset the group and establish this node can be
+         * issued against the environment.
          */
         nodeState.changeAndNotify(MASTER, masterStatus.getNodeMasterNameId());
         repImpl.getVLSNIndex().initAsMaster();
 
-        for (ReplayTxn replayTxn :
-             repImpl.getTxnManager().getTxns(ReplayTxn.class)) {
+        for (ReplayTxn replayTxn : repImpl.getTxnManager().getTxns(ReplayTxn.class)) {
             /*
-             * We don't have a node id at this point, simply use 1 since we
-             * know it's valid. It will subsequently be set to the the next
-             * node id in sequence.
+             * We don't have a node id at this point, simply use 1 since we know
+             * it's valid. It will subsequently be set to the the next node id
+             * in sequence.
              */
             final int nodeId = 1;
             LoggerUtils.info(logger, repImpl,
-                             "Aborting incomplete replay txn:" +
-                              nameIdPair + " as part of group reset");
+                    "Aborting incomplete replay txn:" + nameIdPair + " as part of group reset");
             /* The DTVLSN will be corrected when it's written to the log */
-            replayTxn.abort(ReplicationContext.MASTER, nodeId,
-                            VLSN.NULL_VLSN_SEQUENCE);
+            replayTxn.abort(ReplicationContext.MASTER, nodeId, VLSN.NULL_VLSN_SEQUENCE);
         }
 
         /*
@@ -1726,35 +1577,30 @@ public class RepNode extends StoppableThread {
          * The checkpoint ensures that we do not have to replay VLSNs from the
          * prior group and that we have a complete VLSN index on disk.
          */
-        repImpl.getCheckpointer().doCheckpoint(ckptConfig,
-                                               "Reinit of RepGroup");
+        repImpl.getCheckpointer().doCheckpoint(ckptConfig, "Reinit of RepGroup");
         VLSN lastOldVLSN = repImpl.getVLSNIndex().getRange().getLast();
 
         /* Now create the new rep group on disk. */
         repGroupDB.reinitFirstNode(lastOldVLSN);
         refreshCachedGroup();
 
-        long lastOldFile =
-            repImpl.getVLSNIndex().getLTEFileNumber(lastOldVLSN);
+        long lastOldFile = repImpl.getVLSNIndex().getLTEFileNumber(lastOldVLSN);
 
         /*
          * Discard the VLSN index covering the pre group reset VLSNS, to ensure
          * that the pre reset part of the log is never replayed. We don't want
          * to replay this part of the log, since it contains references to
-         * repnodes via node ids that are no longer part of the reset rep
-         * group. Note that we do not reuse rep node ids, that is, rep node id
-         * sequence continues across the reset operation and is not itself
-         * reset. Nodes joining the new group will need to do a network restore
-         * when they join the group.
-         *
-         * Don't perform the truncation if RESET_REP_GROUP_RETAIN_UUID is true.
-         * In that case, we are only removing the rep group members, but
-         * retaining the remaining information, because we will be restarting
-         * the rep group in place with an old secondary acting as an electable
-         * node.
+         * repnodes via node ids that are no longer part of the reset rep group.
+         * Note that we do not reuse rep node ids, that is, rep node id sequence
+         * continues across the reset operation and is not itself reset. Nodes
+         * joining the new group will need to do a network restore when they
+         * join the group. Don't perform the truncation if
+         * RESET_REP_GROUP_RETAIN_UUID is true. In that case, we are only
+         * removing the rep group members, but retaining the remaining
+         * information, because we will be restarting the rep group in place
+         * with an old secondary acting as an electable node.
          */
-        final boolean retainUUID =
-            getConfigManager().getBoolean(RESET_REP_GROUP_RETAIN_UUID);
+        final boolean retainUUID = getConfigManager().getBoolean(RESET_REP_GROUP_RETAIN_UUID);
         if (!retainUUID) {
             repImpl.getVLSNIndex().truncateFromHead(lastOldVLSN, lastOldFile);
         }
@@ -1766,15 +1612,15 @@ public class RepNode extends StoppableThread {
 
     /**
      * The top level Master/Feeder or Replica loop in support of replication.
-     * It's responsible for driving the node level state changes resulting
-     * from elections initiated either by this node, or by other members of the
+     * It's responsible for driving the node level state changes resulting from
+     * elections initiated either by this node, or by other members of the
      * group.
      * <p>
-     * The thread is terminated via an orderly shutdown initiated as a result
-     * of an interrupt issued by the shutdown() method. Any exception that is
-     * not handled by the run method itself is caught by the thread's uncaught
-     * exception handler, and results in the RepImpl being made invalid.  In
-     * that case, the application is responsible for closing the Replicated
+     * The thread is terminated via an orderly shutdown initiated as a result of
+     * an interrupt issued by the shutdown() method. Any exception that is not
+     * handled by the run method itself is caught by the thread's uncaught
+     * exception handler, and results in the RepImpl being made invalid. In that
+     * case, the application is responsible for closing the Replicated
      * Environment, which will provoke the shutdown.
      * <p>
      * Note: This method currently runs either the feeder loop or the replica
@@ -1787,10 +1633,7 @@ public class RepNode extends StoppableThread {
         Error repNodeError = null;
         try {
             LoggerUtils.info(logger, repImpl,
-                             "Node " + nameIdPair.getName() + " started" +
-                             (!nodeType.isElectable() ?
-                              " as " + nodeType :
-                              ""));
+                    "Node " + nameIdPair.getName() + " started" + (!nodeType.isElectable() ? " as " + nodeType : ""));
             while (!isShutdownOrInvalid()) {
                 if (nodeState.getRepEnvState() != UNKNOWN) {
                     /* Avoid unnecessary state changes. */
@@ -1801,8 +1644,7 @@ public class RepNode extends StoppableThread {
                  * Initiate elections if we don't have a group master, or there
                  * is a master, but we were unable to use it.
                  */
-                if (masterStatus.getGroupMasterNameId().hasNullId() ||
-                    masterStatus.inSync()) {
+                if (masterStatus.getGroupMasterNameId().hasNullId() || masterStatus.inSync()) {
 
                     /*
                      * But we can't if we don't have our own node ID yet or if
@@ -1833,8 +1675,7 @@ public class RepNode extends StoppableThread {
                     replica.masterTransitionCleanup();
 
                     /* Master is ready for business. */
-                    nodeState.changeAndNotify
-                            (MASTER, masterStatus.getNodeMasterNameId());
+                    nodeState.changeAndNotify(MASTER, masterStatus.getNodeMasterNameId());
 
                     /*
                      * Update the JE version information stored for the master
@@ -1846,17 +1687,16 @@ public class RepNode extends StoppableThread {
 
                     /*
                      * At this point, the feeder manager has been shutdown.
-                     * Re-initialize the VLSNIndex put latch mechanism, which
-                     * is present on masters to maintain a tip cache of the
-                     * last record on the replication stream, and by all
-                     * nodes when doing checkpoint vlsn consistency waiting.
-                     * Create a new feeder manager, should this node become a
-                     * master later on.
-                     * Set the node to UNKNOWN state right away, because the
+                     * Re-initialize the VLSNIndex put latch mechanism, which is
+                     * present on masters to maintain a tip cache of the last
+                     * record on the replication stream, and by all nodes when
+                     * doing checkpoint vlsn consistency waiting. Create a new
+                     * feeder manager, should this node become a master later
+                     * on. Set the node to UNKNOWN state right away, because the
                      * MasterTxn will use node state to prevent the advent of
-                     * any replicated writes.  Once the VLSNIndex is
-                     * initialized for replica state, the node will NPE if it
-                     * attempts execute replicated writes.
+                     * any replicated writes. Once the VLSNIndex is initialized
+                     * for replica state, the node will NPE if it attempts
+                     * execute replicated writes.
                      */
                     nodeState.changeAndNotify(UNKNOWN, NameIdPair.NULL);
                     repImpl.getVLSNIndex().initAsReplica();
@@ -1874,56 +1714,42 @@ public class RepNode extends StoppableThread {
                 }
             }
         } catch (InterruptedException e) {
-            LoggerUtils.fine(logger, repImpl,
-                             "RepNode main thread interrupted - " +
-                             " forced shutdown.");
+            LoggerUtils.fine(logger, repImpl, "RepNode main thread interrupted - " + " forced shutdown.");
         } catch (GroupShutdownException e) {
             saveShutdownException(e);
-            LoggerUtils.fine(logger, repImpl,
-                             "RepNode main thread sees group shutdown - " + e);
+            LoggerUtils.fine(logger, repImpl, "RepNode main thread sees group shutdown - " + e);
         } catch (InsufficientLogException e) {
             saveShutdownException(e);
         } catch (RuntimeException e) {
-            LoggerUtils.fine(logger, repImpl,
-                             "RepNode main thread sees runtime ex - " + e);
+            LoggerUtils.fine(logger, repImpl, "RepNode main thread sees runtime ex - " + e);
             saveShutdownException(e);
             throw e;
         } catch (Error e) {
-            LoggerUtils.fine(logger, repImpl, e +
-                             " incurred during repnode loop");
+            LoggerUtils.fine(logger, repImpl, e + " incurred during repnode loop");
             repNodeError = e;
             repImpl.invalidate(e);
         } finally {
             try {
-                LoggerUtils.info(logger, repImpl,
-                                 "RepNode main thread shutting down.");
+                LoggerUtils.info(logger, repImpl, "RepNode main thread shutting down.");
 
                 if (repNodeError != null) {
-                    LoggerUtils.info(logger, repImpl,
-                                     "Node state at shutdown:\n"+
-                                     repImpl.dumpState());
+                    LoggerUtils.info(logger, repImpl, "Node state at shutdown:\n" + repImpl.dumpState());
                     throw repNodeError;
                 }
                 Throwable exception = getSavedShutdownException();
 
                 if (exception == null) {
-                    LoggerUtils.fine(logger, repImpl,
-                                     "Node state at shutdown:\n"+
-                                     repImpl.dumpState());
+                    LoggerUtils.fine(logger, repImpl, "Node state at shutdown:\n" + repImpl.dumpState());
                 } else {
                     LoggerUtils.info(logger, repImpl,
-                                     "RepNode shutdown exception:\n" +
-                                     exception.getMessage() +
-                                     repImpl.dumpState());
+                            "RepNode shutdown exception:\n" + exception.getMessage() + repImpl.dumpState());
                 }
 
                 try {
                     shutdown();
                 } catch (DatabaseException e) {
                     RepUtils.chainExceptionCause(e, exception);
-                    LoggerUtils.severe(logger, repImpl,
-                                       "Unexpected exception during shutdown" +
-                                       e);
+                    LoggerUtils.severe(logger, repImpl, "Unexpected exception during shutdown" + e);
                     throw e;
                 }
             } catch (InterruptedException e1) {
@@ -1935,9 +1761,9 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Update the information stored for the master in the RepGroupDB if
-     * storing it is supported and the current version is different from the
-     * recorded version.
+     * Update the information stored for the master in the RepGroupDB if storing
+     * it is supported and the current version is different from the recorded
+     * version.
      */
     private void maybeUpdateMasterJEVersion() {
 
@@ -1962,8 +1788,8 @@ public class RepNode extends StoppableThread {
 
     /**
      * Returns true if the node has been shutdown or if the underlying
-     * environment has been invalidated. It's used as the basis for exiting
-     * the FeederManager or the Replica.
+     * environment has been invalidated. It's used as the basis for exiting the
+     * FeederManager or the Replica.
      */
     boolean isShutdownOrInvalid() {
         if (isShutdown()) {
@@ -1977,24 +1803,21 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Used to shutdown all activity associated with this replication stream.
-     * If method is invoked from different thread of control, it will wait
-     * until the rep node thread exits. If it's from the same thread, it's the
+     * Used to shutdown all activity associated with this replication stream. If
+     * method is invoked from different thread of control, it will wait until
+     * the rep node thread exits. If it's from the same thread, it's the
      * caller's responsibility to exit the thread upon return from this method.
      *
      * @throws InterruptedException
      * @throws DatabaseException
      */
-    public void shutdown()
-        throws InterruptedException, DatabaseException {
+    public void shutdown() throws InterruptedException, DatabaseException {
 
         if (shutdownDone(logger)) {
             return;
         }
 
-        LoggerUtils.info(logger, repImpl,
-                         "Shutting down node " + nameIdPair +
-                         " DTVLSN:" + getAnyDTVLSN());
+        LoggerUtils.info(logger, repImpl, "Shutting down node " + nameIdPair + " DTVLSN:" + getAnyDTVLSN());
 
         /* Fire a LeaveGroup if this RepNode is valid. */
         if (repImpl.isValid()) {
@@ -2011,8 +1834,7 @@ public class RepNode extends StoppableThread {
         /* Initiate the FeederManger soft shutdown if it's active. */
         feederManager.shutdownQueue();
 
-        if ((getReplicaCloseCatchupMs() >= 0) &&
-            (nodeState.getRepEnvState().isMaster())) {
+        if ((getReplicaCloseCatchupMs() >= 0) && (nodeState.getRepEnvState().isMaster())) {
 
             /*
              * A group shutdown. Shutting down the queue will cause the
@@ -2026,8 +1848,7 @@ public class RepNode extends StoppableThread {
 
         shutdownThread(logger);
 
-        LoggerUtils.info(logger, repImpl,
-                         "RepNode main thread: " + this.getName() + " exited.");
+        LoggerUtils.info(logger, repImpl, "RepNode main thread: " + this.getName() + " exited.");
         /* Shut down all other services. */
         utilityServicesShutdown();
 
@@ -2041,8 +1862,7 @@ public class RepNode extends StoppableThread {
             mt.abort(ex);
         }
         serviceDispatcher.shutdown();
-        LoggerUtils.info(logger, repImpl,
-                         nameIdPair + " shutdown completed.");
+        LoggerUtils.info(logger, repImpl, nameIdPair + " shutdown completed.");
         masterStatus.setGroupMaster(null, 0, NameIdPair.NULL);
         readyLatch.releaseAwait(getSavedShutdownException());
 
@@ -2053,9 +1873,8 @@ public class RepNode extends StoppableThread {
 
     /**
      * Soft shutdown for the RepNode thread. Note that since the thread is
-     * shared by the FeederManager and the Replica, the FeederManager or
-     * Replica specific soft shutdown actions should already have been done
-     * earlier.
+     * shared by the FeederManager and the Replica, the FeederManager or Replica
+     * specific soft shutdown actions should already have been done earlier.
      */
     @Override
     protected int initiateSoftShutdown() {
@@ -2101,81 +1920,66 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Must be invoked on the Master via the last open handle.
-     *
-     * Note that the method itself does not shutdown the group. It merely
-     * sets replicaCloseCatchupMs, indicating that the ensuing handle close
-     * should shutdown the Replicas. The actual coordination with the closing
-     * of the handle is implemented by ReplicatedEnvironment.shutdownGroup().
+     * Must be invoked on the Master via the last open handle. Note that the
+     * method itself does not shutdown the group. It merely sets
+     * replicaCloseCatchupMs, indicating that the ensuing handle close should
+     * shutdown the Replicas. The actual coordination with the closing of the
+     * handle is implemented by ReplicatedEnvironment.shutdownGroup().
      *
      * @see ReplicatedEnvironment#shutdownGroup(long, TimeUnit)
      */
-    public void shutdownGroupOnClose(long timeoutMs)
-        throws IllegalStateException {
+    public void shutdownGroupOnClose(long timeoutMs) throws IllegalStateException {
 
         if (!nodeState.getRepEnvState().isMaster()) {
-            throw new IllegalStateException
-                ("Node state must be " + MASTER +
-                 ", not " + nodeState.getRepEnvState());
+            throw new IllegalStateException("Node state must be " + MASTER + ", not " + nodeState.getRepEnvState());
         }
         replicaCloseCatchupMs = (timeoutMs < 0) ? 0 : timeoutMs;
     }
 
     /**
      * JoinGroup ensures that a RepNode is actively participating in a
-     * replication group. It's invoked each time a replicated environment
-     * handle is created.
-     *
-     * If the node is already participating in a replication group, because
-     * it's not the first handle to the environment, it will return without
-     * having to wait. Otherwise it will wait until a master is elected and
-     * this node is active, either as a Master, or as a Replica.
-     *
-     * If the node joins as a replica, it will wait further until it has become
-     * sufficiently consistent as defined by its consistency argument. By
-     * default it uses PointConsistencyPolicy to ensure that it is at least as
-     * consistent as the master as of the time the handle was opened.
-     *
-     * A node can also join in the Unknown state if it has been configured to
-     * do so via ENV_UNKNOWN_STATE_TIMEOUT.
+     * replication group. It's invoked each time a replicated environment handle
+     * is created. If the node is already participating in a replication group,
+     * because it's not the first handle to the environment, it will return
+     * without having to wait. Otherwise it will wait until a master is elected
+     * and this node is active, either as a Master, or as a Replica. If the node
+     * joins as a replica, it will wait further until it has become sufficiently
+     * consistent as defined by its consistency argument. By default it uses
+     * PointConsistencyPolicy to ensure that it is at least as consistent as the
+     * master as of the time the handle was opened. A node can also join in the
+     * Unknown state if it has been configured to do so via
+     * ENV_UNKNOWN_STATE_TIMEOUT.
      *
      * @throws UnknownMasterException If a master cannot be established within
-     * ENV_SETUP_TIMEOUT, unless ENV_UNKNOWN_STATE_TIMEOUT has
-     * been set to allow the creation of a handle while in the UNKNOWN state.
-     *
-     * @return MASTER, REPLICA, or UNKNOWN (if ENV_UNKNOWN_STATE_TIMEOUT
-     * is set)
+     *             ENV_SETUP_TIMEOUT, unless ENV_UNKNOWN_STATE_TIMEOUT has been
+     *             set to allow the creation of a handle while in the UNKNOWN
+     *             state.
+     * @return MASTER, REPLICA, or UNKNOWN (if ENV_UNKNOWN_STATE_TIMEOUT is set)
      */
-    public ReplicatedEnvironment.State
-        joinGroup(ReplicaConsistencyPolicy consistency,
-                  QuorumPolicy initialElectionPolicy)
-        throws ReplicaConsistencyException, DatabaseException {
+    public ReplicatedEnvironment.State joinGroup(ReplicaConsistencyPolicy consistency,
+                                                 QuorumPolicy initialElectionPolicy)
+            throws ReplicaConsistencyException, DatabaseException {
 
-        final JoinGroupTimeouts timeouts =
-                new JoinGroupTimeouts(getConfigManager());
+        final JoinGroupTimeouts timeouts = new JoinGroupTimeouts(getConfigManager());
 
         startup(initialElectionPolicy);
-        LoggerUtils.finest(logger, repImpl, "joinGroup " +
-                           nodeState.getRepEnvState());
+        LoggerUtils.finest(logger, repImpl, "joinGroup " + nodeState.getRepEnvState());
 
         DatabaseException exitException = null;
         int retries = 0;
         repImpl.getStartupTracker().start(Phase.BECOME_CONSISTENT);
-        repImpl.getStartupTracker().setProgress
-           (RecoveryProgress.BECOME_CONSISTENT);
+        repImpl.getStartupTracker().setProgress(RecoveryProgress.BECOME_CONSISTENT);
         try {
-            for (retries = 0; retries < JOIN_RETRIES; retries++ ) {
+            for (retries = 0; retries < JOIN_RETRIES; retries++) {
                 try {
                     /* Wait for Feeder/Replica to be fully initialized. */
-                    boolean done = getReadyLatch().awaitOrException
-                        (timeouts.getTimeout(), TimeUnit.MILLISECONDS);
+                    boolean done = getReadyLatch().awaitOrException(timeouts.getTimeout(), TimeUnit.MILLISECONDS);
 
                     /*
-                     * Save the state, and use it from this point forward,
-                     * since the node's state may change again.
+                     * Save the state, and use it from this point forward, since
+                     * the node's state may change again.
                      */
-                    final ReplicatedEnvironment.State finalState =
-                        nodeState.getRepEnvState();
+                    final ReplicatedEnvironment.State finalState = nodeState.getRepEnvState();
                     if (!done) {
 
                         /* An election or setup, timeout. */
@@ -2183,20 +1987,17 @@ public class RepNode extends StoppableThread {
                             if (timeouts.timeoutIsForUnknownState()) {
 
                                 /*
-                                 * Replica syncing up; move onwards to the
-                                 * setup timeout and continue with the syncup.
+                                 * Replica syncing up; move onwards to the setup
+                                 * timeout and continue with the syncup.
                                  */
                                 timeouts.setSetupTimeout();
                                 continue;
                             }
-                            throw new ReplicaConsistencyException
-                                (String.format("Setup time exceeded %,d ms",
-                                               timeouts.getSetupTimeout()),
-                                               null);
+                            throw new ReplicaConsistencyException(
+                                    String.format("Setup time exceeded %,d ms", timeouts.getSetupTimeout()), null);
                         }
 
-                        if (finalState.isUnknown() &&
-                            timeouts.timeoutIsForUnknownState()) {
+                        if (finalState.isUnknown() && timeouts.timeoutIsForUnknownState()) {
                             return UNKNOWN;
                         }
                         break;
@@ -2217,14 +2018,12 @@ public class RepNode extends StoppableThread {
                             break;
 
                         case MASTER:
-                            LoggerUtils.info(logger, repImpl,
-                                             "Joining group as master");
+                            LoggerUtils.info(logger, repImpl, "Joining group as master");
                             break;
 
                         case DETACHED:
-                            throw EnvironmentFailureException.
-                                unexpectedState("Node in DETACHED state " +
-                                                "while joining group.");
+                            throw EnvironmentFailureException
+                                    .unexpectedState("Node in DETACHED state " + "while joining group.");
                     }
 
                     return finalState;
@@ -2232,20 +2031,14 @@ public class RepNode extends StoppableThread {
                     throw EnvironmentFailureException.unexpectedException(e);
                 } catch (MasterStateException e) {
                     /* Transition to master while establishing consistency. */
-                    LoggerUtils.warning(logger, repImpl,
-                                        "Join retry due to master transition: "
-                                        + e.getMessage());
+                    LoggerUtils.warning(logger, repImpl, "Join retry due to master transition: " + e.getMessage());
                     continue;
                 } catch (RestartRequiredException e) {
-                    LoggerUtils.warning(logger, repImpl,
-                                        "Environment needs to be restarted: " +
-                                        e.getMessage());
+                    LoggerUtils.warning(logger, repImpl, "Environment needs to be restarted: " + e.getMessage());
                     throw e;
                 } catch (DatabaseException e) {
                     Throwable cause = e.getCause();
-                    if ((cause != null) &&
-                        (cause.getClass() ==
-                         Replica.ConnectRetryException.class)) {
+                    if ((cause != null) && (cause.getClass() == Replica.ConnectRetryException.class)) {
 
                         /*
                          * The master may have changed. Retry if there is time
@@ -2253,9 +2046,7 @@ public class RepNode extends StoppableThread {
                          */
                         exitException = e;
                         if (timeouts.getTimeout() > 0) {
-                            LoggerUtils.warning(logger, repImpl,
-                                                "Join retry due to exception: "
-                                                + cause.getMessage());
+                            LoggerUtils.warning(logger, repImpl, "Join retry due to exception: " + cause.getMessage());
                             continue;
                         }
                     }
@@ -2268,8 +2059,7 @@ public class RepNode extends StoppableThread {
 
         /* Timed out or exceeded retries. */
         if (exitException != null) {
-            LoggerUtils.warning(logger, repImpl, "Exiting joinGroup after " +
-                                retries + " retries." + exitException);
+            LoggerUtils.warning(logger, repImpl, "Exiting joinGroup after " + retries + " retries." + exitException);
             throw exitException;
         }
         throw new UnknownMasterException(null, repImpl.getStateChangeEvent());
@@ -2281,15 +2071,12 @@ public class RepNode extends StoppableThread {
      *
      * @param consistency the consistency policy to use when joining initially
      */
-    private void joinAsReplica(ReplicaConsistencyPolicy consistency)
-        throws InterruptedException {
+    private void joinAsReplica(ReplicaConsistencyPolicy consistency) throws InterruptedException {
 
         if (consistency == null) {
-            final int consistencyTimeout =
-                getConfigManager().getDuration(ENV_CONSISTENCY_TIMEOUT);
-            consistency = new PointConsistencyPolicy
-                (new VLSN(replica.getMasterTxnEndVLSN()),
-                 consistencyTimeout, TimeUnit.MILLISECONDS);
+            final int consistencyTimeout = getConfigManager().getDuration(ENV_CONSISTENCY_TIMEOUT);
+            consistency = new PointConsistencyPolicy(new VLSN(replica.getMasterTxnEndVLSN()), consistencyTimeout,
+                    TimeUnit.MILLISECONDS);
         }
 
         /*
@@ -2304,9 +2091,8 @@ public class RepNode extends StoppableThread {
          */
         repImpl.getLogManager().flushNoSync();
 
-        LoggerUtils.info(logger, repImpl, "Joined group as a replica. " +
-                         " join consistencyPolicy=" + consistency +
-                         " " + repImpl.getVLSNIndex().getRange());
+        LoggerUtils.info(logger, repImpl, "Joined group as a replica. " + " join consistencyPolicy=" + consistency + " "
+                + repImpl.getVLSNIndex().getRange());
     }
 
     /**
@@ -2322,9 +2108,9 @@ public class RepNode extends StoppableThread {
      * minimum of CBVLSNs after discarding CBVLSNs that are obsolete. A CBVLSN
      * is considered obsolete, if it has not been updated within a configurable
      * time interval relative to the time that the most recent CBVLSN was
-     * updated.  Also considers VLSNs protected by REPLAY_COST_PERCENT.
-     *
-     * <p>May return NULL_VLSN.
+     * updated. Also considers VLSNs protected by REPLAY_COST_PERCENT.
+     * <p>
+     * May return NULL_VLSN.
      */
     public VLSN getGroupCBVLSN() {
         return VLSN.min(globalCBVLSN.getCBVLSN(), replayCostMinVLSN);
@@ -2339,9 +2125,9 @@ public class RepNode extends StoppableThread {
 
     /**
      * Marks the start of the search for a matchpoint that happens during a
-     * syncup.  The globalCBVLSN can't be changed when a syncup is in
-     * progress. A feeder may have multiple syncups in action. The caller
-     * should call {@link #syncupEnded} when the syncup is done.
+     * syncup. The globalCBVLSN can't be changed when a syncup is in progress. A
+     * feeder may have multiple syncups in action. The caller should call
+     * {@link #syncupEnded} when the syncup is done.
      */
     public void syncupStarted() {
         globalCBVLSN.syncupStarted();
@@ -2357,27 +2143,23 @@ public class RepNode extends StoppableThread {
      * removed by the cleaner without disrupting the replication stream.
      *
      * @return the file number that's the barrier for cleaner file deletion
-     *
      * @throws DatabaseException
      */
-    public long getCleanerBarrierFile()
-        throws DatabaseException {
+    public long getCleanerBarrierFile() throws DatabaseException {
 
         /*
-         * It turns out that this method is only called in contexts that
-         * specify an active syncup is underway.  Neither the global CBVLSN or
-         * the VLSNIndex can change during an active syncup, so being called
-         * during an active syncup means we can depend on the global CBVLSN
-         * having an entry in the VLSNIndex.  The check below that there are
-         * active syncups underway doesn't guarantee that the syncup will
-         * remain in effect during the whole call, but is a good indication
-         * that we can depend on the global CBVLSN having an entry in the
-         * VLSNIndex, as needed later in this method.
+         * It turns out that this method is only called in contexts that specify
+         * an active syncup is underway. Neither the global CBVLSN or the
+         * VLSNIndex can change during an active syncup, so being called during
+         * an active syncup means we can depend on the global CBVLSN having an
+         * entry in the VLSNIndex. The check below that there are active syncups
+         * underway doesn't guarantee that the syncup will remain in effect
+         * during the whole call, but is a good indication that we can depend on
+         * the global CBVLSN having an entry in the VLSNIndex, as needed later
+         * in this method.
          */
         if (globalCBVLSN.getActiveSyncups() <= 0) {
-            throw new IllegalStateException(
-            "getCleanerBarrierFile should only be called during" +
-            " an active syncup");
+            throw new IllegalStateException("getCleanerBarrierFile should only be called during" + " an active syncup");
         }
 
         /*
@@ -2387,12 +2169,8 @@ public class RepNode extends StoppableThread {
         final VLSN cbvlsn = VLSN.min(globalCBVLSNValue, replayCostMinVLSN);
 
         if (logger.isLoggable(Level.FINE)) {
-            LoggerUtils.fine(
-                logger, repImpl,
-                "Computing getCleanerBarrierFile:" +
-                " GlobalCBVLSN=" + globalCBVLSNValue +
-                " replayCostMinVLSN=" + replayCostMinVLSN +
-                " CBVLSN=" + cbvlsn);
+            LoggerUtils.fine(logger, repImpl, "Computing getCleanerBarrierFile:" + " GlobalCBVLSN=" + globalCBVLSNValue
+                    + " replayCostMinVLSN=" + replayCostMinVLSN + " CBVLSN=" + cbvlsn);
         }
 
         /* The GlobalCBVLSN can be null, putting it outside the VLSN index */
@@ -2405,15 +2183,13 @@ public class RepNode extends StoppableThread {
     /**
      * Protects additional files from deletion by returning a subset of the
      * specified unprotected files.
-     *
      * <p>
      * The unprotectedFiles parameter provides a collection of files that the
      * caller believes are safe to delete. These files have had their live data
      * migrated by the cleaner. This method decides which of the unprotected
-     * files should be removed from the returned collection to protect them
-     * from deletion so that they can be used to stream replication data to
-     * replay at replicas.
-     *
+     * files should be removed from the returned collection to protect them from
+     * deletion so that they can be used to stream replication data to replay at
+     * replicas.
      * <p>
      * The diagram below represents log files organized by the time they were
      * created, with the oldest file at the left and the newest at the right.
@@ -2433,26 +2209,20 @@ public class RepNode extends StoppableThread {
      * From unprotected files:  |                         |
      *                          |                         |
      *     Truncated files      |     Retained files      |
-     *
      * </pre>
-     *
      * <p>
      * Note that the unprotected files represent a subset of the files in each
      * region of the diagram.
-     *
      * <p>
      * Files in region 1 are files that are not represented in the VLSN Index.
      * The mappings between LSNs and VLSNs maintained by the VLSN Index are
-     * needed to support replays, so these files cannot be used for
-     * replication.
-     *
+     * needed to support replays, so these files cannot be used for replication.
      * <p>
-     * Region 1 files consist primarily of live files containing data needed
-     * for recovery, typically with a high enough percentage of live data that
-     * the cleaner does not consider them worth cleaning. There are usually
-     * gaps in the sequence of files in this region because some of these older
-     * files have been removed after being cleaned.
-     *
+     * Region 1 files consist primarily of live files containing data needed for
+     * recovery, typically with a high enough percentage of live data that the
+     * cleaner does not consider them worth cleaning. There are usually gaps in
+     * the sequence of files in this region because some of these older files
+     * have been removed after being cleaned.
      * <p>
      * Note that entries are removed from the VLSN Index before the associated
      * log file files are deleted. If log files are found to be in use by
@@ -2460,10 +2230,9 @@ public class RepNode extends StoppableThread {
      * possible for cleaned log files to appear in region 1 that do not have
      * associated mappings in the VLSN index. That is the reason why it is
      * possible for this region to contain some unprotected files.
-     *
      * <p>
-     * Files in region 2 are files that are represented in the VLSN index and
-     * so can be used for replication. Because these files only contain VLSNs
+     * Files in region 2 are files that are represented in the VLSN index and so
+     * can be used for replication. Because these files only contain VLSNs
      * before the Global CBVLSN, they are not known to be needed to support
      * replication for electable replicas that have been in contact with the
      * master within the time period represented by the REP_STREAM_TIMEOUT
@@ -2471,53 +2240,43 @@ public class RepNode extends StoppableThread {
      * might still be useful to secondary nodes that are out of contact or
      * electable nodes that have been out of contact for longer than
      * REP_STREAM_TIMEOUT.
-     *
      * <p>
      * The system uses the values of the REPLAY_COST_PERCENT and
      * REPLAY_FREE_DISK_PERCENT parameters to determine if it is worthwhile to
      * retain cleaned files in region 2, while also satisfying the requested
-     * free disk space target. The system needs to retain a contiguous subset
-     * of the files at the upper end of this range in order for them to be
-     * useful for replication, since replication requires an uninterrupted
-     * sequence of VLSNs. The system will select a VLSN between points A and B
-     * as point X (the Disk CBVLSN), which represents the lowest VLSN for files
-     * that should be protected.
-     *
+     * free disk space target. The system needs to retain a contiguous subset of
+     * the files at the upper end of this range in order for them to be useful
+     * for replication, since replication requires an uninterrupted sequence of
+     * VLSNs. The system will select a VLSN between points A and B as point X
+     * (the Disk CBVLSN), which represents the lowest VLSN for files that should
+     * be protected.
      * <p>
      * Files in region 3 are files that are known to be needed for replication
      * by electable nodes, so otherwise unprotected files in this range are
      * retained for that reason.
-     *
      * <p>
      * Files in region 4 are files that do not contain any VLSNs. These files
      * include log entries to represent changes to the structure of the Btree,
-     * but that are not needed for replication. Cleaned files in this region
-     * are candidates for deletion because they are not needed for either
+     * but that are not needed for replication. Cleaned files in this region are
+     * candidates for deletion because they are not needed for either
      * replication or network restore.
-     *
      * <p>
      * The unprotected files passed to the getUnprotectedFileSet consist of
      * cleaned files that appear in the four regions described above.
-     *
      * <p>
      * The unprotected files in region 1 will always be removed, and are called
      * "truncated files".
-     *
      * <p>
      * Unprotected files (also called "truncated files") in region 2, below the
      * Disk CBVLSN, will be removed.
-     *
      * <p>
      * Unprotected files in region 3 will be retained because they are known to
      * be needed for replication.
-     *
      * <p>
-     * Unprotected files in region 4 will always be removed because they are
-     * not needed for replication or replay.
-     *
-     * Unprotected Barren files (files that do not contain any VLSNs and have
-     * been cleaned) are always removed regardless of the region they occupy.
-     *
+     * Unprotected files in region 4 will always be removed because they are not
+     * needed for replication or replay. Unprotected Barren files (files that do
+     * not contain any VLSNs and have been cleaned) are always removed
+     * regardless of the region they occupy.
      * <p>
      * Note that the Global CBVLSN increases over time, which moves files from
      * region 3 into region 2, where they can be evaluated for retention based
@@ -2526,114 +2285,91 @@ public class RepNode extends StoppableThread {
      * truncated.
      *
      * @param unprotectedFiles set of file numbers of the files that are
-     * potential candidates for deletion, before taking into consideration the
-     * sync-up needs of other nodes in the replication group
-     *
+     *            potential candidates for deletion, before taking into
+     *            consideration the sync-up needs of other nodes in the
+     *            replication group
      * @param cleaner the cleaner, to provide the implementation needs
-     * additional information about log files
-     *
+     *            additional information about log files
      * @param msg an empty buffer to be filled with a message that will be
-     * appended to the cleaner's message and logged at Level.INFO.
-     *
-     * @return a subset of the original set, where files that we want to
-     * protect have been removed. We never destructively modify the input set.
-     * Instead we return either a restricted view of the original set or a new
-     * set with copies of some of the file numbers from the original set.
+     *            appended to the cleaner's message and logged at Level.INFO.
+     * @return a subset of the original set, where files that we want to protect
+     *         have been removed. We never destructively modify the input set.
+     *         Instead we return either a restricted view of the original set or
+     *         a new set with copies of some of the file numbers from the
+     *         original set.
      */
     /*
      * Log File Retention (this text is eventually destined for JE HA doc)
-     * ------------------
-     *
-     * JE HA retains more log files than needed to represent just the live data
-     * in the JE environment, to ensure that all members of a group can be kept
-     * as current as possible at any given moment under various operational
-     * scenarios. The extra files maximize the group's availability and are
-     * reclaimed when there is storage pressure and the disk storage occupied
-     * by these extra files is required to store live data associated with the
-     * environment. The following discussion provides a brief overview of the
-     * mechanisms and considerations underlying the retention of these extra
-     * files, as well as the messages that are logged to help understand why
-     * these additional log files are retained.
-     *
-     * Each HA node maintains a VLSN, called the Cleaner Barrier VLSN (CBVLSN),
-     * which represents the position of the node in the HA stream. The node has
-     * replayed all VLSNs less than this value and from the local perspective
-     * of the node it would be ok to clean any log files that contain VLSNs
-     * less than this VLSN. However, HA needs to keep the streaming
-     * requirements of the entire group in mind and while this node does not
-     * need VLSN records below the CBVLSN, some other lagging node may need
-     * such VLSN records. To account for the needs of such lagging nodes, HA
-     * maintains a group wide value called the Global CBVLSN, which is the
-     * minimum of the CBVLSN value across all the nodes in the shard; only
-     * nodes that communicated their CBVLSN within the REP_STREAM_TIMEOUT
-     * period contribute to the minimum, to ensure that the Global CBVLSN is
-     * allowed to advance.
-     *
-     * HA will, at a minimum, retain log files sufficient to cover all log
-     * entries in the range from the Global CBVLSN up to the highest allocated
-     * VLSN. The Global CBVLSN establishes a lower VLSN bound for files that
-     * must be retained for electable Rep Nodes to keep in sync via a replay of
-     * logs. The maintenance of the Global CBVLSN thus helps the replication
-     * group plan file retention for "anticipated" HA stream requests.
-     *
-     * When HA is using the Global CBVLSN as the basis for the lower bound for
-     * file retention, the logs will contain the sentence:
-     *
-     * "Replication prevents deletion of 3 files to support replication by node
-     * Node3"
-     *
-     * In addition, we allow for the possibility of servicing
-     * "unanticipated requests", which can come from two sources:
-     *
-     * 1) An RN that was down beyond its REP_STREAM_TIMEOUT and therefore did
-     * not participate in the Global CBVLSN calculation. 2) A secondary node.
-     *
-     * The bound established by the Global CBVLSN can be further lowered (when
-     * enabled via REPLAY_COST_PERCENT) to explicitly account for
-     * "unanticipated requests":
-     *
-     * 1) When the configuration of REPLAY_COST_PERCENT and
-     * REPLAY_FREE_DISK_PERCENT permits use of extra disk space, the VLSN lower
-     * bound is further lowered to allow for unanticipated requests for a
-     * replication stream on an opportunistic basis. The amount of the retained
-     * disk space is determined by the tradeoff between a Network Restore and a
-     * HA stream based replay. When the lower bound is determined on this
-     * basis, the logs will contain the following sentence: "Replication
-     * prevents deletion of 15 files to support replication using free space
-     * available beyond the 10% free space requirement specified by the
-     * ReplicationConfig.REPLAY_FREE_DISK_PERCENT parameter."
-     *
-     * 2) If the REPLAY_FREE_DISK_PERCENT permits retention of just a subset of
-     * the files needed by the Network Restore/HA stream replay tradeoff, then
-     * the Global CBVLSN is lowered by a smaller amount. This is noted in the
-     * logs by the statement: " Limited free disk space prevented retaining
-     * some log files. Retained %,d bytes, but wanted to retain %,d bytes based
-     * on replay cost."
-     *
-     * Finally, the lower bound established above can be lowered further yet,
-     * when a feeder is actively reading from a file that is lower than the
-     * bound established so far. This retention by its very nature is temporary
-     * and will change rapidly as the feeder makes progress. The condition is
-     * identified in the logs by the text: "Replication prevents deletion of 3
-     * files to support an active feeder for the node rg1-rn3 at VLSN: 12,345."
+     * ------------------ JE HA retains more log files than needed to represent
+     * just the live data in the JE environment, to ensure that all members of a
+     * group can be kept as current as possible at any given moment under
+     * various operational scenarios. The extra files maximize the group's
+     * availability and are reclaimed when there is storage pressure and the
+     * disk storage occupied by these extra files is required to store live data
+     * associated with the environment. The following discussion provides a
+     * brief overview of the mechanisms and considerations underlying the
+     * retention of these extra files, as well as the messages that are logged
+     * to help understand why these additional log files are retained. Each HA
+     * node maintains a VLSN, called the Cleaner Barrier VLSN (CBVLSN), which
+     * represents the position of the node in the HA stream. The node has
+     * replayed all VLSNs less than this value and from the local perspective of
+     * the node it would be ok to clean any log files that contain VLSNs less
+     * than this VLSN. However, HA needs to keep the streaming requirements of
+     * the entire group in mind and while this node does not need VLSN records
+     * below the CBVLSN, some other lagging node may need such VLSN records. To
+     * account for the needs of such lagging nodes, HA maintains a group wide
+     * value called the Global CBVLSN, which is the minimum of the CBVLSN value
+     * across all the nodes in the shard; only nodes that communicated their
+     * CBVLSN within the REP_STREAM_TIMEOUT period contribute to the minimum, to
+     * ensure that the Global CBVLSN is allowed to advance. HA will, at a
+     * minimum, retain log files sufficient to cover all log entries in the
+     * range from the Global CBVLSN up to the highest allocated VLSN. The Global
+     * CBVLSN establishes a lower VLSN bound for files that must be retained for
+     * electable Rep Nodes to keep in sync via a replay of logs. The maintenance
+     * of the Global CBVLSN thus helps the replication group plan file retention
+     * for "anticipated" HA stream requests. When HA is using the Global CBVLSN
+     * as the basis for the lower bound for file retention, the logs will
+     * contain the sentence: "Replication prevents deletion of 3 files to
+     * support replication by node Node3" In addition, we allow for the
+     * possibility of servicing "unanticipated requests", which can come from
+     * two sources: 1) An RN that was down beyond its REP_STREAM_TIMEOUT and
+     * therefore did not participate in the Global CBVLSN calculation. 2) A
+     * secondary node. The bound established by the Global CBVLSN can be further
+     * lowered (when enabled via REPLAY_COST_PERCENT) to explicitly account for
+     * "unanticipated requests": 1) When the configuration of
+     * REPLAY_COST_PERCENT and REPLAY_FREE_DISK_PERCENT permits use of extra
+     * disk space, the VLSN lower bound is further lowered to allow for
+     * unanticipated requests for a replication stream on an opportunistic
+     * basis. The amount of the retained disk space is determined by the
+     * tradeoff between a Network Restore and a HA stream based replay. When the
+     * lower bound is determined on this basis, the logs will contain the
+     * following sentence: "Replication prevents deletion of 15 files to support
+     * replication using free space available beyond the 10% free space
+     * requirement specified by the ReplicationConfig.REPLAY_FREE_DISK_PERCENT
+     * parameter." 2) If the REPLAY_FREE_DISK_PERCENT permits retention of just
+     * a subset of the files needed by the Network Restore/HA stream replay
+     * tradeoff, then the Global CBVLSN is lowered by a smaller amount. This is
+     * noted in the logs by the statement: " Limited free disk space prevented
+     * retaining some log files. Retained %,d bytes, but wanted to retain %,d
+     * bytes based on replay cost." Finally, the lower bound established above
+     * can be lowered further yet, when a feeder is actively reading from a file
+     * that is lower than the bound established so far. This retention by its
+     * very nature is temporary and will change rapidly as the feeder makes
+     * progress. The condition is identified in the logs by the text:
+     * "Replication prevents deletion of 3 files to support an active feeder for
+     * the node rg1-rn3 at VLSN: 12,345."
      */
-    public NavigableSet<Long> getUnprotectedFileSet(
-        final NavigableSet<Long> unprotectedFiles,
-        final Cleaner cleaner,
-        final StringBuilder msg) {
+    public NavigableSet<Long> getUnprotectedFileSet(final NavigableSet<Long> unprotectedFiles, final Cleaner cleaner,
+                                                    final StringBuilder msg) {
 
-        final GlobalCBVLSN.CBVLSNInfo globalCBVLSNInfo =
-            globalCBVLSN.getCBVLSNInfo();
+        final GlobalCBVLSN.CBVLSNInfo globalCBVLSNInfo = globalCBVLSN.getCBVLSNInfo();
         final VLSN globalCBVLSNValue = globalCBVLSNInfo.cbvlsn;
-        final long globalCBVLSNFile = globalCBVLSNValue.isNull() ?
-            0 :
-            getVLSNIndex().getLTEFileNumber(globalCBVLSNValue);
-        final String globalCBVLSNNodeName =
-            globalCBVLSNInfo.groupCBVLSNNodeName == null ?
-                "" : globalCBVLSNInfo.groupCBVLSNNodeName;
+        final long globalCBVLSNFile = globalCBVLSNValue.isNull() ? 0
+                : getVLSNIndex().getLTEFileNumber(globalCBVLSNValue);
+        final String globalCBVLSNNodeName = globalCBVLSNInfo.groupCBVLSNNodeName == null ? ""
+                : globalCBVLSNInfo.groupCBVLSNNodeName;
 
-        final long globalCBVLSNNodeBarrierTime =
-            globalCBVLSNInfo.groupCBVLSNNodeBarrierTime;
+        final long globalCBVLSNNodeBarrierTime = globalCBVLSNInfo.groupCBVLSNNodeBarrierTime;
 
         final VLSN lastVLSN = getVLSNIndex().getRange().getLast();
         final long lastVLSNFile = getVLSNIndex().getGTEFileNumber(lastVLSN);
@@ -2645,8 +2381,7 @@ public class RepNode extends StoppableThread {
          * Compute the minimum VLSN associated with replay cost based on
          * REPLAY_COST_PERCENT and REPLAY_FREE_DISK_PERCENT
          */
-        replayCostMinVLSN = computeReplayCostMinVLSN(
-            unprotectedFiles, cleaner, globalCBVLSNFile, lastVLSNFile, msg);
+        replayCostMinVLSN = computeReplayCostMinVLSN(unprotectedFiles, cleaner, globalCBVLSNFile, lastVLSNFile, msg);
 
         /*
          * Compute the disk CBVLSN as the minimum of globalCBVLSN and
@@ -2656,14 +2391,12 @@ public class RepNode extends StoppableThread {
         long diskCBVLSNFile;
 
         String cbvlsnMessage;
-        if (!replayCostMinVLSN.isNull() &&
-            (replayCostMinVLSN.compareTo(globalCBVLSNValue) < 0)) {
+        if (!replayCostMinVLSN.isNull() && (replayCostMinVLSN.compareTo(globalCBVLSNValue) < 0)) {
             diskCBVLSN = replayCostMinVLSN;
             diskCBVLSNFile = getVLSNIndex().getLTEFileNumber(replayCostMinVLSN);
-            cbvlsnMessage = " to support replication using free space" +
-                " available beyond the " + replayFreeDiskPercent + "%" +
-                " free space requirement specified by the" +
-                " ReplicationConfig.REPLAY_FREE_DISK_PERCENT parameter";
+            cbvlsnMessage = " to support replication using free space" + " available beyond the "
+                    + replayFreeDiskPercent + "%" + " free space requirement specified by the"
+                    + " ReplicationConfig.REPLAY_FREE_DISK_PERCENT parameter";
 
         } else {
             diskCBVLSN = globalCBVLSNValue;
@@ -2671,11 +2404,9 @@ public class RepNode extends StoppableThread {
             cbvlsnMessage = globalCBVLSNInfo.message;
         }
 
-        final FeederManager.MinFeederVLSNInfo minFeederVLSNInfo =
-            feederManager.getMinFeederVLSN();
+        final FeederManager.MinFeederVLSNInfo minFeederVLSNInfo = feederManager.getMinFeederVLSN();
         final VLSN minFeederVLSN = minFeederVLSNInfo.vlsn;
-        if (!minFeederVLSN.isNull() &&
-            (minFeederVLSN.compareTo(diskCBVLSN) < 0)) {
+        if (!minFeederVLSN.isNull() && (minFeederVLSN.compareTo(diskCBVLSN) < 0)) {
 
             /*
              * We are currently feeding some replica with a VLSN < GCBVLSN
@@ -2685,26 +2416,24 @@ public class RepNode extends StoppableThread {
              */
             diskCBVLSN = minFeederVLSN;
             diskCBVLSNFile = getVLSNIndex().getLTEFileNumber(minFeederVLSN);
-            cbvlsnMessage = " to support an active feeder for node " +
-                minFeederVLSNInfo.nodeName + " at VLSN:" +
-                minFeederVLSN + ". ";
+            cbvlsnMessage = " to support an active feeder for node " + minFeederVLSNInfo.nodeName + " at VLSN:"
+                    + minFeederVLSN + ". ";
         }
 
         /*
          * The files we want to preserve range from the one containing the disk
          * CBVLSN, to the one containing the last VLSN. So there could be up to
-         * three disjoint subsets of the unprotected files: (1) those before
-         * the disk CBVLSN (the "truncated files"), (2) those we want to
-         * preserve (the "retained files"), and (3) those after the last VLSN.
-         * Since we need the retained files in (2), the unprotected files we
-         * return from this method consist of the files in (1) and (3).
+         * three disjoint subsets of the unprotected files: (1) those before the
+         * disk CBVLSN (the "truncated files"), (2) those we want to preserve
+         * (the "retained files"), and (3) those after the last VLSN. Since we
+         * need the retained files in (2), the unprotected files we return from
+         * this method consist of the files in (1) and (3).
          */
-        final NavigableSet<Long> truncatedFiles =
-            unprotectedFiles.headSet(diskCBVLSNFile, false);
+        final NavigableSet<Long> truncatedFiles = unprotectedFiles.headSet(diskCBVLSNFile, false);
 
         /*
-         * enumerateFiles() can be expensive, so only generate this String
-         * if logging is set to FINER
+         * enumerateFiles() can be expensive, so only generate this String if
+         * logging is set to FINER
          */
         if (logger.isLoggable(Level.FINER)) {
             if (!truncatedFiles.isEmpty()) {
@@ -2735,28 +2464,18 @@ public class RepNode extends StoppableThread {
         }
 
         if (!barrenSet.isEmpty()) {
-            msg.append(" Files: " + FormatUtil.asString(barrenSet) +
-                       " have no VLSNs and can be deleted. ");
+            msg.append(" Files: " + FormatUtil.asString(barrenSet) + " have no VLSNs and can be deleted. ");
         }
 
         if (unprotectedFiles.size() > result.size()) {
 
-            final String fmt =
-                " Replication prevents deletion of %,d files " +
-                "%s. " + /* cbvlsnMessage */
-                "Retained VLSN range: %,d(file 0x%x) - %,d(file 0x%x). " +
-                "Global CBVLSN=%,d(file 0x%x); " +
-                "determining node:%s last reported at %s. ";
-            final String out =
-                String.format(fmt,
-                              (unprotectedFiles.size() - result.size()),
-                              cbvlsnMessage,
-                              diskCBVLSN.getSequence(), diskCBVLSNFile,
-                              lastVLSN.getSequence(), lastVLSNFile,
-                              globalCBVLSNValue.getSequence(), globalCBVLSNFile,
-                              globalCBVLSNNodeName,
-                              GlobalCBVLSN.DATE_FORMAT.
-                              getDate(globalCBVLSNNodeBarrierTime));
+            final String fmt = " Replication prevents deletion of %,d files " + "%s. " + /* cbvlsnMessage */
+                    "Retained VLSN range: %,d(file 0x%x) - %,d(file 0x%x). " + "Global CBVLSN=%,d(file 0x%x); "
+                    + "determining node:%s last reported at %s. ";
+            final String out = String.format(fmt, (unprotectedFiles.size() - result.size()), cbvlsnMessage,
+                    diskCBVLSN.getSequence(), diskCBVLSNFile, lastVLSN.getSequence(), lastVLSNFile,
+                    globalCBVLSNValue.getSequence(), globalCBVLSNFile, globalCBVLSNNodeName,
+                    GlobalCBVLSN.DATE_FORMAT.getDate(globalCBVLSNNodeBarrierTime));
             msg.append(out);
         }
 
@@ -2770,12 +2489,9 @@ public class RepNode extends StoppableThread {
      * Returns the minimum VLSN of files that should be retained to support
      * replay, or NULL_VLSN if disabled or no files are found to protect.
      */
-    private VLSN computeReplayCostMinVLSN(
-        final NavigableSet<Long> unprotectedFiles,
-        final Cleaner cleaner,
-        final long globalCBVLSNFile,
-        final long lastVLSNFile,
-        final StringBuilder msg) {
+    private VLSN computeReplayCostMinVLSN(final NavigableSet<Long> unprotectedFiles, final Cleaner cleaner,
+                                          final long globalCBVLSNFile, final long lastVLSNFile,
+                                          final StringBuilder msg) {
 
         /* Check if disabled */
         if (replayCostPercent == 0) {
@@ -2784,19 +2500,16 @@ public class RepNode extends StoppableThread {
         }
 
         /*
-         * Use FileSummary information to determine log file sizes.  Specify
+         * Use FileSummary information to determine log file sizes. Specify
          * false for the includeTrackedFiles parameter to say that no
          * information is needed about changes made since the last checkpoint
          * because this method is called immediately after a checkpoint.
          */
-        final Map<Long, FileSummary> fileSummaryMap =
-            cleaner.getUtilizationProfile().getFileSummaryMap(false);
+        final Map<Long, FileSummary> fileSummaryMap = cleaner.getUtilizationProfile().getFileSummaryMap(false);
 
         /* Prepare to check free disk space, if enabled */
-        SpaceInfo spaceInfo = (replayFreeDiskPercent != 0) ?
-            new SpaceInfo(fileSummaryMap, unprotectedFiles, globalCBVLSNFile,
-                          lastVLSNFile) :
-            null;
+        SpaceInfo spaceInfo = (replayFreeDiskPercent != 0)
+                ? new SpaceInfo(fileSummaryMap, unprotectedFiles, globalCBVLSNFile, lastVLSNFile) : null;
 
         /*
          * Compute the number of bytes needed for a network restore, including
@@ -2807,8 +2520,7 @@ public class RepNode extends StoppableThread {
         long networkRestoreBytes = 0;
         for (final Entry<Long, FileSummary> ent : fileSummaryMap.entrySet()) {
             final long file = ent.getKey();
-            if (!unprotectedFiles.contains(file) ||
-                ((file >= globalCBVLSNFile) && (file <= lastVLSNFile))) {
+            if (!unprotectedFiles.contains(file) || ((file >= globalCBVLSNFile) && (file <= lastVLSNFile))) {
                 final FileSummary fileSummary = ent.getValue();
                 networkRestoreBytes += fileSummary.totalSize;
             }
@@ -2816,22 +2528,21 @@ public class RepNode extends StoppableThread {
 
         /*
          * Compute the maximum number of replay bytes that has the same cost as
-         * the number of network restore bytes.  The cost of the replay bytes
-         * is the number of bytes times the replay cost ratio, so the number of
+         * the number of network restore bytes. The cost of the replay bytes is
+         * the number of bytes times the replay cost ratio, so the number of
          * replay bytes with the same cost as the network restore bytes is the
          * network restore bytes divided by the replay cost ratio.
          */
         final double replayCostRatio = replayCostPercent / 100.0;
-        final long maxReplayBytes =
-            (long) (networkRestoreBytes / replayCostRatio);
+        final long maxReplayBytes = (long) (networkRestoreBytes / replayCostRatio);
 
         /*
-         * Iterate backwards over the files, from newest to oldest, counting
-         * the size in bytes until it reaches the maximum number of replay
-         * bytes worth retaining, and so long as we have enough free space.
-         * Don't count barren files, since they are not used for replay and
-         * will be deleted, or files below the VLSNIndex, since those can't be
-         * used for replay.
+         * Iterate backwards over the files, from newest to oldest, counting the
+         * size in bytes until it reaches the maximum number of replay bytes
+         * worth retaining, and so long as we have enough free space. Don't
+         * count barren files, since they are not used for replay and will be
+         * deleted, or files below the VLSNIndex, since those can't be used for
+         * replay.
          */
         final VLSN firstVLSN = getVLSNIndex().getRange().getFirst();
         final long firstVLSNFile = getVLSNIndex().getLTEFileNumber(firstVLSN);
@@ -2863,13 +2574,10 @@ public class RepNode extends StoppableThread {
                 fileInfo = spaceInfo.getFileInfo(file);
                 if (fileInfo != null) {
                     if (fileSize > fileInfo.replaySpace) {
-                        final String fmt = " Limited free disk space " +
-                             " prevented retaining some log files." +
-                             " Retained %,d bytes, but wanted to" +
-                             " retain %,d bytes based on replay cost." +
-                             " Associated file store: %s";
-                        msg.append(String.format(fmt,replayBytes,
-                                                 maxReplayBytes, fileInfo));
+                        final String fmt = " Limited free disk space " + " prevented retaining some log files."
+                                + " Retained %,d bytes, but wanted to" + " retain %,d bytes based on replay cost."
+                                + " Associated file store: %s";
+                        msg.append(String.format(fmt, replayBytes, maxReplayBytes, fileInfo));
                         break;
                     }
                     fileInfo.replaySpace -= fileSize;
@@ -2884,20 +2592,15 @@ public class RepNode extends StoppableThread {
             }
         }
 
-        msg.append(String.format(" Computing replayCostMinVLSN:" +
-            " networkRestoreBytes=%,d" +
-            " maxReplayBytes=%,d" +
-            " replayBytes=%,d" +
-            " firstVLSN=%s" +
-            " replayCostMinVLSN=%s",
-            networkRestoreBytes, maxReplayBytes, replayBytes,
-            firstVLSN, newReplayCostMinVLSN));
+        msg.append(String.format(
+                " Computing replayCostMinVLSN:" + " networkRestoreBytes=%,d" + " maxReplayBytes=%,d"
+                        + " replayBytes=%,d" + " firstVLSN=%s" + " replayCostMinVLSN=%s",
+                networkRestoreBytes, maxReplayBytes, replayBytes, firstVLSN, newReplayCostMinVLSN));
 
         if (fileInfo != null) {
             /* Add disk space info if available. */
-            msg.append(String.format(" Disk space: %,d GB total; %,d GB free. ",
-                                     (fileInfo.totalSpace >> 30),
-                                     (fileInfo.freeSpace >> 30)));
+            msg.append(String.format(" Disk space: %,d GB total; %,d GB free. ", (fileInfo.totalSpace >> 30),
+                    (fileInfo.freeSpace >> 30)));
         }
         return newReplayCostMinVLSN;
     }
@@ -2905,12 +2608,11 @@ public class RepNode extends StoppableThread {
     /** Holds space information for a file store. */
     private class FileStoreSpaceInfo {
         private final FileStoreInfo fileStoreInfo;
-        final long totalSpace;
-        final long freeSpace;
-        long replaySpace;
+        final long                  totalSpace;
+        final long                  freeSpace;
+        long                        replaySpace;
 
-        FileStoreSpaceInfo(final FileStoreInfo fileStoreInfo)
-            throws IOException {
+        FileStoreSpaceInfo(final FileStoreInfo fileStoreInfo) throws IOException {
 
             this.fileStoreInfo = fileStoreInfo;
             totalSpace = fileStoreInfo.getTotalSpace();
@@ -2927,17 +2629,15 @@ public class RepNode extends StoppableThread {
 
         @Override
         public String toString() {
-            return String.format("%s: totalSpace=%,d freeSpace=%,d" +
-                                 " targetFreeSpace=%,d",
-                                 fileStoreInfo, totalSpace, freeSpace,
-                                 getTargetFreeSpace());
+            return String.format("%s: totalSpace=%,d freeSpace=%,d" + " targetFreeSpace=%,d", fileStoreInfo, totalSpace,
+                    freeSpace, getTargetFreeSpace());
         }
     }
 
     /**
      * Maintain information about disk space available for log files used for
      * replay, so we can decide whether we have enough free space to retain
-     * them.  Information is looked up by file, but the return value expresses
+     * them. Information is looked up by file, but the return value expresses
      * the free space available on the file store (meaning volume or disk)
      * associated with the file.
      */
@@ -2947,25 +2647,21 @@ public class RepNode extends StoppableThread {
          * Maps a file store to an object storing space information for log
          * files in that file store.
          */
-        private final Map<FileStoreInfo, FileStoreSpaceInfo> fileStoreInfoMap =
-            new HashMap<FileStoreInfo, FileStoreSpaceInfo>();
+        private final Map<FileStoreInfo, FileStoreSpaceInfo> fileStoreInfoMap = new HashMap<FileStoreInfo, FileStoreSpaceInfo>();
 
         /**
          * Maps a file number to the object that stores space information for
-         * all files in the same file store.  The value is shared for all
-         * entries in this map associated with the same file store, and is
-         * shared with the associated value in fileStoreInfoMap.
+         * all files in the same file store. The value is shared for all entries
+         * in this map associated with the same file store, and is shared with
+         * the associated value in fileStoreInfoMap.
          */
-        private final Map<Long, FileStoreSpaceInfo> fileMap =
-            new HashMap<Long, FileStoreSpaceInfo>();
+        private final Map<Long, FileStoreSpaceInfo>          fileMap          = new HashMap<Long, FileStoreSpaceInfo>();
 
         /** The number of IOExceptions logged. */
-        private int loggedIOExceptions;
+        private int                                          loggedIOExceptions;
 
-        SpaceInfo(final Map<Long, FileSummary> fileSummaryMap,
-                  final NavigableSet<Long> unprotectedFiles,
-                  final long globalCBVLSNFile,
-                  final long lastVLSNFile) {
+        SpaceInfo(final Map<Long, FileSummary> fileSummaryMap, final NavigableSet<Long> unprotectedFiles,
+                  final long globalCBVLSNFile, final long lastVLSNFile) {
 
             /*
              * Tally information for all currently unprotected files, including
@@ -2984,8 +2680,8 @@ public class RepNode extends StoppableThread {
         }
 
         /**
-         * Returns the disk space information for the file store associated
-         * with the specified file.
+         * Returns the disk space information for the file store associated with
+         * the specified file.
          */
         FileStoreSpaceInfo getFileInfo(final long file) {
             return fileMap.get(file);
@@ -2995,35 +2691,29 @@ public class RepNode extends StoppableThread {
          * Create an entry for the file store associated with the file, if not
          * already present, and tally the space used by the individual file.
          */
-        private void tallyFile(final long file,
-                               final FileSummary fileSummary) {
+        private void tallyFile(final long file, final FileSummary fileSummary) {
 
-            final String fileName = repImpl.getFileManager().getFullFileName(
-                file, FileManager.JE_SUFFIX);
+            final String fileName = repImpl.getFileManager().getFullFileName(file, FileManager.JE_SUFFIX);
             try {
-                final FileStoreInfo fileStoreInfo =
-                    FileStoreInfo.getInfo(fileName);
-                FileStoreSpaceInfo fileInfo =
-                    fileStoreInfoMap.get(fileStoreInfo);
+                final FileStoreInfo fileStoreInfo = FileStoreInfo.getInfo(fileName);
+                FileStoreSpaceInfo fileInfo = fileStoreInfoMap.get(fileStoreInfo);
                 if (fileInfo == null) {
 
                     /*
                      * Set the initial value to the free space available beyond
-                     * the target amount.  We will then add to this value the
+                     * the target amount. We will then add to this value the
                      * amount of space used by replay log files located in this
-                     * file store.  If the initial value is negative, then the
+                     * file store. If the initial value is negative, then the
                      * result will be the amount of space we have available to
                      * store log files and still maintain the requested free
-                     * space.  The result may be negative, meaning we can't
-                     * meet the requirement even if all these replay files are
+                     * space. The result may be negative, meaning we can't meet
+                     * the requirement even if all these replay files are
                      * deleted.
                      */
                     fileInfo = new FileStoreSpaceInfo(fileStoreInfo);
                     fileStoreInfoMap.put(fileStoreInfo, fileInfo);
                     if (logger.isLoggable(Level.FINE)) {
-                        LoggerUtils.fine(
-                            logger, repImpl,
-                            "Space information for file store " + fileInfo);
+                        LoggerUtils.fine(logger, repImpl, "Space information for file store " + fileInfo);
                     }
                 }
                 fileMap.put(file, fileInfo);
@@ -3031,20 +2721,16 @@ public class RepNode extends StoppableThread {
             } catch (IOException e) {
 
                 /*
-                 * Problem getting file store information.  Leave this file out
+                 * Problem getting file store information. Leave this file out
                  * of the summary, which means that it will be retained because
-                 * we can't figure out which file store it is part of.
-                 *
-                 * Only log the first exception at INFO, to reduce clutter.
+                 * we can't figure out which file store it is part of. Only log
+                 * the first exception at INFO, to reduce clutter.
                  */
-                final Level level =
-                    (loggedIOExceptions == 0) ? Level.INFO : Level.FINE;
+                final Level level = (loggedIOExceptions == 0) ? Level.INFO : Level.FINE;
                 if (logger.isLoggable(level)) {
                     loggedIOExceptions++;
-                    LoggerUtils.logMsg(
-                        logger, repImpl, level,
-                        "Problem accessing file store info for file " +
-                        fileName + ": " + e);
+                    LoggerUtils.logMsg(logger, repImpl, level,
+                            "Problem accessing file store info for file " + fileName + ": " + e);
                 }
             }
         }
@@ -3059,8 +2745,8 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Shuts down the Network backup service *before* a rollback is initiated
-     * as part of syncup, thus ensuring that NetworkRestore does not see an
+     * Shuts down the Network backup service *before* a rollback is initiated as
+     * part of syncup, thus ensuring that NetworkRestore does not see an
      * inconsistent set of log files. Any network backup operations that are in
      * progress at this node are aborted. The client of the service will
      * experience network connection failures and will retry with this node
@@ -3076,16 +2762,15 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Restarts the network backup service *after* a rollback has been
-     * completed and the log files are once again in a consistent state.
+     * Restarts the network backup service *after* a rollback has been completed
+     * and the log files are once again in a consistent state.
      */
     final public void restartNetworkBackup() {
         if (logFeederManager != null) {
             throw EnvironmentFailureException.unexpectedState(repImpl);
         }
-        logFeederManager =
-            new com.sleepycat.je.rep.impl.networkRestore.FeederManager
-            (serviceDispatcher, repImpl, nameIdPair);
+        logFeederManager = new com.sleepycat.je.rep.impl.networkRestore.FeederManager(serviceDispatcher, repImpl,
+                nameIdPair);
     }
 
     /**
@@ -3094,9 +2779,8 @@ public class RepNode extends StoppableThread {
      * group itself.
      */
     public String dumpState() {
-        return  "\n" + feederManager.dumpState(false /* acksOnly */) +
-            "\nGlobalCBVLSN=" + getGroupCBVLSN() +
-            "\n" + getGroup();
+        return "\n" + feederManager.dumpState(false /* acksOnly */) + "\nGlobalCBVLSN=" + getGroupCBVLSN() + "\n"
+                + getGroup();
     }
 
     /**
@@ -3104,7 +2788,7 @@ public class RepNode extends StoppableThread {
      * acknowledgments.
      */
     public String dumpAckFeederState() {
-        return  "\n" + feederManager.dumpState(true /* acksOnly */) + "\n";
+        return "\n" + feederManager.dumpState(true /* acksOnly */) + "\n";
     }
 
     public ElectionQuorum getElectionQuorum() {
@@ -3122,7 +2806,7 @@ public class RepNode extends StoppableThread {
         convertHooks.add(hook);
     }
 
-    private boolean runConvertHooks () {
+    private boolean runConvertHooks() {
         if (convertHooks == null) {
             return true;
         }
@@ -3135,12 +2819,12 @@ public class RepNode extends StoppableThread {
 
     /**
      * Get the group minimum JE version.
-     *
-     * <p>Returns the minimum JE version that is required for all nodes that
-     * join this node's replication group.  The version returned is supported
-     * by all current and future group members.  The minimum JE version is
-     * guaranteed to only increase over time, so long as the data for the
-     * environment is not rolled back or lost.
+     * <p>
+     * Returns the minimum JE version that is required for all nodes that join
+     * this node's replication group. The version returned is supported by all
+     * current and future group members. The minimum JE version is guaranteed to
+     * only increase over time, so long as the data for the environment is not
+     * rolled back or lost.
      *
      * @return the group minimum JE version
      */
@@ -3152,30 +2836,29 @@ public class RepNode extends StoppableThread {
 
     /**
      * Checks if all data nodes in the replication group support the specified
-     * JE version.  Updates the group minimum JE version, and the group format
+     * JE version. Updates the group minimum JE version, and the group format
      * version, as needed to require all nodes joining the group to be running
      * at least the specified JE version.
-     *
-     * <p>This method should only be called on the master, because attempts to
+     * <p>
+     * This method should only be called on the master, because attempts to
      * update the rep group DB on an replica will fail.
      *
      * @param newMinJEVersion the new minimum JE version
      * @throws DatabaseException if an error occurs when accessing the
-     * replication group database
+     *             replication group database
      * @throws MinJEVersionUnsupportedException if the version is not supported
-     * by one or more current group members
+     *             by one or more current group members
      */
-    public void setMinJEVersion(final JEVersion newMinJEVersion)
-        throws MinJEVersionUnsupportedException {
+    public void setMinJEVersion(final JEVersion newMinJEVersion) throws MinJEVersionUnsupportedException {
 
         /*
          * Synchronize here on minJEVersionLock to prevent new secondary nodes
-         * from being added while updating the minimum JE version.  Electable
+         * from being added while updating the minimum JE version. Electable
          * nodes are stored in the RepGroupDB, so the check performed on that
-         * class's setMinJEVersion within a transaction insures that all
-         * current nodes have been checked before the minimum JE version is
-         * increased.  But secondary nodes are not stored persistently, so
-         * other synchronization is needed for them.
+         * class's setMinJEVersion within a transaction insures that all current
+         * nodes have been checked before the minimum JE version is increased.
+         * But secondary nodes are not stored persistently, so other
+         * synchronization is needed for them.
          */
         synchronized (minJEVersionLock) {
 
@@ -3194,20 +2877,16 @@ public class RepNode extends StoppableThread {
                 } else {
 
                     /* Use the version recorded by the feeder for replicas */
-                    final Feeder feeder =
-                        feederManager.getFeeder(node.getName());
+                    final Feeder feeder = feederManager.getFeeder(node.getName());
                     if (feeder != null) {
-                        final JEVersion currentReplicaJEVersion =
-                            feeder.getReplicaJEVersion();
+                        final JEVersion currentReplicaJEVersion = feeder.getReplicaJEVersion();
                         if (currentReplicaJEVersion != null) {
                             nodeJEVersion = currentReplicaJEVersion;
                         }
                     }
                 }
-                if ((nodeJEVersion == null) ||
-                    (newMinJEVersion.compareTo(nodeJEVersion) > 0)) {
-                    throw new MinJEVersionUnsupportedException(
-                        newMinJEVersion, node.getName(), nodeJEVersion);
+                if ((nodeJEVersion == null) || (newMinJEVersion.compareTo(nodeJEVersion) > 0)) {
+                    throw new MinJEVersionUnsupportedException(newMinJEVersion, node.getName(), nodeJEVersion);
                 }
             }
             repGroupDB.setMinJEVersion(newMinJEVersion);
@@ -3223,44 +2902,36 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Adds a transient ID node to the group.  Assign a node ID and add the
-     * node to the RepGroupImpl.  Don't notify the monitor: transient ID nodes
-     * do not generate GroupChangeEvents.
+     * Adds a transient ID node to the group. Assign a node ID and add the node
+     * to the RepGroupImpl. Don't notify the monitor: transient ID nodes do not
+     * generate GroupChangeEvents.
      *
      * @param node the node
      * @throws IllegalStateException if the store does not currently support
-     *         secondary nodes or the node doesn't meet the current minimum JE
-     *         version
+     *             secondary nodes or the node doesn't meet the current minimum
+     *             JE version
      * @throws NodeConflictException if the node conflicts with an existing
-     *         persistent node
+     *             persistent node
      */
     public void addTransientIdNode(final RepNodeImpl node) {
         if (!node.getType().hasTransientId()) {
             throw new IllegalArgumentException(
-                "Attempt to call addTransientIdNode with a" +
-                " node without transient ID: " + node);
+                    "Attempt to call addTransientIdNode with a" + " node without transient ID: " + node);
         }
-        final JEVersion requiredJEVersion =
-            RepGroupImpl.FORMAT_VERSION_3_JE_VERSION;
+        final JEVersion requiredJEVersion = RepGroupImpl.FORMAT_VERSION_3_JE_VERSION;
         try {
             setMinJEVersion(requiredJEVersion);
         } catch (MinJEVersionUnsupportedException e) {
             if (e.nodeVersion == null) {
                 throw new IllegalStateException(
-                    "Secondary nodes are not currently supported." +
-                    " The version running on node " + e.nodeName +
-                    " could not be determined," +
-                    " but this feature requires version " +
-                    requiredJEVersion.getNumericVersionString() +
-                    " or later.");
+                        "Secondary nodes are not currently supported." + " The version running on node " + e.nodeName
+                                + " could not be determined," + " but this feature requires version "
+                                + requiredJEVersion.getNumericVersionString() + " or later.");
             }
             throw new IllegalStateException(
-                "Secondary nodes are not currently supported." +
-                " Node " + e.nodeName + " is running version " +
-                e.nodeVersion.getNumericVersionString() +
-                ", but this feature requires version " +
-                requiredJEVersion.getNumericVersionString() +
-                " or later.");
+                    "Secondary nodes are not currently supported." + " Node " + e.nodeName + " is running version "
+                            + e.nodeVersion.getNumericVersionString() + ", but this feature requires version "
+                            + requiredJEVersion.getNumericVersionString() + " or later.");
         }
 
         /*
@@ -3269,19 +2940,13 @@ public class RepNode extends StoppableThread {
         synchronized (minJEVersionLock) {
             final JEVersion minJEVersion = group.getMinJEVersion();
             if (node.getJEVersion().compareTo(minJEVersion) < 0) {
-                throw new IllegalStateException(
-                    "The node does not meet the minimum required version" +
-                    " for the group." +
-                    " Node " + node.getNameIdPair().getName() +
-                    " is running version " + node.getJEVersion() +
-                    ", but the minimum required version is " +
-                    minJEVersion);
+                throw new IllegalStateException("The node does not meet the minimum required version"
+                        + " for the group." + " Node " + node.getNameIdPair().getName() + " is running version "
+                        + node.getJEVersion() + ", but the minimum required version is " + minJEVersion);
             }
             if (!node.getNameIdPair().hasNullId()) {
-                throw new IllegalStateException(
-                    "New " + node.getType().toString().toLowerCase() +
-                    " node " + node.getNameIdPair().getName() +
-                    " already has an ID: " + node.getNameIdPair().getId());
+                throw new IllegalStateException("New " + node.getType().toString().toLowerCase() + " node "
+                        + node.getNameIdPair().getName() + " already has an ID: " + node.getNameIdPair().getId());
             }
             node.getNameIdPair().setId(transientIds.allocateId());
             group.addTransientIdNode(node);
@@ -3289,16 +2954,15 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Removes a node with transient id from the group.  Remove the node from
-     * the RepGroupImpl and deallocate the node ID.
+     * Removes a node with transient id from the group. Remove the node from the
+     * RepGroupImpl and deallocate the node ID.
      *
      * @param node the node
      */
     public void removeTransientNode(final RepNodeImpl node) {
         if (!node.getType().hasTransientId()) {
             throw new IllegalArgumentException(
-                "Attempt to call removeTransientNode with a" +
-                " node without transient ID: " + node);
+                    "Attempt to call removeTransientNode with a" + " node without transient ID: " + node);
         }
         group.removeTransientNode(node);
         transientIds.deallocateId(node.getNodeId());
@@ -3306,6 +2970,7 @@ public class RepNode extends StoppableThread {
 
     private class RepElectionsConfig implements ElectionsConfig {
         private final RepNode repNode;
+
         RepElectionsConfig(RepNode repNode) {
             this.repNode = repNode;
         }
@@ -3347,11 +3012,11 @@ public class RepNode extends StoppableThread {
     }
 
     /**
-     * Track node IDs for node with transient IDs.  IDs are allocated from the
+     * Track node IDs for node with transient IDs. IDs are allocated from the
      * specified number of values at the high end of the range of integers.
      */
     static class TransientIds {
-        private final int size;
+        private final int    size;
         private final BitSet bits;
 
         /** Creates an instance that allocates the specified number of IDs. */
@@ -3370,7 +3035,7 @@ public class RepNode extends StoppableThread {
             /*
              * Note that scanning for the next clear bit is somewhat
              * inefficient, but this inefficiency shouldn't matter given the
-             * small number of secondary nodes expected.  If needed, the next
+             * small number of secondary nodes expected. If needed, the next
              * improvement would probably be to remember the last allocated ID,
              * to avoid repeated scans of an initial range of already allocated
              * bits.
@@ -3390,13 +3055,11 @@ public class RepNode extends StoppableThread {
          */
         synchronized void deallocateId(final int id) {
             if (id < Integer.MAX_VALUE - size) {
-                throw new IllegalArgumentException(
-                    "Illegal secondary node ID: " + id);
+                throw new IllegalArgumentException("Illegal secondary node ID: " + id);
             }
             final int pos = Integer.MAX_VALUE - id;
             if (!bits.get(pos)) {
-                throw new IllegalArgumentException(
-                    "Secondary node ID is not currently allocated: " + id);
+                throw new IllegalArgumentException("Secondary node ID is not currently allocated: " + id);
             }
             bits.clear(pos);
         }

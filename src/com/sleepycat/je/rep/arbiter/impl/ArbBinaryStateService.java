@@ -30,25 +30,23 @@ import com.sleepycat.je.utilint.LoggerUtils;
 import com.sleepycat.je.utilint.JVMSystemUtils;
 
 /**
- * The service registered by an Arbiter to answer the state request.
- *
- * To support the new BinaryStateProtocol, we introduce this new
- * BinaryNodeStateService, it's used by "Ping" command.
- *
+ * The service registered by an Arbiter to answer the state request. To support
+ * the new BinaryStateProtocol, we introduce this new BinaryNodeStateService,
+ * it's used by "Ping" command.
  */
 public class ArbBinaryStateService extends ExecutingService {
 
-    private final ArbiterImpl arbImpl;
+    private final ArbiterImpl       arbImpl;
     private final ServiceDispatcher dispatcher;
-    private final Logger logger;
+    private final Logger            logger;
 
     /* Identifies the Node State querying Service. */
-    public static final String SERVICE_NAME = "BinaryNodeState";
+    public static final String      SERVICE_NAME = "BinaryNodeState";
 
-    public ArbBinaryStateService(ServiceDispatcher dispatcher,
-                                 ArbiterImpl arbImpl) {
+    public ArbBinaryStateService(ServiceDispatcher dispatcher, ArbiterImpl arbImpl) {
         super(SERVICE_NAME, dispatcher);
-        this.arbImpl = arbImpl;;
+        this.arbImpl = arbImpl;
+        ;
         this.dispatcher = dispatcher;
         this.logger = LoggerUtils.getLogger(getClass());
 
@@ -72,22 +70,16 @@ public class ArbBinaryStateService extends ExecutingService {
         }
 
         /* Create the NodeState for the request. */
-        private BinaryNodeStateResponse createResponse
-            (BinaryNodeStateProtocol protocol) {
+        private BinaryNodeStateResponse createResponse(BinaryNodeStateProtocol protocol) {
 
             long joinTime = arbImpl.getJoinGroupTime();
-            long vlsnValue = (arbImpl.getArbiterVLSNTracker().get() == null ?
-                    0L : arbImpl.getArbiterVLSNTracker().get().getSequence());
+            long vlsnValue = (arbImpl.getArbiterVLSNTracker().get() == null ? 0L
+                    : arbImpl.getArbiterVLSNTracker().get().getSequence());
 
-            return protocol.new BinaryNodeStateResponse(
-                arbImpl.getNameIdPair().getName(),
-                arbImpl.getGroupName(),
-                arbImpl.getMasterStatus().getNodeMasterNameId().getName(),
-                JEVersion.CURRENT_VERSION, joinTime,
-                arbImpl.getNodeState(),
-                vlsnValue, vlsnValue,
-                0, LogEntryType.LOG_VERSION,
-                null, JVMSystemUtils.getSystemLoad());
+            return protocol.new BinaryNodeStateResponse(arbImpl.getNameIdPair().getName(), arbImpl.getGroupName(),
+                    arbImpl.getMasterStatus().getNodeMasterNameId().getName(), JEVersion.CURRENT_VERSION, joinTime,
+                    arbImpl.getNodeState(), vlsnValue, vlsnValue, 0, LogEntryType.LOG_VERSION, null,
+                    JVMSystemUtils.getSystemLoad());
         }
 
         @Override
@@ -95,45 +87,34 @@ public class ArbBinaryStateService extends ExecutingService {
             BinaryNodeStateProtocol protocol = null;
 
             try {
-                protocol = new BinaryNodeStateProtocol(NameIdPair.NOCHECK,
-                                                       arbImpl.getRepImpl());
+                protocol = new BinaryNodeStateProtocol(NameIdPair.NOCHECK, arbImpl.getRepImpl());
                 try {
                     channel.getSocketChannel().configureBlocking(true);
 
-                    BinaryNodeStateRequest msg =
-                        protocol.read(channel, BinaryNodeStateRequest.class);
+                    BinaryNodeStateRequest msg = protocol.read(channel, BinaryNodeStateRequest.class);
 
                     /*
                      * Response a protocol error if the group name doesn't
                      * match.
                      */
                     final String groupName = msg.getGroupName();
-                    if (!arbImpl.getGroupName().equals(groupName) ||
-                        !arbImpl.getNameIdPair().getName().
-                            equals(msg.getNodeName())) {
-                        throw new ProtocolException("Sending the request to" +
-                                " a wrong group or a wrong node.");
+                    if (!arbImpl.getGroupName().equals(groupName)
+                            || !arbImpl.getNameIdPair().getName().equals(msg.getNodeName())) {
+                        throw new ProtocolException("Sending the request to" + " a wrong group or a wrong node.");
                     }
 
                     /* Write the response the requested node. */
-                    BinaryNodeStateResponse response =
-                        createResponse(protocol);
+                    BinaryNodeStateResponse response = createResponse(protocol);
                     protocol.write(response, channel);
-                    LoggerUtils.finest(logger, arbImpl.getRepImpl(),
-                            "Deal with a node state request successfully.");
+                    LoggerUtils.finest(logger, arbImpl.getRepImpl(), "Deal with a node state request successfully.");
                 } catch (ProtocolException e) {
-                    LoggerUtils.info(logger, arbImpl.getRepImpl(),
-                            "Get a ProtocolException with message: " +
-                            LoggerUtils.exceptionTypeAndMsg(e) +
-                            " while dealing with a node state request.");
-                    protocol.write
-                        (protocol.new ProtocolError(e.getMessage()), channel);
+                    LoggerUtils.info(logger, arbImpl.getRepImpl(), "Get a ProtocolException with message: "
+                            + LoggerUtils.exceptionTypeAndMsg(e) + " while dealing with a node state request.");
+                    protocol.write(protocol.new ProtocolError(e.getMessage()), channel);
                 } catch (Exception e) {
                     LoggerUtils.info(logger, arbImpl.getRepImpl(),
-                            "Unexpected exception: " +
-                             LoggerUtils.exceptionTypeAndMsg(e));
-                    protocol.write
-                        (protocol.new ProtocolError(e.getMessage()), channel);
+                            "Unexpected exception: " + LoggerUtils.exceptionTypeAndMsg(e));
+                    protocol.write(protocol.new ProtocolError(e.getMessage()), channel);
                 } finally {
                     if (channel.isOpen()) {
                         channel.close();
@@ -142,8 +123,7 @@ public class ArbBinaryStateService extends ExecutingService {
             } catch (IOException e) {
 
                 /*
-                 * Channel has already been closed, or the close itself
-                 * failed.
+                 * Channel has already been closed, or the close itself failed.
                  */
             }
         }

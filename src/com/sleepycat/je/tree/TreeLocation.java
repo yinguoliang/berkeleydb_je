@@ -21,12 +21,12 @@ import com.sleepycat.je.utilint.DbLsn;
  */
 public class TreeLocation {
 
-    public BIN bin;         // parent BIN for the target LN
-    public int index;       // index of where the LN is or should go
-    public byte[] lnKey;    // the key that represents this LN in this BIN
-    public long childLsn = DbLsn.NULL_LSN; // current LSN value in that slot.
-    public int childLoggedSize;
-    public boolean isKD = false;
+    public BIN     bin;                         // parent BIN for the target LN
+    public int     index;                       // index of where the LN is or should go
+    public byte[]  lnKey;                       // the key that represents this LN in this BIN
+    public long    childLsn   = DbLsn.NULL_LSN; // current LSN value in that slot.
+    public int     childLoggedSize;
+    public boolean isKD       = false;
     public boolean isEmbedded = false;
 
     public void reset() {
@@ -50,7 +50,7 @@ public class TreeLocation {
         sb.append("\" index=\"");
         sb.append(index);
         sb.append("\" lnKey=\"");
-        sb.append(Key.dumpString(lnKey,0));
+        sb.append(Key.dumpString(lnKey, 0));
         sb.append("\" childLsn=\"");
         sb.append(DbLsn.toString(childLsn));
         sb.append("\" childLoggedSize=\"");

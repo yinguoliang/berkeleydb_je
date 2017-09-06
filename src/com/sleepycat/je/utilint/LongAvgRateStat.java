@@ -18,8 +18,8 @@ import java.util.concurrent.TimeUnit;
 import com.sleepycat.je.utilint.StatDefinition.StatType;
 
 /**
- * A long JE stat generated from an exponential moving average over a
- * specified time period of the rate of change in a value over time.
+ * A long JE stat generated from an exponential moving average over a specified
+ * time period of the rate of change in a value over time.
  */
 public class LongAvgRateStat extends Stat<Long> {
     private static final long serialVersionUID = 1L;
@@ -28,7 +28,7 @@ public class LongAvgRateStat extends Stat<Long> {
     private final LongAvgRate avg;
 
     /**
-     * Creates an instance of this class.  The definition type must be
+     * Creates an instance of this class. The definition type must be
      * INCREMENTAL.
      *
      * @param group the statistics group
@@ -36,14 +36,10 @@ public class LongAvgRateStat extends Stat<Long> {
      * @param periodMillis the averaging period in milliseconds
      * @param reportTimeUnit the time unit for reporting the rate
      */
-    public LongAvgRateStat(StatGroup group,
-                           StatDefinition definition,
-                           long periodMillis,
-                           TimeUnit reportTimeUnit) {
+    public LongAvgRateStat(StatGroup group, StatDefinition definition, long periodMillis, TimeUnit reportTimeUnit) {
         super(group, definition);
         assert definition.getType() == StatType.INCREMENTAL;
-        avg = new LongAvgRate(
-            definition.getName(), periodMillis, reportTimeUnit);
+        avg = new LongAvgRate(definition.getName(), periodMillis, reportTimeUnit);
     }
 
     private LongAvgRateStat(StatDefinition definition, LongAvgRate avg) {
@@ -100,9 +96,9 @@ public class LongAvgRateStat extends Stat<Long> {
 
     /**
      * Create a stat that includes the newest entries from this stat and the
-     * base stat.  This method does not use negative intervals, since negation
-     * does not work properly for this non-additive stat.  The base argument
-     * must be a LongAvgRateStat.
+     * base stat. This method does not use negative intervals, since negation
+     * does not work properly for this non-additive stat. The base argument must
+     * be a LongAvgRateStat.
      */
     @Override
     public LongAvgRateStat computeInterval(Stat<Long> base) {
@@ -113,5 +109,6 @@ public class LongAvgRateStat extends Stat<Long> {
 
     /** Do nothing for this non-additive stat. */
     @Override
-    public void negate() { }
+    public void negate() {
+    }
 }

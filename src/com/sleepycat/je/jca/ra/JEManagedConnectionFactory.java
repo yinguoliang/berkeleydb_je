@@ -29,8 +29,7 @@ import com.sleepycat.je.DbInternal;
 import com.sleepycat.je.EnvironmentFailureException;
 import com.sleepycat.je.dbi.EnvironmentImpl;
 
-public class JEManagedConnectionFactory
-    implements ManagedConnectionFactory, Serializable {
+public class JEManagedConnectionFactory implements ManagedConnectionFactory, Serializable {
 
     private static final long serialVersionUID = 658705244L;
 
@@ -42,36 +41,27 @@ public class JEManagedConnectionFactory
     }
 
     public Object createConnectionFactory() {
-        throw EnvironmentFailureException.unexpectedState
-            ("must supply a connMgr");
+        throw EnvironmentFailureException.unexpectedState("must supply a connMgr");
     }
 
-    public ManagedConnection
-        createManagedConnection(Subject subject,
-                                ConnectionRequestInfo info)
-        throws ResourceException {
+    public ManagedConnection createManagedConnection(Subject subject, ConnectionRequestInfo info)
+            throws ResourceException {
 
         JERequestInfo jeInfo = (JERequestInfo) info;
         return new JEManagedConnection(subject, jeInfo);
     }
 
-    public ManagedConnection
-        matchManagedConnections(Set connectionSet,
-                                Subject subject,
-                                ConnectionRequestInfo info) {
+    public ManagedConnection matchManagedConnections(Set connectionSet, Subject subject, ConnectionRequestInfo info) {
         JERequestInfo jeInfo = (JERequestInfo) info;
         Iterator iter = connectionSet.iterator();
         while (iter.hasNext()) {
             Object next = iter.next();
             if (next instanceof JEManagedConnection) {
                 JEManagedConnection mc = (JEManagedConnection) next;
-                EnvironmentImpl nextEnvImpl =
-                    DbInternal.getNonNullEnvImpl(mc.getEnvironment());
+                EnvironmentImpl nextEnvImpl = DbInternal.getNonNullEnvImpl(mc.getEnvironment());
                 /* Do we need to match on more than root dir and r/o? */
-                if (nextEnvImpl.getEnvironmentHome().
-                    equals(jeInfo.getJERootDir()) &&
-                    nextEnvImpl.isReadOnly() ==
-                    jeInfo.getEnvConfig().getReadOnly()) {
+                if (nextEnvImpl.getEnvironmentHome().equals(jeInfo.getJERootDir())
+                        && nextEnvImpl.isReadOnly() == jeInfo.getEnvConfig().getReadOnly()) {
                     return mc;
                 }
             }

@@ -18,14 +18,15 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 
 /**
- * A replacement for ByteArrayOutputStream that does not synchronize every
- * byte read.
- *
- * <p>This class extends {@link OutputStream} and its <code>write()</code>
- * methods allow it to be used as a standard output stream.  In addition, it
- * provides <code>writeFast()</code> methods that are not declared to throw
- * <code>IOException</code>.  <code>IOException</code> is never thrown by this
- * class.</p>
+ * A replacement for ByteArrayOutputStream that does not synchronize every byte
+ * read.
+ * <p>
+ * This class extends {@link OutputStream} and its <code>write()</code> methods
+ * allow it to be used as a standard output stream. In addition, it provides
+ * <code>writeFast()</code> methods that are not declared to throw
+ * <code>IOException</code>. <code>IOException</code> is never thrown by this
+ * class.
+ * </p>
  *
  * @author Mark Hayes
  */
@@ -33,24 +34,24 @@ public class FastOutputStream extends OutputStream {
 
     /**
      * The default initial size of the buffer if no initialSize parameter is
-     * specified.  This constant is 100 bytes.
+     * specified. This constant is 100 bytes.
      */
-    public static final int DEFAULT_INIT_SIZE = 100;
+    public static final int DEFAULT_INIT_SIZE      = 100;
 
     /**
-     * The default amount that the buffer is increased when it is full.  This
+     * The default amount that the buffer is increased when it is full. This
      * constant is zero, which means to double the current buffer size.
      */
-    public static final int DEFAULT_BUMP_SIZE = 0;
+    public static final int DEFAULT_BUMP_SIZE      = 0;
 
-    private int len;
-    private int bumpLen;
-    private byte[] buf;
+    private int             len;
+    private int             bumpLen;
+    private byte[]          buf;
 
     /*
      * We can return the same byte[] for 0 length arrays.
      */
-    private static byte[] ZERO_LENGTH_BYTE_ARRAY = new byte[0];
+    private static byte[]   ZERO_LENGTH_BYTE_ARRAY = new byte[0];
 
     /**
      * Creates an output stream with default sizes.
@@ -75,7 +76,6 @@ public class FastOutputStream extends OutputStream {
      * Creates an output stream with a given bump size and initial size.
      *
      * @param initialSize the initial size of the buffer.
-     *
      * @param bumpSize the amount to increment the buffer.
      */
     public FastOutputStream(int initialSize, int bumpSize) {
@@ -84,8 +84,8 @@ public class FastOutputStream extends OutputStream {
     }
 
     /**
-     * Creates an output stream with a given initial buffer and a default
-     * bump size.
+     * Creates an output stream with a given initial buffer and a default bump
+     * size.
      *
      * @param buffer the initial buffer; will be owned by this object.
      */
@@ -96,14 +96,13 @@ public class FastOutputStream extends OutputStream {
     }
 
     /**
-     * Creates an output stream with a given initial buffer and a given
-     * bump size.
+     * Creates an output stream with a given initial buffer and a given bump
+     * size.
      *
      * @param buffer the initial buffer; will be owned by this object.
-     *
-     * @param bumpSize the amount to increment the buffer.  If zero (the
-     * default), the current buffer size will be doubled when the buffer is
-     * full.
+     * @param bumpSize the amount to increment the buffer. If zero (the
+     *            default), the current buffer size will be doubled when the
+     *            buffer is full.
      */
     public FastOutputStream(byte[] buffer, int bumpSize) {
 
@@ -157,8 +156,7 @@ public class FastOutputStream extends OutputStream {
         return new String(buf, 0, len);
     }
 
-    public String toString(String encoding)
-        throws UnsupportedEncodingException {
+    public String toString(String encoding) throws UnsupportedEncodingException {
 
         return new String(buf, 0, len, encoding);
     }
@@ -181,7 +179,6 @@ public class FastOutputStream extends OutputStream {
      * <code>IOException</code>.
      *
      * @param b the byte to write.
-     *
      * @see #write(int)
      */
     public final void writeFast(int b) {
@@ -197,7 +194,6 @@ public class FastOutputStream extends OutputStream {
      * <code>IOException</code>.
      *
      * @param fromBuf the buffer to write.
-     *
      * @see #write(byte[])
      */
     public final void writeFast(byte[] fromBuf) {
@@ -215,11 +211,8 @@ public class FastOutputStream extends OutputStream {
      * <code>IOException</code>.
      *
      * @param fromBuf the buffer to write.
-     *
      * @param offset the start offset in the buffer.
-     *
      * @param length the number of bytes to write.
-     *
      * @see #write(byte[],int,int)
      */
     public final void writeFast(byte[] fromBuf, int offset, int length) {
@@ -253,8 +246,8 @@ public class FastOutputStream extends OutputStream {
     }
 
     /**
-     * Returns the length used in the internal buffer, i.e., the offset at
-     * which data will be written next.
+     * Returns the length used in the internal buffer, i.e., the offset at which
+     * data will be written next.
      *
      * @return the buffer length.
      */

@@ -20,8 +20,9 @@ import com.sleepycat.je.DatabaseEntry;
 /**
  * A concrete <code>TupleBinding</code> for a sorted <code>BigDecimal</code>
  * value.
- *
- * <p>There are two ways to use this class:</p>
+ * <p>
+ * There are two ways to use this class:
+ * </p>
  * <ol>
  * <li>When using the {@link com.sleepycat.je} package directly, the static
  * methods in this class can be used to convert between primitive values and
@@ -56,7 +57,6 @@ public class SortedBigDecimalBinding extends TupleBinding<BigDecimal> {
      * Converts an entry buffer into a <code>BigDecimal</code> value.
      *
      * @param entry is the source entry buffer.
-     *
      * @return the resulting value.
      */
     public static BigDecimal entryToBigDecimal(DatabaseEntry entry) {
@@ -68,7 +68,6 @@ public class SortedBigDecimalBinding extends TupleBinding<BigDecimal> {
      * Converts a <code>BigDecimal</code> value into an entry buffer.
      *
      * @param val is the source value.
-     *
      * @param entry is the destination entry buffer.
      */
     public static void bigDecimalToEntry(BigDecimal val, DatabaseEntry entry) {

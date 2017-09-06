@@ -41,39 +41,39 @@ import com.sleepycat.je.utilint.VLSN;
 /**
  * A Master Transfer operation.
  * <p>
- * Each Master Transfer operation uses a separate instance of this class.
- * There is usually no more than one instance in the lifetime of a master node,
+ * Each Master Transfer operation uses a separate instance of this class. There
+ * is usually no more than one instance in the lifetime of a master node,
  * because if the transfer succeeds, the old master node environment becomes
- * invalid and must be closed.  However, if an operation times out, another
- * operation can try again later.  Or, a second operation can "forcibly"
+ * invalid and must be closed. However, if an operation times out, another
+ * operation can try again later. Or, a second operation can "forcibly"
  * supersede an existing operation in progress.
  *
  * @see ReplicatedEnvironment#transferMaster(Set, int, TimeUnit)
  */
 public class MasterTransfer {
-    final private Set<String> replicas;
-    final private long startTimeMs;
-    final private long timeout;
-    final private long deadlineTimeMs;
-    final private RepNode repNode;
-    final private Map<String, VLSN> readyReplicas;
-    volatile private CountDownLatch blocker;
+    final private Set<String>                         replicas;
+    final private long                                startTimeMs;
+    final private long                                timeout;
+    final private long                                deadlineTimeMs;
+    final private RepNode                             repNode;
+    final private Map<String, VLSN>                   readyReplicas;
+    volatile private CountDownLatch                   blocker;
 
     /**
      * Flag that indicates we've reached the point where we're committed to
      * proceeding with the transfer: we've completed phase 2, chosen a winner,
-     * and are now notifying everyone of the new (fake) election result.  Once
-     * we get to this point, we can't allow a new Master Transfer operation
-     * attempt to supersede us.
+     * and are now notifying everyone of the new (fake) election result. Once we
+     * get to this point, we can't allow a new Master Transfer operation attempt
+     * to supersede us.
      */
-    volatile private boolean done;
+    volatile private boolean                          done;
 
     /**
      * Queue which communicates key events of interest from Feeders regarding
-     * the progress of their efforts to catch up with the end of the log.  The
+     * the progress of their efforts to catch up with the end of the log. The
      * existence of this object signifies that (1) the owning Master Transfer
      * object is viable (hasn't been superseded by a later, "forcing" MT
-     * operation); and (2) we have not yet discovered a winner.  Once we have
+     * operation); and (2) we have not yet discovered a winner. Once we have
      * chosen a winner we disallow any future attempt to supersede this
      * operation.
      *
@@ -82,7 +82,7 @@ public class MasterTransfer {
      */
     private ExceptionAwareBlockingQueue<VLSNProgress> eventQueue;
 
-    final private Logger logger = LoggerUtils.getLogger(getClass());
+    final private Logger                              logger = LoggerUtils.getLogger(getClass());
 
     MasterTransfer(Set<String> replicas, long timeout, RepNode repNode) {
         this.replicas = replicas;
@@ -92,12 +92,9 @@ public class MasterTransfer {
         this.repNode = repNode;
 
         LoggerUtils.info(logger, repNode.getRepImpl(),
-                         "Start Master Transfer for " +
-                         timeout + " msec, targeting: " +
-                         Arrays.toString(replicas.toArray()));
+                "Start Master Transfer for " + timeout + " msec, targeting: " + Arrays.toString(replicas.toArray()));
         readyReplicas = new HashMap<String, VLSN>(replicas.size());
-        eventQueue = new ExceptionAwareBlockingQueue<VLSNProgress>
-            (repNode.getRepImpl(), new VLSNProgress(null, null));
+        eventQueue = new ExceptionAwareBlockingQueue<VLSNProgress>(repNode.getRepImpl(), new VLSNProgress(null, null));
     }
 
     /**
@@ -105,7 +102,7 @@ public class MasterTransfer {
      * reached the point of no return.
      *
      * @return true, if the operation was cancelled, false if it's too late for
-     * a clean cancellation.
+     *         a clean cancellation.
      */
     synchronized public boolean abort(Exception e) {
         assert (e != null);
@@ -132,14 +129,14 @@ public class MasterTransfer {
 
     /**
      * Informs this Master Transfer operation that the named Feeder is shutting
-     * down, because its replica connection has been lost.  This of course
-     * means that we can't expect this Feeder to soon catch up with our VLSN.
-     * In particular, if we have reached Phase 2 on the strength of the
-     * progress of only this one Feeder, then we must revert back to Phase 1.
+     * down, because its replica connection has been lost. This of course means
+     * that we can't expect this Feeder to soon catch up with our VLSN. In
+     * particular, if we have reached Phase 2 on the strength of the progress of
+     * only this one Feeder, then we must revert back to Phase 1.
      * <p>
-     * Actually all we do here is post a special kind of "progress" event to
-     * our queue; it gets processed for real in the {@code chooseReplica()}
-     * thread, along with all the other events.
+     * Actually all we do here is post a special kind of "progress" event to our
+     * queue; it gets processed for real in the {@code chooseReplica()} thread,
+     * along with all the other events.
      *
      * @see #chooseReplica
      */
@@ -152,14 +149,13 @@ public class MasterTransfer {
     }
 
     /**
-     * Performs the core processing of a Master Transfer operation.  We first
+     * Performs the core processing of a Master Transfer operation. We first
      * wait for one of the candidate target replica nodes to become completely
-     * synchronized.  We then send a message to all nodes in the group
-     * (including ourselves) announcing which node is to become the new
-     * master.
+     * synchronized. We then send a message to all nodes in the group (including
+     * ourselves) announcing which node is to become the new master.
      * <p>
      * If the operation fails we release any transaction commit/abort threads
-     * that may have been blocked during phase 2 of the wait.  However, in the
+     * that may have been blocked during phase 2 of the wait. However, in the
      * success case the release of any such transaction threads is done as a
      * natural by-product of the transition of the environment from master to
      * replica status.
@@ -177,8 +173,7 @@ public class MasterTransfer {
             annouceWinner(result);
             return result;
         } catch (MasterTransferFailureException e) {
-            LoggerUtils.warning(logger, repNode.getRepImpl(),
-                                "Master Transfer operation failed: " + e);
+            LoggerUtils.warning(logger, repNode.getRepImpl(), "Master Transfer operation failed: " + e);
             throw e;
         } catch (InterruptedException ie) {
             throw new ThreadInterruptedException(repNode.getRepImpl(), ie);
@@ -192,15 +187,15 @@ public class MasterTransfer {
 
     /**
      * Prepares for a Master Transfer operation by waiting for one of the
-     * nominated candidate target replica nodes to catch up with the master,
-     * in two phases, as described in
+     * nominated candidate target replica nodes to catch up with the master, in
+     * two phases, as described in
      * {@link ReplicatedEnvironment#transferMaster(Set, int, TimeUnit)}.
      * <p>
      * This method works by observing events generated by Feeder threads and
      * passed to us via a queue.
      *
      * @return the node name of the first replica to complete phase 2 of the
-     * preparation, or {@code null} if the operation times out.
+     *         preparation, or {@code null} if the operation times out.
      */
     private String chooseReplica() throws InterruptedException {
         final ExceptionAwareBlockingQueue<VLSNProgress> queue = getQueue();
@@ -208,8 +203,7 @@ public class MasterTransfer {
             return null;
         }
         final FeederManager feederManager = repNode.feederManager();
-        final Map<String, Feeder> activeReplicas =
-            feederManager.activeReplicasMap();
+        final Map<String, Feeder> activeReplicas = feederManager.activeReplicasMap();
         for (String nodeName : replicas) {
             final Feeder feeder = activeReplicas.get(nodeName);
             if (feeder != null) {
@@ -220,16 +214,14 @@ public class MasterTransfer {
         /*
          * Phase 1 could last a long time, if all of our candidate replicas are
          * still catching up (or not even connected); so we allow new
-         * transactions to be written.  But once we get to phase 2 we block
-         * commit/abort operations for a final (quicker) catch-up.  Thus we can
+         * transactions to be written. But once we get to phase 2 we block
+         * commit/abort operations for a final (quicker) catch-up. Thus we can
          * tell whether we're in phase 2 by whether we have a non-null blocker.
          */
         String result = null;
         for (;;) {
-            final long pollTimeout =
-                deadlineTimeMs - System.currentTimeMillis();
-            final VLSNProgress event =
-                queue.pollOrException(pollTimeout, TimeUnit.MILLISECONDS);
+            final long pollTimeout = deadlineTimeMs - System.currentTimeMillis();
+            final VLSNProgress event = queue.pollOrException(pollTimeout, TimeUnit.MILLISECONDS);
             if (event == null) {
                 return null;
             }
@@ -241,15 +233,15 @@ public class MasterTransfer {
                 if (blocker != null && readyReplicas.isEmpty()) {
 
                     /*
-                     * Must revert back to phase 1.  The latch will still
-                     * exist, because we've passed it to repImpl; and this is
-                     * exactly what we want, so that blocked txns can proceed,
-                     * and new ones won't get blocked for now.
+                     * Must revert back to phase 1. The latch will still exist,
+                     * because we've passed it to repImpl; and this is exactly
+                     * what we want, so that blocked txns can proceed, and new
+                     * ones won't get blocked for now.
                      */
                     blocker.countDown();
                     blocker = null;
                 }
-            } else if (blocker == null) {   /* phase 1 */
+            } else if (blocker == null) { /* phase 1 */
                 assert readyReplicas.isEmpty();
                 readyReplicas.put(event.replicaNodeName, event.vlsn);
                 blocker = new CountDownLatch(1);
@@ -261,16 +253,16 @@ public class MasterTransfer {
                 if (event.getVLSN().compareTo(endVLSN) >= 0) {
                     result = event.replicaNodeName;
                 }
-            } else {            /* phase 2 */
+            } else { /* phase 2 */
                 if (event.getVLSN().compareTo(endVLSN) >= 0) {
                     result = event.replicaNodeName;
                 } else {
 
                     /*
-                     * The present VLSN does not match the ultimate target
-                     * VLSN, so we're not done yet.  Since there could be a few
-                     * events of this type, only log all of them at the
-                     * {@code FINE} level.
+                     * The present VLSN does not match the ultimate target VLSN,
+                     * so we're not done yet. Since there could be a few events
+                     * of this type, only log all of them at the {@code FINE}
+                     * level.
                      */
                     readyReplicas.put(event.replicaNodeName, event.vlsn);
                     level = Level.FINE;
@@ -278,11 +270,8 @@ public class MasterTransfer {
             }
 
             /* Emit log message after the fact */
-            LoggerUtils.logMsg(logger, repNode.getRepImpl(), level,
-                               "Master Transfer progress: " +
-                               event.replicaNodeName + ", " + event.vlsn +
-                               ", phase: " + (blocker == null ? 1 : 2) +
-                               ", endVLSN: " + endVLSN);
+            LoggerUtils.logMsg(logger, repNode.getRepImpl(), level, "Master Transfer progress: " + event.replicaNodeName
+                    + ", " + event.vlsn + ", phase: " + (blocker == null ? 1 : 2) + ", endVLSN: " + endVLSN);
             if (result != null) {
                 return result;
             }
@@ -290,44 +279,33 @@ public class MasterTransfer {
     }
 
     /**
-     * Broadcasts a fake election result message.  This does a couple things:
-     * (1) prods the chosen replica to become the new master; and (2) forces
-     * the old master to notice and shut down with a master-replica transition
+     * Broadcasts a fake election result message. This does a couple things: (1)
+     * prods the chosen replica to become the new master; and (2) forces the old
+     * master to notice and shut down with a master-replica transition
      * exception.
      */
     private void annouceWinner(String nodeName) {
         final RepGroupImpl group = repNode.getGroup();
         RepNodeImpl node = group.getNode(nodeName);
-        MasterValue newMaster = new MasterValue
-            (node.getSocketAddress().getHostName(),
-             node.getSocketAddress().getPort(),
-             node.getNameIdPair());
-        Proposal proposal =
-            new TimebasedProposalGenerator().nextProposal();
+        MasterValue newMaster = new MasterValue(node.getSocketAddress().getHostName(),
+                node.getSocketAddress().getPort(), node.getNameIdPair());
+        Proposal proposal = new TimebasedProposalGenerator().nextProposal();
         final Elections elections = repNode.getElections();
         elections.getLearner();
-        Learner.informLearners
-            (group.getAllLearnerSockets(),
-             new WinningProposal(proposal, newMaster, null),
-             elections.getProtocol(),
-             elections.getThreadPool(),
-             elections.getLogger(),
-             repNode.getRepImpl(),
-             null);
+        Learner.informLearners(group.getAllLearnerSockets(), new WinningProposal(proposal, newMaster, null),
+                elections.getProtocol(), elections.getThreadPool(), elections.getLogger(), repNode.getRepImpl(), null);
     }
 
     /**
      * Enables the given {@code Feeder} to contribute to this Master Transfer
-     * operation.  Called from the {@code FeederManager} when a new {@code
+     * operation. Called from the {@code FeederManager} when a new {@code
      * Feeder} is established during the time when a Master Transfer operation
      * is already in progress.
      */
     void addFeeder(Feeder f) {
         String name = f.getReplicaNameIdPair().getName();
         if (replicas.contains(name)) {
-            LoggerUtils.info(logger, repNode.getRepImpl(),
-                             "Add node " + name +
-                             " to existing Master Transfer");
+            LoggerUtils.info(logger, repNode.getRepImpl(), "Add node " + name + " to existing Master Transfer");
             f.setMasterTransfer(this);
         }
     }
@@ -341,22 +319,21 @@ public class MasterTransfer {
      * out.
      */
     private String getTimeoutMsg() {
-        return "Timed out: started at " + new Date(startTimeMs) +
-            " for " + timeout + " milliseconds\n" +
-            "master's VLSN: " + repNode.getCurrentTxnEndVLSN() +
-            repNode.dumpAckFeederState();
+        return "Timed out: started at " + new Date(startTimeMs) + " for " + timeout + " milliseconds\n"
+                + "master's VLSN: " + repNode.getCurrentTxnEndVLSN() + repNode.dumpAckFeederState();
     }
 
     /**
      * An event of interest in the pursuit of our goal of completing the Master
-     * Transfer.  Generally it indicates that the named replica has received
-     * and processed the transaction identified by the given VLSN.  As a
-     * special case, an event representing the death of a Feeder is represented
-     * by a {@code null} VLSN.
+     * Transfer. Generally it indicates that the named replica has received and
+     * processed the transaction identified by the given VLSN. As a special
+     * case, an event representing the death of a Feeder is represented by a
+     * {@code null} VLSN.
      */
     static class VLSNProgress {
-        final VLSN vlsn;
+        final VLSN   vlsn;
         final String replicaNodeName;
+
         VLSNProgress(VLSN vlsn, String replicaNodeName) {
             this.vlsn = vlsn;
             this.replicaNodeName = replicaNodeName;

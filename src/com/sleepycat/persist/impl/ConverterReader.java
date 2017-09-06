@@ -26,36 +26,30 @@ public class ConverterReader implements Reader {
 
     private static final long serialVersionUID = -305788321064984348L;
 
-    private Converter converter;
-    private transient Format oldFormat;
+    private Converter         converter;
+    private transient Format  oldFormat;
 
     ConverterReader(Converter converter) {
         this.converter = converter;
     }
 
-    public void initializeReader(Catalog catalog,
-                                 EntityModel model,
-                                 int initVersion,
-                                 Format oldFormat) {
+    public void initializeReader(Catalog catalog, EntityModel model, int initVersion, Format oldFormat) {
         this.oldFormat = oldFormat;
     }
 
-    public Object newInstance(EntityInput input, boolean rawAccess)
-        throws RefreshException {
+    public Object newInstance(EntityInput input, boolean rawAccess) throws RefreshException {
 
         /* Create the old format RawObject. */
         return oldFormat.newInstance(input, true);
     }
 
-    public void readPriKey(Object o, EntityInput input, boolean rawAccess)
-        throws RefreshException {
-        
+    public void readPriKey(Object o, EntityInput input, boolean rawAccess) throws RefreshException {
+
         /* Read the old format RawObject's primary key. */
         oldFormat.readPriKey(o, input, true);
     }
 
-    public Object readObject(Object o, EntityInput input, boolean rawAccess)
-        throws RefreshException {
+    public Object readObject(Object o, EntityInput input, boolean rawAccess) throws RefreshException {
 
         Catalog catalog = input.getCatalog();
 
@@ -74,7 +68,7 @@ public class ConverterReader implements Reader {
         }
         return o;
     }
-    
+
     public Accessor getAccessor(boolean rawAccess) {
         return oldFormat.getAccessor(rawAccess);
     }

@@ -18,23 +18,19 @@ import com.sleepycat.je.dbi.MemoryBudget;
 import com.sleepycat.je.tree.LN;
 
 /**
- * The information necessary to lookup an LN.  Used for pending LNs that are
- * locked and must be migrated later, or cannot be migrated immediately during
- * a split.  Also used in a look ahead cache in FileProcessor.
- *
- * Is public for Sizeof only.
+ * The information necessary to lookup an LN. Used for pending LNs that are
+ * locked and must be migrated later, or cannot be migrated immediately during a
+ * split. Also used in a look ahead cache in FileProcessor. Is public for Sizeof
+ * only.
  */
 public final class LNInfo {
 
-    private final LN ln;
+    private final LN         ln;
     private final DatabaseId dbId;
-    private final byte[] key;
-    private final long expirationTime;
+    private final byte[]     key;
+    private final long       expirationTime;
 
-    public LNInfo(final LN ln,
-                  final DatabaseId dbId,
-                  final byte[] key,
-                  final long expirationTime) {
+    public LNInfo(final LN ln, final DatabaseId dbId, final byte[] key, final long expirationTime) {
         this.ln = ln;
         this.dbId = dbId;
         this.key = key;

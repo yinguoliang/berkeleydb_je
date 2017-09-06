@@ -32,9 +32,10 @@ import com.sleepycat.je.utilint.CmdUtil;
 
 /**
  * Verifies the checksums in one or more log files.
- *
- * <p>This class may be instantiated and used programmatically, or used as a
- * command line utility as described below.</p>
+ * <p>
+ * This class may be instantiated and used programmatically, or used as a
+ * command line utility as described below.
+ * </p>
  *
  * <pre>
  * usage: java { com.sleepycat.je.util.DbVerifyLog |
@@ -44,35 +45,33 @@ import com.sleepycat.je.utilint.CmdUtil;
  *  [-e &lt;file&gt;] # ending (one past the maximum) file number
  *  [-V]              # print JE version number"
  * </pre>
- *
- * <p>All arguments are optional.  The current directory is used if {@code -h}
- * is not specified.  File numbers may be specified in hex (preceded by {@code
- * 0x}) or decimal format.  For convenience when copy/pasting from other
- * output, LSN format (&lt;file&gt;/&lt;offset&gt;) is also allowed.</p>
+ * <p>
+ * All arguments are optional. The current directory is used if {@code -h} is
+ * not specified. File numbers may be specified in hex (preceded by {@code
+ * 0x}) or decimal format. For convenience when copy/pasting from other output,
+ * LSN format (&lt;file&gt;/&lt;offset&gt;) is also allowed.
+ * </p>
  */
 public class DbVerifyLog {
 
-    private static final String USAGE =
-        "usage: " + CmdUtil.getJavaCommand(DbVerifyLog.class) + "\n" +
-        "   [-h <dir>]  # environment home directory\n" +
-        "   [-s <file>] # starting (minimum) file number\n" +
-        "   [-e <file>] # ending (one past the maximum) file number\n" +
-        "   [-V]        # print JE version number";
+    private static final String   USAGE      = "usage: " + CmdUtil.getJavaCommand(DbVerifyLog.class) + "\n"
+            + "   [-h <dir>]  # environment home directory\n" + "   [-s <file>] # starting (minimum) file number\n"
+            + "   [-e <file>] # ending (one past the maximum) file number\n"
+            + "   [-V]        # print JE version number";
 
     private final EnvironmentImpl envImpl;
-    private final int readBufferSize;
-    private volatile boolean stopVerify = false;
+    private final int             readBufferSize;
+    private volatile boolean      stopVerify = false;
 
     /**
      * Creates a utility object for verifying the checksums in log files.
-     *
-     * <p>The read buffer size is {@link
-     * EnvironmentConfig#LOG_ITERATOR_READ_SIZE}.</p>
+     * <p>
+     * The read buffer size is {@link EnvironmentConfig#LOG_ITERATOR_READ_SIZE}.
+     * </p>
      *
      * @param env the {@code Environment} associated with the log.
-     *
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
+     *             environment-wide failure occurs.
      */
     public DbVerifyLog(final Environment env) {
         this(env, 0);
@@ -82,13 +81,11 @@ public class DbVerifyLog {
      * Creates a utility object for verifying log files.
      *
      * @param env the {@code Environment} associated with the log.
-     *
-     * @param readBufferSize is the buffer size to use.  If a value less than
-     * or equal to zero is specified, {@link
-     * EnvironmentConfig#LOG_ITERATOR_READ_SIZE} is used.
-     *
+     * @param readBufferSize is the buffer size to use. If a value less than or
+     *            equal to zero is specified,
+     *            {@link EnvironmentConfig#LOG_ITERATOR_READ_SIZE} is used.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
+     *             environment-wide failure occurs.
      */
     public DbVerifyLog(final Environment env, final int readBufferSize) {
         this(DbInternal.getNonNullEnvImpl(env), readBufferSize);
@@ -97,12 +94,9 @@ public class DbVerifyLog {
     /**
      * @hidden
      */
-    public DbVerifyLog(final EnvironmentImpl envImpl,
-                       final int readBufferSize) {
-        this.readBufferSize = (readBufferSize > 0) ?
-            readBufferSize :
-            envImpl.getConfigManager().getInt
-                (EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+    public DbVerifyLog(final EnvironmentImpl envImpl, final int readBufferSize) {
+        this.readBufferSize = (readBufferSize > 0) ? readBufferSize
+                : envImpl.getConfigManager().getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
         this.envImpl = envImpl;
     }
 
@@ -110,15 +104,13 @@ public class DbVerifyLog {
      * Verifies all log files in the environment.
      *
      * @throws LogVerificationException if a checksum cannot be verified or a
-     * log entry is determined to be invalid by examining its contents.
-     *
+     *             log entry is determined to be invalid by examining its
+     *             contents.
      * @throws IOException if an IOException occurs while reading a log file.
-     *
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
+     *             environment-wide failure occurs.
      */
-    public void verifyAll()
-        throws LogVerificationException, IOException {
+    public void verifyAll() throws LogVerificationException, IOException {
 
         verify(0, Long.MAX_VALUE);
     }
@@ -127,34 +119,29 @@ public class DbVerifyLog {
      * Verifies the given range of log files in the environment.
      *
      * @param startFile is the lowest numbered log file to be verified.
-     *
      * @param endFile is one greater than the highest numbered log file to be
-     * verified.
-     *
+     *            verified.
      * @throws LogVerificationException if a checksum cannot be verified or a
-     * log entry is determined to be invalid by examining its contents.
-     *
+     *             log entry is determined to be invalid by examining its
+     *             contents.
      * @throws IOException if an IOException occurs while reading a log file.
-     *
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
+     *             environment-wide failure occurs.
      */
-    public void verify(final long startFile, final long endFile)
-        throws LogVerificationException, IOException {
+    public void verify(final long startFile, final long endFile) throws LogVerificationException, IOException {
 
         final FileManager fileManager = envImpl.getFileManager();
         final File homeDir = envImpl.getEnvironmentHome();
-        final String[] fileNames =
-            fileManager.listFileNames(startFile, endFile - 1);
+        final String[] fileNames = fileManager.listFileNames(startFile, endFile - 1);
         final ByteBuffer buf = ByteBuffer.allocateDirect(readBufferSize);
 
         for (final String fileName : fileNames) {
             /*
              * When env is closed, the current executing dataVerifier task
              * should be canceled asap. So when env is closed,
-             * setStopVerifyFlag() is called in DataVerifier.shutdown().
-             * Here stopVerify is checked to determine whether dataVerifier
-             * task continues.
+             * setStopVerifyFlag() is called in DataVerifier.shutdown(). Here
+             * stopVerify is checked to determine whether dataVerifier task
+             * continues.
              */
             if (stopVerify) {
                 return;
@@ -166,12 +153,11 @@ public class DbVerifyLog {
              * one or more files, whose fileNum is between startFile and
              * endFile, during the for-loop. So for each loop, the current
              * 'file' may be deleted by the Cleaner, then 'new FileInputStream'
-             * will throw FileNotFoundException.
-             *
-             * In addition, now JE has a daemon thread to detect the unexpected
-             * log file deletion. So if FileNotFoundException is caused by
-             * unexpected log deletion, then that daemon thread will catch
-             * this abnormal situation. Here, we just ignore this exception.
+             * will throw FileNotFoundException. In addition, now JE has a
+             * daemon thread to detect the unexpected log file deletion. So if
+             * FileNotFoundException is caused by unexpected log deletion, then
+             * that daemon thread will catch this abnormal situation. Here, we
+             * just ignore this exception.
              */
             FileInputStream fis;
             try {
@@ -180,8 +166,8 @@ public class DbVerifyLog {
                 continue;
             }
             final FileChannel fic = fis.getChannel();
-            final LogVerificationReadableByteChannel vic =
-                new LogVerificationReadableByteChannel(envImpl, fic, fileName);
+            final LogVerificationReadableByteChannel vic = new LogVerificationReadableByteChannel(envImpl, fic,
+                    fileName);
             IOException ioe = null;
             try {
                 while (vic.read(buf) != -1) {
@@ -193,8 +179,8 @@ public class DbVerifyLog {
             } finally {
                 try {
                     /*
-                     * vic.close aims to close associated channel fic, but
-                     * it may be redundant because fis.close also closes fic.
+                     * vic.close aims to close associated channel fic, but it
+                     * may be redundant because fis.close also closes fic.
                      */
                     fis.close();
                     vic.close();
@@ -242,8 +228,7 @@ public class DbVerifyLog {
                 }
             }
 
-            final EnvironmentImpl envImpl =
-                CmdUtil.makeUtilityEnvironment(envHome, true /*readOnly*/);
+            final EnvironmentImpl envImpl = CmdUtil.makeUtilityEnvironment(envHome, true /* readOnly */);
             final DbVerifyLog verifier = new DbVerifyLog(envImpl, 0);
             verifier.verify(startFile, endFile);
             System.exit(0);

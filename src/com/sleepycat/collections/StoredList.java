@@ -33,135 +33,108 @@ import com.sleepycat.util.keyrange.KeyRangeException;
 
 /**
  * <!-- begin JE only -->
- * @hidden
- * <!-- end JE only -->
- * A List view of a {@link Database}.
- *
- * <p>For all stored lists the keys of the underlying Database
- * must have record number format, and therefore the store or index must be a
- * RECNO, RECNO-RENUMBER, QUEUE, or BTREE-RECNUM database.  Only RECNO-RENUMBER
- * allows true list behavior where record numbers are renumbered following the
- * position of an element that is added or removed.  For the other access
- * methods (RECNO, QUEUE, and BTREE-RECNUM), stored Lists are most useful as
- * read-only collections where record numbers are not required to be
- * sequential.</p>
- *
- * <p>In addition to the standard List methods, this class provides the
- * following methods for stored lists only.  Note that the use of these methods
- * is not compatible with the standard Java collections interface.</p>
- * <ul>
- * <li>{@link #append(Object)}</li>
- * </ul>
+ * 
+ * @hidden <!-- end JE only --> A List view of a {@link Database}.
+ *         <p>
+ *         For all stored lists the keys of the underlying Database must have
+ *         record number format, and therefore the store or index must be a
+ *         RECNO, RECNO-RENUMBER, QUEUE, or BTREE-RECNUM database. Only
+ *         RECNO-RENUMBER allows true list behavior where record numbers are
+ *         renumbered following the position of an element that is added or
+ *         removed. For the other access methods (RECNO, QUEUE, and
+ *         BTREE-RECNUM), stored Lists are most useful as read-only collections
+ *         where record numbers are not required to be sequential.
+ *         </p>
+ *         <p>
+ *         In addition to the standard List methods, this class provides the
+ *         following methods for stored lists only. Note that the use of these
+ *         methods is not compatible with the standard Java collections
+ *         interface.
+ *         </p>
+ *         <ul>
+ *         <li>{@link #append(Object)}</li>
+ *         </ul>
  * @author Mark Hayes
  */
 public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
-    private static final EntryBinding DEFAULT_KEY_BINDING =
-        new IndexKeyBinding(1);
+    private static final EntryBinding DEFAULT_KEY_BINDING = new IndexKeyBinding(1);
 
-    private int baseIndex = 1;
-    private boolean isSubList;
+    private int                       baseIndex           = 1;
+    private boolean                   isSubList;
 
     /**
      * Creates a list view of a {@link Database}.
      *
      * @param database is the Database underlying the new collection.
-     *
      * @param valueBinding is the binding used to translate between value
-     * buffers and value objects.
-     *
-     * @param writeAllowed is true to create a read-write collection or false
-     * to create a read-only collection.
-     *
-     * @throws IllegalArgumentException if formats are not consistently
-     * defined or a parameter is invalid.
-     *
+     *            buffers and value objects.
+     * @param writeAllowed is true to create a read-write collection or false to
+     *            create a read-only collection.
+     * @throws IllegalArgumentException if formats are not consistently defined
+     *             or a parameter is invalid.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
-    public StoredList(Database database,
-                      EntryBinding<E> valueBinding,
-                      boolean writeAllowed) {
+    public StoredList(Database database, EntryBinding<E> valueBinding, boolean writeAllowed) {
 
-        super(new DataView(database, DEFAULT_KEY_BINDING, valueBinding, null,
-                           writeAllowed, null));
+        super(new DataView(database, DEFAULT_KEY_BINDING, valueBinding, null, writeAllowed, null));
     }
 
     /**
      * Creates a list entity view of a {@link Database}.
      *
      * @param database is the Database underlying the new collection.
-     *
      * @param valueEntityBinding is the binding used to translate between
-     * key/value buffers and entity value objects.
-     *
-     * @param writeAllowed is true to create a read-write collection or false
-     * to create a read-only collection.
-     *
-     * @throws IllegalArgumentException if formats are not consistently
-     * defined or a parameter is invalid.
-     *
+     *            key/value buffers and entity value objects.
+     * @param writeAllowed is true to create a read-write collection or false to
+     *            create a read-only collection.
+     * @throws IllegalArgumentException if formats are not consistently defined
+     *             or a parameter is invalid.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
-    public StoredList(Database database,
-                      EntityBinding<E> valueEntityBinding,
-                      boolean writeAllowed) {
+    public StoredList(Database database, EntityBinding<E> valueEntityBinding, boolean writeAllowed) {
 
-        super(new DataView(database, DEFAULT_KEY_BINDING, null,
-                           valueEntityBinding, writeAllowed, null));
+        super(new DataView(database, DEFAULT_KEY_BINDING, null, valueEntityBinding, writeAllowed, null));
     }
 
     /**
-     * Creates a list view of a {@link Database} with a {@link
-     * PrimaryKeyAssigner}.  Writing is allowed for the created list.
+     * Creates a list view of a {@link Database} with a
+     * {@link PrimaryKeyAssigner}. Writing is allowed for the created list.
      *
      * @param database is the Database underlying the new collection.
-     *
      * @param valueBinding is the binding used to translate between value
-     * buffers and value objects.
-     *
+     *            buffers and value objects.
      * @param keyAssigner is used by the {@link #add} and {@link #append}
-     * methods to assign primary keys.
-     *
-     * @throws IllegalArgumentException if formats are not consistently
-     * defined or a parameter is invalid.
-     *
+     *            methods to assign primary keys.
+     * @throws IllegalArgumentException if formats are not consistently defined
+     *             or a parameter is invalid.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
-    public StoredList(Database database,
-                      EntryBinding<E> valueBinding,
-                      PrimaryKeyAssigner keyAssigner) {
+    public StoredList(Database database, EntryBinding<E> valueBinding, PrimaryKeyAssigner keyAssigner) {
 
-        super(new DataView(database, DEFAULT_KEY_BINDING, valueBinding,
-                           null, true, keyAssigner));
+        super(new DataView(database, DEFAULT_KEY_BINDING, valueBinding, null, true, keyAssigner));
     }
 
     /**
-     * Creates a list entity view of a {@link Database} with a {@link
-     * PrimaryKeyAssigner}.  Writing is allowed for the created list.
+     * Creates a list entity view of a {@link Database} with a
+     * {@link PrimaryKeyAssigner}. Writing is allowed for the created list.
      *
      * @param database is the Database underlying the new collection.
-     *
      * @param valueEntityBinding is the binding used to translate between
-     * key/value buffers and entity value objects.
-     *
+     *            key/value buffers and entity value objects.
      * @param keyAssigner is used by the {@link #add} and {@link #append}
-     * methods to assign primary keys.
-     *
-     * @throws IllegalArgumentException if formats are not consistently
-     * defined or a parameter is invalid.
-     *
+     *            methods to assign primary keys.
+     * @throws IllegalArgumentException if formats are not consistently defined
+     *             or a parameter is invalid.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
-    public StoredList(Database database,
-                      EntityBinding<E> valueEntityBinding,
-                      PrimaryKeyAssigner keyAssigner) {
+    public StoredList(Database database, EntityBinding<E> valueEntityBinding, PrimaryKeyAssigner keyAssigner) {
 
-        super(new DataView(database, DEFAULT_KEY_BINDING, null,
-                           valueEntityBinding, true, keyAssigner));
+        super(new DataView(database, DEFAULT_KEY_BINDING, null, valueEntityBinding, true, keyAssigner));
     }
 
     private StoredList(DataView view, int baseIndex) {
@@ -173,24 +146,20 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Inserts the specified element at the specified position in this list
-     * (optional operation).
-     * This method conforms to the {@link List#add(int, Object)} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * (optional operation). This method conforms to the
+     * {@link List#add(int, Object)} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the collection is a sublist, or
-     * if the collection is indexed, or if the collection is read-only, or if
-     * the RECNO-RENUMBER access method was not used.
-     *
+     *             if the collection is indexed, or if the collection is
+     *             read-only, or if the RECNO-RENUMBER access method was not
+     *             used.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public void add(int index, E value) {
 
@@ -199,8 +168,7 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
         boolean doAutoCommit = beginAutoCommit();
         try {
             cursor = new DataCursor(view, true);
-            OperationStatus status =
-                cursor.getSearchKey(Long.valueOf(index), null, false);
+            OperationStatus status = cursor.getSearchKey(Long.valueOf(index), null, false);
             if (status == OperationStatus.SUCCESS) {
                 cursor.putBefore(value);
                 closeCursor(cursor);
@@ -218,24 +186,20 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Appends the specified element to the end of this list (optional
-     * operation).
-     * This method conforms to the {@link List#add(Object)} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * operation). This method conforms to the {@link List#add(Object)}
+     * interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the collection is a sublist, or
-     * if the collection is indexed, or if the collection is read-only, or if
-     * the RECNO-RENUMBER access method was not used.
-     *
+     *             if the collection is indexed, or if the collection is
+     *             read-only, or if the RECNO-RENUMBER access method was not
+     *             used.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean add(E value) {
 
@@ -251,33 +215,26 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
     }
 
     /**
-     * Appends a given value returning the newly assigned index.
-     * If a {@link com.sleepycat.collections.PrimaryKeyAssigner} is associated
-     * with Store for this list, it will be used to assigned the returned
-     * index.  Otherwise the Store must be a QUEUE or RECNO database and the
-     * next available record number is assigned as the index.  This method does
-     * not exist in the standard {@link List} interface.
+     * Appends a given value returning the newly assigned index. If a
+     * {@link com.sleepycat.collections.PrimaryKeyAssigner} is associated with
+     * Store for this list, it will be used to assigned the returned index.
+     * Otherwise the Store must be a QUEUE or RECNO database and the next
+     * available record number is assigned as the index. This method does not
+     * exist in the standard {@link List} interface.
      *
      * @param value the value to be appended.
-     *
-     * @return the assigned index.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * @return the assigned index. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
-     * @throws UnsupportedOperationException if the collection is indexed, or
-     * if the collection is read-only, or if the Store has no {@link
-     * com.sleepycat.collections.PrimaryKeyAssigner} and is not a QUEUE or
-     * RECNO database.
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
+     * @throws UnsupportedOperationException if the collection is indexed, or if
+     *             the collection is read-only, or if the Store has no
+     *             {@link com.sleepycat.collections.PrimaryKeyAssigner} and is
+     *             not a QUEUE or RECNO database.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public int append(E value) {
 
@@ -292,39 +249,32 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
         }
     }
 
-    void checkIterAddAllowed()
-        throws UnsupportedOperationException {
+    void checkIterAddAllowed() throws UnsupportedOperationException {
 
         if (isSubList) {
             throw new UnsupportedOperationException("Cannot add to subList");
         }
         if (!view.keysRenumbered) { // RECNO-RENUM
-            throw new UnsupportedOperationException
-                ("Requires renumbered keys");
+            throw new UnsupportedOperationException("Requires renumbered keys");
         }
     }
 
     /**
-     * Inserts all of the elements in the specified collection into this list
-     * at the specified position (optional operation).
-     * This method conforms to the {@link List#addAll(int, Collection)}
-     * interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * Inserts all of the elements in the specified collection into this list at
+     * the specified position (optional operation). This method conforms to the
+     * {@link List#addAll(int, Collection)} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the collection is a sublist, or
-     * if the collection is indexed, or if the collection is read-only, or if
-     * the RECNO-RENUMBER access method was not used.
-     *
+     *             if the collection is indexed, or if the collection is
+     *             read-only, or if the RECNO-RENUMBER access method was not
+     *             used.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean addAll(int index, Collection<? extends E> coll) {
 
@@ -338,8 +288,7 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
                 return false;
             }
             cursor = new DataCursor(view, true);
-            OperationStatus status =
-                cursor.getSearchKey(Long.valueOf(index), null, false);
+            OperationStatus status = cursor.getSearchKey(Long.valueOf(index), null, false);
             if (status == OperationStatus.SUCCESS) {
                 while (i.hasNext()) {
                     cursor.putBefore(i.next());
@@ -363,20 +312,16 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
     }
 
     /**
-     * Returns true if this list contains the specified element.
-     * This method conforms to the {@link List#contains} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * Returns true if this list contains the specified element. This method
+     * conforms to the {@link List#contains} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean contains(Object value) {
 
@@ -384,20 +329,16 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
     }
 
     /**
-     * Returns the element at the specified position in this list.
-     * This method conforms to the {@link List#get} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * Returns the element at the specified position in this list. This method
+     * conforms to the {@link List#get} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public E get(int index) {
 
@@ -406,20 +347,16 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Returns the index in this list of the first occurrence of the specified
-     * element, or -1 if this list does not contain this element.
-     * This method conforms to the {@link List#indexOf} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * element, or -1 if this list does not contain this element. This method
+     * conforms to the {@link List#indexOf} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public int indexOf(Object value) {
 
@@ -428,20 +365,17 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Returns the index in this list of the last occurrence of the specified
-     * element, or -1 if this list does not contain this element.
-     * This method conforms to the {@link List#lastIndexOf} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * element, or -1 if this list does not contain this element. This method
+     * conforms to the {@link List#lastIndexOf} interface. <!-- begin JE only
+     * -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public int lastIndexOf(Object value) {
 
@@ -454,9 +388,7 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
         try {
             cursor = new DataCursor(view, false);
             OperationStatus status = cursor.findValue(value, findFirst);
-            return (status == OperationStatus.SUCCESS) ?
-                   (cursor.getCurrentRecordNumber() - baseIndex) :
-                   (-1);
+            return (status == OperationStatus.SUCCESS) ? (cursor.getCurrentRecordNumber() - baseIndex) : (-1);
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         } finally {
@@ -471,18 +403,16 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Returns a list iterator of the elements in this list (in proper
-     * sequence).
-     * The iterator will be read-only if the collection is read-only.
+     * sequence). The iterator will be read-only if the collection is read-only.
      * This method conforms to the {@link List#listIterator()} interface.
-     *
-     * <p>For information on cursor stability and iterator block size, see
-     * {@link #iterator()}.</p>
+     * <p>
+     * For information on cursor stability and iterator block size, see
+     * {@link #iterator()}.
+     * </p>
      *
      * @return a {@link ListIterator} for this collection.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
-     *
+     *             including a {@code DatabaseException} on BDB (C Edition).
      * @see #isWriteAllowed
      */
     public ListIterator<E> listIterator() {
@@ -492,18 +422,17 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Returns a list iterator of the elements in this list (in proper
-     * sequence), starting at the specified position in this list.
-     * The iterator will be read-only if the collection is read-only.
-     * This method conforms to the {@link List#listIterator(int)} interface.
-     *
-     * <p>For information on cursor stability and iterator block size, see
-     * {@link #iterator()}.</p>
+     * sequence), starting at the specified position in this list. The iterator
+     * will be read-only if the collection is read-only. This method conforms to
+     * the {@link List#listIterator(int)} interface.
+     * <p>
+     * For information on cursor stability and iterator block size, see
+     * {@link #iterator()}.
+     * </p>
      *
      * @return a {@link ListIterator} for this collection.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
-     *
+     *             including a {@code DatabaseException} on BDB (C Edition).
      * @see #isWriteAllowed
      */
     public ListIterator<E> listIterator(int index) {
@@ -518,23 +447,18 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Removes the element at the specified position in this list (optional
-     * operation).
-     * This method conforms to the {@link List#remove(int)} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * operation). This method conforms to the {@link List#remove(int)}
+     * interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the collection is a sublist, or
-     * if the collection is read-only.
-     *
+     *             if the collection is read-only.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public E remove(int index) {
 
@@ -549,23 +473,18 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Removes the first occurrence in this list of the specified element
-     * (optional operation).
-     * This method conforms to the {@link List#remove(Object)} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * (optional operation). This method conforms to the
+     * {@link List#remove(Object)} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the collection is a sublist, or
-     * if the collection is read-only.
-     *
+     *             if the collection is read-only.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean remove(Object value) {
 
@@ -574,27 +493,21 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Replaces the element at the specified position in this list with the
-     * specified element (optional operation).
-     * This method conforms to the {@link List#set} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * specified element (optional operation). This method conforms to the
+     * {@link List#set} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
-     * @throws UnsupportedOperationException if the collection is indexed, or
-     * if the collection is read-only.
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
+     * @throws UnsupportedOperationException if the collection is indexed, or if
+     *             the collection is read-only.
      * @throws IllegalArgumentException if an entity value binding is used and
-     * the primary key of the value given is different than the existing stored
-     * primary key.
-     *
+     *             the primary key of the value given is different than the
+     *             existing stored primary key.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public E set(int index, E value) {
 
@@ -607,12 +520,12 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Returns a view of the portion of this list between the specified
-     * fromIndex, inclusive, and toIndex, exclusive.
-     * Note that add() and remove() may not be called for the returned sublist.
-     * This method conforms to the {@link List#subList} interface.
+     * fromIndex, inclusive, and toIndex, exclusive. Note that add() and
+     * remove() may not be called for the returned sublist. This method conforms
+     * to the {@link List#subList} interface.
      *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public List<E> subList(int fromIndex, int toIndex) {
 
@@ -621,11 +534,8 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
         }
         try {
             int newBaseIndex = baseIndex + fromIndex;
-            return new StoredList(
-                view.subView(Long.valueOf(fromIndex), true,
-                             Long.valueOf(toIndex), false,
-                             new IndexKeyBinding(newBaseIndex)),
-                newBaseIndex);
+            return new StoredList(view.subView(Long.valueOf(fromIndex), true, Long.valueOf(toIndex), false,
+                    new IndexKeyBinding(newBaseIndex)), newBaseIndex);
         } catch (KeyRangeException e) {
             throw new IndexOutOfBoundsException(e.getMessage());
         } catch (Exception e) {
@@ -634,26 +544,23 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
     }
 
     /**
-     * Compares the specified object with this list for equality.
-     * A value comparison is performed by this method and the stored values
-     * are compared rather than calling the equals() method of each element.
-     * This method conforms to the {@link List#equals} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * Compares the specified object with this list for equality. A value
+     * comparison is performed by this method and the stored values are compared
+     * rather than calling the equals() method of each element. This method
+     * conforms to the {@link List#equals} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean equals(Object other) {
 
-        if (!(other instanceof List)) return false;
+        if (!(other instanceof List))
+            return false;
         List otherList = (List) other;
         StoredIterator i1 = null;
         ListIterator i2 = null;
@@ -688,7 +595,7 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     /**
      * Returns a StoredIterator if the given collection is a StoredCollection,
-     * else returns a regular/external ListIterator.  The iterator returned
+     * else returns a regular/external ListIterator. The iterator returned
      * should be closed with the static method StoredIterator.close(Iterator).
      */
     final ListIterator storedOrExternalListIterator(List list) {
@@ -708,9 +615,7 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
         return super.hashCode();
     }
 
-    E makeIteratorData(BaseIterator iterator,
-                       DatabaseEntry keyEntry,
-                       DatabaseEntry priKeyEntry,
+    E makeIteratorData(BaseIterator iterator, DatabaseEntry keyEntry, DatabaseEntry priKeyEntry,
                        DatabaseEntry valueEntry) {
 
         return (E) view.makeValue(priKeyEntry, valueEntry);
@@ -739,8 +644,7 @@ public class StoredList<E> extends StoredCollection<E> implements List<E> {
         @Override
         public void objectToEntry(Object object, DatabaseEntry data) {
 
-            recordNumberToEntry(((Number) object).intValue() + baseIndex,
-                                data);
+            recordNumberToEntry(((Number) object).intValue() + baseIndex, data);
         }
     }
 }

@@ -25,66 +25,60 @@ import com.sleepycat.je.utilint.LogVerifier;
 
 /**
  * Verifies the checksums in a {@link ReadableByteChannel} for a log file in a
- * JE {@link Environment}.  This class is similar to the {@link
- * LogVerificationInputStream} class, but permits using NIO channels and direct
- * buffers to provide better copying performance.
- *
- * <p>This {@code ReadableByteChannel} reads input from some other given {@code
- * ReadableByteChannel}, and verifies checksums while reading.  Its primary
+ * JE {@link Environment}. This class is similar to the
+ * {@link LogVerificationInputStream} class, but permits using NIO channels and
+ * direct buffers to provide better copying performance.
+ * <p>
+ * This {@code ReadableByteChannel} reads input from some other given {@code
+ * ReadableByteChannel}, and verifies checksums while reading. Its primary
  * intended use is to verify log files that are being copied as part of a
- * programmatic backup.  It is critical that invalid files are not added to a
+ * programmatic backup. It is critical that invalid files are not added to a
  * backup set, since then both the live environment and the backup will be
  * invalid.
- *
- * <p>The following example verifies log files as they are being copied.  The
+ * <p>
+ * The following example verifies log files as they are being copied. The
  * {@link DbBackup} class should normally be used to obtain the array of files
- * to be copied.
- *
- * <!-- NOTE: Whenever the method below is changed, update the copy in
- * VerifyLogTest to match, so that it will be tested. -->
+ * to be copied. <!-- NOTE: Whenever the method below is changed, update the
+ * copy in VerifyLogTest to match, so that it will be tested. -->
  *
  * <pre>
- *  void copyFilesNIO(final Environment env,
- *                    final String[] fileNames,
- *                    final File destDir,
- *                    final int bufSize)
- *      throws IOException, DatabaseException {
+ * void copyFilesNIO(final Environment env, final String[] fileNames, final File destDir, final int bufSize)
+ *         throws IOException, DatabaseException {
  *
- *      final File srcDir = env.getHome();
+ *     final File srcDir = env.getHome();
  *
- *      for (final String fileName : fileNames) {
+ *     for (final String fileName : fileNames) {
  *
- *          final File destFile = new File(destDir, fileName);
- *          final FileOutputStream fos = new FileOutputStream(destFile);
- *          final FileChannel foc = fos.getChannel();
+ *         final File destFile = new File(destDir, fileName);
+ *         final FileOutputStream fos = new FileOutputStream(destFile);
+ *         final FileChannel foc = fos.getChannel();
  *
- *          final File srcFile = new File(srcDir, fileName);
- *          final FileInputStream fis = new FileInputStream(srcFile);
- *          final FileChannel fic = fis.getChannel();
- *          final LogVerificationReadableByteChannel vic =
- *              new LogVerificationReadableByteChannel(env, fic, fileName);
+ *         final File srcFile = new File(srcDir, fileName);
+ *         final FileInputStream fis = new FileInputStream(srcFile);
+ *         final FileChannel fic = fis.getChannel();
+ *         final LogVerificationReadableByteChannel vic = new LogVerificationReadableByteChannel(env, fic, fileName);
  *
- *          final ByteBuffer buf = ByteBuffer.allocateDirect(bufSize);
+ *         final ByteBuffer buf = ByteBuffer.allocateDirect(bufSize);
  *
- *          try {
- *              while (true) {
- *                  final int len = vic.read(buf);
- *                  if (len &lt; 0) {
- *                      break;
- *                  }
- *                  buf.flip();
- *                  foc.write(buf);
- *                  buf.clear();
- *              }
- *          } finally {
- *              fos.close();
- *              vic.close();
- *          }
- *      }
- *  }
+ *         try {
+ *             while (true) {
+ *                 final int len = vic.read(buf);
+ *                 if (len &lt; 0) {
+ *                     break;
+ *                 }
+ *                 buf.flip();
+ *                 foc.write(buf);
+ *                 buf.clear();
+ *             }
+ *         } finally {
+ *             fos.close();
+ *             vic.close();
+ *         }
+ *     }
+ * }
  * </pre>
- *
- * <p>It is important to read the entire underlying input stream until the
+ * <p>
+ * It is important to read the entire underlying input stream until the
  * end-of-file is reached to detect incomplete entries at the end of the log
  * file.
  *
@@ -92,34 +86,28 @@ import com.sleepycat.je.utilint.LogVerifier;
  * @see DbVerifyLog
  * @see LogVerificationInputStream
  */
-public class LogVerificationReadableByteChannel
-        implements ReadableByteChannel {
+public class LogVerificationReadableByteChannel implements ReadableByteChannel {
 
-    private static final int TEMP_SIZE = 8192;
+    private static final int          TEMP_SIZE = 8192;
     private final ReadableByteChannel channel;
-    private final LogVerifier verifier;
-    private byte[] tempArray;
+    private final LogVerifier         verifier;
+    private byte[]                    tempArray;
 
     /**
      * Creates a verification input stream.
      *
      * @param env the {@code Environment} associated with the log
-     *
      * @param channel the underlying {@code ReadableByteChannel} for the log to
-     * be read
-     *
+     *            be read
      * @param fileName the file name of the input stream, for reporting in the
-     * {@code LogVerificationException}.  This should be a simple file name of
-     * the form {@code NNNNNNNN.jdb}, where NNNNNNNN is the file number in
-     * hexadecimal format.
-     *
+     *            {@code LogVerificationException}. This should be a simple file
+     *            name of the form {@code NNNNNNNN.jdb}, where NNNNNNNN is the
+     *            file number in hexadecimal format.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs
+     *             environment-wide failure occurs
      */
-    public LogVerificationReadableByteChannel(
-        final Environment env,
-        final ReadableByteChannel channel,
-        final String fileName) {
+    public LogVerificationReadableByteChannel(final Environment env, final ReadableByteChannel channel,
+                                              final String fileName) {
 
         this(DbInternal.getNonNullEnvImpl(env), channel, fileName);
     }
@@ -128,24 +116,18 @@ public class LogVerificationReadableByteChannel
      * Creates a verification input stream.
      *
      * @param envImpl the {@code EnvironmentImpl} associated with the log
-     *
      * @param channel the underlying {@code ReadableByteChannel} for the log to
-     * be read
-     *
+     *            be read
      * @param fileName the file name of the input stream, for reporting in the
-     * {@code LogVerificationException}.  This should be a simple file name of
-     * the form {@code NNNNNNNN.jdb}, where NNNNNNNN is the file number in
-     * hexadecimal format.
-     *
+     *            {@code LogVerificationException}. This should be a simple file
+     *            name of the form {@code NNNNNNNN.jdb}, where NNNNNNNN is the
+     *            file number in hexadecimal format.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     *
+     *             environment-wide failure occurs.
      * @hidden
      */
-    public LogVerificationReadableByteChannel(
-        final EnvironmentImpl envImpl,
-        final ReadableByteChannel channel,
-        final String fileName) {
+    public LogVerificationReadableByteChannel(final EnvironmentImpl envImpl, final ReadableByteChannel channel,
+                                              final String fileName) {
 
         this.channel = channel;
         verifier = new LogVerifier(envImpl, fileName);
@@ -153,19 +135,18 @@ public class LogVerificationReadableByteChannel
 
     /**
      * {@inheritDoc}
-     *
-     * <p>This method reads the underlying {@code ReadableByteChannel} and
-     * verifies the contents of the stream.
+     * <p>
+     * This method reads the underlying {@code ReadableByteChannel} and verifies
+     * the contents of the stream.
      *
      * @throws LogVerificationException if a checksum cannot be verified or a
-     * log entry is determined to be invalid by examining its contents
-     *
+     *             log entry is determined to be invalid by examining its
+     *             contents
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs
+     *             environment-wide failure occurs
      */
     @Override
-    public synchronized int read(final ByteBuffer buffer)
-        throws IOException {
+    public synchronized int read(final ByteBuffer buffer) throws IOException {
 
         final int start = buffer.position();
         final int count = channel.read(buffer);
@@ -173,8 +154,7 @@ public class LogVerificationReadableByteChannel
             verifier.verifyAtEof();
         } else {
             if (buffer.hasArray()) {
-                verifier.verify(buffer.array(), buffer.arrayOffset() + start,
-                                count);
+                verifier.verify(buffer.array(), buffer.arrayOffset() + start, count);
             } else {
                 if (tempArray == null) {
                     tempArray = new byte[TEMP_SIZE];
@@ -194,20 +174,19 @@ public class LogVerificationReadableByteChannel
 
     /**
      * {@inheritDoc}
-     *
-     * <p>This method calls {@code close} on the underlying channel.
+     * <p>
+     * This method calls {@code close} on the underlying channel.
      */
     @Override
-    synchronized public void close()
-        throws IOException {
+    synchronized public void close() throws IOException {
 
         channel.close();
     }
 
     /**
      * {@inheritDoc}
-     *
-     * <p>This method calls {@code isOpen} on the underlying channel.
+     * <p>
+     * This method calls {@code isOpen} on the underlying channel.
      */
     @Override
     public boolean isOpen() {

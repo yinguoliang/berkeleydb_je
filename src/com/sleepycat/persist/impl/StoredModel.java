@@ -20,16 +20,16 @@ import com.sleepycat.persist.model.EntityMetadata;
 import com.sleepycat.persist.model.EntityModel;
 
 /**
- * The EntityModel used when a RawStore is opened.  The metadata and raw type
- * information comes from the catalog directly, without using the current
- * class definitions.
+ * The EntityModel used when a RawStore is opened. The metadata and raw type
+ * information comes from the catalog directly, without using the current class
+ * definitions.
  *
  * @author Mark Hayes
  */
 class StoredModel extends EntityModel {
 
     private volatile PersistCatalog catalog;
-    private volatile Set<String> knownClasses;
+    private volatile Set<String>    knownClasses;
 
     StoredModel(final PersistCatalog catalog) {
         this.catalog = catalog;

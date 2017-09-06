@@ -25,11 +25,10 @@ import com.sleepycat.je.utilint.VLSN;
 import com.sleepycat.util.PackedInteger;
 
 /**
- * Based class for commit and abort records, which are replicated.
- * The log formats for commit and abort are identical.
+ * Based class for commit and abort records, which are replicated. The log
+ * formats for commit and abort are identical.
  */
-public abstract class VersionedWriteTxnEnd
-    extends TxnEnd implements VersionedWriteLoggable {
+public abstract class VersionedWriteTxnEnd extends TxnEnd implements VersionedWriteLoggable {
 
     /**
      * The log version of the most recent format change for this loggable.
@@ -64,13 +63,12 @@ public abstract class VersionedWriteTxnEnd
 
     @Override
     public int getLogSize() {
-        return getLogSize(LogEntryType.LOG_VERSION, false /*forReplication*/);
+        return getLogSize(LogEntryType.LOG_VERSION, false /* forReplication */);
     }
 
     @Override
     public void writeToLog(final ByteBuffer logBuffer) {
-        writeToLog(
-            logBuffer, LogEntryType.LOG_VERSION, false /*forReplication*/);
+        writeToLog(logBuffer, LogEntryType.LOG_VERSION, false /* forReplication */);
     }
 
     @Override
@@ -80,29 +78,22 @@ public abstract class VersionedWriteTxnEnd
             throw new IllegalStateException("DTVLSN is null");
         }
 
-        return LogUtils.getPackedLongLogSize(id) +
-            LogUtils.getTimestampLogSize(time) +
-            LogUtils.getPackedLongLogSize(
-                forReplication ? DbLsn.NULL_LSN : lastLsn) +
-            LogUtils.getPackedIntLogSize(repMasterNodeId) +
-            ((logVersion >= LogEntryType.LOG_VERSION_DURABLE_VLSN) ?
-             LogUtils.getPackedLongLogSize(dtvlsn) : 0);
+        return LogUtils.getPackedLongLogSize(id) + LogUtils.getTimestampLogSize(time)
+                + LogUtils.getPackedLongLogSize(forReplication ? DbLsn.NULL_LSN : lastLsn)
+                + LogUtils.getPackedIntLogSize(repMasterNodeId)
+                + ((logVersion >= LogEntryType.LOG_VERSION_DURABLE_VLSN) ? LogUtils.getPackedLongLogSize(dtvlsn) : 0);
     }
 
     @Override
-    public void writeToLog(final ByteBuffer logBuffer,
-                           final int entryVersion,
-                           final boolean forReplication) {
+    public void writeToLog(final ByteBuffer logBuffer, final int entryVersion, final boolean forReplication) {
 
         if (entryVersion >= 12) {
-            LogUtils.writePackedLong(logBuffer,
-                forReplication ? DbLsn.NULL_LSN : lastLsn);
+            LogUtils.writePackedLong(logBuffer, forReplication ? DbLsn.NULL_LSN : lastLsn);
         }
         LogUtils.writePackedLong(logBuffer, id);
         LogUtils.writeTimestamp(logBuffer, time);
         if (entryVersion < 12) {
-            LogUtils.writePackedLong(logBuffer,
-                forReplication ? DbLsn.NULL_LSN : lastLsn);
+            LogUtils.writePackedLong(logBuffer, forReplication ? DbLsn.NULL_LSN : lastLsn);
         }
         LogUtils.writePackedInt(logBuffer, repMasterNodeId);
 
@@ -127,8 +118,7 @@ public abstract class VersionedWriteTxnEnd
             lastLsn = LogUtils.readLong(logBuffer, isUnpacked);
         }
         if (entryVersion >= 6) {
-            repMasterNodeId = LogUtils.readInt(logBuffer,
-                false /* unpacked */);
+            repMasterNodeId = LogUtils.readInt(logBuffer, false /* unpacked */);
         }
 
         if (entryVersion >= LogEntryType.LOG_VERSION_DURABLE_VLSN) {
@@ -151,8 +141,7 @@ public abstract class VersionedWriteTxnEnd
     }
 
     @Override
-    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer,
-                                                 final int srcVersion,
+    public boolean isReplicationFormatWorthwhile(final ByteBuffer logBuffer, final int srcVersion,
                                                  final int destVersion) {
         /*
          * It is too much trouble to parse versions older than 12, because the
@@ -166,9 +155,7 @@ public abstract class VersionedWriteTxnEnd
          * If the size of lastLsn is greater than one (meaning it is not
          * NULL_LSN), then we should re-serialize.
          */
-        return PackedInteger.getReadLongLength(
-            logBuffer.array(),
-            logBuffer.arrayOffset() + logBuffer.position()) > 1;
+        return PackedInteger.getReadLongLength(logBuffer.array(), logBuffer.arrayOffset() + logBuffer.position()) > 1;
     }
 
     @Override

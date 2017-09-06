@@ -42,9 +42,8 @@ import com.sleepycat.je.utilint.VLSN;
 /**
  * Establish where the replication stream should start for a feeder and replica
  * pair. The Feeder's job is to send the replica the parts of the replication
- * stream it needs, so that the two can determine a common matchpoint.
- *
- * If a successful matchpoint is found the feeder learns where to start the
+ * stream it needs, so that the two can determine a common matchpoint. If a
+ * successful matchpoint is found the feeder learns where to start the
  * replication stream for this replica.
  */
 public class FeederReplicaSyncup {
@@ -55,17 +54,15 @@ public class FeederReplicaSyncup {
      */
     private static volatile TestHook<Feeder> afterSyncupEndedHook;
 
-    private final Feeder feeder;
-    private final RepNode repNode;
-    private final NamedChannel namedChannel;
-    private final Protocol protocol;
-    private final VLSNIndex vlsnIndex;
-    private final Logger logger;
-    private FeederSyncupReader backwardsReader;
+    private final Feeder                     feeder;
+    private final RepNode                    repNode;
+    private final NamedChannel               namedChannel;
+    private final Protocol                   protocol;
+    private final VLSNIndex                  vlsnIndex;
+    private final Logger                     logger;
+    private FeederSyncupReader               backwardsReader;
 
-    public FeederReplicaSyncup(Feeder feeder,
-                               NamedChannel namedChannel,
-                               Protocol protocol) {
+    public FeederReplicaSyncup(Feeder feeder, NamedChannel namedChannel, Protocol protocol) {
         this.feeder = feeder;
         this.repNode = feeder.getRepNode();
         logger = LoggerUtils.getLogger(getClass());
@@ -84,17 +81,12 @@ public class FeederReplicaSyncup {
      * @throws ChecksumException
      */
     public VLSN execute(LocalCBVLSNUpdater replicaCBVLSN)
-        throws DatabaseException,
-               IOException,
-               NetworkRestoreException, ChecksumException {
+            throws DatabaseException, IOException, NetworkRestoreException, ChecksumException {
 
         final long startTime = System.currentTimeMillis();
         RepImpl repImpl = repNode.getRepImpl();
-        LoggerUtils.info(logger, repImpl,
-                         "Feeder-replica " +
-                         feeder.getReplicaNameIdPair().getName() +
-                         " syncup started. Feeder range: " +
-                         repNode.getVLSNIndex().getRange());
+        LoggerUtils.info(logger, repImpl, "Feeder-replica " + feeder.getReplicaNameIdPair().getName()
+                + " syncup started. Feeder range: " + repNode.getVLSNIndex().getRange());
 
         repNode.syncupStarted();
         try {
@@ -105,29 +97,23 @@ public class FeederReplicaSyncup {
              * fact that a brand new group always begins with a master that has
              * a few vlsns from creating the nameDb that exist before a replica
              * syncup. The replica will never issue a StartStream before doing
-             * an EntryRequest.
-             *
-             * The first entry request has three possible types of message
-             * responses - EntryNotFound, AlternateMatchpoint, or Entry.
+             * an EntryRequest. The first entry request has three possible types
+             * of message responses - EntryNotFound, AlternateMatchpoint, or
+             * Entry.
              */
             VLSNRange range = vlsnIndex.getRange();
-            EntryRequest firstRequest =
-                (EntryRequest) protocol.read(namedChannel);
-            Message response = makeResponseToEntryRequest(range,
-                                                          firstRequest,
-                                                          true);
+            EntryRequest firstRequest = (EntryRequest) protocol.read(namedChannel);
+            Message response = makeResponseToEntryRequest(range, firstRequest, true);
 
             protocol.write(response, namedChannel);
 
             /*
-             * Now the replica may send one of three messages:
-             * - a StartStream message indicating that the replica wants to
-             * start normal operations
-             * - a EntryRequest message if it's still hunting for a
-             * matchpoint. There's the possiblity that the new EntryRequest
-             * asks for a VLSN that has been log cleaned, so check that we can
-             * supply it.
-             * - a RestoreRequest message that indicates that the replica
+             * Now the replica may send one of three messages: - a StartStream
+             * message indicating that the replica wants to start normal
+             * operations - a EntryRequest message if it's still hunting for a
+             * matchpoint. There's the possiblity that the new EntryRequest asks
+             * for a VLSN that has been log cleaned, so check that we can supply
+             * it. - a RestoreRequest message that indicates that the replica
              * has given up, and will want a network restore.
              */
 
@@ -136,9 +122,7 @@ public class FeederReplicaSyncup {
                 Message message = protocol.read(namedChannel);
                 if (logger.isLoggable(Level.FINEST)) {
                     LoggerUtils.finest(logger, repImpl,
-                                       "Replica " +
-                                       feeder.getReplicaNameIdPair() +
-                                       " message op: " + message.getOp());
+                            "Replica " + feeder.getReplicaNameIdPair() + " message op: " + message.getOp());
                 }
                 if (message instanceof StartStream) {
                     final StartStream startMessage = (StartStream) message;
@@ -146,30 +130,24 @@ public class FeederReplicaSyncup {
                     feeder.setFeederFilter(startMessage.getFeederFilter());
                     break;
                 } else if (message instanceof EntryRequest) {
-                    response = makeResponseToEntryRequest
-                        (range, (EntryRequest)message, false);
+                    response = makeResponseToEntryRequest(range, (EntryRequest) message, false);
                     protocol.write(response, namedChannel);
                 } else if (message instanceof RestoreRequest) {
-                    throw answerRestore(range,
-                                        ((RestoreRequest) message).getVLSN());
+                    throw answerRestore(range, ((RestoreRequest) message).getVLSN());
                 } else {
-                    throw EnvironmentFailureException.unexpectedState
-                        (repImpl,
-                         "Expected StartStream or EntryRequest but got " +
-                         message);
+                    throw EnvironmentFailureException.unexpectedState(repImpl,
+                            "Expected StartStream or EntryRequest but got " + message);
                 }
             }
 
-            LoggerUtils.info(logger, repImpl,
-                             "Feeder-replica " +
-                             feeder.getReplicaNameIdPair().getName() +
-                             " start stream at VLSN: " + startVLSN );
+            LoggerUtils.info(logger, repImpl, "Feeder-replica " + feeder.getReplicaNameIdPair().getName()
+                    + " start stream at VLSN: " + startVLSN);
 
             return startVLSN;
         } catch (NetworkRestoreException e) {
             /*
-             * The replica will retry after a network restore starting at
-             * least the current group CBVLSN.
+             * The replica will retry after a network restore starting at least
+             * the current group CBVLSN.
              */
             if (replicaCBVLSN != null) {
                 replicaCBVLSN.updateForReplica(repNode.getGroupCBVLSN());
@@ -178,12 +156,12 @@ public class FeederReplicaSyncup {
         } finally {
             repNode.syncupEnded();
             assert TestHookExecute.doHookIfSet(afterSyncupEndedHook, feeder);
-            LoggerUtils.info
-                (logger, repImpl,
-                 String.format("Feeder-replica " +
-                               feeder.getReplicaNameIdPair().getName() +
-                               " syncup ended. Elapsed time: %,dms",
-                               (System.currentTimeMillis() - startTime)));
+            LoggerUtils
+                    .info(logger, repImpl,
+                            String.format(
+                                    "Feeder-replica " + feeder.getReplicaNameIdPair().getName()
+                                            + " syncup ended. Elapsed time: %,dms",
+                                    (System.currentTimeMillis() - startTime)));
 
         }
     }
@@ -193,12 +171,10 @@ public class FeederReplicaSyncup {
         afterSyncupEndedHook = hook;
     }
 
-    private FeederSyncupReader setupReader(VLSN startVLSN)
-        throws DatabaseException, IOException {
+    private FeederSyncupReader setupReader(VLSN startVLSN) throws DatabaseException, IOException {
 
         EnvironmentImpl envImpl = repNode.getRepImpl();
-        int readBufferSize = envImpl.getConfigManager().
-            getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+        int readBufferSize = envImpl.getConfigManager().getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
 
         /*
          * A BackwardsReader for scanning the log file backwards.
@@ -208,28 +184,21 @@ public class FeederReplicaSyncup {
         VLSN firstVLSN = vlsnIndex.getRange().getFirst();
         long firstFile = vlsnIndex.getLTEFileNumber(firstVLSN);
         long finishLsn = DbLsn.makeLsn(firstFile, 0);
-        return new FeederSyncupReader(envImpl,
-                                      vlsnIndex,
-                                      lastUsedLsn,
-                                      readBufferSize,
-                                      repNode.getNameIdPair(),
-                                      startVLSN,
-                                      finishLsn);
+        return new FeederSyncupReader(envImpl, vlsnIndex, lastUsedLsn, readBufferSize, repNode.getNameIdPair(),
+                startVLSN, finishLsn);
     }
 
-    private Message makeResponseToEntryRequest(VLSNRange range,
-                                               EntryRequest request,
-                                               boolean isFirstResponse)
-        throws IOException, ChecksumException {
+    private Message makeResponseToEntryRequest(VLSNRange range, EntryRequest request, boolean isFirstResponse)
+            throws IOException, ChecksumException {
 
         /*
          * Make the pessimal assumption using the first VLSN in the current
-         * range to block files in the range from being deleted and then
-         * provide a more accurate VLSN later, when we have found one. Note
-         * that setting the feeder VLSN is not a foolproof way of blocking
-         * cleaner file deletion: There is a possible interleaving in which the
-         * cleaner may already have decided to delete the files, but the range
-         * has not yet been updated. This window (between the call to
+         * range to block files in the range from being deleted and then provide
+         * a more accurate VLSN later, when we have found one. Note that setting
+         * the feeder VLSN is not a foolproof way of blocking cleaner file
+         * deletion: There is a possible interleaving in which the cleaner may
+         * already have decided to delete the files, but the range has not yet
+         * been updated. This window (between the call to
          * RepNode.getUnprpotectedFileSet() and the call to
          * VLSNIndex.truncateFromHead) is very small.
          */
@@ -252,10 +221,9 @@ public class FeederReplicaSyncup {
          * The global CBVLSN should have throttled log cleaning, so the first
          * value in the range should always be <= the global CBVLSN.
          */
-        if (!globalCBVLSN.isNull() &&
-            range.getFirst().compareTo(globalCBVLSN) > 0) {
-            throw EnvironmentFailureException.unexpectedState
-                ("Range " + range + " precedes globalCBVLSN " + globalCBVLSN);
+        if (!globalCBVLSN.isNull() && range.getFirst().compareTo(globalCBVLSN) > 0) {
+            throw EnvironmentFailureException
+                    .unexpectedState("Range " + range + " precedes globalCBVLSN " + globalCBVLSN);
         }
 
         if (range.getLast().compareTo(requestMatchpoint) < 0) {
@@ -264,54 +232,43 @@ public class FeederReplicaSyncup {
              * The matchpoint is after the last one in the range. We have to
              * suggest the lastSync entry on this node as an alternative. This
              * should only happen on the feeder's first response. For example,
-             * suppose the feeder's range is vlsns 1-100. It's possible that
-             * the exchange is as follows:
-             *  1 - replica has 1-110, asks feeder for 110
-             *  2 - feeder doesn't have 110, counters with 100
-             *  3 - from this point on, the replica should only ask for vlsns
-             *      that are <= the feeder's counter offer of 100
-             * Guard that this holds true, because the feeder's log reader is
-             * only set to search backwards; it does not expect to toggle
-             * between forward and backwards.
+             * suppose the feeder's range is vlsns 1-100. It's possible that the
+             * exchange is as follows: 1 - replica has 1-110, asks feeder for
+             * 110 2 - feeder doesn't have 110, counters with 100 3 - from this
+             * point on, the replica should only ask for vlsns that are <= the
+             * feeder's counter offer of 100 Guard that this holds true, because
+             * the feeder's log reader is only set to search backwards; it does
+             * not expect to toggle between forward and backwards.
              */
-            assert backwardsReader == null :
-              "Replica request for vlsn > feeder range should only happen " +
-              "on the first exchange.";
+            assert backwardsReader == null : "Replica request for vlsn > feeder range should only happen "
+                    + "on the first exchange.";
             if (range.getLastSync().equals(VLSN.NULL_VLSN)) {
                 /*
-                 * We have no syncable entry at all. The replica will have to
-                 * do a network restore.
+                 * We have no syncable entry at all. The replica will have to do
+                 * a network restore.
                  */
                 return protocol.new EntryNotFound();
             }
 
             if (isFirstResponse) {
                 backwardsReader = setupReader(range.getLastSync());
-                OutputWireRecord lastSync =
-                    backwardsReader.scanBackwards(range.getLastSync());
-                assert lastSync != null :
-                "Look for alternative, range=" + range;
+                OutputWireRecord lastSync = backwardsReader.scanBackwards(range.getLastSync());
+                assert lastSync != null : "Look for alternative, range=" + range;
                 return protocol.new AlternateMatchpoint(lastSync);
             }
 
-            throw EnvironmentFailureException.unexpectedState
-                (repNode.getRepImpl(), "RequestMatchpoint=" +
-                 requestMatchpoint + " range=" + range +
-                 "should only happen on first response");
+            throw EnvironmentFailureException.unexpectedState(repNode.getRepImpl(), "RequestMatchpoint="
+                    + requestMatchpoint + " range=" + range + "should only happen on first response");
         }
 
         /* The matchpoint is within the range. Find it. */
         if (backwardsReader == null) {
             backwardsReader = setupReader(requestMatchpoint);
         }
-        OutputWireRecord matchRecord =
-            backwardsReader.scanBackwards(requestMatchpoint);
+        OutputWireRecord matchRecord = backwardsReader.scanBackwards(requestMatchpoint);
         if (matchRecord == null) {
-            throw EnvironmentFailureException.unexpectedState
-                (repNode.getRepImpl(),
-                 "Couldn't find matchpoint " + requestMatchpoint +
-                 " in log. VLSN range=" + range + " globalCBVLSN=" +
-                 globalCBVLSN);
+            throw EnvironmentFailureException.unexpectedState(repNode.getRepImpl(), "Couldn't find matchpoint "
+                    + requestMatchpoint + " in log. VLSN range=" + range + " globalCBVLSN=" + globalCBVLSN);
         }
 
         /* Correct the pessimistic feeder VLSN set above. */
@@ -319,35 +276,26 @@ public class FeederReplicaSyncup {
         return protocol.new Entry(matchRecord);
     }
 
-    private NetworkRestoreException answerRestore(VLSNRange range,
-                                                  VLSN failedMatchpoint)
-        throws IOException {
+    private NetworkRestoreException answerRestore(VLSNRange range, VLSN failedMatchpoint) throws IOException {
 
-        Message response = protocol.new
-            RestoreResponse(repNode.getGroupCBVLSN(),
-                            repNode.getLogProviders());
+        Message response = protocol.new RestoreResponse(repNode.getGroupCBVLSN(), repNode.getLogProviders());
         protocol.write(response, namedChannel);
 
-        return new NetworkRestoreException(failedMatchpoint,
-                                           range.getFirst(),
-                                           range.getLast(),
-                                           feeder.getReplicaNameIdPair());
+        return new NetworkRestoreException(failedMatchpoint, range.getFirst(), range.getLast(),
+                feeder.getReplicaNameIdPair());
     }
 
     @SuppressWarnings("serial")
     static public class NetworkRestoreException extends Exception {
         /* The out-of-range vlsn that provoked the exception */
-        private final VLSN vlsn;
-        private final VLSN firstVLSN;
-        private final VLSN lastVLSN;
+        private final VLSN       vlsn;
+        private final VLSN       firstVLSN;
+        private final VLSN       lastVLSN;
 
         /* The replica that made the request. */
         private final NameIdPair replicaNameIdPair;
 
-        public NetworkRestoreException(VLSN vlsn,
-                                       VLSN firstVLSN,
-                                       VLSN lastVLSN,
-                                       NameIdPair replicaNameIdPair) {
+        public NetworkRestoreException(VLSN vlsn, VLSN firstVLSN, VLSN lastVLSN, NameIdPair replicaNameIdPair) {
             this.vlsn = vlsn;
             this.firstVLSN = firstVLSN;
             this.lastVLSN = lastVLSN;
@@ -356,9 +304,8 @@ public class FeederReplicaSyncup {
 
         @Override
         public String getMessage() {
-            return "Matchpoint vlsn " + vlsn + " requested by node: " +
-                   replicaNameIdPair + " was outside the VLSN range: " +
-                   "[" + firstVLSN + "-" + lastVLSN + "]";
+            return "Matchpoint vlsn " + vlsn + " requested by node: " + replicaNameIdPair
+                    + " was outside the VLSN range: " + "[" + firstVLSN + "-" + lastVLSN + "]";
         }
 
         public VLSN getVlsn() {

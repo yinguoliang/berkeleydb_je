@@ -82,286 +82,202 @@ import com.sleepycat.je.utilint.StoppableThreadFactory;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * Off-heap cache and evictor.
- *
- * Overview
- * --------
- * When an LN or BIN is evicted from the main cache it is moved off-heap. The
- * off-heap evictor (this class) will apply the same LRU algorithm and
- * CacheMode logic that is used by the main evictor. When an off-heap cache is
- * used, the main evictor will not place dirty INs on a priority 2 LRU list,
- * and will not perform LN stripping or BIN delta mutation; instead, these
- * actions become the responsibility of the off-heap evictor.
- *
- * UINs are not stored off-heap because the complexity this would add is not
- * worth the benefits. An extremely large data set can be represented by the
- * UINs that fit in a 10GB main cache, so the lack of off-heap UINs is not
- * considered a deficiency.
- *
- * Movement of LNs and BINs between the two caches is performed as follows.
- * Note that LNs and BINs are not moved off-heap if they are deleted nor if
- * they belong to an internal database. And of course, embedded and duplicate
- * DB LNs are not stored separately off-heap.
- *
- * When an LN or a BIN is evicted from main, it is stored off-heap.
- *
- * If the off-heap memory block cannot be allocated, the object is not stored
- * and no exception is thrown. This prevents allocation failures from causing
- * CRUD operation failures. Stats about allocation failures are maintained and
- * a SEVERE message is logged when the failure is because no more system
- * memory is available. See the OffHeapAllocator interface for details.
- *
+ * Off-heap cache and evictor. Overview -------- When an LN or BIN is evicted
+ * from the main cache it is moved off-heap. The off-heap evictor (this class)
+ * will apply the same LRU algorithm and CacheMode logic that is used by the
+ * main evictor. When an off-heap cache is used, the main evictor will not place
+ * dirty INs on a priority 2 LRU list, and will not perform LN stripping or BIN
+ * delta mutation; instead, these actions become the responsibility of the
+ * off-heap evictor. UINs are not stored off-heap because the complexity this
+ * would add is not worth the benefits. An extremely large data set can be
+ * represented by the UINs that fit in a 10GB main cache, so the lack of
+ * off-heap UINs is not considered a deficiency. Movement of LNs and BINs
+ * between the two caches is performed as follows. Note that LNs and BINs are
+ * not moved off-heap if they are deleted nor if they belong to an internal
+ * database. And of course, embedded and duplicate DB LNs are not stored
+ * separately off-heap. When an LN or a BIN is evicted from main, it is stored
+ * off-heap. If the off-heap memory block cannot be allocated, the object is not
+ * stored and no exception is thrown. This prevents allocation failures from
+ * causing CRUD operation failures. Stats about allocation failures are
+ * maintained and a SEVERE message is logged when the failure is because no more
+ * system memory is available. See the OffHeapAllocator interface for details.
  * For an off-heap LN with a parent BIN in main cache, the LN's memory ID is
  * maintained in the BIN. The BIN is assigned an off-heap LRU index so the
- * off-heap evictor can perform off-heap LN stripping. In this case, the BIN
- * is in both a main and off-heap LRU list. For now at least (TODO), because
- * deferred write DBs are not supported, a priority-1 off-heap LRU list is
- * used, since the LNs will never be logged.
- *
- * An off-heap BIN is assigned an off-heap LRU index, which is stored in its
- * parent UIN slot in main cache. The slot also has an "off-heap dirty" flag
- * that allows the checkpointer to discover dirty off-heap BINs, and "priority
- * 2" flag that indicates whether the BIN is in the priority 1 or 2 LRU lists.
- *
- * When a BIN moves off-heap and the BIN currently has off-heap LNs, the
- * references (memory IDs) of the off-heap LNs are stored with the serialized
- * BIN. When the off-heap evictor processes the BIN, it will free the
- * off-heap LNs and modify or replace the off-heap BIN so that it no longer
- * references them. This is the equivalent of the LN stripping performed by the
- * main cache evictor.
- *
- * An off-heap BIN will be mutated to a BIN-delta using the same rules used by
- * the main evictor.
- *
- * The use of separate priority 1 and priority 1 LRU lists also copies the
- * approach used in the main evictor (when no off-heap cache is configured).
- *
- *   - Eviction of nodes on the priority 2 lists occurs only after emptying the
- *     priority 1 lists.
- *
- *   - A BIN is moved from a priority 1 list to a priority 2 list when it is
- *     dirty, its LNs have been stripped and BIN-delta mutation has been
- *     attempted.
- *
- *   - Therefore, only dirty BINs with no resident LNs, and which have been
- *     mutated to BIN-deltas (if possible), appear in the priority 2 lists.
- *
- * However, in the off-heap cache, all off-heap BINs appear in an LRU list,
- * unlike the main cache where some INs do not appear because they have
- * resident children and therefore are not evictable.
- *
- * Nodes in both caches at once
- * ----------------------------
- * There are advantages and disadvantages to allowing duplication of a node
- * (LN or BIN) in the off-heap and main cache. The advantage is when a node is
- * loaded from off-heap into main, and we know (because CacheMode.EVICT_LN,
- * EVICT_BIN or UNCHANGED is used) that when the operation is complete the node
- * will be evicted from main and stored off-heap again. In this case it is more
- * efficient to leave it off-heap and tolerate the duplication for the duration
- * of the operation. However, the drawbacks of doing this are:
- *
- * 1. We cannot assume in code that a node is in only one cache at a time. When
- *    it appears in both caches, we must always use the object in the main
- *    cache, since the off-heap object may be stale.
- *
- * 2. If for some reason the node is NOT evicted from the main cache, we must
- *    remove it from off-heap. This can happen when the node is accessed with
- *    a different CacheMode (by the original thread or a different thread)
- *    prior to completing the operation. Removal from the off-heap cache
- *    should be done ASAP, so the duplication does not cause unnecessary
- *    eviction.
- *
- * 3. If the node in the main cache is modified, this invalidates the node in
- *    the off-heap cache and we must be sure not to use the off-heap version
- *    and to remove it ASAP. This is very complex for BINs in particular,
- *    because they can be modified in so many different ways. For LNs, on the
- *    other hand, the types of modifications are fairly limited.
- *
+ * off-heap evictor can perform off-heap LN stripping. In this case, the BIN is
+ * in both a main and off-heap LRU list. For now at least (TODO), because
+ * deferred write DBs are not supported, a priority-1 off-heap LRU list is used,
+ * since the LNs will never be logged. An off-heap BIN is assigned an off-heap
+ * LRU index, which is stored in its parent UIN slot in main cache. The slot
+ * also has an "off-heap dirty" flag that allows the checkpointer to discover
+ * dirty off-heap BINs, and "priority 2" flag that indicates whether the BIN is
+ * in the priority 1 or 2 LRU lists. When a BIN moves off-heap and the BIN
+ * currently has off-heap LNs, the references (memory IDs) of the off-heap LNs
+ * are stored with the serialized BIN. When the off-heap evictor processes the
+ * BIN, it will free the off-heap LNs and modify or replace the off-heap BIN so
+ * that it no longer references them. This is the equivalent of the LN stripping
+ * performed by the main cache evictor. An off-heap BIN will be mutated to a
+ * BIN-delta using the same rules used by the main evictor. The use of separate
+ * priority 1 and priority 1 LRU lists also copies the approach used in the main
+ * evictor (when no off-heap cache is configured). - Eviction of nodes on the
+ * priority 2 lists occurs only after emptying the priority 1 lists. - A BIN is
+ * moved from a priority 1 list to a priority 2 list when it is dirty, its LNs
+ * have been stripped and BIN-delta mutation has been attempted. - Therefore,
+ * only dirty BINs with no resident LNs, and which have been mutated to
+ * BIN-deltas (if possible), appear in the priority 2 lists. However, in the
+ * off-heap cache, all off-heap BINs appear in an LRU list, unlike the main
+ * cache where some INs do not appear because they have resident children and
+ * therefore are not evictable. Nodes in both caches at once
+ * ---------------------------- There are advantages and disadvantages to
+ * allowing duplication of a node (LN or BIN) in the off-heap and main cache.
+ * The advantage is when a node is loaded from off-heap into main, and we know
+ * (because CacheMode.EVICT_LN, EVICT_BIN or UNCHANGED is used) that when the
+ * operation is complete the node will be evicted from main and stored off-heap
+ * again. In this case it is more efficient to leave it off-heap and tolerate
+ * the duplication for the duration of the operation. However, the drawbacks of
+ * doing this are: 1. We cannot assume in code that a node is in only one cache
+ * at a time. When it appears in both caches, we must always use the object in
+ * the main cache, since the off-heap object may be stale. 2. If for some reason
+ * the node is NOT evicted from the main cache, we must remove it from off-heap.
+ * This can happen when the node is accessed with a different CacheMode (by the
+ * original thread or a different thread) prior to completing the operation.
+ * Removal from the off-heap cache should be done ASAP, so the duplication does
+ * not cause unnecessary eviction. 3. If the node in the main cache is modified,
+ * this invalidates the node in the off-heap cache and we must be sure not to
+ * use the off-heap version and to remove it ASAP. This is very complex for BINs
+ * in particular, because they can be modified in so many different ways. For
+ * LNs, on the other hand, the types of modifications are fairly limited.
  * Because of the complexity issue in item 3, we do not allow duplication of
- * BINs. We do allow duplication of LNs, and this is handled as follows:
- *
- *  - freeRedundantLN is called when an LN is accessed via IN.fetchLN or getLN.
- *    If a CacheMode is used that will not evict the LN, the LN is removed
- *    from off-heap.
- *
- *  - freeLN is called (via BIN.freeOffHeapLN) during any operation that will
- *    modify an LN.
- *
- * If for some reason these mechanisms fail to prevent unwanted duplication,
- * eviction will eventually remove the redundant nodes.
- *
+ * BINs. We do allow duplication of LNs, and this is handled as follows: -
+ * freeRedundantLN is called when an LN is accessed via IN.fetchLN or getLN. If
+ * a CacheMode is used that will not evict the LN, the LN is removed from
+ * off-heap. - freeLN is called (via BIN.freeOffHeapLN) during any operation
+ * that will modify an LN. If for some reason these mechanisms fail to prevent
+ * unwanted duplication, eviction will eventually remove the redundant nodes.
  * LRU data structures and concurrency control
- * -------------------------------------------
- * LRU entries form linked lists. Like in the main cache, there are two sets of
- * LRU lists for priority 1 and 2 BINs, and multiple lists in each set to
- * reduce thread contention on the linked lists.
- *
- * LRU information is allocated using arrays to minimize per-entry object
- * overhead. There is a single pool of allocated entries that are used for all
- * LRULists. The entries are uniquely identified by an int ID.
- *
- * The arrays are allocated in Chunks and a Chunk is never de-allocated. This
- * is for two reasons:
- *
- *   - Chunks can be referenced without any locking (concurrency control is
- *     discussed below).
- *
- *   - Using Chunks avoids having to pre-allocate all LRU entries, while still
- *     minimizing Object overhead (see CHUNK_SIZE).
- *
- * The 'chunks' array contains all allocated Chunks. In each Chunk there is an
- * array for each field in an LRU entry.
- *
- * LRU entries are assigned sequential int IDs starting from zero. The chunk
- * for a given entry ID is:
- *    chunks[entry / CHUNK_SIZE]
- * and the array index within the chunk is:
- *    entry % CHUNK_SIZE
- *
- * The chunks array can be read (indexed to obtain a Chunk object) without any
+ * ------------------------------------------- LRU entries form linked lists.
+ * Like in the main cache, there are two sets of LRU lists for priority 1 and 2
+ * BINs, and multiple lists in each set to reduce thread contention on the
+ * linked lists. LRU information is allocated using arrays to minimize per-entry
+ * object overhead. There is a single pool of allocated entries that are used
+ * for all LRULists. The entries are uniquely identified by an int ID. The
+ * arrays are allocated in Chunks and a Chunk is never de-allocated. This is for
+ * two reasons: - Chunks can be referenced without any locking (concurrency
+ * control is discussed below). - Using Chunks avoids having to pre-allocate all
+ * LRU entries, while still minimizing Object overhead (see CHUNK_SIZE). The
+ * 'chunks' array contains all allocated Chunks. In each Chunk there is an array
+ * for each field in an LRU entry. LRU entries are assigned sequential int IDs
+ * starting from zero. The chunk for a given entry ID is: chunks[entry /
+ * CHUNK_SIZE] and the array index within the chunk is: entry % CHUNK_SIZE The
+ * chunks array can be read (indexed to obtain a Chunk object) without any
  * locking because a copy-on-write technique is used. When a new Chunk must be
  * allocated, the addRemoveEntryMutex protects the assignment of the chunks
  * array. This mutex also protects the free entry list (the firstFreeListEntry
  * field and the next/prev indexes of the entries on the free list). This mutex
  * is global per Environment, but is not frequently locked -- only when an LRU
- * entry is added or removed.
- *
- * The fields of an LRU entry -- the array slots -- are protected as follows.
- *
- *   - The linked list fields -- prev and next slots -- are protected by the
- *     LRUList mutex, for entries in an LRUList. For entries on the free list,
- *     these are protected by the addRemoveEntryMutex.
- *
- *   - Other fields -- owners and memIds slots, for example -- are protected by
- *     the IN latch. The IN "owns" these fields for its associated LRU entry
- *     (in the case of a BIN) or entries (in the case of an IN).
- *
- *     Of course the IN latch also protects the fields in the IN related to the
- *     LRU entry: the BIN's lruIdx field, and the arrays of child LN memId
- *     (for a BIN) and child IN lruIdx (for a UIN).
- *
- * When multiple locks are taken, the order is:
- *    IN latch, LRUList mutex
- *    -or-
- *    IN latch, addRemoveEntryMutex
- *
- * The LRUList mutex and addRemoveEntryMutex are never both locked.
- *
- * AN LRU entry is in a special state when it is removed from the LRU list and
- * is being processed by the evictor. In this case the IN is latched, but there
- * is a window after it is removed and before it is latched where anything can
- * happen. Before processing, several checks are made to ensure that the entry
- * still belongs to the IN, the IN has not been evicted, and the entry has not
- * been put back on the LRUList. This last check requires synchronizing on the
- * LRUList, so unfortunately we must synchronize twice on the LRU list: once to
- * remove the entry, and again after latching the IN to ensure that it has not
- * been put back on the LRUList by another thread.
- *
- * TODO:
- * - Test allocation failures using an allocator that simulates random
- *   failures. Currently, allocation failures never happen in the real world,
- *   because Linux kills the process before memory is exhausted. But when we
- *   allow alternate allocators, failures may occur if a memory pool is filled.
+ * entry is added or removed. The fields of an LRU entry -- the array slots --
+ * are protected as follows. - The linked list fields -- prev and next slots --
+ * are protected by the LRUList mutex, for entries in an LRUList. For entries on
+ * the free list, these are protected by the addRemoveEntryMutex. - Other fields
+ * -- owners and memIds slots, for example -- are protected by the IN latch. The
+ * IN "owns" these fields for its associated LRU entry (in the case of a BIN) or
+ * entries (in the case of an IN). Of course the IN latch also protects the
+ * fields in the IN related to the LRU entry: the BIN's lruIdx field, and the
+ * arrays of child LN memId (for a BIN) and child IN lruIdx (for a UIN). When
+ * multiple locks are taken, the order is: IN latch, LRUList mutex -or- IN
+ * latch, addRemoveEntryMutex The LRUList mutex and addRemoveEntryMutex are
+ * never both locked. AN LRU entry is in a special state when it is removed from
+ * the LRU list and is being processed by the evictor. In this case the IN is
+ * latched, but there is a window after it is removed and before it is latched
+ * where anything can happen. Before processing, several checks are made to
+ * ensure that the entry still belongs to the IN, the IN has not been evicted,
+ * and the entry has not been put back on the LRUList. This last check requires
+ * synchronizing on the LRUList, so unfortunately we must synchronize twice on
+ * the LRU list: once to remove the entry, and again after latching the IN to
+ * ensure that it has not been put back on the LRUList by another thread. TODO:
+ * - Test allocation failures using an allocator that simulates random failures.
+ * Currently, allocation failures never happen in the real world, because Linux
+ * kills the process before memory is exhausted. But when we allow alternate
+ * allocators, failures may occur if a memory pool is filled.
  */
 public class OffHeapCache implements EnvConfigObserver {
 
-    private static final int VLSN_SIZE = 8;
-    private static final int CHECKSUM_SIZE = 4;
-    private static final int MAX_UNUSED_BIN_BYTES = 100;
+    private static final int     VLSN_SIZE                    = 8;
+    private static final int     CHECKSUM_SIZE                = 4;
+    private static final int     MAX_UNUSED_BIN_BYTES         = 100;
 
-    private static final int BIN_FLAG_DELTA = 0x1;
-    private static final int BIN_FLAG_CAN_MUTATE = 0x2;
-    private static final int BIN_FLAG_PROHIBIT_NEXT_DELTA = 0x4;
-    private static final int BIN_FLAG_LOGGED_FULL_VERSION = 0x8;
+    private static final int     BIN_FLAG_DELTA               = 0x1;
+    private static final int     BIN_FLAG_CAN_MUTATE          = 0x2;
+    private static final int     BIN_FLAG_PROHIBIT_NEXT_DELTA = 0x4;
+    private static final int     BIN_FLAG_LOGGED_FULL_VERSION = 0x8;
 
-    private static final boolean DEBUG_DOUBLE_FREE = false;
-    private static final int DEBUG_FREE_BLOCKS_PER_MAP = 250000; // about 0.5 G
+    private static final boolean DEBUG_DOUBLE_FREE            = false;
+    private static final int     DEBUG_FREE_BLOCKS_PER_MAP    = 250000;                                                                                     // about 0.5 G
 
-    private static final boolean DEBUG_TRACE = false;
-    private static final boolean DEBUG_TRACE_STACK = false;
-    private static final boolean DEBUG_TRACE_AND_LOG = false;
-
-    /*
-     * Number of LRU entries to allocate at a time, i.e., per chunk.
-     * The goals are:
-     *
-     * 1. Create arrays large enough to make the object overhead insignificant.
-     * The byte[], the smallest array, is 100KB and its object overhead (16
-     * bytes max) is tiny in comparison.
-     *
-     * 2. Create arrays less than than 1MB in size to prevent GC issues.
-     * "Humongous" objects, which are expensive to GC viewpoint are 1MB or
-     * larger. The long[], the largest array, is 800KB with a 100K chunk size.
-     *
-     * 3. Create chunks small enough that we don't use a big percentage of a
-     * smallish heap to allocate one chunk. The chunk size is a little over
-     * 2MB, or easily small enough to meet this requirement.
-     *
-     * 4. Create chunks large enough so that we don't frequently grow the chunk
-     * list, which requires holding the free list mutex. 100K entries per chunk
-     * is easily enough.
-     *
-     * 5. Create chunks small enough so that we don't hold the free list mutex
-     * for too long while adding all the entries in a new chunk to the free
-     * list. 100K may be too large in this respect, and it could be reduced if
-     * this is a noticeable issue. Even better, rather than add a new chunk's
-     * entries to the free list, treat those entries as a "free stack" and pop
-     * them off separately.
-     */
-    private static final int CHUNK_SIZE = 100 * 1024;
-
-    private static final long CHUNK_MEMORY_SIZE =
-        MemoryBudget.OBJECT_OVERHEAD +
-        16 + // For four array references -- accuracy is unimportant.
-        MemoryBudget.longArraySize(CHUNK_SIZE) +
-        MemoryBudget.objectArraySize(CHUNK_SIZE) +
-        MemoryBudget.intArraySize(CHUNK_SIZE) * 2;
+    private static final boolean DEBUG_TRACE                  = false;
+    private static final boolean DEBUG_TRACE_STACK            = false;
+    private static final boolean DEBUG_TRACE_AND_LOG          = false;
 
     /*
-     * Amount that tests should add to a minimal main cache configuration,
-     * when an off-heap cache is used.
-     *
-     * TODO: For now this is not budgeted.
+     * Number of LRU entries to allocate at a time, i.e., per chunk. The goals
+     * are: 1. Create arrays large enough to make the object overhead
+     * insignificant. The byte[], the smallest array, is 100KB and its object
+     * overhead (16 bytes max) is tiny in comparison. 2. Create arrays less than
+     * than 1MB in size to prevent GC issues. "Humongous" objects, which are
+     * expensive to GC viewpoint are 1MB or larger. The long[], the largest
+     * array, is 800KB with a 100K chunk size. 3. Create chunks small enough
+     * that we don't use a big percentage of a smallish heap to allocate one
+     * chunk. The chunk size is a little over 2MB, or easily small enough to
+     * meet this requirement. 4. Create chunks large enough so that we don't
+     * frequently grow the chunk list, which requires holding the free list
+     * mutex. 100K entries per chunk is easily enough. 5. Create chunks small
+     * enough so that we don't hold the free list mutex for too long while
+     * adding all the entries in a new chunk to the free list. 100K may be too
+     * large in this respect, and it could be reduced if this is a noticeable
+     * issue. Even better, rather than add a new chunk's entries to the free
+     * list, treat those entries as a "free stack" and pop them off separately.
      */
-    public static final long MIN_MAIN_CACHE_OVERHEAD = 0;//CHUNK_MEMORY_SIZE;
+    private static final int     CHUNK_SIZE                   = 100 * 1024;
+
+    private static final long    CHUNK_MEMORY_SIZE            = MemoryBudget.OBJECT_OVERHEAD + 16 +                                                         // For four array references -- accuracy is unimportant.
+            MemoryBudget.longArraySize(CHUNK_SIZE) + MemoryBudget.objectArraySize(CHUNK_SIZE)
+            + MemoryBudget.intArraySize(CHUNK_SIZE) * 2;
+
+    /*
+     * Amount that tests should add to a minimal main cache configuration, when
+     * an off-heap cache is used. TODO: For now this is not budgeted.
+     */
+    public static final long     MIN_MAIN_CACHE_OVERHEAD      = 0;                                                                                          //CHUNK_MEMORY_SIZE;
 
     private static class Chunk {
 
         /*
-         * If the IN is a UIN, the memId is the block containing the BIN.
-         *
-         * If the IN is a BIN, the memId is currently unused. It may be used in
-         * the future for the off-heap full BIN for a BIN-delta in main.
+         * If the IN is a UIN, the memId is the block containing the BIN. If the
+         * IN is a BIN, the memId is currently unused. It may be used in the
+         * future for the off-heap full BIN for a BIN-delta in main.
          */
         final long[] memIds;
 
         /*
-         * The IN that owns this entry.
-         *   . Is null if the entry is not used, i.e., on the free list.
-         *   . Is a UIN if the entry is for an off-heap BIN.
-         *   . Is a BIN if the entry is for a BIN in the main cache.
+         * The IN that owns this entry. . Is null if the entry is not used,
+         * i.e., on the free list. . Is a UIN if the entry is for an off-heap
+         * BIN. . Is a BIN if the entry is for a BIN in the main cache.
          */
-        final IN[] owners;
+        final IN[]   owners;
 
         /*
          * IDs of the prev/next entries in the LRU linked list. For entries on
-         * the free list, only the next entry is used (it is singly-linked).
-         *
-         * The prev and next entry ID are -1 to mean the end of the list.
-         *    . If prev == -1, then entry ID == LRUList.back.
-         *    . If next == -1, then entry ID == LRUList.front.
-         *
-         * If next == -2, the entry is not in an LRUList nor is it on the free
-         * list. When next == -2 and the owner is non-null, this means the
-         * entry has been removed from the LRU list to be processed by the
-         * evictor; the evictor may decide to add it back to an LRU list or
-         * place is on the free list.
-         *
-         * When an entry is on the free list, next is the next ID on the free
-         * list, and the owner is null.
+         * the free list, only the next entry is used (it is singly-linked). The
+         * prev and next entry ID are -1 to mean the end of the list. . If prev
+         * == -1, then entry ID == LRUList.back. . If next == -1, then entry ID
+         * == LRUList.front. If next == -2, the entry is not in an LRUList nor
+         * is it on the free list. When next == -2 and the owner is non-null,
+         * this means the entry has been removed from the LRU list to be
+         * processed by the evictor; the evictor may decide to add it back to an
+         * LRU list or place is on the free list. When an entry is on the free
+         * list, next is the next ID on the free list, and the owner is null.
          */
-        final int[] prev;
-        final int[] next;
+        final int[]  prev;
+        final int[]  next;
 
         Chunk() {
             memIds = new long[CHUNK_SIZE];
@@ -379,8 +295,8 @@ public class OffHeapCache implements EnvConfigObserver {
          * only one entry, both fields have the same value.
          */
         private int front = -1;
-        private int back = -1;
-        private int size = 0;
+        private int back  = -1;
+        private int size  = 0;
 
         void addBack(final int entry, final IN owner, final long memId) {
 
@@ -417,7 +333,7 @@ public class OffHeapCache implements EnvConfigObserver {
 
             synchronized (this) {
 
-                if (back == entry ) {
+                if (back == entry) {
                     return;
                 }
 
@@ -433,7 +349,7 @@ public class OffHeapCache implements EnvConfigObserver {
 
             synchronized (this) {
 
-                if (front == entry ) {
+                if (front == entry) {
                     return;
                 }
 
@@ -470,9 +386,7 @@ public class OffHeapCache implements EnvConfigObserver {
             }
         }
 
-        private void addBackInternal(final int entry,
-                                     final Chunk chunk,
-                                     final int chunkIdx ) {
+        private void addBackInternal(final int entry, final Chunk chunk, final int chunkIdx) {
 
             assert chunk.owners[chunkIdx] != null;
             assert chunk.next[chunkIdx] == -2;
@@ -505,9 +419,7 @@ public class OffHeapCache implements EnvConfigObserver {
             size += 1;
         }
 
-        private void addFrontInternal(final int entry,
-                                      final Chunk chunk,
-                                      final int chunkIdx ) {
+        private void addFrontInternal(final int entry, final Chunk chunk, final int chunkIdx) {
 
             assert chunk.owners[chunkIdx] != null;
             assert chunk.next[chunkIdx] == -2;
@@ -540,9 +452,7 @@ public class OffHeapCache implements EnvConfigObserver {
             size += 1;
         }
 
-        private void removeInternal(final int entry,
-                                    final Chunk chunk,
-                                    final int chunkIdx ) {
+        private void removeInternal(final int entry, final Chunk chunk, final int chunkIdx) {
 
             assert chunk.owners[chunkIdx] != null;
 
@@ -596,10 +506,9 @@ public class OffHeapCache implements EnvConfigObserver {
         boolean contains(final Chunk chunk, final int chunkIdx) {
 
             synchronized (this) {
-                assert  chunk.next[chunkIdx] >= -2;
+                assert chunk.next[chunkIdx] >= -2;
 
-                return chunk.next[chunkIdx] != -2 &&
-                       chunk.owners[chunkIdx] != null;
+                return chunk.next[chunkIdx] != -2 && chunk.owners[chunkIdx] != null;
             }
         }
 
@@ -608,50 +517,50 @@ public class OffHeapCache implements EnvConfigObserver {
         }
     }
 
-    private final Logger logger;
-    private final OffHeapAllocator allocator;
-    private boolean runEvictorThreads;
-    private int maxPoolThreads;
-    private final AtomicInteger activePoolThreads = new AtomicInteger(0);
-    private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
-    private final ThreadPoolExecutor evictionPool;
-    private int terminateMillis;
-    private long maxMemory;
-    private long memoryLimit;
-    private final long evictBytes;
+    private final Logger                  logger;
+    private final OffHeapAllocator        allocator;
+    private boolean                       runEvictorThreads;
+    private int                           maxPoolThreads;
+    private final AtomicInteger           activePoolThreads      = new AtomicInteger(0);
+    private final AtomicBoolean           shutdownRequested      = new AtomicBoolean(false);
+    private final ThreadPoolExecutor      evictionPool;
+    private int                           terminateMillis;
+    private long                          maxMemory;
+    private long                          memoryLimit;
+    private final long                    evictBytes;
     private volatile Map<Long, Exception> freedBlocks;
     private volatile Map<Long, Exception> prevFreedBlocks;
 
-    private volatile Chunk[] chunks;
-    private int firstFreeListEntry = -1;
-    private final Object addRemoveEntryMutex = new Object();
+    private volatile Chunk[]              chunks;
+    private int                           firstFreeListEntry     = -1;
+    private final Object                  addRemoveEntryMutex    = new Object();
 
-    private final int numLRULists;
-    private final LRUList[] pri1LRUSet;
-    private final LRUList[] pri2LRUSet;
-    private int nextPri1LRUList = 0;
-    private int nextPri2LRUList = 0;
+    private final int                     numLRULists;
+    private final LRUList[]               pri1LRUSet;
+    private final LRUList[]               pri2LRUSet;
+    private int                           nextPri1LRUList        = 0;
+    private int                           nextPri2LRUList        = 0;
 
-    private final AtomicLong nAllocFailure = new AtomicLong(0);
-    private final AtomicLong nAllocOverflow = new AtomicLong(0);
-    private final AtomicLong nThreadUnavailable = new AtomicLong(0);
-    private final AtomicLong nCriticalNodesTargeted = new AtomicLong(0);
-    private final AtomicLong nNodesTargeted = new AtomicLong(0);
-    private final AtomicLong nNodesEvicted = new AtomicLong(0);
-    private final AtomicLong nDirtyNodesEvicted = new AtomicLong(0);
-    private final AtomicLong nNodesStripped = new AtomicLong(0);
-    private final AtomicLong nNodesMutated = new AtomicLong(0);
-    private final AtomicLong nNodesSkipped = new AtomicLong(0);
-    private final AtomicLong nLNsEvicted = new AtomicLong(0);
-    private final AtomicLong nLNsLoaded = new AtomicLong(0);
-    private final AtomicLong nLNsStored = new AtomicLong(0);
-    private final AtomicLong nBINsLoaded = new AtomicLong(0);
-    private final AtomicLong nBINsStored = new AtomicLong(0);
-    private final AtomicInteger cachedLNs = new AtomicInteger(0);
-    private final AtomicInteger cachedBINs = new AtomicInteger(0);
-    private final AtomicInteger cachedBINDeltas = new AtomicInteger(0);
-    private final AtomicInteger totalBlocks = new AtomicInteger(0);
-    private final AtomicInteger lruSize = new AtomicInteger(0);
+    private final AtomicLong              nAllocFailure          = new AtomicLong(0);
+    private final AtomicLong              nAllocOverflow         = new AtomicLong(0);
+    private final AtomicLong              nThreadUnavailable     = new AtomicLong(0);
+    private final AtomicLong              nCriticalNodesTargeted = new AtomicLong(0);
+    private final AtomicLong              nNodesTargeted         = new AtomicLong(0);
+    private final AtomicLong              nNodesEvicted          = new AtomicLong(0);
+    private final AtomicLong              nDirtyNodesEvicted     = new AtomicLong(0);
+    private final AtomicLong              nNodesStripped         = new AtomicLong(0);
+    private final AtomicLong              nNodesMutated          = new AtomicLong(0);
+    private final AtomicLong              nNodesSkipped          = new AtomicLong(0);
+    private final AtomicLong              nLNsEvicted            = new AtomicLong(0);
+    private final AtomicLong              nLNsLoaded             = new AtomicLong(0);
+    private final AtomicLong              nLNsStored             = new AtomicLong(0);
+    private final AtomicLong              nBINsLoaded            = new AtomicLong(0);
+    private final AtomicLong              nBINsStored            = new AtomicLong(0);
+    private final AtomicInteger           cachedLNs              = new AtomicInteger(0);
+    private final AtomicInteger           cachedBINs             = new AtomicInteger(0);
+    private final AtomicInteger           cachedBINDeltas        = new AtomicInteger(0);
+    private final AtomicInteger           totalBlocks            = new AtomicInteger(0);
+    private final AtomicInteger           lruSize                = new AtomicInteger(0);
 
     public OffHeapCache(final EnvironmentImpl envImpl) {
 
@@ -659,28 +568,23 @@ public class OffHeapCache implements EnvConfigObserver {
 
         final DbConfigManager configManager = envImpl.getConfigManager();
 
-        maxMemory = configManager.getLong(
-            EnvironmentParams.MAX_OFF_HEAP_MEMORY);
+        maxMemory = configManager.getLong(EnvironmentParams.MAX_OFF_HEAP_MEMORY);
 
         if (maxMemory == 0) {
             allocator = DummyAllocator.INSTANCE;
         } else {
             try {
-                final OffHeapAllocatorFactory factory =
-                    new OffHeapAllocatorFactory();
+                final OffHeapAllocatorFactory factory = new OffHeapAllocatorFactory();
                 allocator = factory.getDefaultAllocator();
             } catch (Throwable e) {
                 // TODO: allow continuing without an off-heap cache?
-                throw new IllegalStateException(
-                    "Unable to create default allocator for off-heap cache", e);
+                throw new IllegalStateException("Unable to create default allocator for off-heap cache", e);
             }
         }
 
-        evictBytes = configManager.getLong(
-            EnvironmentParams.OFFHEAP_EVICT_BYTES);
+        evictBytes = configManager.getLong(EnvironmentParams.OFFHEAP_EVICT_BYTES);
 
-        numLRULists = configManager.getInt(
-            EnvironmentParams.OFFHEAP_N_LRU_LISTS);
+        numLRULists = configManager.getInt(EnvironmentParams.OFFHEAP_N_LRU_LISTS);
 
         allocator.setMaxBytes(maxMemory);
         memoryLimit = maxMemory;
@@ -701,71 +605,53 @@ public class OffHeapCache implements EnvConfigObserver {
             prevFreedBlocks = null;
         }
 
-        terminateMillis = configManager.getDuration(
-            EnvironmentParams.EVICTOR_TERMINATE_TIMEOUT);
+        terminateMillis = configManager.getDuration(EnvironmentParams.EVICTOR_TERMINATE_TIMEOUT);
 
-        final int corePoolSize = configManager.getInt(
-            EnvironmentParams.OFFHEAP_CORE_THREADS);
+        final int corePoolSize = configManager.getInt(EnvironmentParams.OFFHEAP_CORE_THREADS);
 
-        maxPoolThreads = configManager.getInt(
-            EnvironmentParams.OFFHEAP_MAX_THREADS);
+        maxPoolThreads = configManager.getInt(EnvironmentParams.OFFHEAP_MAX_THREADS);
 
-        final long keepAliveTime = configManager.getDuration(
-            EnvironmentParams.OFFHEAP_KEEP_ALIVE);
+        final long keepAliveTime = configManager.getDuration(EnvironmentParams.OFFHEAP_KEEP_ALIVE);
 
         final boolean isShared = envImpl.getSharedCache();
 
-        evictionPool = new ThreadPoolExecutor(
-            corePoolSize, maxPoolThreads,
-            keepAliveTime, TimeUnit.MILLISECONDS,
-            new ArrayBlockingQueue<Runnable>(1),
-            new StoppableThreadFactory(
-                isShared ? null : envImpl, "JEOffHeapEvictor", logger),
-            new RejectedExecutionHandler() {
-                @Override
-                public void rejectedExecution(
-                    Runnable r, ThreadPoolExecutor executor) {
-                    nThreadUnavailable.incrementAndGet();
-                }
-            });
+        evictionPool = new ThreadPoolExecutor(corePoolSize, maxPoolThreads, keepAliveTime, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<Runnable>(1),
+                new StoppableThreadFactory(isShared ? null : envImpl, "JEOffHeapEvictor", logger),
+                new RejectedExecutionHandler() {
+                    @Override
+                    public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+                        nThreadUnavailable.incrementAndGet();
+                    }
+                });
 
-        runEvictorThreads = configManager.getBoolean(
-            EnvironmentParams.ENV_RUN_OFFHEAP_EVICTOR);
+        runEvictorThreads = configManager.getBoolean(EnvironmentParams.ENV_RUN_OFFHEAP_EVICTOR);
 
         envImpl.addConfigObserver(this);
     }
 
     @Override
-    public void envConfigUpdate(
-        final DbConfigManager configManager,
-        final EnvironmentMutableConfig ignore) {
+    public void envConfigUpdate(final DbConfigManager configManager, final EnvironmentMutableConfig ignore) {
 
-        terminateMillis = configManager.getDuration(
-            EnvironmentParams.EVICTOR_TERMINATE_TIMEOUT);
+        terminateMillis = configManager.getDuration(EnvironmentParams.EVICTOR_TERMINATE_TIMEOUT);
 
-        final int corePoolSize = configManager.getInt(
-            EnvironmentParams.OFFHEAP_CORE_THREADS);
+        final int corePoolSize = configManager.getInt(EnvironmentParams.OFFHEAP_CORE_THREADS);
 
-        maxPoolThreads = configManager.getInt(
-            EnvironmentParams.OFFHEAP_MAX_THREADS);
+        maxPoolThreads = configManager.getInt(EnvironmentParams.OFFHEAP_MAX_THREADS);
 
-        final long keepAliveTime = configManager.getDuration(
-            EnvironmentParams.OFFHEAP_KEEP_ALIVE);
+        final long keepAliveTime = configManager.getDuration(EnvironmentParams.OFFHEAP_KEEP_ALIVE);
 
         evictionPool.setCorePoolSize(corePoolSize);
         evictionPool.setMaximumPoolSize(maxPoolThreads);
         evictionPool.setKeepAliveTime(keepAliveTime, TimeUnit.MILLISECONDS);
 
-        runEvictorThreads = configManager.getBoolean(
-            EnvironmentParams.ENV_RUN_OFFHEAP_EVICTOR);
+        runEvictorThreads = configManager.getBoolean(EnvironmentParams.ENV_RUN_OFFHEAP_EVICTOR);
 
-        final long newMaxMemory = configManager.getLong(
-            EnvironmentParams.MAX_OFF_HEAP_MEMORY);
+        final long newMaxMemory = configManager.getLong(EnvironmentParams.MAX_OFF_HEAP_MEMORY);
 
         if ((newMaxMemory > 0) != (maxMemory > 0)) {
             // TODO detect this error earlier?
-            throw new IllegalArgumentException(
-                "Cannot change off-heap cache size between zero and non-zero");
+            throw new IllegalArgumentException("Cannot change off-heap cache size between zero and non-zero");
         }
 
         maxMemory = newMaxMemory;
@@ -785,8 +671,7 @@ public class OffHeapCache implements EnvConfigObserver {
 
         boolean shutdownFinished = false;
         try {
-            shutdownFinished = evictionPool.awaitTermination(
-                terminateMillis, TimeUnit.MILLISECONDS);
+            shutdownFinished = evictionPool.awaitTermination(terminateMillis, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             /* We've been interrupted, just give up and end. */
         } finally {
@@ -796,8 +681,8 @@ public class OffHeapCache implements EnvConfigObserver {
 
             clearCache(null);
 
-//            envImpl.getMemoryBudget().updateAdminMemoryUsage(
-//                0 - (chunks.length * CHUNK_MEMORY_SIZE));
+            //            envImpl.getMemoryBudget().updateAdminMemoryUsage(
+            //                0 - (chunks.length * CHUNK_MEMORY_SIZE));
 
             chunks = null;
         }
@@ -811,9 +696,8 @@ public class OffHeapCache implements EnvConfigObserver {
 
         /*
          * Use local var because when matchEnv is non-null, other threads (for
-         * other envs in the shared pool) are running and may replace the
-         * array. However, all entries for matchEnv will remain in the local
-         * array.
+         * other envs in the shared pool) are running and may replace the array.
+         * However, all entries for matchEnv will remain in the local array.
          */
         final Chunk[] myChunks = chunks;
 
@@ -939,8 +823,7 @@ public class OffHeapCache implements EnvConfigObserver {
         final int entry = allocateEntry();
 
         final int lruIdx = entry % numLRULists;
-        final LRUList lru =
-            pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
+        final LRUList lru = pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
 
         lru.addBack(entry, owner, memId);
 
@@ -950,8 +833,7 @@ public class OffHeapCache implements EnvConfigObserver {
     public int moveBack(final int entry, final boolean pri2) {
 
         final int lruIdx = entry % numLRULists;
-        final LRUList lru =
-            pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
+        final LRUList lru = pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
 
         lru.moveBack(entry);
 
@@ -961,8 +843,7 @@ public class OffHeapCache implements EnvConfigObserver {
     private int moveFront(final int entry, final boolean pri2) {
 
         final int lruIdx = entry % numLRULists;
-        final LRUList lru =
-            pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
+        final LRUList lru = pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
 
         lru.moveFront(entry);
 
@@ -972,16 +853,15 @@ public class OffHeapCache implements EnvConfigObserver {
     private void remove(final int entry, final boolean pri2) {
 
         final int lruIdx = entry % numLRULists;
-        final LRUList lru =
-            pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
+        final LRUList lru = pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
 
         lru.remove(entry);
         freeEntry(entry);
     }
 
     /**
-     * Takes an entry from the free list. If the free list is empty, allocates
-     * a new chunk and adds its entries to the free list.
+     * Takes an entry from the free list. If the free list is empty, allocates a
+     * new chunk and adds its entries to the free list.
      */
     private int allocateEntry() {
 
@@ -1014,13 +894,11 @@ public class OffHeapCache implements EnvConfigObserver {
             next[1] = -1;
 
             /*
-             * Entry 2 and above are added to the free list.
-             *
-             * This loop needs to be as fast as possible, which is why we're
-             * using local vars for next and nextFree.
-             *
-             * In the loop, nextFree starts out as entry 1 (tail of free
-             * list) and ends up as the last free entry (head of free list).
+             * Entry 2 and above are added to the free list. This loop needs to
+             * be as fast as possible, which is why we're using local vars for
+             * next and nextFree. In the loop, nextFree starts out as entry 1
+             * (tail of free list) and ends up as the last free entry (head of
+             * free list).
              */
             for (int i = 2; i < CHUNK_SIZE; i += 1) {
                 next[i] = nextFree++;
@@ -1040,8 +918,8 @@ public class OffHeapCache implements EnvConfigObserver {
 
             lruSize.incrementAndGet();
 
-//            envImpl.getMemoryBudget().updateAdminMemoryUsage(
-//                CHUNK_MEMORY_SIZE);
+            //            envImpl.getMemoryBudget().updateAdminMemoryUsage(
+            //                CHUNK_MEMORY_SIZE);
 
             return entry;
         }
@@ -1098,9 +976,7 @@ public class OffHeapCache implements EnvConfigObserver {
         chunk.owners[chunkIdx] = owner;
     }
 
-    private void setOwnerAndMemId(final int entry,
-                                  final IN owner,
-                                  final long memId) {
+    private void setOwnerAndMemId(final int entry, final IN owner, final long memId) {
 
         assert owner.isLatchExclusiveOwner();
 
@@ -1115,12 +991,10 @@ public class OffHeapCache implements EnvConfigObserver {
     }
 
     /**
-     * Called before eviction of an LN from main cache to provide an
-     * opportunity to store the LN off-heap.
+     * Called before eviction of an LN from main cache to provide an opportunity
+     * to store the LN off-heap.
      */
-    public boolean storeEvictedLN(final BIN bin,
-                                  final int index,
-                                  final LN ln) {
+    public boolean storeEvictedLN(final BIN bin, final int index, final LN ln) {
         assert !ln.isDirty();
         assert bin.isLatchExclusiveOwner();
         assert bin.getInListResident();
@@ -1140,29 +1014,22 @@ public class OffHeapCache implements EnvConfigObserver {
             }
 
             if (DEBUG_TRACE) {
-                debug(
-                    bin.getEnv(),
-                    "Evicted LN already store LSN=" +
-                        DbLsn.getNoFormatString(bin.getLsn(index)));
+                debug(bin.getEnv(), "Evicted LN already store LSN=" + DbLsn.getNoFormatString(bin.getLsn(index)));
             }
 
             return true;
         }
 
         /*
-         * Do not store off-heap:
-         *  - When CacheMode.UNCHANGED applies (getFetchedCold is true). This
-         *    is when the node was originally fetched from disk into main.
-         *  - Deleted LNs are no longer needed.
-         *  - For embedded LNs and dup DBs, there is no separate LN.
-         *  - Off-heap caching for internal DBs is not currently supported.
+         * Do not store off-heap: - When CacheMode.UNCHANGED applies
+         * (getFetchedCold is true). This is when the node was originally
+         * fetched from disk into main. - Deleted LNs are no longer needed. -
+         * For embedded LNs and dup DBs, there is no separate LN. - Off-heap
+         * caching for internal DBs is not currently supported.
          */
-        if (ln.getFetchedCold() ||
-            ln.isDeleted() ||
-            bin.isEmbeddedLN(index) ||
-            dbImpl.getSortedDuplicates() ||
-            dbImpl.isDeferredWriteMode() || // TODO remove
-            dbImpl.getDbType().isInternal()) {
+        if (ln.getFetchedCold() || ln.isDeleted() || bin.isEmbeddedLN(index) || dbImpl.getSortedDuplicates()
+                || dbImpl.isDeferredWriteMode() || // TODO remove
+                dbImpl.getDbType().isInternal()) {
             return false;
         }
 
@@ -1183,10 +1050,7 @@ public class OffHeapCache implements EnvConfigObserver {
         }
 
         if (DEBUG_TRACE) {
-            debug(
-                bin.getEnv(),
-                "Stored evicted LN LSN=" +
-                    DbLsn.getNoFormatString(bin.getLsn(index)));
+            debug(bin.getEnv(), "Stored evicted LN LSN=" + DbLsn.getNoFormatString(bin.getLsn(index)));
         }
 
         return true;
@@ -1196,9 +1060,7 @@ public class OffHeapCache implements EnvConfigObserver {
      * Called when an LN has been fetched from disk and should be stored
      * off-heap.
      */
-    public boolean storePreloadedLN(final BIN bin,
-                                    final int index,
-                                    final LN ln) {
+    public boolean storePreloadedLN(final BIN bin, final int index, final LN ln) {
         final DatabaseImpl dbImpl = bin.getDatabase();
 
         assert !ln.isDirty();
@@ -1256,9 +1118,7 @@ public class OffHeapCache implements EnvConfigObserver {
         return true;
     }
 
-    public LN loadLN(final BIN bin,
-                     final int index,
-                     final CacheMode cacheMode) {
+    public LN loadLN(final BIN bin, final int index, final CacheMode cacheMode) {
 
         assert bin.isLatchExclusiveOwner();
 
@@ -1270,40 +1130,34 @@ public class OffHeapCache implements EnvConfigObserver {
         final LN ln = materializeLN(bin.getEnv(), memId);
 
         switch (cacheMode) {
-        case UNCHANGED:
-        case MAKE_COLD:
-            /* Will be evicted from main. Leave off-heap. */
-            break;
-        case EVICT_LN:
-        case EVICT_BIN:
-            /* Will be evicted from main. Leave off-heap and make hot. */
-            assert bin.getOffHeapLruId() >= 0;
-            moveBack(bin.getOffHeapLruId(), false);
-            break;
-        case DEFAULT:
-        case KEEP_HOT:
-            /* Will remain in main. Remove from off-heap. */
-            bin.setOffHeapLNId(index, 0);
-            freeLN(memId);
-            break;
-        default:
-            assert false;
+            case UNCHANGED:
+            case MAKE_COLD:
+                /* Will be evicted from main. Leave off-heap. */
+                break;
+            case EVICT_LN:
+            case EVICT_BIN:
+                /* Will be evicted from main. Leave off-heap and make hot. */
+                assert bin.getOffHeapLruId() >= 0;
+                moveBack(bin.getOffHeapLruId(), false);
+                break;
+            case DEFAULT:
+            case KEEP_HOT:
+                /* Will remain in main. Remove from off-heap. */
+                bin.setOffHeapLNId(index, 0);
+                freeLN(memId);
+                break;
+            default:
+                assert false;
         }
 
         if (DEBUG_TRACE) {
-            debug(
-                bin.getEnv(),
-                "Loaded LN LSN=" +
-                    DbLsn.getNoFormatString(bin.getLsn(index)));
+            debug(bin.getEnv(), "Loaded LN LSN=" + DbLsn.getNoFormatString(bin.getLsn(index)));
         }
 
         return ln;
     }
 
-    public void freeRedundantLN(final BIN bin,
-                                final int index,
-                                final LN ln,
-                                final CacheMode cacheMode) {
+    public void freeRedundantLN(final BIN bin, final int index, final LN ln, final CacheMode cacheMode) {
 
         assert bin.isLatchExclusiveOwner();
 
@@ -1313,24 +1167,24 @@ public class OffHeapCache implements EnvConfigObserver {
         }
 
         switch (cacheMode) {
-        case UNCHANGED:
-        case MAKE_COLD:
-            if (ln.getFetchedCold()) {
+            case UNCHANGED:
+            case MAKE_COLD:
+                if (ln.getFetchedCold()) {
+                    /* Will be evicted from main. Leave off-heap. */
+                    return;
+                }
+                /* Will remain in main. Remove from off-heap. */
+                break;
+            case EVICT_BIN:
+            case EVICT_LN:
                 /* Will be evicted from main. Leave off-heap. */
                 return;
-            }
-            /* Will remain in main. Remove from off-heap. */
-            break;
-        case EVICT_BIN:
-        case EVICT_LN:
-            /* Will be evicted from main. Leave off-heap. */
-            return;
-        case DEFAULT:
-        case KEEP_HOT:
-            /* Will remain in main. Remove from off-heap. */
-            break;
-        default:
-            assert false;
+            case DEFAULT:
+            case KEEP_HOT:
+                /* Will remain in main. Remove from off-heap. */
+                break;
+            default:
+                assert false;
         }
 
         bin.setOffHeapLNId(index, 0);
@@ -1361,9 +1215,9 @@ public class OffHeapCache implements EnvConfigObserver {
         }
 
         /*
-         * Since the LN was off-heap, set fetched-cold to false. Otherwise
-         * the fetched-cold flag will prevent the LN from being stored
-         * off-heap when it is evicted later.
+         * Since the LN was off-heap, set fetched-cold to false. Otherwise the
+         * fetched-cold flag will prevent the LN from being stored off-heap when
+         * it is evicted later.
          */
         final LN ln = (LN) bin.getTarget(index);
         if (ln != null) {
@@ -1389,11 +1243,10 @@ public class OffHeapCache implements EnvConfigObserver {
 
         /*
          * We make 3 calls to allocator.copy (one explicit and two via putLong
-         * and putInt) rather than just one because:
-         *  - This avoids an extra copy and buffer allocation for the LN data.
-         *  - The LN data is potentially large.
-         *  - The checksum is normally off in production, so there is at most
-         *    one extra allocator.copy for the VLSN.
+         * and putInt) rather than just one because: - This avoids an extra copy
+         * and buffer allocation for the LN data. - The LN data is potentially
+         * large. - The checksum is normally off in production, so there is at
+         * most one extra allocator.copy for the VLSN.
          */
         final byte[] data = ln.getData();
         assert data != null;
@@ -1403,8 +1256,7 @@ public class OffHeapCache implements EnvConfigObserver {
             return 0;
         }
 
-        final byte[] tempBuf =
-            (vlsnSize > 0 || useChecksums) ? new byte[8] : null;
+        final byte[] tempBuf = (vlsnSize > 0 || useChecksums) ? new byte[8] : null;
 
         if (vlsnSize > 0) {
             putLong(ln.getVLSNSequence(), memId, 0, tempBuf);
@@ -1425,8 +1277,7 @@ public class OffHeapCache implements EnvConfigObserver {
         return memId;
     }
 
-    private LN materializeLN(final EnvironmentImpl envImpl,
-                             final long memId) {
+    private LN materializeLN(final EnvironmentImpl envImpl, final long memId) {
 
         final boolean useChecksums = envImpl.useOffHeapChecksums();
         final int checksumSize = useChecksums ? CHECKSUM_SIZE : 0;
@@ -1436,8 +1287,7 @@ public class OffHeapCache implements EnvConfigObserver {
         final byte[] data = new byte[allocator.size(memId) - lnDataOffset];
         allocator.copy(memId, lnDataOffset, data, 0, data.length);
 
-        final byte[] tempBuf =
-            (vlsnSize > 0 || useChecksums) ? new byte[8] : null;
+        final byte[] tempBuf = (vlsnSize > 0 || useChecksums) ? new byte[8] : null;
 
         if (useChecksums) {
             final int storedChecksum = getInt(memId, vlsnSize, tempBuf);
@@ -1448,10 +1298,8 @@ public class OffHeapCache implements EnvConfigObserver {
                 final int checksumValue = (int) checksum.getValue();
 
                 if (storedChecksum != checksumValue) {
-                    throw unexpectedState(
-                        envImpl,
-                        "Off-heap cache checksum error. Expected " +
-                        storedChecksum + " but got " + checksumValue);
+                    throw unexpectedState(envImpl,
+                            "Off-heap cache checksum error. Expected " + storedChecksum + " but got " + checksumValue);
                 }
             }
         }
@@ -1469,22 +1317,17 @@ public class OffHeapCache implements EnvConfigObserver {
     }
 
     /**
-     * Called before eviction of a BIN from main cache to provide an
-     * opportunity to store the BIN off-heap.
-     *
-     * removeINFromMain is called after this method by the main evictor. It
-     * is removeINFromMain that removes the main BIN's off-heap LRU entry, if
-     * it has one. The bin and parent latches are held across the calls to
-     * storeEvictedBIN and removeINFromMain.
-     *
-     * removeINFromMain will also free any off-heap LN IDs in the main BIN,
-     * and therefore this method must clear those IDs in the main BIN. When
-     * the BIN is stored off-heap by this method, the LN IDs will be stored
-     * along with the off-heap BIN.
+     * Called before eviction of a BIN from main cache to provide an opportunity
+     * to store the BIN off-heap. removeINFromMain is called after this method
+     * by the main evictor. It is removeINFromMain that removes the main BIN's
+     * off-heap LRU entry, if it has one. The bin and parent latches are held
+     * across the calls to storeEvictedBIN and removeINFromMain.
+     * removeINFromMain will also free any off-heap LN IDs in the main BIN, and
+     * therefore this method must clear those IDs in the main BIN. When the BIN
+     * is stored off-heap by this method, the LN IDs will be stored along with
+     * the off-heap BIN.
      */
-    public boolean storeEvictedBIN(final BIN bin,
-                                   final IN parent,
-                                   final int index) {
+    public boolean storeEvictedBIN(final BIN bin, final IN parent, final int index) {
 
         assert bin.isLatchExclusiveOwner();
         assert bin.getInListResident();
@@ -1496,16 +1339,12 @@ public class OffHeapCache implements EnvConfigObserver {
         final DatabaseImpl dbImpl = bin.getDatabase();
 
         /*
-         * Do not store off-heap:
-         *  - When CacheMode.UNCHANGED applies, the BIN was not loaded from
-         *    off-heap, and the BIN is not dirty.
-         *  - Off-heap caching for internal DBs is not currently supported.
+         * Do not store off-heap: - When CacheMode.UNCHANGED applies, the BIN
+         * was not loaded from off-heap, and the BIN is not dirty. - Off-heap
+         * caching for internal DBs is not currently supported.
          */
-        if ((bin.getFetchedCold() &&
-            !bin.getFetchedColdOffHeap() &&
-            !bin.getDirty()) ||
-            dbImpl.isDeferredWriteMode() || // TODO remove
-            dbImpl.getDbType().isInternal()) {
+        if ((bin.getFetchedCold() && !bin.getFetchedColdOffHeap() && !bin.getDirty()) || dbImpl.isDeferredWriteMode() || // TODO remove
+                dbImpl.getDbType().isInternal()) {
             return false;
         }
 
@@ -1517,10 +1356,10 @@ public class OffHeapCache implements EnvConfigObserver {
         }
 
         /*
-         * Reuse LRU entry if one exists for the BIN, in order not to change
-         * the effective LRU position of its off-heap LNs. When off-heap LNs
-         * are present, we want to preserve the off-heap LRU position to allow
-         * the LNs to be stripped sooner.
+         * Reuse LRU entry if one exists for the BIN, in order not to change the
+         * effective LRU position of its off-heap LNs. When off-heap LNs are
+         * present, we want to preserve the off-heap LRU position to allow the
+         * LNs to be stripped sooner.
          */
         int entry = bin.getOffHeapLruId();
         if (entry >= 0) {
@@ -1528,18 +1367,14 @@ public class OffHeapCache implements EnvConfigObserver {
             bin.clearOffHeapLNIds();
             bin.setOffHeapLruId(-1);
         } else {
-            entry = addBack(false /*pri2*/, parent, memId);
+            entry = addBack(false /* pri2 */, parent, memId);
         }
 
-        parent.setOffHeapBINId(index, entry, false /*pri2*/, bin.getDirty());
+        parent.setOffHeapBINId(index, entry, false /* pri2 */, bin.getDirty());
 
         if (DEBUG_TRACE) {
-            debug(
-                bin.getEnv(),
-                "Stored BIN LSN=" +
-                    DbLsn.getNoFormatString(parent.getLsn(index)) +
-                    " Node=" + bin.getNodeId() +
-                    " dirty=" + bin.getDirty());
+            debug(bin.getEnv(), "Stored BIN LSN=" + DbLsn.getNoFormatString(parent.getLsn(index)) + " Node="
+                    + bin.getNodeId() + " dirty=" + bin.getDirty());
         }
 
         return true;
@@ -1549,9 +1384,7 @@ public class OffHeapCache implements EnvConfigObserver {
      * Called when a BIN has been fetched from disk and should be stored
      * off-heap.
      */
-    public boolean storePreloadedBIN(final BIN bin,
-                                     final IN parent,
-                                     final int index) {
+    public boolean storePreloadedBIN(final BIN bin, final IN parent, final int index) {
 
         assert bin != null;
         assert parent.isLatchExclusiveOwner();
@@ -1571,18 +1404,17 @@ public class OffHeapCache implements EnvConfigObserver {
             return false;
         }
 
-        final int entry = addBack(false /*pri2*/, parent, memId);
-        parent.setOffHeapBINId(index, entry, false /*pri2*/, bin.getDirty());
+        final int entry = addBack(false /* pri2 */, parent, memId);
+        parent.setOffHeapBINId(index, entry, false /* pri2 */, bin.getDirty());
 
         return true;
     }
 
     /**
-     * Called before eviction of a level 2 IN from main cache. Any off-heap
-     * BIN children are first logged, if dirty, and then discarded.
+     * Called before eviction of a level 2 IN from main cache. Any off-heap BIN
+     * children are first logged, if dirty, and then discarded.
      */
-    void flushAndDiscardBINChildren(final IN in,
-                                    final boolean backgroundIO) {
+    void flushAndDiscardBINChildren(final IN in, final boolean backgroundIO) {
         assert in.isLatchExclusiveOwner();
         assert in.getInListResident();
         assert in.getNormalizedLevel() == 2;
@@ -1598,19 +1430,17 @@ public class OffHeapCache implements EnvConfigObserver {
                 continue;
             }
 
-            flushAndDiscardBIN(
-                entry, in.isOffHeapBINPri2(i), in.isOffHeapBINDirty(i),
-                getMemId(entry), in, i, backgroundIO, true /*freeLNs*/);
+            flushAndDiscardBIN(entry, in.isOffHeapBINPri2(i), in.isOffHeapBINDirty(i), getMemId(entry), in, i,
+                    backgroundIO, true /* freeLNs */);
         }
     }
 
     /**
-     * Called:
-     *  - after eviction of an IN from main cache, and in that case
-     *    storeEvictedBIN was called and the eviction was completed.
-     *  - when an IN is removed from the main cache for another reason,
-     *    such as a reverse split or Database removal.
-     *  - for all INs in an Environment being removed from the shared cache.
+     * Called: - after eviction of an IN from main cache, and in that case
+     * storeEvictedBIN was called and the eviction was completed. - when an IN
+     * is removed from the main cache for another reason, such as a reverse
+     * split or Database removal. - for all INs in an Environment being removed
+     * from the shared cache.
      */
     public long removeINFromMain(final IN in) {
 
@@ -1680,24 +1510,20 @@ public class OffHeapCache implements EnvConfigObserver {
     }
 
     /**
-     * Loads a BIN for the given entry, if its last logged LSN is the given
-     * LSN. Can be used to store an entry for a BIN (the off-heap BIN ID)
-     * without holding its parent IN latch, and later find out whether that
-     * entry still refers to the same BIN. If the BIN was split, the LSN will
-     * have changed and null is returned. If the BIN is no longer off-heap, or
-     * was moved off-heap and back on, null is also returned.
-     *
-     * If the BIN is redundantly resident in the main and off-heap caches, the
-     * main cache "live" version is returned. Otherwise the BIN is deserialized
-     * from the off-heap version and is not "live". When non-null is returned,
-     * the returned BIN is latched.
+     * Loads a BIN for the given entry, if its last logged LSN is the given LSN.
+     * Can be used to store an entry for a BIN (the off-heap BIN ID) without
+     * holding its parent IN latch, and later find out whether that entry still
+     * refers to the same BIN. If the BIN was split, the LSN will have changed
+     * and null is returned. If the BIN is no longer off-heap, or was moved
+     * off-heap and back on, null is also returned. If the BIN is redundantly
+     * resident in the main and off-heap caches, the main cache "live" version
+     * is returned. Otherwise the BIN is deserialized from the off-heap version
+     * and is not "live". When non-null is returned, the returned BIN is
+     * latched.
      */
-    public BIN loadBINIfLsnMatches(final EnvironmentImpl envImpl,
-                                   final int entry,
-                                   final long lsn) {
+    public BIN loadBINIfLsnMatches(final EnvironmentImpl envImpl, final int entry, final long lsn) {
 
-        final Pair<IN, Integer> result =
-            findBINIfLsnMatches(envImpl, entry, lsn);
+        final Pair<IN, Integer> result = findBINIfLsnMatches(envImpl, entry, lsn);
 
         if (result == null) {
             return null;
@@ -1724,12 +1550,9 @@ public class OffHeapCache implements EnvConfigObserver {
         }
     }
 
-    public void evictBINIfLsnMatch(final EnvironmentImpl envImpl,
-                                   final int entry,
-                                   final long lsn) {
+    public void evictBINIfLsnMatch(final EnvironmentImpl envImpl, final int entry, final long lsn) {
 
-        final Pair<IN, Integer> result =
-            findBINIfLsnMatches(envImpl, entry, lsn);
+        final Pair<IN, Integer> result = findBINIfLsnMatches(envImpl, entry, lsn);
 
         if (result == null) {
             return;
@@ -1749,10 +1572,7 @@ public class OffHeapCache implements EnvConfigObserver {
     /**
      * If non-null is returned, the returned IN will be EX latched.
      */
-    private Pair<IN, Integer> findBINIfLsnMatches(
-        final EnvironmentImpl envImpl,
-        final int entry,
-        final long lsn) {
+    private Pair<IN, Integer> findBINIfLsnMatches(final EnvironmentImpl envImpl, final int entry, final long lsn) {
 
         final Chunk chunk = chunks[entry / CHUNK_SIZE];
         final int chunkIdx = entry % CHUNK_SIZE;
@@ -1768,10 +1588,7 @@ public class OffHeapCache implements EnvConfigObserver {
          */
         in.latchNoUpdateLRU();
 
-        if (in != chunk.owners[chunkIdx] ||
-            !in.getInListResident() ||
-            in.getEnv() != envImpl ||
-            in.isBIN()) {
+        if (in != chunk.owners[chunkIdx] || !in.getInListResident() || in.getEnv() != envImpl || in.isBIN()) {
 
             in.releaseLatch();
             return null;
@@ -1815,21 +1632,16 @@ public class OffHeapCache implements EnvConfigObserver {
     /**
      * Called when a BIN's bytes were obtained holding a shared latch, and then
      * the latch was released and acquired again. We need to determine whether
-     * the BIN was changed and moved off-heap again, while unlatched.
-     *
-     * Currently we just get the bytes again and compare.
-     *
-     * Possible optimization: Maintain a generation count in the serialized
-     * BIN, whose value comes from a global counter that is incremented
-     * whenever a BIN is serialized. But would the range of such a counter be
-     * large enough to guarantee that wrapping won't be a problem? Certainly
-     * the odds are low, but how can we guarantee it won't happen? Another
-     * approach is to maintain the counter in the BIN in main cache, so it is a
-     * per BIN value.
+     * the BIN was changed and moved off-heap again, while unlatched. Currently
+     * we just get the bytes again and compare. Possible optimization: Maintain
+     * a generation count in the serialized BIN, whose value comes from a global
+     * counter that is incremented whenever a BIN is serialized. But would the
+     * range of such a counter be large enough to guarantee that wrapping won't
+     * be a problem? Certainly the odds are low, but how can we guarantee it
+     * won't happen? Another approach is to maintain the counter in the BIN in
+     * main cache, so it is a per BIN value.
      */
-    public boolean haveBINBytesChanged(final IN parent,
-                                       final int index,
-                                       final byte[] bytes) {
+    public boolean haveBINBytesChanged(final IN parent, final int index, final byte[] bytes) {
         assert parent.isLatchOwner();
 
         return !Arrays.equals(bytes, getBINBytes(parent, index));
@@ -1854,12 +1666,8 @@ public class OffHeapCache implements EnvConfigObserver {
         ensureOffHeapLNsInLRU(bin);
 
         if (DEBUG_TRACE) {
-            debug(
-                parent.getEnv(),
-                "Loaded BIN LSN=" +
-                    DbLsn.getNoFormatString(parent.getLsn(index)) +
-                    " Node=" + bin.getNodeId() +
-                    " dirty=" + bin.getDirty());
+            debug(parent.getEnv(), "Loaded BIN LSN=" + DbLsn.getNoFormatString(parent.getLsn(index)) + " Node="
+                    + bin.getNodeId() + " dirty=" + bin.getDirty());
         }
     }
 
@@ -1888,20 +1696,17 @@ public class OffHeapCache implements EnvConfigObserver {
          * resident in main (bin == null). When the off-heap BIN is stale, its
          * LN Ids are also stale.
          */
-        return freeBIN(parent.getEnv(), memId, bin == null /*freeLNs*/);
+        return freeBIN(parent.getEnv(), memId, bin == null /* freeLNs */);
     }
 
-    private long freeBIN(final EnvironmentImpl envImpl,
-                         final long memId,
-                         final boolean freeLNs) {
+    private long freeBIN(final EnvironmentImpl envImpl, final long memId, final boolean freeLNs) {
 
         long size = 0;
         final int flags;
 
         if (freeLNs) {
-            final ParsedBIN pb = parseBINBytes(
-                envImpl, getMemBytes(memId),
-                false /*partialBuf*/, true /*parseLNIds*/);
+            final ParsedBIN pb = parseBINBytes(envImpl, getMemBytes(memId), false /* partialBuf */,
+                    true /* parseLNIds */);
 
             if (pb.lnMemIds != null) {
                 for (final long lnMemId : pb.lnMemIds) {
@@ -1957,9 +1762,7 @@ public class OffHeapCache implements EnvConfigObserver {
          */
         assert !(asDelta && !bin.isBINDelta() && lnIdSize != 0);
 
-        final int memSize =
-            checksumSize + 1 + 8 + 8 + 4 + 2 +
-            lnIdSize + bin.getLogSize(asDelta);
+        final int memSize = checksumSize + 1 + 8 + 8 + 4 + 2 + lnIdSize + bin.getLogSize(asDelta);
 
         final long memId = allocateMemory(envImpl, memSize);
 
@@ -1990,10 +1793,9 @@ public class OffHeapCache implements EnvConfigObserver {
             bufOffset += lnIdSize;
         }
 
-        final ByteBuffer byteBuf =
-            ByteBuffer.wrap(buf, bufOffset, buf.length - bufOffset);
+        final ByteBuffer byteBuf = ByteBuffer.wrap(buf, bufOffset, buf.length - bufOffset);
 
-        bin.serialize(byteBuf, asDelta, false /*clearDirtyBits*/);
+        bin.serialize(byteBuf, asDelta, false /* clearDirtyBits */);
 
         if (useChecksums) {
             final Checksum checksum = Adler32.makeChecksum();
@@ -2013,11 +1815,9 @@ public class OffHeapCache implements EnvConfigObserver {
         return memId;
     }
 
-    public BIN materializeBIN(final EnvironmentImpl envImpl,
-                              final byte[] buf) {
+    public BIN materializeBIN(final EnvironmentImpl envImpl, final byte[] buf) {
 
-        final ParsedBIN pb = parseBINBytes(
-            envImpl, buf, false /*partialBuf*/, true /*parseLNIds*/);
+        final ParsedBIN pb = parseBINBytes(envImpl, buf, false /* partialBuf */, true /* parseLNIds */);
 
         final BIN bin = materializeBIN(pb, (pb.flags & BIN_FLAG_DELTA) != 0);
 
@@ -2030,15 +1830,13 @@ public class OffHeapCache implements EnvConfigObserver {
 
         final BIN bin = new BIN();
 
-        bin.materialize(
-            pb.binBytes, LogEntryType.LOG_VERSION, asDelta /*deltasOnly*/,
-            (pb.flags & BIN_FLAG_LOGGED_FULL_VERSION) != 0 /*clearDirtyBits*/);
+        bin.materialize(pb.binBytes, LogEntryType.LOG_VERSION, asDelta /* deltasOnly */,
+                (pb.flags & BIN_FLAG_LOGGED_FULL_VERSION) != 0 /* clearDirtyBits */);
 
         bin.setLastFullLsn(pb.lastFullLsn);
         bin.setLastDeltaLsn(pb.lastDeltaLsn);
 
-        bin.setProhibitNextDelta(
-            (pb.flags & BIN_FLAG_PROHIBIT_NEXT_DELTA) != 0);
+        bin.setProhibitNextDelta((pb.flags & BIN_FLAG_PROHIBIT_NEXT_DELTA) != 0);
 
         if (pb.lnMemIds != null) {
             for (int i = 0; i < pb.lnMemIds.length; i += 1) {
@@ -2053,8 +1851,7 @@ public class OffHeapCache implements EnvConfigObserver {
         return bin;
     }
 
-    public INLogEntry<BIN> createBINLogEntryForCheckpoint(final IN parent,
-                                                          final int index) {
+    public INLogEntry<BIN> createBINLogEntryForCheckpoint(final IN parent, final int index) {
         final int entry = parent.getOffHeapBINId(index);
 
         if (entry < 0 || !parent.isOffHeapBINDirty(index)) {
@@ -2065,14 +1862,10 @@ public class OffHeapCache implements EnvConfigObserver {
 
         final long memId = getMemId(entry);
 
-        return createBINLogEntry(
-            memId, entry, parent, true /*preserveBINInCache*/);
+        return createBINLogEntry(memId, entry, parent, true /* preserveBINInCache */);
     }
 
-    public void postBINLog(final IN parent,
-                           final int index,
-                           final INLogEntry<BIN> logEntry,
-                           final long newLsn) {
+    public void postBINLog(final IN parent, final int index, final INLogEntry<BIN> logEntry, final long newLsn) {
 
         assert parent.isLatchExclusiveOwner();
         assert parent.getInListResident();
@@ -2087,8 +1880,7 @@ public class OffHeapCache implements EnvConfigObserver {
         assert entry >= 0;
         assert parent.isOffHeapBINDirty(index);
 
-        final BIN bin =
-            logEntry.isPreSerialized() ? null : logEntry.getMainItem();
+        final BIN bin = logEntry.isPreSerialized() ? null : logEntry.getMainItem();
 
         /*
          * Update checksum, flags and last full/delta LSNs.
@@ -2129,29 +1921,24 @@ public class OffHeapCache implements EnvConfigObserver {
         /* Move from pri2 LRU list to back of pri1 LRU list. */
         if (parent.isOffHeapBINPri2(index)) {
             pri2LRUSet[entry % numLRULists].remove(entry);
-            moveBack(entry, false /*pri2*/);
+            moveBack(entry, false /* pri2 */);
         }
 
-        parent.setOffHeapBINId(
-            index, entry, false /*pri2*/, false /*dirty*/);
+        parent.setOffHeapBINId(index, entry, false /* pri2 */, false /* dirty */);
 
         if (bin != null) {
             bin.releaseLatch();
         }
     }
 
-    private INLogEntry<BIN> createBINLogEntry(
-        final long memId,
-        final int entry,
-        final IN parent,
-        final boolean preserveBINInCache) {
+    private INLogEntry<BIN> createBINLogEntry(final long memId, final int entry, final IN parent,
+                                              final boolean preserveBINInCache) {
 
         final EnvironmentImpl envImpl = parent.getEnv();
 
         final byte[] buf = getMemBytes(memId);
 
-        final ParsedBIN pb = parseBINBytes(
-            envImpl, buf, false /*partialBuf*/, false /*parseLNIds*/);
+        final ParsedBIN pb = parseBINBytes(envImpl, buf, false /* partialBuf */, false /* parseLNIds */);
 
         final boolean isDelta = (pb.flags & BIN_FLAG_DELTA) != 0;
         final boolean canMutateToDelta = (pb.flags & BIN_FLAG_CAN_MUTATE) != 0;
@@ -2161,42 +1948,36 @@ public class OffHeapCache implements EnvConfigObserver {
          * compress expired slots, and we can log the pre-serialized BIN.
          */
         if (isDelta) {
-            return new BINDeltaLogEntry(
-                pb.binBytes, pb.lastFullLsn, pb.lastDeltaLsn,
-                LogEntryType.LOG_BIN_DELTA, parent);
+            return new BINDeltaLogEntry(pb.binBytes, pb.lastFullLsn, pb.lastDeltaLsn, LogEntryType.LOG_BIN_DELTA,
+                    parent);
         }
 
         /*
          * For a full BIN, normally we log a delta iff it can be mutated to a
-         * delta. However, if any slots are expired, we attempt to compress
-         * them and then determine whether to log a delta.
-         *
-         * This mimics the logic in IN.logInternal, for BINs in main cache.
-         *
-         * TODO: Use materialized BIN in the log entry when any slot has an
-         * expiration time, even if none are currently expired. Such BINs must
-         * be materialized during logging for expiration tracking anyway by
-         * INLogEntry.getBINWithExpiration. Then the getBINWithExpiration and
-         * BIN.mayHaveExpirationValues methods will no longer be needed.
+         * delta. However, if any slots are expired, we attempt to compress them
+         * and then determine whether to log a delta. This mimics the logic in
+         * IN.logInternal, for BINs in main cache. TODO: Use materialized BIN in
+         * the log entry when any slot has an expiration time, even if none are
+         * currently expired. Such BINs must be materialized during logging for
+         * expiration tracking anyway by INLogEntry.getBINWithExpiration. Then
+         * the getBINWithExpiration and BIN.mayHaveExpirationValues methods will
+         * no longer be needed.
          */
-        final boolean hasExpiredSlot =
-            envImpl.isExpired(pb.minExpiration, true /*hours*/);
+        final boolean hasExpiredSlot = envImpl.isExpired(pb.minExpiration, true /* hours */);
 
         /*
          * If we do not need to log a full BIN as a delta, or to compress its
          * expired slots, then we can log the pre-serialized BIN.
          */
         if (!hasExpiredSlot && !canMutateToDelta) {
-            return new INLogEntry<>(
-                pb.binBytes, pb.lastFullLsn, pb.lastDeltaLsn,
-                LogEntryType.LOG_BIN, parent);
+            return new INLogEntry<>(pb.binBytes, pb.lastFullLsn, pb.lastDeltaLsn, LogEntryType.LOG_BIN, parent);
         }
 
         /*
          * We must materialize the full BIN in order to log it as a delta or to
          * compress its expired slots.
          */
-        final BIN bin = materializeBIN(pb, false /*asDelta*/);
+        final BIN bin = materializeBIN(pb, false /* asDelta */);
 
         /*
          * Latch the BIN to avoid assertions during BIN.writeToLog. A side
@@ -2210,12 +1991,12 @@ public class OffHeapCache implements EnvConfigObserver {
             final int origNSlots = bin.getNEntries();
 
             /* Compress non-dirty slots before determining delta status. */
-            bin.compress(false /*compressDirtySlots*/, null);
+            bin.compress(false /* compressDirtySlots */, null);
             logDelta = bin.shouldLogDelta();
 
             /* Also compress dirty slots, if we will not log a delta. */
             if (!logDelta) {
-                bin.compress(true /*compressDirtySlots*/, null);
+                bin.compress(true /* compressDirtySlots */, null);
             }
 
             /* If we compressed an expired slot, re-serialize the BIN. */
@@ -2226,9 +2007,7 @@ public class OffHeapCache implements EnvConfigObserver {
                      * TODO: Is invalid if compressed slot had off-heap LN.
                      * Should discard off-heap BIN and install 'bin' in main.
                      */
-                    return new INLogEntry<>(
-                        pb.binBytes, pb.lastFullLsn, pb.lastDeltaLsn,
-                        LogEntryType.LOG_BIN, parent);
+                    return new INLogEntry<>(pb.binBytes, pb.lastFullLsn, pb.lastDeltaLsn, LogEntryType.LOG_BIN, parent);
                 }
                 freeMemory(memId);
                 setOwnerAndMemId(entry, parent, newMemId);
@@ -2238,15 +2017,13 @@ public class OffHeapCache implements EnvConfigObserver {
             logDelta = true;
         }
 
-        return logDelta ?
-            (new BINDeltaLogEntry(bin)) :
-            (new INLogEntry<>(bin));
+        return logDelta ? (new BINDeltaLogEntry(bin)) : (new INLogEntry<>(bin));
     }
 
     public static class BINInfo {
 
         public final boolean isBINDelta;
-        public final long fullBINLsn;
+        public final long    fullBINLsn;
 
         private BINInfo(final ParsedBIN pb) {
             isBINDelta = (pb.flags & BIN_FLAG_DELTA) != 0;
@@ -2265,8 +2042,7 @@ public class OffHeapCache implements EnvConfigObserver {
         final byte[] buf = new byte[checksumSize + 1 + 8 + 8 + 4];
         allocator.copy(memId, 0, buf, 0, buf.length);
 
-        final ParsedBIN pb = parseBINBytes(
-            envImpl, buf, true /*partialBuf*/, false /*parseLNIds*/);
+        final ParsedBIN pb = parseBINBytes(envImpl, buf, true /* partialBuf */, false /* parseLNIds */);
 
         return new BINInfo(pb);
     }
@@ -2319,9 +2095,8 @@ public class OffHeapCache implements EnvConfigObserver {
                 continue;
             }
 
-            final ParsedBIN pb = parseBINBytes(
-                envImpl, getMemBytes(memId),
-                false /*partialBuf*/, true /*parseLNIds*/);
+            final ParsedBIN pb = parseBINBytes(envImpl, getMemBytes(memId), false /* partialBuf */,
+                    true /* parseLNIds */);
 
             if (pb.lnMemIds == null) {
                 continue;
@@ -2339,19 +2114,15 @@ public class OffHeapCache implements EnvConfigObserver {
     }
 
     private static class ParsedBIN {
-        final int flags;
-        final long[] lnMemIds;
-        final long lastFullLsn;
-        final long lastDeltaLsn;
-        final int minExpiration;
+        final int        flags;
+        final long[]     lnMemIds;
+        final long       lastFullLsn;
+        final long       lastDeltaLsn;
+        final int        minExpiration;
         final ByteBuffer binBytes;
 
-        ParsedBIN(final int flags,
-                  final long[] lnMemIds,
-                  final long lastFullLsn,
-                  final long lastDeltaLsn,
-                  final int minExpiration,
-                  final ByteBuffer binBytes) {
+        ParsedBIN(final int flags, final long[] lnMemIds, final long lastFullLsn, final long lastDeltaLsn,
+                  final int minExpiration, final ByteBuffer binBytes) {
 
             this.flags = flags;
             this.lnMemIds = lnMemIds;
@@ -2362,9 +2133,7 @@ public class OffHeapCache implements EnvConfigObserver {
         }
     }
 
-    private ParsedBIN parseBINBytes(final EnvironmentImpl envImpl,
-                                    final byte[] buf,
-                                    final boolean partialBuf,
+    private ParsedBIN parseBINBytes(final EnvironmentImpl envImpl, final byte[] buf, final boolean partialBuf,
                                     final boolean parseLNIds) {
 
         assert !(partialBuf && parseLNIds);
@@ -2381,10 +2150,8 @@ public class OffHeapCache implements EnvConfigObserver {
                 final int checksumValue = (int) checksum.getValue();
 
                 if (storedChecksum != checksumValue) {
-                    throw unexpectedState(
-                        envImpl,
-                        "Off-heap cache checksum error. Expected " +
-                            storedChecksum + " but got " + checksumValue);
+                    throw unexpectedState(envImpl,
+                            "Off-heap cache checksum error. Expected " + storedChecksum + " but got " + checksumValue);
                 }
             }
         }
@@ -2404,8 +2171,7 @@ public class OffHeapCache implements EnvConfigObserver {
         bufOffset += 4;
 
         if (partialBuf) {
-            return new ParsedBIN(
-                flags, null, lastFullLsn, lastDeltaLsn, minExpiration, null);
+            return new ParsedBIN(flags, null, lastFullLsn, lastDeltaLsn, minExpiration, null);
         }
 
         final short lnIdsSize = getShort(buf, bufOffset);
@@ -2422,17 +2188,14 @@ public class OffHeapCache implements EnvConfigObserver {
 
         bufOffset += Math.abs(lnIdsSize);
 
-        final ByteBuffer byteBuf =
-            ByteBuffer.wrap(buf, bufOffset, buf.length - bufOffset);
+        final ByteBuffer byteBuf = ByteBuffer.wrap(buf, bufOffset, buf.length - bufOffset);
 
-        return new ParsedBIN(
-            flags, lnMemIds, lastFullLsn, lastDeltaLsn, minExpiration,
-            byteBuf);
+        return new ParsedBIN(flags, lnMemIds, lastFullLsn, lastDeltaLsn, minExpiration, byteBuf);
     }
 
     /**
-     * Returns the minimum expiration time in hours, or zero of no slots
-     * have an expiration time.
+     * Returns the minimum expiration time in hours, or zero of no slots have an
+     * expiration time.
      */
     private int getMinExpiration(final BIN bin) {
 
@@ -2456,18 +2219,15 @@ public class OffHeapCache implements EnvConfigObserver {
     }
 
     /**
-     * Adds LN memIds to the buffer using an RLE approach to save space:
-     *
-     *  - The memIds are packed in slot index order. All slots are represented.
-     *  - A positive byte indicates the number of 8-byte memIds that follow.
-     *  - A negative byte indicates the number of slots that have no memId.
-     *  - When a run exceeds 127 slots, another run is added. So there is no
-     *    effective limit on number of slots, although we know the maximum will
-     *    fit in a short integer.
+     * Adds LN memIds to the buffer using an RLE approach to save space: - The
+     * memIds are packed in slot index order. All slots are represented. - A
+     * positive byte indicates the number of 8-byte memIds that follow. - A
+     * negative byte indicates the number of slots that have no memId. - When a
+     * run exceeds 127 slots, another run is added. So there is no effective
+     * limit on number of slots, although we know the maximum will fit in a
+     * short integer.
      */
-    private static void packLnMemIds(final BIN bin,
-                                     final byte[] buf,
-                                     int off) {
+    private static void packLnMemIds(final BIN bin, final byte[] buf, int off) {
         int nOff = off;
         off += 1;
         byte n = 0;
@@ -2544,9 +2304,7 @@ public class OffHeapCache implements EnvConfigObserver {
         return (short) off;
     }
 
-    private static long[] unpackLnMemIds(final byte[] buf,
-                                         final int startOff,
-                                         final int len) {
+    private static long[] unpackLnMemIds(final byte[] buf, final int startOff, final int len) {
         assert len > 0;
 
         final int endOff = startOff + len;
@@ -2592,14 +2350,13 @@ public class OffHeapCache implements EnvConfigObserver {
         return ids;
     }
 
-    private long allocateMemory(final EnvironmentImpl envImpl,
-                                final int size) {
+    private long allocateMemory(final EnvironmentImpl envImpl, final int size) {
 
         /*
-         * Only enable the off-heap cache after recovery. This ensures
-         * that off-heap memory is available to recovery as file system
-         * cache, which is important when performing multiple passes over
-         * the recovery interval.
+         * Only enable the off-heap cache after recovery. This ensures that
+         * off-heap memory is available to recovery as file system cache, which
+         * is important when performing multiple passes over the recovery
+         * interval.
          */
         if (!envImpl.isValid()) {
             return 0;
@@ -2619,11 +2376,8 @@ public class OffHeapCache implements EnvConfigObserver {
 
         } catch (OutOfMemoryError e) {
 
-            LoggerUtils.envLogMsg(
-                Level.SEVERE, envImpl,
-                "OutOfMemoryError trying to allocate in the off-heap cache. " +
-                "Continuing, but more problems are likely. Allocator error: " +
-                e.getMessage());
+            LoggerUtils.envLogMsg(Level.SEVERE, envImpl, "OutOfMemoryError trying to allocate in the off-heap cache. "
+                    + "Continuing, but more problems are likely. Allocator error: " + e.getMessage());
 
             nAllocFailure.incrementAndGet();
 
@@ -2662,8 +2416,7 @@ public class OffHeapCache implements EnvConfigObserver {
                         prevFreedBlocks = freedBlocks;
                         freedBlocks = new ConcurrentHashMap<>();
 
-                        e = freedBlocks.put(
-                            key, new Exception("Freed: " + memId));
+                        e = freedBlocks.put(key, new Exception("Freed: " + memId));
 
                         added = true;
                         curr = freedBlocks;
@@ -2677,17 +2430,13 @@ public class OffHeapCache implements EnvConfigObserver {
             }
 
             if (e != null) {
-                new Exception(
-                    "Double-freed: " + memId + "\n" +
-                    LoggerUtils.getStackTrace(e)).printStackTrace();
+                new Exception("Double-freed: " + memId + "\n" + LoggerUtils.getStackTrace(e)).printStackTrace();
             }
 
             if (curr != prev) {
                 e = prev.get(key);
                 if (e != null) {
-                    new Exception(
-                        "Double-freed: " + memId + "\n" +
-                        LoggerUtils.getStackTrace(e)).printStackTrace();
+                    new Exception("Double-freed: " + memId + "\n" + LoggerUtils.getStackTrace(e)).printStackTrace();
                 }
             }
         }
@@ -2703,114 +2452,78 @@ public class OffHeapCache implements EnvConfigObserver {
         return bytes;
     }
 
-    private byte getByte(final long memId,
-                         final int offset,
-                         final byte[] tempBuf) {
+    private byte getByte(final long memId, final int offset, final byte[] tempBuf) {
         allocator.copy(memId, offset, tempBuf, 0, 1);
         return tempBuf[0];
     }
 
-    private void putShort(final short val,
-                          final long memId,
-                          final int offset,
-                          final byte[] tempBuf) {
+    private void putShort(final short val, final long memId, final int offset, final byte[] tempBuf) {
         putShort(val, tempBuf, 0);
         allocator.copy(tempBuf, 0, memId, offset, 2);
     }
 
-    private short getShort(final long memId,
-                           final int offset,
-                           final byte[] tempBuf) {
+    private short getShort(final long memId, final int offset, final byte[] tempBuf) {
         allocator.copy(memId, offset, tempBuf, 0, 2);
         return getShort(tempBuf, 0);
     }
 
-    private void putInt(final int val,
-                        final long memId,
-                        final int offset,
-                        final byte[] tempBuf) {
+    private void putInt(final int val, final long memId, final int offset, final byte[] tempBuf) {
         putInt(val, tempBuf, 0);
         allocator.copy(tempBuf, 0, memId, offset, 4);
     }
 
-    private int getInt(final long memId,
-                       final int offset,
-                       final byte[] tempBuf) {
+    private int getInt(final long memId, final int offset, final byte[] tempBuf) {
         allocator.copy(memId, offset, tempBuf, 0, 4);
         return getInt(tempBuf, 0);
     }
 
-    private void putLong(final long val,
-                         final long memId,
-                         final int offset,
-                         final byte[] tempBuf) {
+    private void putLong(final long val, final long memId, final int offset, final byte[] tempBuf) {
         putLong(val, tempBuf, 0);
         allocator.copy(tempBuf, 0, memId, offset, 8);
     }
 
-    private long getLong(final long memId,
-                         final int offset,
-                         final byte[] tempBuf) {
+    private long getLong(final long memId, final int offset, final byte[] tempBuf) {
         allocator.copy(memId, offset, tempBuf, 0, 8);
         return getLong(tempBuf, 0);
     }
 
-    private static void putShort(final short val,
-                                 final byte[] buf,
-                                 final int offset) {
-        buf[offset]     = (byte) (val >> 8);
+    private static void putShort(final short val, final byte[] buf, final int offset) {
+        buf[offset] = (byte) (val >> 8);
         buf[offset + 1] = (byte) val;
     }
 
-    private static short getShort(final byte[] buf,
-                                  final int offset) {
-        return (short)
-            ((buf[offset] << 8) |
-             (buf[offset + 1] & 0xff));
+    private static short getShort(final byte[] buf, final int offset) {
+        return (short) ((buf[offset] << 8) | (buf[offset + 1] & 0xff));
     }
 
-    private static void putInt(final int val,
-                               final byte[] buf,
-                               final int offset) {
-        buf[offset]     = (byte) (val >> 24);
+    private static void putInt(final int val, final byte[] buf, final int offset) {
+        buf[offset] = (byte) (val >> 24);
         buf[offset + 1] = (byte) (val >> 16);
-        buf[offset + 2] = (byte) (val >>  8);
+        buf[offset + 2] = (byte) (val >> 8);
         buf[offset + 3] = (byte) val;
     }
 
-    private static int getInt(final byte[] buf,
-                              final int offset) {
-        return
-            ((buf[offset]             << 24) |
-            ((buf[offset + 1] & 0xff) << 16) |
-            ((buf[offset + 2] & 0xff) <<  8) |
-             (buf[offset + 3] & 0xff));
+    private static int getInt(final byte[] buf, final int offset) {
+        return ((buf[offset] << 24) | ((buf[offset + 1] & 0xff) << 16) | ((buf[offset + 2] & 0xff) << 8)
+                | (buf[offset + 3] & 0xff));
     }
 
-    private static void putLong(final long val,
-                                final byte[] buf,
-                                final int offset) {
-        buf[offset]     = (byte) (val >> 56);
+    private static void putLong(final long val, final byte[] buf, final int offset) {
+        buf[offset] = (byte) (val >> 56);
         buf[offset + 1] = (byte) (val >> 48);
         buf[offset + 2] = (byte) (val >> 40);
         buf[offset + 3] = (byte) (val >> 32);
         buf[offset + 4] = (byte) (val >> 24);
         buf[offset + 5] = (byte) (val >> 16);
-        buf[offset + 6] = (byte) (val >>  8);
+        buf[offset + 6] = (byte) (val >> 8);
         buf[offset + 7] = (byte) val;
     }
 
-    private static long getLong(final byte[] buf,
-                                final int offset) {
-        return
-            (((long)buf[offset]             << 56) |
-            (((long)buf[offset + 1] & 0xff) << 48) |
-            (((long)buf[offset + 2] & 0xff) << 40) |
-            (((long)buf[offset + 3] & 0xff) << 32) |
-            (((long)buf[offset + 4] & 0xff) << 24) |
-            (((long)buf[offset + 5] & 0xff) << 16) |
-            (((long)buf[offset + 6] & 0xff) <<  8) |
-             ((long)buf[offset + 7] & 0xff));
+    private static long getLong(final byte[] buf, final int offset) {
+        return (((long) buf[offset] << 56) | (((long) buf[offset + 1] & 0xff) << 48)
+                | (((long) buf[offset + 2] & 0xff) << 40) | (((long) buf[offset + 3] & 0xff) << 32)
+                | (((long) buf[offset + 4] & 0xff) << 24) | (((long) buf[offset + 5] & 0xff) << 16)
+                | (((long) buf[offset + 6] & 0xff) << 8) | ((long) buf[offset + 7] & 0xff));
     }
 
     public void doCriticalEviction(boolean backgroundIO) {
@@ -2841,7 +2554,7 @@ public class OffHeapCache implements EnvConfigObserver {
             return;
         }
 
-        evictBatch(EvictionSource.MANUAL, true /*backgroundIO*/);
+        evictBatch(EvictionSource.MANUAL, true /* backgroundIO */);
     }
 
     private void wakeUpEvictionThreads() {
@@ -2864,8 +2577,7 @@ public class OffHeapCache implements EnvConfigObserver {
             public void run() {
                 activePoolThreads.incrementAndGet();
                 try {
-                    evictBatch(
-                        EvictionSource.EVICTORTHREAD, true /*backgroundIO*/);
+                    evictBatch(EvictionSource.EVICTORTHREAD, true /* backgroundIO */);
                 } finally {
                     activePoolThreads.decrementAndGet();
                 }
@@ -2915,11 +2627,9 @@ public class OffHeapCache implements EnvConfigObserver {
         return size;
     }
 
-    private void evictBatch(final EvictionSource source,
-                            final boolean backgroundIO) {
+    private void evictBatch(final EvictionSource source, final boolean backgroundIO) {
 
-        final long maxBytesToEvict =
-            evictBytes + (allocator.getUsedBytes() - memoryLimit);
+        final long maxBytesToEvict = evictBytes + (allocator.getUsedBytes() - memoryLimit);
 
         long bytesEvicted = 0;
 
@@ -2927,9 +2637,7 @@ public class OffHeapCache implements EnvConfigObserver {
         int maxLruEntries = getLRUSize(pri1LRUSet);
         int nLruEntries = 0;
 
-        while (bytesEvicted < maxBytesToEvict &&
-               needEviction() &&
-               !shutdownRequested.get()) {
+        while (bytesEvicted < maxBytesToEvict && needEviction() && !shutdownRequested.get()) {
 
             if (nLruEntries >= maxLruEntries) {
                 if (pri2) {
@@ -2943,14 +2651,12 @@ public class OffHeapCache implements EnvConfigObserver {
             final LRUList lru;
 
             if (pri2) {
-                final int lruIdx =
-                    Math.abs(nextPri2LRUList++) % numLRULists;
+                final int lruIdx = Math.abs(nextPri2LRUList++) % numLRULists;
 
                 lru = pri2LRUSet[lruIdx];
 
             } else {
-                final int lruIdx =
-                    Math.abs(nextPri1LRUList++) % numLRULists;
+                final int lruIdx = Math.abs(nextPri1LRUList++) % numLRULists;
 
                 lru = pri1LRUSet[lruIdx];
             }
@@ -2966,10 +2672,7 @@ public class OffHeapCache implements EnvConfigObserver {
         }
     }
 
-    private long evictOne(final EvictionSource source,
-                          final boolean backgroundIO,
-                          final int entry,
-                          final LRUList lru,
+    private long evictOne(final EvictionSource source, final boolean backgroundIO, final int entry, final LRUList lru,
                           final boolean pri2) {
 
         nNodesTargeted.incrementAndGet();
@@ -2982,13 +2685,12 @@ public class OffHeapCache implements EnvConfigObserver {
         final int chunkIdx = entry % CHUNK_SIZE;
 
         /*
-         * Note that almost anything could have happened in other threads
-         * after removing the entry from the LRU and prior to latching the
-         * owner IN. We account for these possibilities below.
-         *
-         * When we decide to "skip" an entry, it is not added back to the LRU
-         * and it is not freed. The assumption is that another thread is
-         * processing the entry and will add it to the LRU or free it.
+         * Note that almost anything could have happened in other threads after
+         * removing the entry from the LRU and prior to latching the owner IN.
+         * We account for these possibilities below. When we decide to "skip" an
+         * entry, it is not added back to the LRU and it is not freed. The
+         * assumption is that another thread is processing the entry and will
+         * add it to the LRU or free it.
          */
         final IN in = chunk.owners[chunkIdx];
 
@@ -3008,15 +2710,14 @@ public class OffHeapCache implements EnvConfigObserver {
             /*
              * If the owner has changed or the IN was evicted, skip it.
              */
-            if (in != chunk.owners[chunkIdx] ||
-                !in.getInListResident()) {
+            if (in != chunk.owners[chunkIdx] || !in.getInListResident()) {
                 nNodesSkipped.incrementAndGet();
                 return 0;
             }
 
             /*
-             * If owner is a BIN, it is in the main cache but may have
-             * off-heap LNs.
+             * If owner is a BIN, it is in the main cache but may have off-heap
+             * LNs.
              */
             if (in.isBIN()) {
                 final BIN bin = (BIN) in;
@@ -3063,9 +2764,9 @@ public class OffHeapCache implements EnvConfigObserver {
             }
 
             /*
-             * If the entry was moved between a pri1 and pri2 LRU list, skip
-             * it. This means that the LRUList from which we removed the entry
-             * is not the list it belongs to.
+             * If the entry was moved between a pri1 and pri2 LRU list, skip it.
+             * This means that the LRUList from which we removed the entry is
+             * not the list it belongs to.
              */
             if (pri2 != in.isOffHeapBINPri2(index)) {
                 nNodesSkipped.incrementAndGet();
@@ -3088,9 +2789,8 @@ public class OffHeapCache implements EnvConfigObserver {
              */
             final BIN residentBIN = (BIN) in.getTarget(index);
             if (residentBIN != null) {
-                throw EnvironmentFailureException.unexpectedState(
-                    envImpl, "BIN is resident in both caches, id=" +
-                    residentBIN.getNodeId());
+                throw EnvironmentFailureException.unexpectedState(envImpl,
+                        "BIN is resident in both caches, id=" + residentBIN.getNodeId());
             }
 
             final boolean useChecksums = envImpl.useOffHeapChecksums();
@@ -3103,9 +2803,7 @@ public class OffHeapCache implements EnvConfigObserver {
             /*
              * First try stripping LNs.
              */
-            final long nLNBytesEvicted = stripLNs(
-                entry, pri2, dirty, memId, chunk, chunkIdx, in, index,
-                backgroundIO);
+            final long nLNBytesEvicted = stripLNs(entry, pri2, dirty, memId, chunk, chunkIdx, in, index, backgroundIO);
 
             if (nLNBytesEvicted > 0) {
                 return nLNBytesEvicted;
@@ -3116,9 +2814,7 @@ public class OffHeapCache implements EnvConfigObserver {
              */
             if ((flags & BIN_FLAG_CAN_MUTATE) != 0) {
 
-                final long nBytesEvicted = mutateToBINDelta(
-                    envImpl, in.getDatabase(), entry, pri2,
-                    chunk, chunkIdx);
+                final long nBytesEvicted = mutateToBINDelta(envImpl, in.getDatabase(), entry, pri2, chunk, chunkIdx);
 
                 if (nBytesEvicted > 0) {
                     return nBytesEvicted;
@@ -3126,22 +2822,19 @@ public class OffHeapCache implements EnvConfigObserver {
             }
 
             /*
-             * If it is in the pri1 list and is dirty with no resident LNs,
-             * move it to the pri2 list. We currently have no stat for this.
+             * If it is in the pri1 list and is dirty with no resident LNs, move
+             * it to the pri2 list. We currently have no stat for this.
              */
             if (!pri2 && dirty) {
-                moveBack(entry, true /*pri2*/);
-                in.setOffHeapBINId(
-                    index, entry, true /*pri2*/, true /*dirty*/);
+                moveBack(entry, true /* pri2 */);
+                in.setOffHeapBINId(index, entry, true /* pri2 */, true /* dirty */);
                 return 0;
             }
 
             /*
              * Log the BIN if it is dirty and finally just get rid of it.
              */
-            return flushAndDiscardBIN(
-                entry, pri2, dirty, memId, in, index, backgroundIO,
-                false /*freeLNs*/);
+            return flushAndDiscardBIN(entry, pri2, dirty, memId, in, index, backgroundIO, false /* freeLNs */);
 
         } finally {
             in.releaseLatch();
@@ -3152,9 +2845,7 @@ public class OffHeapCache implements EnvConfigObserver {
      * Strip off-heap LNs referenced by a main cache BIN. If there are any
      * off-heap expired LNs, strip only them. Otherwise, strip all LNs.
      */
-    private long stripLNsFromMainBIN(final BIN bin,
-                                     final int entry,
-                                     final boolean pri2) {
+    private long stripLNsFromMainBIN(final BIN bin, final int entry, final boolean pri2) {
         /*
          * Strip expired LNs first.
          */
@@ -3176,8 +2867,8 @@ public class OffHeapCache implements EnvConfigObserver {
 
         /*
          * If any were expired, return. If any non-expired LNs remain, put back
-         * the entry on the LRU list, leaving the non-expired LNs resident.
-         * Also compress the BIN to free the expired slots in the main cache.
+         * the entry on the LRU list, leaving the non-expired LNs resident. Also
+         * compress the BIN to free the expired slots in the main cache.
          */
         if (nEvicted > 0) {
             if (anyNonExpired) {
@@ -3237,29 +2928,20 @@ public class OffHeapCache implements EnvConfigObserver {
         final boolean dirty = parent.isOffHeapBINDirty(index);
         final long memId = chunk.memIds[chunkIdx];
 
-        return stripLNs(
-            entry, pri2, dirty, memId, chunk, chunkIdx, parent, index, false);
+        return stripLNs(entry, pri2, dirty, memId, chunk, chunkIdx, parent, index, false);
     }
 
-    private long stripLNs(final int entry,
-                          final boolean pri2,
-                          final boolean dirty,
-                          final long memId,
-                          final Chunk chunk,
-                          final int chunkIdx,
-                          final IN parent,
-                          final int index,
-                          final boolean backgroundIO) {
+    private long stripLNs(final int entry, final boolean pri2, final boolean dirty, final long memId, final Chunk chunk,
+                          final int chunkIdx, final IN parent, final int index, final boolean backgroundIO) {
 
         final EnvironmentImpl envImpl = parent.getEnv();
         final boolean useChecksums = envImpl.useOffHeapChecksums();
         final int checksumSize = useChecksums ? CHECKSUM_SIZE : 0;
 
         /*
-         * Contents of headBuf:
-         *  flags, fullLsn, deltaLsn, minExpiration, lnIdsSize.
-         * Note that headBuf does not contain the checksum.
-         * Contents of memId following headBuf fields: LN mem Ids, BIN.
+         * Contents of headBuf: flags, fullLsn, deltaLsn, minExpiration,
+         * lnIdsSize. Note that headBuf does not contain the checksum. Contents
+         * of memId following headBuf fields: LN mem Ids, BIN.
          */
         final byte[] headBuf = new byte[1 + 8 + 8 + 4 + 2];
         allocator.copy(memId, checksumSize, headBuf, 0, headBuf.length);
@@ -3280,16 +2962,14 @@ public class OffHeapCache implements EnvConfigObserver {
          * BIN, evict expired off-heap LNs, compress expired slots, and
          * re-serialize the BIN.
          */
-        if ((flags & BIN_FLAG_DELTA) == 0 &&
-            envImpl.isExpired(minExpiration, true /*hours*/)) {
+        if ((flags & BIN_FLAG_DELTA) == 0 && envImpl.isExpired(minExpiration, true /* hours */)) {
 
             final BIN bin = materializeBIN(envImpl, getMemBytes(memId));
 
             bin.latchNoUpdateLRU(parent.getDatabase());
             try {
                 for (int i = 0; i < bin.getNEntries(); i += 1) {
-                    if (bin.getOffHeapLNId(i) == 0 ||
-                        !bin.isExpired(i)) {
+                    if (bin.getOffHeapLNId(i) == 0 || !bin.isExpired(i)) {
                         continue;
                     }
                     nBytesEvicted += freeLN(bin, i);
@@ -3304,8 +2984,7 @@ public class OffHeapCache implements EnvConfigObserver {
                  */
                 final int origNSlots = bin.getNEntries();
 
-                bin.compress(
-                    !bin.shouldLogDelta() /*compressDirtySlots*/, null);
+                bin.compress(!bin.shouldLogDelta() /* compressDirtySlots */, null);
 
                 /*
                  * If we compressed any expired slots, re-serialize the BIN.
@@ -3320,9 +2999,8 @@ public class OffHeapCache implements EnvConfigObserver {
                          * When allocations are failing, freeing the BIN is the
                          * simplest and most productive thing to do.
                          */
-                        nBytesEvicted += flushAndDiscardBIN(
-                            entry, pri2, dirty, memId, parent, index,
-                            backgroundIO, true /*freeLNs*/);
+                        nBytesEvicted += flushAndDiscardBIN(entry, pri2, dirty, memId, parent, index, backgroundIO,
+                                true /* freeLNs */);
 
                         return nBytesEvicted;
                     }
@@ -3371,7 +3049,7 @@ public class OffHeapCache implements EnvConfigObserver {
 
             putShort((short) (-lnIdsSize), memId, memHeadLen - 2, tempBuf);
 
-                /* However, the checksum is now invalid. */
+            /* However, the checksum is now invalid. */
             if (useChecksums) {
                 putInt(0, memId, 0, tempBuf);
             }
@@ -3385,12 +3063,11 @@ public class OffHeapCache implements EnvConfigObserver {
 
             if (newMemId == 0) {
                 /*
-                 * When allocations are failing, freeing the BIN is the
-                 * simplest and most productive thing to do.
+                 * When allocations are failing, freeing the BIN is the simplest
+                 * and most productive thing to do.
                  */
-                nBytesEvicted += flushAndDiscardBIN(
-                    entry, pri2, dirty, memId, parent, index, backgroundIO,
-                    true /*freeLNs*/);
+                nBytesEvicted += flushAndDiscardBIN(entry, pri2, dirty, memId, parent, index, backgroundIO,
+                        true /* freeLNs */);
 
                 return nBytesEvicted;
             }
@@ -3399,22 +3076,16 @@ public class OffHeapCache implements EnvConfigObserver {
 
             /*
              * Copy all parts of the old BIN to the new, except for the
-             * checksum, lnIdsSize and the LN memIds. We don't need to set
-             * the checksum or lnIdsSize to zero in the new block because it
-             * was zero-filled when it was allocated. Instead we omit these
-             * fields when copying.
-             *
-             * The first copy includes all headBuf fields except for the
-             * lnIdsSize at the end of the buffer. The second copy includes
-             * the serialized BIN alone.
+             * checksum, lnIdsSize and the LN memIds. We don't need to set the
+             * checksum or lnIdsSize to zero in the new block because it was
+             * zero-filled when it was allocated. Instead we omit these fields
+             * when copying. The first copy includes all headBuf fields except
+             * for the lnIdsSize at the end of the buffer. The second copy
+             * includes the serialized BIN alone.
              */
-            allocator.copy(
-                headBuf, 0,
-                newMemId, checksumSize, headBuf.length - 2);
+            allocator.copy(headBuf, 0, newMemId, checksumSize, headBuf.length - 2);
 
-            allocator.copy(
-                memId, memHeadLen + lnIdsSize,
-                newMemId, memHeadLen, newSize - memHeadLen);
+            allocator.copy(memId, memHeadLen + lnIdsSize, newMemId, memHeadLen, newSize - memHeadLen);
 
             nBytesEvicted += freeMemory(memId);
             chunk.memIds[chunkIdx] = newMemId;
@@ -3426,8 +3097,7 @@ public class OffHeapCache implements EnvConfigObserver {
         return nBytesEvicted;
     }
 
-    public long mutateToBINDelta(final IN parent,
-                                 final int index) {
+    public long mutateToBINDelta(final IN parent, final int index) {
 
         assert parent.isLatchExclusiveOwner();
         assert parent.getInListResident();
@@ -3440,17 +3110,12 @@ public class OffHeapCache implements EnvConfigObserver {
         final Chunk chunk = chunks[entry / CHUNK_SIZE];
         final int chunkIdx = entry % CHUNK_SIZE;
 
-        return mutateToBINDelta(
-            parent.getEnv(), parent.getDatabase(), entry,
-            parent.isOffHeapBINPri2(index), chunk, chunkIdx);
+        return mutateToBINDelta(parent.getEnv(), parent.getDatabase(), entry, parent.isOffHeapBINPri2(index), chunk,
+                chunkIdx);
     }
 
-    private long mutateToBINDelta(final EnvironmentImpl envImpl,
-                                  final DatabaseImpl dbImpl,
-                                  final int entry,
-                                  final boolean pri2,
-                                  final Chunk chunk,
-                                  final int chunkIdx) {
+    private long mutateToBINDelta(final EnvironmentImpl envImpl, final DatabaseImpl dbImpl, final int entry,
+                                  final boolean pri2, final Chunk chunk, final int chunkIdx) {
 
         final long memId = chunk.memIds[chunkIdx];
 
@@ -3460,7 +3125,7 @@ public class OffHeapCache implements EnvConfigObserver {
         final long newMemId;
         bin.latchNoUpdateLRU(dbImpl);
         try {
-            newMemId = serializeBIN(bin, true /*asDelta*/);
+            newMemId = serializeBIN(bin, true /* asDelta */);
         } finally {
             bin.releaseLatch();
         }
@@ -3469,7 +3134,7 @@ public class OffHeapCache implements EnvConfigObserver {
             return 0;
         }
 
-        long nBytesEvicted = freeBIN(envImpl, memId, false /*freeLNs*/);
+        long nBytesEvicted = freeBIN(envImpl, memId, false /* freeLNs */);
         nBytesEvicted -= allocator.totalSize(newMemId);
         chunk.memIds[chunkIdx] = newMemId;
 
@@ -3481,13 +3146,8 @@ public class OffHeapCache implements EnvConfigObserver {
     /**
      * Logs the BIN child if it is dirty, and then discards it.
      */
-    private long flushAndDiscardBIN(final int entry,
-                                    final boolean pri2,
-                                    final boolean dirty,
-                                    final long memId,
-                                    final IN parent,
-                                    final int index,
-                                    final boolean backgroundIO,
+    private long flushAndDiscardBIN(final int entry, final boolean pri2, final boolean dirty, final long memId,
+                                    final IN parent, final int index, final boolean backgroundIO,
                                     final boolean freeLNs) {
 
         assert parent.isLatchExclusiveOwner();
@@ -3495,27 +3155,20 @@ public class OffHeapCache implements EnvConfigObserver {
         final EnvironmentImpl envImpl = parent.getEnv();
 
         if (DEBUG_TRACE) {
-            debug(
-                envImpl,
-                "Discard BIN LSN=" +
-                    DbLsn.getNoFormatString(parent.getLsn(index)) +
-                    " pri2=" + pri2 + " dirty=" + dirty);
+            debug(envImpl, "Discard BIN LSN=" + DbLsn.getNoFormatString(parent.getLsn(index)) + " pri2=" + pri2
+                    + " dirty=" + dirty);
         }
 
         if (dirty) {
 
-            final INLogEntry<BIN> logEntry = createBINLogEntry(
-                memId, entry, parent, false /*preserveBINInCache*/);
+            final INLogEntry<BIN> logEntry = createBINLogEntry(memId, entry, parent, false /* preserveBINInCache */);
 
-            final Provisional provisional =
-                envImpl.coordinateWithCheckpoint(
-                    parent.getDatabase(), IN.BIN_LEVEL, parent);
+            final Provisional provisional = envImpl.coordinateWithCheckpoint(parent.getDatabase(), IN.BIN_LEVEL,
+                    parent);
 
-            final long lsn = IN.logEntry(
-                logEntry, provisional, backgroundIO, parent);
+            final long lsn = IN.logEntry(logEntry, provisional, backgroundIO, parent);
 
-            parent.updateEntry(
-                index, lsn, VLSN.NULL_VLSN_SEQUENCE, 0 /*lastLoggedSize*/);
+            parent.updateEntry(index, lsn, VLSN.NULL_VLSN_SEQUENCE, 0 /* lastLoggedSize */);
 
             nDirtyNodesEvicted.incrementAndGet();
 
@@ -3538,9 +3191,7 @@ public class OffHeapCache implements EnvConfigObserver {
         final LRUList lru = pri1LRUSet[entry % numLRULists];
         lru.remove(entry);
 
-        return evictOne(
-            EvictionSource.MANUAL, false /*backgroundIO*/, entry, lru,
-            false /*pri2*/);
+        return evictOne(EvictionSource.MANUAL, false /* backgroundIO */, entry, lru, false /* pri2 */);
     }
 
     long testEvictOffHeapBIN(final IN in, final int index) {
@@ -3551,12 +3202,10 @@ public class OffHeapCache implements EnvConfigObserver {
         final boolean pri2 = in.isOffHeapBINPri2(index);
         final int lruIdx = entry % numLRULists;
 
-        final LRUList lru =
-            pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
+        final LRUList lru = pri2 ? pri2LRUSet[lruIdx] : pri1LRUSet[lruIdx];
 
         lru.remove(entry);
 
-        return evictOne(
-            EvictionSource.MANUAL, false /*backgroundIO*/, entry, lru, pri2);
+        return evictOne(EvictionSource.MANUAL, false /* backgroundIO */, entry, lru, pri2);
     }
 }

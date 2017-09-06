@@ -21,15 +21,15 @@ import com.sleepycat.je.utilint.DbLsn;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * This exception may be thrown by a Replica during the {@link <a
- * href="{@docRoot}/../ReplicationGuide/lifecycle.html#lifecycle-nodestartup">
+ * This exception may be thrown by a Replica during the {@link <a href=
+ * "{@docRoot}/../ReplicationGuide/lifecycle.html#lifecycle-nodestartup">
  * replication stream sync-up</a>} phase of startup. It indicates that a syncup
  * cannot proceed without undoing a number of committed transactions that
  * exceeds the limit defined by {@link ReplicationConfig#TXN_ROLLBACK_LIMIT}.
  * <p>
- * It is rare for committed transactions to be rolled back during a
- * sync-up. One way this can happen is if a replication group has been
- * executing with a {@link com.sleepycat.je.Durability} policy that specifies a
+ * It is rare for committed transactions to be rolled back during a sync-up. One
+ * way this can happen is if a replication group has been executing with a
+ * {@link com.sleepycat.je.Durability} policy that specifies a
  * {@link com.sleepycat.je.Durability.ReplicaAckPolicy ReplicaAckPolicy} of
  * NONE.
  * <p>
@@ -43,87 +43,77 @@ import com.sleepycat.je.utilint.VLSN;
  * rolled back.
  * <p>
  * If the number of committed transactions to be rolled back is less than or
- * equal to the limit specified by {@link
- * ReplicationConfig#TXN_ROLLBACK_LIMIT}, JE will automatically truncate the
- * environment log to remove the unreplicated transactions, and will throw a
- * {@link RollbackException}. The application only needs to reinstantiate the
- * ReplicatedEnvironment and proceed on. If the limit specified by {@link
- * ReplicationConfig#TXN_ROLLBACK_LIMIT} is exceeded, the application will
- * receive a RollbackProhibitedException to indicate that manual intervention 
- * is required.
+ * equal to the limit specified by {@link ReplicationConfig#TXN_ROLLBACK_LIMIT},
+ * JE will automatically truncate the environment log to remove the unreplicated
+ * transactions, and will throw a {@link RollbackException}. The application
+ * only needs to reinstantiate the ReplicatedEnvironment and proceed on. If the
+ * limit specified by {@link ReplicationConfig#TXN_ROLLBACK_LIMIT} is exceeded,
+ * the application will receive a RollbackProhibitedException to indicate that
+ * manual intervention is required.
  * <p>
  * The RollbackProhibitedException lets the user interject application specific
  * processing before the log is truncated. The exception message and getter
- * methods indicate the number of transactions that must be rolled back, and
- * the time and id of the earliest targeted transaction, and the user can use
- * this information to make any desired application adjustments. The
- * application may then manually truncate the log using {@link
- * com.sleepycat.je.util.DbTruncateLog}.
+ * methods indicate the number of transactions that must be rolled back, and the
+ * time and id of the earliest targeted transaction, and the user can use this
+ * information to make any desired application adjustments. The application may
+ * then manually truncate the log using
+ * {@link com.sleepycat.je.util.DbTruncateLog}.
  * <p>
  * Note that any CommitTokens obtained before restarting this
  * <code>Replica</code> shouldn't be used after
- * {@link RollbackProhibitedException} is thrown because the token may no 
- * longer exist on the current <code>Master</code> node.
+ * {@link RollbackProhibitedException} is thrown because the token may no longer
+ * exist on the current <code>Master</code> node.
  */
 public class RollbackProhibitedException extends RestartRequiredException {
-    private static final long serialVersionUID = 1L;
+    private static final long             serialVersionUID = 1L;
 
-    /* 
-     * searchResults is only used by threads that catch the exception,
-     * so the field is sure to be initialized. 
+    /*
+     * searchResults is only used by threads that catch the exception, so the
+     * field is sure to be initialized.
      */
     private final MatchpointSearchResults searchResults;
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    public RollbackProhibitedException(RepImpl repImpl,
-                                       int rollbackTxnLimit,
-                                       VLSN matchpointVLSN,
+    public RollbackProhibitedException(RepImpl repImpl, int rollbackTxnLimit, VLSN matchpointVLSN,
                                        MatchpointSearchResults searchResults) {
 
         super(repImpl, EnvironmentFailureReason.ROLLBACK_PROHIBITED,
-              makeMessage(repImpl.getName(), searchResults, matchpointVLSN,
-                          rollbackTxnLimit));
+                makeMessage(repImpl.getName(), searchResults, matchpointVLSN, rollbackTxnLimit));
         this.searchResults = searchResults;
     }
 
-    private static String makeMessage(String nodeName,
-                                      MatchpointSearchResults searchResults,
-                                      VLSN matchpointVLSN,
+    private static String makeMessage(String nodeName, MatchpointSearchResults searchResults, VLSN matchpointVLSN,
                                       int rollbackTxnLimit) {
         long matchpointLSN = searchResults.getMatchpointLSN();
         long fileNumber = DbLsn.getFileNumber(matchpointLSN);
         long fileOffset = DbLsn.getFileOffset(matchpointLSN);
-        return
-            "Node " + nodeName + " must rollback" +
-            searchResults.getRollbackMsg() + 
-            " in order to rejoin the replication group, but the transaction " +
-            "rollback limit of " + rollbackTxnLimit + " prohibits this. " + 
-            "Either increase the property je.rep.txnRollbackLimit to a value " +
-            "larger than " + rollbackTxnLimit + " to permit automatic " + 
-            "rollback, or manually remove the problematic transactions. " + 
-            "To do a manual removal, truncate the log to file " + 
-            FileManager.getFileName(fileNumber) + 
-            ", offset 0x" + 
-            Long.toHexString(fileOffset) + ", vlsn " + 
-            matchpointVLSN + 
-            " using the directions in com.sleepycat.je.util.DbTruncateLog.";
+        return "Node " + nodeName + " must rollback" + searchResults.getRollbackMsg()
+                + " in order to rejoin the replication group, but the transaction " + "rollback limit of "
+                + rollbackTxnLimit + " prohibits this. "
+                + "Either increase the property je.rep.txnRollbackLimit to a value " + "larger than " + rollbackTxnLimit
+                + " to permit automatic " + "rollback, or manually remove the problematic transactions. "
+                + "To do a manual removal, truncate the log to file " + FileManager.getFileName(fileNumber)
+                + ", offset 0x" + Long.toHexString(fileOffset) + ", vlsn " + matchpointVLSN
+                + " using the directions in com.sleepycat.je.util.DbTruncateLog.";
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
-    public RollbackProhibitedException(String message,
-                                       RollbackProhibitedException cause) {
+    public RollbackProhibitedException(String message, RollbackProhibitedException cause) {
         super(message + " " + cause.getMessage(), cause);
         this.searchResults = cause.searchResults;
     }
 
     /**
      * For internal use only.
+     * 
      * @hidden
      */
     @Override
@@ -140,15 +130,15 @@ public class RollbackProhibitedException extends RestartRequiredException {
     }
 
     /**
-     * The JE log must be truncated to this offset in the specified
-     * file in order for this node to rejoin the group.
+     * The JE log must be truncated to this offset in the specified file in
+     * order for this node to rejoin the group.
      */
     public long getTruncationFileOffset() {
         return DbLsn.getFileOffset(searchResults.getMatchpointLSN());
     }
 
     /**
-     * Return the time in milliseconds of the earliest transaction commit that 
+     * Return the time in milliseconds of the earliest transaction commit that
      * will be rolled back if the log is truncated to the location specified by
      * {@link #getTruncationFileNumber} and {@link #getTruncationFileOffset}
      */
@@ -157,8 +147,8 @@ public class RollbackProhibitedException extends RestartRequiredException {
     }
 
     /**
-     * Return the id of the earliest transaction commit that will be
-     * rolled back if the log is truncated to the location specified by
+     * Return the id of the earliest transaction commit that will be rolled back
+     * if the log is truncated to the location specified by
      * {@link #getTruncationFileNumber} and {@link #getTruncationFileOffset}
      */
     public long getEarliestTransactionId() {

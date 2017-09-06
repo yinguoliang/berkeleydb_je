@@ -42,50 +42,46 @@ import com.sleepycat.je.utilint.VLSN;
 
 /**
  * FeederTxns manages transactions that need acknowledgments.
- *
- * <p>The lastCommitVLSN, lastCommitTimestamp, and vlsnRate statistics provide
+ * <p>
+ * The lastCommitVLSN, lastCommitTimestamp, and vlsnRate statistics provide
  * general information about committed transactions on the master, but are also
  * intended to be used programmatically along with other statistics for the
- * feeder to provide information about how up-to-date the replicas are.  See
- * the Feeder class for more details.
+ * feeder to provide information about how up-to-date the replicas are. See the
+ * Feeder class for more details.
  */
 public class FeederTxns {
 
     /** The moving average period in milliseconds */
-    private static final long MOVING_AVG_PERIOD_MILLIS = 10000;
+    private static final long           MOVING_AVG_PERIOD_MILLIS = 10000;
 
     /*
      * Tracks transactions that have not yet been acknowledged for the entire
      * replication node.
      */
-    private final Map<Long, TxnInfo> txnMap;
+    private final Map<Long, TxnInfo>    txnMap;
 
-    private final RepImpl repImpl;
-    private final StatGroup statistics;
-    private final AtomicLongStat txnsAcked;
-    private final AtomicLongStat txnsNotAcked;
-    private final AtomicLongStat ackWaitMs;
-    private final AtomicLongStat totalTxnMs;
+    private final RepImpl               repImpl;
+    private final StatGroup             statistics;
+    private final AtomicLongStat        txnsAcked;
+    private final AtomicLongStat        txnsNotAcked;
+    private final AtomicLongStat        ackWaitMs;
+    private final AtomicLongStat        totalTxnMs;
     private final NoClearAtomicLongStat lastCommitVLSN;
     private final NoClearAtomicLongStat lastCommitTimestamp;
-    private final LongAvgRateStat vlsnRate;
+    private final LongAvgRateStat       vlsnRate;
 
     public FeederTxns(RepImpl repImpl) {
 
         txnMap = new ConcurrentHashMap<Long, TxnInfo>();
         this.repImpl = repImpl;
-        statistics = new StatGroup(FeederTxnStatDefinition.GROUP_NAME,
-                                   FeederTxnStatDefinition.GROUP_DESC);
+        statistics = new StatGroup(FeederTxnStatDefinition.GROUP_NAME, FeederTxnStatDefinition.GROUP_DESC);
         txnsAcked = new AtomicLongStat(statistics, TXNS_ACKED);
         txnsNotAcked = new AtomicLongStat(statistics, TXNS_NOT_ACKED);
         ackWaitMs = new AtomicLongStat(statistics, ACK_WAIT_MS);
         totalTxnMs = new AtomicLongStat(statistics, TOTAL_TXN_MS);
-        lastCommitVLSN =
-            new NoClearAtomicLongStat(statistics, LAST_COMMIT_VLSN);
-        lastCommitTimestamp =
-            new NoClearAtomicLongStat(statistics, LAST_COMMIT_TIMESTAMP);
-        vlsnRate = new LongAvgRateStat(
-            statistics, VLSN_RATE, MOVING_AVG_PERIOD_MILLIS, TimeUnit.MINUTES);
+        lastCommitVLSN = new NoClearAtomicLongStat(statistics, LAST_COMMIT_VLSN);
+        lastCommitTimestamp = new NoClearAtomicLongStat(statistics, LAST_COMMIT_TIMESTAMP);
+        vlsnRate = new LongAvgRateStat(statistics, VLSN_RATE, MOVING_AVG_PERIOD_MILLIS, TimeUnit.MINUTES);
     }
 
     public AtomicLongStat getLastCommitVLSN() {
@@ -112,13 +108,13 @@ public class FeederTxns {
             return;
         }
         TxnInfo txnInfo = new TxnInfo(txn);
-        TxnInfo  prevInfo = txnMap.put(txn.getId(), txnInfo);
-        assert(prevInfo == null);
+        TxnInfo prevInfo = txnMap.put(txn.getId(), txnInfo);
+        assert (prevInfo == null);
     }
 
     /**
-     * Returns the transaction if it's waiting for acknowledgments. Returns
-     * null otherwise.
+     * Returns the transaction if it's waiting for acknowledgments. Returns null
+     * otherwise.
      */
     public MasterTxn getAckTxn(long txnId) {
         TxnInfo txnInfo = txnMap.get(txnId);
@@ -139,14 +135,11 @@ public class FeederTxns {
      * @param replica the replica node
      * @param txnId the locally committed transaction that was acknowledged.
      * @param isArbiterFeeder true if feeder is an Arbiter false otherwise.
-     *
      * @return the TxnInfo associated with the txnId, if txnId needs an ack,
-     * null otherwise
+     *         null otherwise
      */
-    public TxnInfo noteReplicaAck(final RepNodeImpl replica,
-                                  final long txnId) {
-        final DurabilityQuorum durabilityQuorum =
-            repImpl.getRepNode().getDurabilityQuorum();
+    public TxnInfo noteReplicaAck(final RepNodeImpl replica, final long txnId) {
+        final DurabilityQuorum durabilityQuorum = repImpl.getRepNode().getDurabilityQuorum();
         if (!durabilityQuorum.replicaAcksQualify(replica)) {
             return null;
         }
@@ -162,14 +155,11 @@ public class FeederTxns {
      * Waits for the required number of replica acks to come through.
      *
      * @param txn identifies the transaction to wait for.
-     *
      * @param timeoutMs the amount of time to wait for the acknowledgments
-     * before giving up.
-     *
+     *            before giving up.
      * @throws InsufficientAcksException if the ack requirements were not met
      */
-    public void awaitReplicaAcks(MasterTxn txn, int timeoutMs)
-        throws InterruptedException {
+    public void awaitReplicaAcks(MasterTxn txn, int timeoutMs) throws InterruptedException {
 
         /* Record master commit information even if no acks are needed */
         final long vlsn = txn.getCommitVLSN().getSequence();
@@ -186,26 +176,23 @@ public class FeederTxns {
         txnMap.remove(txn.getId());
         final RepNode repNode = repImpl.getRepNode();
         if (repNode != null) {
-            repNode.getDurabilityQuorum().ensureSufficientAcks(
-                txnInfo, timeoutMs);
+            repNode.getDurabilityQuorum().ensureSufficientAcks(txnInfo, timeoutMs);
         }
     }
 
     /**
-     * Used to track the latch and the transaction information associated with
-     * a transaction needing an acknowledgment.
+     * Used to track the latch and the transaction information associated with a
+     * transaction needing an acknowledgment.
      */
     public class TxnInfo {
         /* The latch used to track transaction acknowledgments. */
         final private CountDownLatch latch;
-        final MasterTxn txn;
+        final MasterTxn              txn;
 
         private TxnInfo(MasterTxn txn) {
-            assert(txn != null);
+            assert (txn != null);
             final int numRequiredAcks = txn.getRequiredAckCount();
-            this.latch = (numRequiredAcks == 0) ?
-                null :
-                new CountDownLatch(numRequiredAcks);
+            this.latch = (numRequiredAcks == 0) ? null : new CountDownLatch(numRequiredAcks);
             this.txn = txn;
         }
 
@@ -217,11 +204,9 @@ public class FeederTxns {
             return txn.getCommitVLSN();
         }
 
-        private final boolean await(int timeoutMs, long ackAwaitStartMs)
-            throws InterruptedException {
+        private final boolean await(int timeoutMs, long ackAwaitStartMs) throws InterruptedException {
 
-            boolean isZero = (latch == null) ||
-                latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+            boolean isZero = (latch == null) || latch.await(timeoutMs, TimeUnit.MILLISECONDS);
             if (isZero) {
                 txnsAcked.increment();
                 final long now = System.currentTimeMillis();

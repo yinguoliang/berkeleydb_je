@@ -24,28 +24,24 @@ import com.sleepycat.persist.raw.RawObject;
  * @see PersistCatalog
  * @see SimpleCatalog
  * @see ReadOnlyCatalog
- *
  * @author Mark Hayes
  */
 interface Catalog {
 
     /*
      * The catalog version is returned by getInitVersion and is the version of
-     * the serialized format classes loaded from the stored catalog.  When a
+     * the serialized format classes loaded from the stored catalog. When a
      * field is added, for example, the version can be checked to determine how
-     * to initialize the field in Format.initialize.
-     *
-     * -1: The version is considered to be -1 when reading the beta version of
-     * the catalog data.  At this point no version field was stored, but we can
-     * distinguish the beta stored format.  See PersistCatalog.
-     *
-     * 0: The first released version of the catalog data, after beta.  At this
-     * point no version field was stored, but it is initialized to zero when
-     * the PersistCatalog.Data object is de-serialized.
-     *
-     * 1: Add the ComplexFormat.ConvertFieldReader.oldFieldNum field. [#15797]
+     * to initialize the field in Format.initialize. -1: The version is
+     * considered to be -1 when reading the beta version of the catalog data. At
+     * this point no version field was stored, but we can distinguish the beta
+     * stored format. See PersistCatalog. 0: The first released version of the
+     * catalog data, after beta. At this point no version field was stored, but
+     * it is initialized to zero when the PersistCatalog.Data object is
+     * de-serialized. 1: Add the ComplexFormat.ConvertFieldReader.oldFieldNum
+     * field. [#15797]
      */
-    static final int BETA_VERSION = -1;
+    static final int BETA_VERSION    = -1;
     static final int CURRENT_VERSION = 1;
 
     /**
@@ -54,37 +50,32 @@ interface Catalog {
     int getInitVersion(Format format, boolean forReader);
 
     /**
-     * Returns a format for a given ID, or throws an exception.  This method is
+     * Returns a format for a given ID, or throws an exception. This method is
      * used when reading an object from the byte array format.
      *
      * @param expectStored is true if reading a record from a database, and
-     * therefore the format ID is expected to be stored also.  If the format ID
-     * is not stored, a RefreshException is thrown.
-     *
+     *            therefore the format ID is expected to be stored also. If the
+     *            format ID is not stored, a RefreshException is thrown.
      * @throws IllegalStateException if the formatId does not correspond to a
-     * persistent class.  This is an internal consistency error.
+     *             persistent class. This is an internal consistency error.
      */
-    Format getFormat(int formatId, boolean expectStored)
-        throws RefreshException;
+    Format getFormat(int formatId, boolean expectStored) throws RefreshException;
 
     /**
-     * Returns a format for a given class, or throws an exception.  This method
+     * Returns a format for a given class, or throws an exception. This method
      * is used when writing an object that was passed in by the user.
      *
      * @param checkEntitySubclassIndexes is true if we're expecting this format
-     * to be an entity subclass and therefore subclass secondary indexes should
-     * be opened.
-     *
-     * @throws IllegalArgumentException if the class is not persistent.  This
-     * is a user error.
+     *            to be an entity subclass and therefore subclass secondary
+     *            indexes should be opened.
+     * @throws IllegalArgumentException if the class is not persistent. This is
+     *             a user error.
      */
-    Format getFormat(Class cls, boolean checkEntitySubclassIndexes)
-        throws RefreshException;
+    Format getFormat(Class cls, boolean checkEntitySubclassIndexes) throws RefreshException;
 
     /**
-     * Returns a format by class name.  Unlike {@link
-     * #getFormat(Class,boolean)}, the format will not be created if it is not
-     * already known.
+     * Returns a format by class name. Unlike {@link #getFormat(Class,boolean)},
+     * the format will not be created if it is not already known.
      */
     Format getFormat(String className);
 
@@ -106,14 +97,12 @@ interface Catalog {
     /**
      * @see PersistCatalog#convertRawObject
      */
-    Object convertRawObject(RawObject o, IdentityHashMap converted)
-        throws RefreshException;
+    Object convertRawObject(RawObject o, IdentityHashMap converted) throws RefreshException;
 
     /**
      * @see PersistCatalog#resolveClass
      */
-    Class resolveClass(String clsName)
-        throws ClassNotFoundException;
+    Class resolveClass(String clsName) throws ClassNotFoundException;
 
     /**
      * @see PersistCatalog#resolveKeyClass

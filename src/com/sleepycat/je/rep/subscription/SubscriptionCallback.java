@@ -24,26 +24,26 @@ public interface SubscriptionCallback {
     /**
      * Process a put (insert or update) entry from stream
      *
-     * @param vlsn   VLSN of the insert entry
-     * @param key    key of the insert entry
-     * @param value  value of the insert entry
-     * @param txnId  id of txn the entry belongs to
+     * @param vlsn VLSN of the insert entry
+     * @param key key of the insert entry
+     * @param value value of the insert entry
+     * @param txnId id of txn the entry belongs to
      */
     void processPut(VLSN vlsn, byte[] key, byte[] value, long txnId);
 
     /**
      * Process a delete entry from stream
      *
-     * @param vlsn   VLSN of the delete entry
-     * @param key    key of the delete entry
-     * @param txnId  id of txn the entry belongs to
+     * @param vlsn VLSN of the delete entry
+     * @param key key of the delete entry
+     * @param txnId id of txn the entry belongs to
      */
     void processDel(VLSN vlsn, byte[] key, long txnId);
 
     /**
      * Process a commit entry from stream
      *
-     * @param vlsn  VLSN of commit entry
+     * @param vlsn VLSN of commit entry
      * @param txnId id of txn to commit
      */
     void processCommit(VLSN vlsn, long txnId);
@@ -51,7 +51,7 @@ public interface SubscriptionCallback {
     /**
      * Process an abort entry from stream
      *
-     * @param vlsn  VLSN of abort entry
+     * @param vlsn VLSN of abort entry
      * @param txnId id of txn to abort
      */
     void processAbort(VLSN vlsn, long txnId);
@@ -59,8 +59,7 @@ public interface SubscriptionCallback {
     /**
      * Process the exception from stream.
      *
-     * @param exp  exception raised in service and to be processed by
-     *             client
+     * @param exp exception raised in service and to be processed by client
      */
     void processException(final Exception exp);
 }

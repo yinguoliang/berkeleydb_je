@@ -17,31 +17,32 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
 
 /**
  * A concrete <code>TupleTupleBinding</code> that delegates to the
- * <code>MarshalledTupleEntry</code> and
- * <code>MarshalledTupleKeyEntity</code> interfaces of the entity class.
- *
- * <p>This class calls the methods of the {@link MarshalledTupleEntry}
- * interface to convert between the data entry and entity object.  It calls the
- * methods of the {@link MarshalledTupleKeyEntity} interface to convert between
- * the key entry and the entity object.  These two interfaces must both be
- * implemented by the entity class.</p>
+ * <code>MarshalledTupleEntry</code> and <code>MarshalledTupleKeyEntity</code>
+ * interfaces of the entity class.
+ * <p>
+ * This class calls the methods of the {@link MarshalledTupleEntry} interface to
+ * convert between the data entry and entity object. It calls the methods of the
+ * {@link MarshalledTupleKeyEntity} interface to convert between the key entry
+ * and the entity object. These two interfaces must both be implemented by the
+ * entity class.
+ * </p>
  *
  * @author Mark Hayes
  */
-public class TupleTupleMarshalledBinding<E extends
-    MarshalledTupleEntry & MarshalledTupleKeyEntity>
-    extends TupleTupleBinding<E> {
+public class TupleTupleMarshalledBinding<E extends MarshalledTupleEntry & MarshalledTupleKeyEntity>
+        extends TupleTupleBinding<E> {
 
     private Class<E> cls;
 
     /**
      * Creates a tuple-tuple marshalled binding object.
-     *
-     * <p>The given class is used to instantiate entity objects using {@link
-     * Class#newInstance}, and therefore must be a public class and have a
-     * public no-arguments constructor.  It must also implement the {@link
-     * MarshalledTupleEntry} and {@link MarshalledTupleKeyEntity}
-     * interfaces.</p>
+     * <p>
+     * The given class is used to instantiate entity objects using
+     * {@link Class#newInstance}, and therefore must be a public class and have
+     * a public no-arguments constructor. It must also implement the
+     * {@link MarshalledTupleEntry} and {@link MarshalledTupleKeyEntity}
+     * interfaces.
+     * </p>
      *
      * @param cls is the class of the entity objects.
      */
@@ -52,13 +53,10 @@ public class TupleTupleMarshalledBinding<E extends
         // The entity class will be used to instantiate the entity object.
         //
         if (!MarshalledTupleKeyEntity.class.isAssignableFrom(cls)) {
-            throw new IllegalArgumentException
-                (cls.toString() +
-                 " does not implement MarshalledTupleKeyEntity");
+            throw new IllegalArgumentException(cls.toString() + " does not implement MarshalledTupleKeyEntity");
         }
         if (!MarshalledTupleEntry.class.isAssignableFrom(cls)) {
-            throw new IllegalArgumentException
-                (cls.toString() + " does not implement MarshalledTupleEntry");
+            throw new IllegalArgumentException(cls.toString() + " does not implement MarshalledTupleEntry");
         }
     }
 

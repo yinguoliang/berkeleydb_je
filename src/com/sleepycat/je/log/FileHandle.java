@@ -26,17 +26,17 @@ import com.sleepycat.je.latch.LatchFactory;
  */
 public class FileHandle {
     private RandomAccessFile file;
-    private Latch fileLatch;
-    private int logVersion;
-    private long fileNum;
+    private Latch            fileLatch;
+    private int              logVersion;
+    private long             fileNum;
 
     /**
-     * Creates a new handle but does not initialize it.  The init method must
-     * be called before using the handle to access the file.
+     * Creates a new handle but does not initialize it. The init method must be
+     * called before using the handle to access the file.
      */
     FileHandle(EnvironmentImpl envImpl, long fileNum, String label) {
-        fileLatch = LatchFactory.createExclusiveLatch(
-            envImpl, "file_" + label + "_fileHandle", false /*collectStats*/);
+        fileLatch = LatchFactory.createExclusiveLatch(envImpl, "file_" + label + "_fileHandle",
+                false /* collectStats */);
         this.fileNum = fileNum;
     }
 
@@ -65,26 +65,22 @@ public class FileHandle {
         return logVersion < LogEntryType.LOG_VERSION;
     }
 
-    void latch()
-        throws DatabaseException {
+    void latch() throws DatabaseException {
 
         fileLatch.acquireExclusive();
     }
 
-    boolean latchNoWait()
-        throws DatabaseException {
+    boolean latchNoWait() throws DatabaseException {
 
         return fileLatch.acquireExclusiveNoWait();
     }
 
-    public void release()
-        throws DatabaseException {
+    public void release() throws DatabaseException {
 
         fileLatch.release();
     }
 
-    void close()
-        throws IOException {
+    void close() throws IOException {
 
         if (file != null) {
             try {

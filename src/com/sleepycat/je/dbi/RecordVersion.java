@@ -14,7 +14,7 @@
 package com.sleepycat.je.dbi;
 
 /**
- * Used to return the VLSN and LSN for a record.  The VLSN is a unique version
+ * Used to return the VLSN and LSN for a record. The VLSN is a unique version
  * for a rep group, and the LSN is unique for a single node.
  */
 public class RecordVersion {

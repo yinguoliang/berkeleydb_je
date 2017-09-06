@@ -23,30 +23,24 @@ import com.sleepycat.je.statcap.StatManager;
 import com.sleepycat.je.utilint.StatGroup;
 
 /**
- * @hidden
- * For internal use only.
+ * @hidden For internal use only.
  */
 public class RepStatManager extends StatManager {
 
-    private final UpdateMinMax updateRepMinMaxStat =
-        new UpdateMinMax(StatCaptureRepDefinitions.minStats,
-                         StatCaptureRepDefinitions.maxStats);
+    private final UpdateMinMax updateRepMinMaxStat = new UpdateMinMax(StatCaptureRepDefinitions.minStats,
+            StatCaptureRepDefinitions.maxStats);
 
     public RepStatManager(RepImpl env) {
         super(env);
     }
 
-    public synchronized ReplicatedEnvironmentStats getRepStats(
-        StatsConfig config,
-        Integer contextKey) {
+    public synchronized ReplicatedEnvironmentStats getRepStats(StatsConfig config, Integer contextKey) {
 
         StatContext sc = statContextMap.get(contextKey);
         if (sc == null) {
-            throw EnvironmentFailureException.unexpectedState(
-                "Internal error stat context is not registered");
+            throw EnvironmentFailureException.unexpectedState("Internal error stat context is not registered");
         }
-        ReplicatedEnvironmentStats rstat =
-            ((RepImpl)env).getStatsInternal(config);
+        ReplicatedEnvironmentStats rstat = ((RepImpl) env).getStatsInternal(config);
         if (rstat == null) {
             return null;
         }
@@ -76,9 +70,7 @@ public class RepStatManager extends StatManager {
                         context.setRepBase(cloneAndNegate(cur));
                     } else {
                         // reset base
-                        context.setRepBase(
-                            computeRepIntervalStats(
-                                context.getRepBase(),cur).getStatGroupsMap());
+                        context.setRepBase(computeRepIntervalStats(context.getRepBase(), cur).getStatGroupsMap());
                     }
                 }
             }
@@ -87,9 +79,8 @@ public class RepStatManager extends StatManager {
         return intervalStats;
     }
 
-    private ReplicatedEnvironmentStats computeRepIntervalStats(
-        Map<String, StatGroup>current,
-        Map<String, StatGroup> base) {
+    private ReplicatedEnvironmentStats computeRepIntervalStats(Map<String, StatGroup> current,
+                                                               Map<String, StatGroup> base) {
 
         ReplicatedEnvironmentStats envStats = new ReplicatedEnvironmentStats();
         for (StatGroup cg : current.values()) {

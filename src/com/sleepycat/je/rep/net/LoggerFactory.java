@@ -15,8 +15,8 @@ package com.sleepycat.je.rep.net;
 
 /**
  * The LoggerFactory interface provides a mechanism for obtaining logging
- * objects for use with dynamically constructed network objects.  Instances
- * of this interface are provided during object instantiation.
+ * objects for use with dynamically constructed network objects. Instances of
+ * this interface are provided during object instantiation.
  */
 public interface LoggerFactory {
 

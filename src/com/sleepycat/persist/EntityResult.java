@@ -23,7 +23,7 @@ import com.sleepycat.je.OperationResult;
  */
 public class EntityResult<V> {
 
-    private final V value;
+    private final V               value;
     private final OperationResult result;
 
     EntityResult(V value, OperationResult result) {

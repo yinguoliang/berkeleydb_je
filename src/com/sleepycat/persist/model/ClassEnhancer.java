@@ -33,38 +33,46 @@ import com.sleepycat.asm.ClassWriter;
 /**
  * Enhances the bytecode of persistent classes to provide efficient access to
  * fields and constructors, and to avoid special security policy settings for
- * accessing non-public members.  Classes are enhanced if they are annotated
- * with {@link Entity} or {@link Persistent}.
- *
- * <p>{@code ClassEnhancer} objects are thread-safe.  Multiple threads may
- * safely call the methods of a shared {@code ClassEnhancer} object.</p>
- *
- * <p>As described in the <a
- * href="../package-summary.html#bytecode">package summary</a>, bytecode
- * enhancement may be used either at runtime or offline (at build time).</p>
- *
- * <p>To use enhancement offline, this class may be used as a {@link #main main
- * program}.  
- * <!-- begin JE only -->
- * It may also be used via an {@link ClassEnhancerTask ant task}.
- * <!-- end JE only -->
+ * accessing non-public members. Classes are enhanced if they are annotated with
+ * {@link Entity} or {@link Persistent}.
+ * <p>
+ * {@code ClassEnhancer} objects are thread-safe. Multiple threads may safely
+ * call the methods of a shared {@code ClassEnhancer} object.
  * </p>
- *
- * <p>For enhancement at runtime, this class provides the low level support
- * needed to transform class bytes during class loading.  To configure runtime
- * enhancement you may use one of the following approaches:</p>
+ * <p>
+ * As described in the <a href="../package-summary.html#bytecode">package
+ * summary</a>, bytecode enhancement may be used either at runtime or offline
+ * (at build time).
+ * </p>
+ * <p>
+ * To use enhancement offline, this class may be used as a {@link #main main
+ * program}. <!-- begin JE only --> It may also be used via an
+ * {@link ClassEnhancerTask ant task}. <!-- end JE only -->
+ * </p>
+ * <p>
+ * For enhancement at runtime, this class provides the low level support needed
+ * to transform class bytes during class loading. To configure runtime
+ * enhancement you may use one of the following approaches:
+ * </p>
  * <ol>
- * <li>The BDB {@code je-<version>.jar} or {@code db.jar} file may be used as
- * an instrumentation agent as follows:
- * <pre class="code">{@literal java -javaagent:<BDB-JAR-FILE>=enhance:packageNames ...}</pre>
+ * <li>The BDB {@code je-<version>.jar} or {@code db.jar} file may be used as an
+ * instrumentation agent as follows:
+ * 
+ * <pre class="code">
+ * {@literal java -javaagent:<BDB-JAR-FILE>=enhance:packageNames ...}
+ * </pre>
+ * 
  * {@code packageNames} is a comma separated list of packages containing
- * persistent classes.  Sub-packages of these packages are also searched.  If
+ * persistent classes. Sub-packages of these packages are also searched. If
  * {@code packageNames} is omitted then all packages known to the current
  * classloader are searched.
- * <p>The "-v" option may be included in the comma separated list to print the
- * name of each class that is enhanced.</p></li>
+ * <p>
+ * The "-v" option may be included in the comma separated list to print the name
+ * of each class that is enhanced.
+ * </p>
+ * </li>
  * <li>The {@link #enhance} method may be called to implement a class loader
- * that performs enhancement.  Using this approach, it is the developer's
+ * that performs enhancement. Using this approach, it is the developer's
  * responsibility to implement and configure the class loader.</li>
  * </ol>
  *
@@ -74,24 +82,27 @@ public class ClassEnhancer implements ClassFileTransformer {
 
     private static final String AGENT_PREFIX = "enhance:";
 
-    private Set<String> packagePrefixes;
-    private boolean verbose;
+    private Set<String>         packagePrefixes;
+    private boolean             verbose;
 
     /**
-     * Enhances classes in the directories specified.  The class files are
+     * Enhances classes in the directories specified. The class files are
      * replaced when they are enhanced, without changing the file modification
-     * date.  For example:
+     * date. For example:
      *
-     * <pre class="code">java -cp je-&lt;version&gt;.jar com.sleepycat.persist.model.ClassEnhancer ./classes</pre>
-     *
-     * <p>The "-v" argument may be specified to print the name of each class
-     * file that is enhanced.  The total number of class files enhanced will
-     * always be printed.</p>
+     * <pre class="code">
+     * java -cp je-&lt;version&gt;.jar com.sleepycat.persist.model.ClassEnhancer ./classes
+     * </pre>
+     * <p>
+     * The "-v" argument may be specified to print the name of each class file
+     * that is enhanced. The total number of class files enhanced will always be
+     * printed.
+     * </p>
      *
      * @param args one or more directories containing classes to be enhanced.
-     * Subdirectories of these directories will also be searched.  Optionally,
-     * -v may be included to print the name of every class file enhanced.
-     *
+     *            Subdirectories of these directories will also be searched.
+     *            Optionally, -v may be included to print the name of every
+     *            class file enhanced.
      * @throws Exception if a problem occurs.
      */
     public static void main(String[] args) throws Exception {
@@ -104,8 +115,7 @@ public class ClassEnhancer implements ClassFileTransformer {
                     if ("-v".equals(args[i])) {
                         verbose = true;
                     } else {
-                        throw new IllegalArgumentException
-                            ("Unknown arg: " + arg);
+                        throw new IllegalArgumentException("Unknown arg: " + arg);
                     }
                 } else {
                     fileList.add(new File(arg));
@@ -130,16 +140,13 @@ public class ClassEnhancer implements ClassFileTransformer {
      * Enhances classes as specified by a JVM -javaagent argument.
      *
      * @param args see java.lang.instrument.Instrumentation.
-     *
      * @param inst see java.lang.instrument.Instrumentation.
-     *
      * @see java.lang.instrument.Instrumentation
      */
     public static void premain(String args, Instrumentation inst) {
         if (!args.startsWith(AGENT_PREFIX)) {
-            throw new IllegalArgumentException
-                ("Unknown javaagent args: " + args +
-                 " Args must start with: \"" + AGENT_PREFIX + '"');
+            throw new IllegalArgumentException(
+                    "Unknown javaagent args: " + args + " Args must start with: \"" + AGENT_PREFIX + '"');
         }
         args = args.substring(AGENT_PREFIX.length());
         Set<String> packageNames = null;
@@ -153,8 +160,7 @@ public class ClassEnhancer implements ClassFileTransformer {
                     if (token.equals("-v")) {
                         verbose = true;
                     } else {
-                        throw new IllegalArgumentException
-                            ("Unknown javaagent arg: " + token);
+                        throw new IllegalArgumentException("Unknown javaagent arg: " + token);
                     }
                 } else {
                     packageNames.add(token);
@@ -174,9 +180,10 @@ public class ClassEnhancer implements ClassFileTransformer {
 
     /**
      * Sets verbose mode.
-     *
-     * <p>True may be specified to print the name of each class file that is
-     * enhanced.  This property is false by default.</p>
+     * <p>
+     * True may be specified to print the name of each class file that is
+     * enhanced. This property is false by default.
+     * </p>
      *
      * @param verbose whether to use verbose mode.
      */
@@ -188,7 +195,6 @@ public class ClassEnhancer implements ClassFileTransformer {
      * Gets verbose mode.
      *
      * @return whether to use verbose mode.
-     *
      * @see #setVerbose
      */
     public boolean getVerbose() {
@@ -198,9 +204,10 @@ public class ClassEnhancer implements ClassFileTransformer {
     /**
      * Creates a class enhancer that searches a given set of packages.
      *
-     * @param packageNames a set of packages to search for persistent
-     * classes.  Sub-packages of these packages are also searched.  If empty or
-     * null, all packages known to the current classloader are searched.
+     * @param packageNames a set of packages to search for persistent classes.
+     *            Sub-packages of these packages are also searched. If empty or
+     *            null, all packages known to the current classloader are
+     *            searched.
      */
     public ClassEnhancer(Set<String> packageNames) {
         if (packageNames != null) {
@@ -211,11 +218,8 @@ public class ClassEnhancer implements ClassFileTransformer {
         }
     }
 
-    public byte[] transform(ClassLoader loader,
-                            String className,
-                            Class<?> classBeingRedefined,
-                            ProtectionDomain protectionDomain,
-                            byte[] classfileBuffer) {
+    public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
+                            ProtectionDomain protectionDomain, byte[] classfileBuffer) {
         className = className.replace('/', '.');
         byte[] bytes = enhance(className, classfileBuffer);
         if (verbose && bytes != null) {
@@ -225,15 +229,13 @@ public class ClassEnhancer implements ClassFileTransformer {
     }
 
     /**
-     * Enhances the given class bytes if the class is annotated with {@link
-     * Entity} or {@link Persistent}.
+     * Enhances the given class bytes if the class is annotated with
+     * {@link Entity} or {@link Persistent}.
      *
      * @param className the class name in binary format; for example,
-     * "my.package.MyClass$Name", or null if no filtering by class name
-     * should be performed.
-     *
+     *            "my.package.MyClass$Name", or null if no filtering by class
+     *            name should be performed.
      * @param classBytes are the class file bytes to be enhanced.
-     *
      * @return the enhanced bytes, or null if no enhancement was performed.
      */
     public byte[] enhance(String className, byte[] classBytes) {
@@ -249,8 +251,7 @@ public class ClassEnhancer implements ClassFileTransformer {
         }
     }
 
-    int enhanceFile(File file)
-        throws IOException {
+    int enhanceFile(File file) throws IOException {
 
         int nFiles = 0;
         if (file.isDirectory()) {
@@ -275,8 +276,7 @@ public class ClassEnhancer implements ClassFileTransformer {
         return nFiles;
     }
 
-    private byte[] readFile(File file)
-        throws IOException {
+    private byte[] readFile(File file) throws IOException {
 
         byte[] bytes = new byte[(int) file.length()];
         FileInputStream in = new FileInputStream(file);
@@ -288,8 +288,7 @@ public class ClassEnhancer implements ClassFileTransformer {
         return bytes;
     }
 
-    private void writeFile(File file, byte[] bytes)
-        throws IOException {
+    private void writeFile(File file, byte[] bytes) throws IOException {
 
         FileOutputStream out = new FileOutputStream(file);
         try {
@@ -302,8 +301,8 @@ public class ClassEnhancer implements ClassFileTransformer {
     private byte[] enhanceBytes(byte[] bytes) {
 
         /*
-         * The writer is at the end of the visitor chain.  Pass COMPUTE_FRAMES
-         * to calculate stack size, for safety.
+         * The writer is at the end of the visitor chain. Pass COMPUTE_FRAMES to
+         * calculate stack size, for safety.
          */
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         ClassVisitor visitor = writer;

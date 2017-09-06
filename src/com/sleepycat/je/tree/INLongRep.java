@@ -18,30 +18,32 @@ import com.sleepycat.je.dbi.MemoryBudget;
 import com.sleepycat.je.utilint.SizeofMarker;
 
 /**
- * Holds an array of non-negative long values, one for each slot in an IN.
- *
- * Zero is the default value and is returned when no value has been set.
- *
- * The EMPTY_REP is used at first, and is mutated as necessary as values are
- * set.  A minimum number of bytes per value is used, based on the largest
- * value passed to set().
- *
- * Optionally, a sparse rep is used when a value is set for EMPTY_REP. Up to 4
- * values are stored along with their indexes. When the 5th values is set, the
- * rep is mutated to the default rep.
- *
- * This object calls IN.updateMemorySize to track the memory it uses.
- * EMPTY_REP uses no memory because it is a singleton.
+ * Holds an array of non-negative long values, one for each slot in an IN. Zero
+ * is the default value and is returned when no value has been set. The
+ * EMPTY_REP is used at first, and is mutated as necessary as values are set. A
+ * minimum number of bytes per value is used, based on the largest value passed
+ * to set(). Optionally, a sparse rep is used when a value is set for EMPTY_REP.
+ * Up to 4 values are stored along with their indexes. When the 5th values is
+ * set, the rep is mutated to the default rep. This object calls
+ * IN.updateMemorySize to track the memory it uses. EMPTY_REP uses no memory
+ * because it is a singleton.
  */
 public abstract class INLongRep {
 
     public abstract long get(int idx);
+
     public abstract INLongRep set(int idx, long val, IN parent);
+
     public abstract INLongRep compact(IN parent, EmptyRep emptyRep);
+
     public abstract INLongRep clear(IN parent, EmptyRep emptyRep);
+
     public abstract boolean isEmpty();
+
     public abstract INLongRep copy(int from, int to, int n, IN parent);
+
     public abstract INLongRep resize(int capacity);
+
     public abstract long getMemorySize();
 
     /**
@@ -50,7 +52,7 @@ public abstract class INLongRep {
      */
     public static class EmptyRep extends INLongRep {
 
-        final int minLength;
+        final int     minLength;
         final boolean allowSparseRep;
 
         public EmptyRep(int minLength, boolean allowSparseRep) {
@@ -69,8 +71,7 @@ public abstract class INLongRep {
         }
 
         /**
-         * When adding to the cache the EMPTY_REP is mutated into a
-         * DefaultRep.
+         * When adding to the cache the EMPTY_REP is mutated into a DefaultRep.
          */
         @Override
         public INLongRep set(int idx, long val, IN parent) {
@@ -81,7 +82,7 @@ public abstract class INLongRep {
 
             final INLongRep newCache;
 
-            if (false /*TODO*/ && allowSparseRep) {
+            if (false /* TODO */ && allowSparseRep) {
                 newCache = new SparseRep(minLength);
             } else {
                 newCache = new DefaultRep(parent.getMaxEntries(), minLength);
@@ -125,20 +126,11 @@ public abstract class INLongRep {
     public static class DefaultRep extends INLongRep {
 
         /** Maximum value indexed by number of bytes. */
-        private static long[] MAX_VALUE = {
-            0x0L,
-            0xFFL,
-            0xFFFFL,
-            0xFFFFFFL,
-            0xFFFFFFFFL,
-            0xFFFFFFFFFFL,
-            0xFFFFFFFFFFFFL,
-            0xFFFFFFFFFFFFFFL,
-            0x7FFFFFFFFFFFFFFFL,
-        };
+        private static long[] MAX_VALUE = { 0x0L, 0xFFL, 0xFFFFL, 0xFFFFFFL, 0xFFFFFFFFL, 0xFFFFFFFFFFL,
+                0xFFFFFFFFFFFFL, 0xFFFFFFFFFFFFFFL, 0x7FFFFFFFFFFFFFFFL, };
 
-        private final byte[] byteArray;
-        final int bytesPerValue;
+        private final byte[]  byteArray;
+        final int             bytesPerValue;
 
         public DefaultRep(int capacity, int nBytes) {
             assert capacity >= 1;
@@ -162,9 +154,7 @@ public abstract class INLongRep {
 
         @Override
         public DefaultRep resize(int capacity) {
-            return new DefaultRep(
-                Arrays.copyOfRange(byteArray, 0, capacity * bytesPerValue),
-                bytesPerValue);
+            return new DefaultRep(Arrays.copyOfRange(byteArray, 0, capacity * bytesPerValue), bytesPerValue);
         }
 
         @Override
@@ -184,8 +174,8 @@ public abstract class INLongRep {
         }
 
         /**
-         * Mutates to a DefaultRep with a larger number of bytes if necessary
-         * to hold the given value.
+         * Mutates to a DefaultRep with a larger number of bytes if necessary to
+         * hold the given value.
          */
         @Override
         public INLongRep set(int idx, long val, IN parent) {
@@ -195,8 +185,8 @@ public abstract class INLongRep {
             assert val >= 0;
 
             /*
-             * If the value can't be represented using bytesPerValue, mutate
-             * to a cache with a larger number of bytes.
+             * If the value can't be represented using bytesPerValue, mutate to
+             * a cache with a larger number of bytes.
              */
             if (val > MAX_VALUE[bytesPerValue]) {
 
@@ -210,8 +200,7 @@ public abstract class INLongRep {
                     newRep = new DefaultRep(capacity, bytesPerValue + 1);
                 }
 
-                parent.updateMemorySize(
-                    getMemorySize(), newRep.getMemorySize());
+                parent.updateMemorySize(getMemorySize(), newRep.getMemorySize());
 
                 /*
                  * Set new value in new cache, and copy other values from old
@@ -257,8 +246,7 @@ public abstract class INLongRep {
         @Override
         public INLongRep clear(IN parent, EmptyRep emptyRep) {
 
-            parent.updateMemorySize(
-                getMemorySize(), emptyRep.getMemorySize());
+            parent.updateMemorySize(getMemorySize(), emptyRep.getMemorySize());
 
             return emptyRep;
         }
@@ -277,18 +265,13 @@ public abstract class INLongRep {
 
         @Override
         public INLongRep copy(int from, int to, int n, IN parent) {
-            System.arraycopy(byteArray,
-                             from * bytesPerValue,
-                             byteArray,
-                             to * bytesPerValue,
-                             n * bytesPerValue);
+            System.arraycopy(byteArray, from * bytesPerValue, byteArray, to * bytesPerValue, n * bytesPerValue);
             return this;
         }
 
         @Override
         public long getMemorySize() {
-            return MemoryBudget.DEFAULT_LONG_REP_OVERHEAD +
-                   MemoryBudget.byteArraySize(byteArray.length);
+            return MemoryBudget.DEFAULT_LONG_REP_OVERHEAD + MemoryBudget.byteArraySize(byteArray.length);
         }
     }
 
@@ -296,7 +279,7 @@ public abstract class INLongRep {
 
         private static final int MAX_ENTRIES = 4;
 
-        private final short[] idxs;
+        private final short[]    idxs;
 
         public SparseRep(int nBytes) {
 
@@ -359,8 +342,7 @@ public abstract class INLongRep {
             }
 
             /* It's full, mutate it. */
-            INLongRep newRep =
-                new DefaultRep(parent.getMaxEntries(), bytesPerValue);
+            INLongRep newRep = new DefaultRep(parent.getMaxEntries(), bytesPerValue);
 
             parent.updateMemorySize(getMemorySize(), newRep.getMemorySize());
 
@@ -386,8 +368,7 @@ public abstract class INLongRep {
         @Override
         public INLongRep clear(IN parent, EmptyRep emptyRep) {
 
-            parent.updateMemorySize(
-                getMemorySize(), emptyRep.getMemorySize());
+            parent.updateMemorySize(getMemorySize(), emptyRep.getMemorySize());
 
             return emptyRep;
         }
@@ -430,10 +411,8 @@ public abstract class INLongRep {
 
         @Override
         public long getMemorySize() {
-            return super.getMemorySize() +
-                MemoryBudget.SPARSE_LONG_REP_OVERHEAD -
-                MemoryBudget.DEFAULT_KEYVALS_OVERHEAD +
-                MemoryBudget.shortArraySize(idxs.length);
+            return super.getMemorySize() + MemoryBudget.SPARSE_LONG_REP_OVERHEAD - MemoryBudget.DEFAULT_KEYVALS_OVERHEAD
+                    + MemoryBudget.shortArraySize(idxs.length);
         }
     }
 }

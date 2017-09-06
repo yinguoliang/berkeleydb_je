@@ -26,14 +26,14 @@ public enum PutMode {
 
     /**
      * User operation: Cursor.putNoDupData. Applies only to databases with
-     * duplicates. Insert key/data pair if it does not already exist;
-     * otherwise, return KEYEXIST.
+     * duplicates. Insert key/data pair if it does not already exist; otherwise,
+     * return KEYEXIST.
      */
     NO_DUP_DATA,
 
     /**
-     * User operation: Cursor.putNoOverwrite. Insert key/data pair if key
-     * does not already exist; otherwise, return KEYEXIST.
+     * User operation: Cursor.putNoOverwrite. Insert key/data pair if key does
+     * not already exist; otherwise, return KEYEXIST.
      */
     NO_OVERWRITE,
 

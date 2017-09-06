@@ -17,13 +17,11 @@ package com.sleepycat.je.txn;
  * This is just a struct to hold a multi-value return.
  */
 public class LockAttemptResult {
-    public final boolean success;
-    final Lock useLock;
+    public final boolean       success;
+    final Lock                 useLock;
     public final LockGrantType lockGrant;
 
-    LockAttemptResult(Lock useLock,
-                      LockGrantType lockGrant,
-                      boolean success) {
+    LockAttemptResult(Lock useLock, LockGrantType lockGrant, boolean success) {
 
         this.useLock = useLock;
         this.lockGrant = lockGrant;

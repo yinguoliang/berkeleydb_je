@@ -21,7 +21,5 @@ import com.sleepycat.je.log.entry.LogEntry;
  */
 public interface VLSNProxy {
 
-    public void trackMapping(long lsn,
-                             LogEntryHeader currentEntryHeader,
-                             LogEntry targetLogEntry);
+    public void trackMapping(long lsn, LogEntryHeader currentEntryHeader, LogEntry targetLogEntry);
 }

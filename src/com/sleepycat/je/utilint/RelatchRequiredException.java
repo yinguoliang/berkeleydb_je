@@ -13,15 +13,13 @@
 
 package com.sleepycat.je.utilint;
 
-
 /*
  * Singleton class to indicate that something needs to be relatched for
  * exclusive access due to a fetch occurring.
  */
 @SuppressWarnings("serial")
 public class RelatchRequiredException extends Exception {
-    public static RelatchRequiredException relatchRequiredException =
-        new RelatchRequiredException();
+    public static RelatchRequiredException relatchRequiredException = new RelatchRequiredException();
 
     private RelatchRequiredException() {
     }

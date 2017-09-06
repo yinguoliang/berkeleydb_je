@@ -18,24 +18,20 @@ import com.sleepycat.je.rep.elections.Protocol.ValueParser;
 import com.sleepycat.je.rep.impl.node.NameIdPair;
 
 /**
- * Class represents the identity of a Master as a subclass of a StringValue
- * that can be used during the election protocol.
+ * Class represents the identity of a Master as a subclass of a StringValue that
+ * can be used during the election protocol.
  */
 public class MasterValue extends StringValue {
-    private static final String DELIMITER = "$$$";
+    private static final String DELIMITER        = "$$$";
     private static final String DELIMITER_REGEXP = "\\$\\$\\$";
 
-    private final String hostname;
-    private final int port;
-    private final NameIdPair nameIdPair;
+    private final String        hostname;
+    private final int           port;
+    private final NameIdPair    nameIdPair;
 
-    public MasterValue(String masterHostname,
-                       int masterPort,
-                       NameIdPair masterNameIdPair) {
-        super(masterHostname + DELIMITER +
-              masterPort + DELIMITER +
-              masterNameIdPair.getName() + DELIMITER +
-              masterNameIdPair.getId());
+    public MasterValue(String masterHostname, int masterPort, NameIdPair masterNameIdPair) {
+        super(masterHostname + DELIMITER + masterPort + DELIMITER + masterNameIdPair.getName() + DELIMITER
+                + masterNameIdPair.getId());
         this.hostname = masterHostname;
         this.port = masterPort;
         this.nameIdPair = masterNameIdPair;
@@ -78,9 +74,7 @@ public class MasterValue extends StringValue {
 
         @Override
         public Value parse(String wireFormat) {
-            return ((wireFormat == null) || "".equals(wireFormat)) ?
-                    null :
-                    new MasterValue(wireFormat);
+            return ((wireFormat == null) || "".equals(wireFormat)) ? null : new MasterValue(wireFormat);
         }
     };
 
@@ -88,8 +82,7 @@ public class MasterValue extends StringValue {
     public int hashCode() {
         final int prime = 31;
         int result = super.hashCode();
-        result = prime * result
-                + ((hostname == null) ? 0 : hostname.hashCode());
+        result = prime * result + ((hostname == null) ? 0 : hostname.hashCode());
         result = prime * result + nameIdPair.hashCode();
         result = prime * result + port;
         return result;

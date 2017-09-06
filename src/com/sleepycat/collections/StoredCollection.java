@@ -33,15 +33,15 @@ import com.sleepycat.je.OperationStatus;
 import com.sleepycat.util.RuntimeExceptionWrapper;
 
 /**
- * A abstract base class for all stored collections.  This class, and its
- * base class {@link StoredContainer}, provide implementations of most methods
- * in the {@link Collection} interface.  Other methods, such as {@link #add}
- * and {@link #remove}, are provided by concrete classes that extend this
- * class.
- *
- * <p>In addition, this class provides the following methods for stored
- * collections only.  Note that the use of these methods is not compatible with
- * the standard Java collections interface.</p>
+ * A abstract base class for all stored collections. This class, and its base
+ * class {@link StoredContainer}, provide implementations of most methods in the
+ * {@link Collection} interface. Other methods, such as {@link #add} and
+ * {@link #remove}, are provided by concrete classes that extend this class.
+ * <p>
+ * In addition, this class provides the following methods for stored collections
+ * only. Note that the use of these methods is not compatible with the standard
+ * Java collections interface.
+ * </p>
  * <ul>
  * <li>{@link #getIteratorBlockSize}</li>
  * <li>{@link #setIteratorBlockSize}</li>
@@ -53,16 +53,16 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  *
  * @author Mark Hayes
  */
-public abstract class StoredCollection<E> extends StoredContainer
-    implements Collection<E> {
+public abstract class StoredCollection<E> extends StoredContainer implements Collection<E> {
 
     /**
      * The default number of records read at one time by iterators.
+     * 
      * @see #setIteratorBlockSize
      */
     public static final int DEFAULT_ITERATOR_BLOCK_SIZE = 10;
 
-    private int iteratorBlockSize = DEFAULT_ITERATOR_BLOCK_SIZE;
+    private int             iteratorBlockSize           = DEFAULT_ITERATOR_BLOCK_SIZE;
 
     StoredCollection(DataView view) {
 
@@ -71,8 +71,8 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Returns the number of records read at one time by iterators returned by
-     * the {@link #iterator} method.  By default this value is {@link
-     * #DEFAULT_ITERATOR_BLOCK_SIZE}.
+     * the {@link #iterator} method. By default this value is
+     * {@link #DEFAULT_ITERATOR_BLOCK_SIZE}.
      *
      * @return the number of records.
      */
@@ -83,18 +83,16 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Changes the number of records read at one time by iterators returned by
-     * the {@link #iterator} method.  By default this value is {@link
-     * #DEFAULT_ITERATOR_BLOCK_SIZE}.
+     * the {@link #iterator} method. By default this value is
+     * {@link #DEFAULT_ITERATOR_BLOCK_SIZE}.
      *
      * @param blockSize the number of records.
-     *
      * @throws IllegalArgumentException if the blockSize is less than two.
      */
     public void setIteratorBlockSize(int blockSize) {
 
         if (blockSize < 2) {
-            throw new IllegalArgumentException
-                ("blockSize is less than two: " + blockSize);
+            throw new IllegalArgumentException("blockSize is less than two: " + blockSize);
         }
 
         iteratorBlockSize = blockSize;
@@ -106,8 +104,7 @@ public abstract class StoredCollection<E> extends StoredContainer
         boolean doAutoCommit = beginAutoCommit();
         try {
             cursor = new DataCursor(view, true);
-            OperationStatus status =
-                cursor.putNoDupData(key, value, null, false);
+            OperationStatus status = cursor.putNoDupData(key, value, null, false);
             closeCursor(cursor);
             commitAutoCommit(doAutoCommit);
             return (status == OperationStatus.SUCCESS);
@@ -122,25 +119,26 @@ public abstract class StoredCollection<E> extends StoredContainer
     }
 
     /**
-     * Returns an iterator over the elements in this collection.
-     * The iterator will be read-only if the collection is read-only.
-     * This method conforms to the {@link Collection#iterator} interface.
-     *
-     * <p>The iterator returned by this method does not keep a database cursor
-     * open and therefore it does not need to be closed.  It reads blocks of
-     * records as needed, opening and closing a cursor to read each block of
-     * records.  The number of records per block is 10 by default and can be
-     * changed with {@link #setIteratorBlockSize}.</p>
-     *
-     * <p>Because this iterator does not keep a cursor open, if it is used
-     * without transactions, the iterator does not have <em>cursor
-     * stability</em> characteristics.  In other words, the record at the
-     * current iterator position can be changed or deleted by another thread.
-     * To prevent this from happening, call this method within a transaction or
-     * use the {@link #storedIterator()} method instead.</p>
+     * Returns an iterator over the elements in this collection. The iterator
+     * will be read-only if the collection is read-only. This method conforms to
+     * the {@link Collection#iterator} interface.
+     * <p>
+     * The iterator returned by this method does not keep a database cursor open
+     * and therefore it does not need to be closed. It reads blocks of records
+     * as needed, opening and closing a cursor to read each block of records.
+     * The number of records per block is 10 by default and can be changed with
+     * {@link #setIteratorBlockSize}.
+     * </p>
+     * <p>
+     * Because this iterator does not keep a cursor open, if it is used without
+     * transactions, the iterator does not have <em>cursor
+     * stability</em> characteristics. In other words, the record at the current
+     * iterator position can be changed or deleted by another thread. To prevent
+     * this from happening, call this method within a transaction or use the
+     * {@link #storedIterator()} method instead.
+     * </p>
      *
      * @return a standard {@link Iterator} for this collection.
-     *
      * @see #isWriteAllowed
      */
     public Iterator<E> iterator() {
@@ -148,22 +146,22 @@ public abstract class StoredCollection<E> extends StoredContainer
     }
 
     /**
-     * Returns an iterator over the elements in this collection.
-     * The iterator will be read-only if the collection is read-only.
-     * This method does not exist in the standard {@link Collection} interface.
-     *
-     * <p>If {@code Iterator.set} or {@code Iterator.remove} will be called
-     * and the underlying Database is transactional, then a transaction must be
-     * active when calling this method and must remain active while using the
-     * iterator.</p>
-     *
-     * <p><strong>Warning:</strong> The iterator returned must be explicitly
-     * closed using {@link StoredIterator#close()} or {@link
-     * StoredIterator#close(java.util.Iterator)} to release the underlying
-     * database cursor resources.</p>
+     * Returns an iterator over the elements in this collection. The iterator
+     * will be read-only if the collection is read-only. This method does not
+     * exist in the standard {@link Collection} interface.
+     * <p>
+     * If {@code Iterator.set} or {@code Iterator.remove} will be called and the
+     * underlying Database is transactional, then a transaction must be active
+     * when calling this method and must remain active while using the iterator.
+     * </p>
+     * <p>
+     * <strong>Warning:</strong> The iterator returned must be explicitly closed
+     * using {@link StoredIterator#close()} or
+     * {@link StoredIterator#close(java.util.Iterator)} to release the
+     * underlying database cursor resources.
+     * </p>
      *
      * @return a {@link StoredIterator} for this collection.
-     *
      * @see #isWriteAllowed
      */
     public StoredIterator<E> storedIterator() {
@@ -173,38 +171,34 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Returns a read or read-write iterator over the elements in this
-     * collection.
-     * This method does not exist in the standard {@link Collection} interface.
-     *
-     * <p>If {@code Iterator.set} or {@code Iterator.remove} will be called
-     * and the underlying Database is transactional, then a transaction must be
-     * active when calling this method and must remain active while using the
-     * iterator.</p>
-     *
-     * <p><strong>Warning:</strong> The iterator returned must be explicitly
-     * closed using {@link StoredIterator#close()} or {@link
-     * StoredIterator#close(java.util.Iterator)} to release the underlying
-     * database cursor resources.</p>
+     * collection. This method does not exist in the standard {@link Collection}
+     * interface.
+     * <p>
+     * If {@code Iterator.set} or {@code Iterator.remove} will be called and the
+     * underlying Database is transactional, then a transaction must be active
+     * when calling this method and must remain active while using the iterator.
+     * </p>
+     * <p>
+     * <strong>Warning:</strong> The iterator returned must be explicitly closed
+     * using {@link StoredIterator#close()} or
+     * {@link StoredIterator#close(java.util.Iterator)} to release the
+     * underlying database cursor resources.
+     * </p>
      *
      * @param writeAllowed is true to open a read-write iterator or false to
-     * open a read-only iterator.  If the collection is read-only the iterator
-     * will always be read-only.
-     *
+     *            open a read-only iterator. If the collection is read-only the
+     *            iterator will always be read-only.
      * @return a {@link StoredIterator} for this collection.
-     *
      * @throws IllegalStateException if writeAllowed is true but the collection
-     * is read-only.
-     *
+     *             is read-only.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
-     *
+     *             including a {@code DatabaseException} on BDB (C Edition).
      * @see #isWriteAllowed
      */
     public StoredIterator<E> storedIterator(boolean writeAllowed) {
 
         try {
-            return new StoredIterator(this, writeAllowed && isWriteAllowed(),
-                                      null);
+            return new StoredIterator(this, writeAllowed && isWriteAllowed(), null);
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         }
@@ -212,15 +206,14 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * @param writeAllowed is true to open a read-write iterator or false to
-     * open a read-only iterator.  If the collection is read-only the iterator
-     * will always be read-only.
-     *
+     *            open a read-only iterator. If the collection is read-only the
+     *            iterator will always be read-only.
      * @return a {@link StoredIterator} for this collection.
-     *
-     * @deprecated Please use {@link #storedIterator()} or {@link
-     * #storedIterator(boolean)} instead.  Because the iterator returned must
-     * be closed, the method name {@code iterator} is confusing since standard
-     * Java iterators do not need to be closed.
+     * @deprecated Please use {@link #storedIterator()} or
+     *             {@link #storedIterator(boolean)} instead. Because the
+     *             iterator returned must be closed, the method name
+     *             {@code iterator} is confusing since standard Java iterators
+     *             do not need to be closed.
      */
     public StoredIterator<E> iterator(boolean writeAllowed) {
 
@@ -228,20 +221,17 @@ public abstract class StoredCollection<E> extends StoredContainer
     }
 
     /**
-     * Returns an array of all the elements in this collection.
-     * This method conforms to the {@link Collection#toArray()} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * Returns an array of all the elements in this collection. This method
+     * conforms to the {@link Collection#toArray()} interface. <!-- begin JE
+     * only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public Object[] toArray() {
 
@@ -262,21 +252,16 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Returns an array of all the elements in this collection whose runtime
-     * type is that of the specified array.
-     * This method conforms to the {@link Collection#toArray(Object[])}
-     * interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * type is that of the specified array. This method conforms to the
+     * {@link Collection#toArray(Object[])} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public <T> T[] toArray(T[] a) {
 
@@ -306,20 +291,16 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Returns true if this collection contains all of the elements in the
-     * specified collection.
-     * This method conforms to the {@link Collection#containsAll} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * specified collection. This method conforms to the
+     * {@link Collection#containsAll} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean containsAll(Collection<?> coll) {
         Iterator<?> i = null;
@@ -340,26 +321,21 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Adds all of the elements in the specified collection to this collection
-     * (optional operation).
-     * This method calls the {@link #add(Object)} method of the concrete
-     * collection class, which may or may not be supported.
-     * This method conforms to the {@link Collection#addAll} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * (optional operation). This method calls the {@link #add(Object)} method
+     * of the concrete collection class, which may or may not be supported. This
+     * method conforms to the {@link Collection#addAll} interface. <!-- begin JE
+     * only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the collection is read-only, or
-     * if the collection is indexed, or if the add method is not supported by
-     * the concrete collection.
-     *
+     *             if the collection is indexed, or if the add method is not
+     *             supported by the concrete collection.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean addAll(Collection<? extends E> coll) {
         Iterator<? extends E> i = null;
@@ -383,22 +359,17 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Removes all this collection's elements that are also contained in the
-     * specified collection (optional operation).
-     * This method conforms to the {@link Collection#removeAll} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * specified collection (optional operation). This method conforms to the
+     * {@link Collection#removeAll} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the collection is read-only.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean removeAll(Collection<?> coll) {
         Iterator<? extends E> i = null;
@@ -422,22 +393,17 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Retains only the elements in this collection that are contained in the
-     * specified collection (optional operation).
-     * This method conforms to the {@link Collection#removeAll} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#writeFailures">Write
-     * Operation Failures</a> occurs.
-     *
+     * specified collection (optional operation). This method conforms to the
+     * {@link Collection#removeAll} interface. <!-- begin JE only -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#writeFailures">
+     *             Write Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws UnsupportedOperationException if the collection is read-only.
-     *
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean retainAll(Collection<?> coll) {
 
@@ -462,22 +428,19 @@ public abstract class StoredCollection<E> extends StoredContainer
     }
 
     /**
-     * Compares the specified object with this collection for equality.
-     * A value comparison is performed by this method and the stored values
-     * are compared rather than calling the equals() method of each element.
-     * This method conforms to the {@link Collection#equals} interface.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * Compares the specified object with this collection for equality. A value
+     * comparison is performed by this method and the stored values are compared
+     * rather than calling the equals() method of each element. This method
+     * conforms to the {@link Collection#equals} interface. <!-- begin JE only
+     * -->
+     * 
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public boolean equals(Object other) {
 
@@ -513,23 +476,18 @@ public abstract class StoredCollection<E> extends StoredContainer
     }
 
     /**
-     * Returns a copy of this collection as an ArrayList.  This is the same as
+     * Returns a copy of this collection as an ArrayList. This is the same as
      * {@link #toArray()} but returns a collection instead of an array.
      *
      * @return an {@link ArrayList} containing a copy of all elements in this
-     * collection.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     *         collection. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public List<E> toList() {
 
@@ -552,19 +510,14 @@ public abstract class StoredCollection<E> extends StoredContainer
      * Converts the collection to a string representation for debugging.
      * WARNING: The returned string may be very large.
      *
-     * @return the string representation.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     * @return the string representation. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
     public String toString() {
         StringBuilder buf = new StringBuilder();
@@ -573,7 +526,8 @@ public abstract class StoredCollection<E> extends StoredContainer
         try {
             i = storedIterator();
             while (i.hasNext()) {
-                if (buf.length() > 1) buf.append(',');
+                if (buf.length() > 1)
+                    buf.append(',');
                 buf.append(i.next().toString());
             }
             buf.append(']');
@@ -597,8 +551,7 @@ public abstract class StoredCollection<E> extends StoredContainer
             }
         } else {
             int count = 0;
-            CursorConfig cursorConfig = view.currentTxn.isLockingMode() ?
-                CursorConfig.READ_UNCOMMITTED : null;
+            CursorConfig cursorConfig = view.currentTxn.isLockingMode() ? CursorConfig.READ_UNCOMMITTED : null;
             DataCursor cursor = null;
             /* Auto-commit is not needed because ReadUncommitted is used. */
             try {
@@ -623,47 +576,38 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     /**
      * Returns an iterator representing an equality join of the indices and
-     * index key values specified.
-     * This method does not exist in the standard {@link Collection} interface.
-     *
-     * <p><strong>Warning:</strong> The iterator returned must be explicitly
-     * closed using {@link StoredIterator#close()} or {@link
-     * StoredIterator#close(java.util.Iterator)} to release the underlying
-     * database cursor resources.</p>
-     *
-     * <p>The returned iterator supports only the two methods: hasNext() and
-     * next().  All other methods will throw UnsupportedOperationException.</p>
+     * index key values specified. This method does not exist in the standard
+     * {@link Collection} interface.
+     * <p>
+     * <strong>Warning:</strong> The iterator returned must be explicitly closed
+     * using {@link StoredIterator#close()} or
+     * {@link StoredIterator#close(java.util.Iterator)} to release the
+     * underlying database cursor resources.
+     * </p>
+     * <p>
+     * The returned iterator supports only the two methods: hasNext() and
+     * next(). All other methods will throw UnsupportedOperationException.
+     * </p>
      *
      * @param indices is an array of indices with elements corresponding to
-     * those in the indexKeys array.
-     *
-     * @param indexKeys is an array of index key values identifying the
-     * elements to be selected.
-     *
-     * @param joinConfig is the join configuration, or null to use the
-     * default configuration.
-     *
-     * @return an iterator over the elements in this collection that match
-     * all specified index key values.
-     *
-     * <!-- begin JE only -->
-     * @throws OperationFailureException if one of the <a
-     * href="../je/OperationFailureException.html#readFailures">Read Operation
-     * Failures</a> occurs.
-     *
+     *            those in the indexKeys array.
+     * @param indexKeys is an array of index key values identifying the elements
+     *            to be selected.
+     * @param joinConfig is the join configuration, or null to use the default
+     *            configuration.
+     * @return an iterator over the elements in this collection that match all
+     *         specified index key values. <!-- begin JE only -->
+     * @throws OperationFailureException if one of the
+     *             <a href="../je/OperationFailureException.html#readFailures">
+     *             Read Operation Failures</a> occurs.
      * @throws EnvironmentFailureException if an unexpected, internal or
-     * environment-wide failure occurs.
-     * <!-- end JE only -->
-     *
+     *             environment-wide failure occurs. <!-- end JE only -->
      * @throws IllegalArgumentException if this collection is indexed or if a
-     * given index does not have the same store as this collection.
-     *
+     *             given index does not have the same store as this collection.
      * @throws RuntimeExceptionWrapper if a checked exception is thrown,
-     * including a {@code DatabaseException} on BDB (C Edition).
+     *             including a {@code DatabaseException} on BDB (C Edition).
      */
-    public StoredIterator<E> join(StoredContainer[] indices,
-                                  Object[] indexKeys,
-                                  JoinConfig joinConfig) {
+    public StoredIterator<E> join(StoredContainer[] indices, Object[] indexKeys, JoinConfig joinConfig) {
 
         try {
             DataView[] indexViews = new DataView[indices.length];
@@ -688,9 +632,7 @@ public abstract class StoredCollection<E> extends StoredContainer
             } else {
                 status = cursor.getLast(false);
             }
-            return (status == OperationStatus.SUCCESS) ?
-                makeIteratorData(null, cursor) :
-                null;
+            return (status == OperationStatus.SUCCESS) ? makeIteratorData(null, cursor) : null;
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         } finally {
@@ -700,15 +642,10 @@ public abstract class StoredCollection<E> extends StoredContainer
 
     E makeIteratorData(BaseIterator iterator, DataCursor cursor) {
 
-        return makeIteratorData(iterator,
-                                cursor.getKeyThang(),
-                                cursor.getPrimaryKeyThang(),
-                                cursor.getValueThang());
+        return makeIteratorData(iterator, cursor.getKeyThang(), cursor.getPrimaryKeyThang(), cursor.getValueThang());
     }
 
-    abstract E makeIteratorData(BaseIterator iterator,
-                                DatabaseEntry keyEntry,
-                                DatabaseEntry priKeyEntry,
+    abstract E makeIteratorData(BaseIterator iterator, DatabaseEntry keyEntry, DatabaseEntry priKeyEntry,
                                 DatabaseEntry valueEntry);
 
     abstract boolean hasValues();
@@ -718,8 +655,7 @@ public abstract class StoredCollection<E> extends StoredContainer
         return true;
     }
 
-    void checkIterAddAllowed()
-        throws UnsupportedOperationException {
+    void checkIterAddAllowed() throws UnsupportedOperationException {
 
         if (!areDuplicatesAllowed()) {
             throw new UnsupportedOperationException("Duplicates required");

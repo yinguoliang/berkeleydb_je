@@ -19,15 +19,17 @@ import java.util.Set;
 
 /**
  * A subclass of Converter that allows specifying keys to be deleted.
- *
- * <p>When a Converter is used with an entity class, secondary keys cannot be
+ * <p>
+ * When a Converter is used with an entity class, secondary keys cannot be
  * automatically deleted based on field deletion, because field Deleter objects
- * are not used in conjunction with a Converter mutation.  The EntityConverter
+ * are not used in conjunction with a Converter mutation. The EntityConverter
  * can be used instead of a plain Converter to specify the key names to be
- * deleted.</p>
- *
- * <p>It is not currently possible to rename or insert secondary keys when
- * using a Converter mutation with an entity class.</p>
+ * deleted.
+ * </p>
+ * <p>
+ * It is not currently possible to rename or insert secondary keys when using a
+ * Converter mutation with an entity class.
+ * </p>
  *
  * @see Converter
  * @see com.sleepycat.persist.evolve Class Evolution
@@ -37,21 +39,18 @@ public class EntityConverter extends Converter {
 
     private static final long serialVersionUID = -988428985370593743L;
 
-    private Set<String> deletedKeys;
+    private Set<String>       deletedKeys;
 
     /**
-     * Creates a mutation for converting all instances of the given entity
-     * class version to the current version of the class.
+     * Creates a mutation for converting all instances of the given entity class
+     * version to the current version of the class.
      *
      * @param entityClassName the entity class to which this mutation applies.
      * @param classVersion the class version to which this mutation applies.
      * @param conversion converter instance.
      * @param deletedKeys the set of key names that are to be deleted.
      */
-    public EntityConverter(String entityClassName,
-                           int classVersion,
-                           Conversion conversion,
-                           Set<String> deletedKeys) {
+    public EntityConverter(String entityClassName, int classVersion, Conversion conversion, Set<String> deletedKeys) {
         super(entityClassName, classVersion, null, conversion);
 
         /* Eclipse objects to assigning with a ternary operator. */
@@ -72,16 +71,15 @@ public class EntityConverter extends Converter {
     }
 
     /**
-     * Returns true if the deleted and renamed keys are equal in this object
-     * and given object, and if the {@link Converter#equals} superclass method
+     * Returns true if the deleted and renamed keys are equal in this object and
+     * given object, and if the {@link Converter#equals} superclass method
      * returns true.
      */
     @Override
     public boolean equals(Object other) {
         if (other instanceof EntityConverter) {
             EntityConverter o = (EntityConverter) other;
-            return deletedKeys.equals(o.deletedKeys) &&
-                   super.equals(other);
+            return deletedKeys.equals(o.deletedKeys) && super.equals(other);
         } else {
             return false;
         }
@@ -94,7 +92,6 @@ public class EntityConverter extends Converter {
 
     @Override
     public String toString() {
-        return "[EntityConverter " + super.toString() +
-               " DeletedKeys: " + deletedKeys + ']';
+        return "[EntityConverter " + super.toString() + " DeletedKeys: " + deletedKeys + ']';
     }
 }

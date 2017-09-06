@@ -21,95 +21,93 @@ import com.sleepycat.je.txn.Locker;
  * of a secondary constraint or integrity problem. Provides accessors for
  * getting further information about the database and keys involved in the
  * failure. See subclasses for more information.
- *
  * <p>
  * The {@link Transaction} handle is invalidated as a result of this exception.
  * </p>
  *
  * @see <a href="SecondaryDatabase.html#transactions">Special considerations for
  *      using Secondary Databases with and without Transactions</a>
- *
  * @since 4.0
  */
 public abstract class SecondaryReferenceException extends OperationFailureException {
 
-	private static final long serialVersionUID = 1;
+    private static final long   serialVersionUID = 1;
 
-	private final String secDbName;
-	private final DatabaseEntry secKey;
-	private final DatabaseEntry priKey;
-	private final long expirationTime;
+    private final String        secDbName;
+    private final DatabaseEntry secKey;
+    private final DatabaseEntry priKey;
+    private final long          expirationTime;
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	public SecondaryReferenceException(Locker locker, String message, String secDbName, DatabaseEntry secKey,
-			DatabaseEntry priKey, long expirationTime) {
-		super(locker, true /* abortOnly */, message, null /* cause */);
-		this.secDbName = secDbName;
-		this.secKey = secKey;
-		this.priKey = priKey;
-		this.expirationTime = expirationTime;
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    public SecondaryReferenceException(Locker locker, String message, String secDbName, DatabaseEntry secKey,
+                                       DatabaseEntry priKey, long expirationTime) {
+        super(locker, true /* abortOnly */, message, null /* cause */);
+        this.secDbName = secDbName;
+        this.secKey = secKey;
+        this.priKey = priKey;
+        this.expirationTime = expirationTime;
 
-		String expirationTimeMsg = "expiration: ";
+        String expirationTimeMsg = "expiration: ";
 
-		if (expirationTime != 0) {
-			expirationTimeMsg += TTL.formatExpirationTime(expirationTime);
-		} else {
-			expirationTimeMsg += "none";
-		}
+        if (expirationTime != 0) {
+            expirationTimeMsg += TTL.formatExpirationTime(expirationTime);
+        } else {
+            expirationTimeMsg += "none";
+        }
 
-		addErrorMessage(expirationTimeMsg);
+        addErrorMessage(expirationTimeMsg);
 
-		if (locker.getEnvironment().getExposeUserData()) {
-			addErrorMessage("secDbName=" + secDbName + " secKey=" + secKey + " priKey=" + priKey);
-		}
-	};
+        if (locker.getEnvironment().getExposeUserData()) {
+            addErrorMessage("secDbName=" + secDbName + " secKey=" + secKey + " priKey=" + priKey);
+        }
+    };
 
-	/**
-	 * For internal use only.
-	 * 
-	 * @hidden
-	 */
-	SecondaryReferenceException(String message, SecondaryReferenceException cause) {
-		super(message, cause);
-		this.secDbName = cause.secDbName;
-		this.secKey = cause.secKey;
-		this.priKey = cause.priKey;
-		this.expirationTime = cause.expirationTime;
-	}
+    /**
+     * For internal use only.
+     * 
+     * @hidden
+     */
+    SecondaryReferenceException(String message, SecondaryReferenceException cause) {
+        super(message, cause);
+        this.secDbName = cause.secDbName;
+        this.secKey = cause.secKey;
+        this.priKey = cause.priKey;
+        this.expirationTime = cause.expirationTime;
+    }
 
-	/**
-	 * Returns the name of the secondary database being accessed during the
-	 * failure.
-	 */
-	public String getSecondaryDatabaseName() {
-		return secDbName;
-	}
+    /**
+     * Returns the name of the secondary database being accessed during the
+     * failure.
+     */
+    public String getSecondaryDatabaseName() {
+        return secDbName;
+    }
 
-	/**
-	 * Returns the secondary key being accessed during the failure.
-	 */
-	public DatabaseEntry getSecondaryKey() {
-		return secKey;
-	}
+    /**
+     * Returns the secondary key being accessed during the failure.
+     */
+    public DatabaseEntry getSecondaryKey() {
+        return secKey;
+    }
 
-	/**
-	 * Returns the primary key being accessed during the failure.
-	 */
-	public DatabaseEntry getPrimaryKey() {
-		return priKey;
-	}
+    /**
+     * Returns the primary key being accessed during the failure.
+     */
+    public DatabaseEntry getPrimaryKey() {
+        return priKey;
+    }
 
-	/**
-	 * Returns the expiration time of the record being accessed during the
-	 * failure.
-	 *
-	 * @since 7.0
-	 */
-	public long getExpirationTime() {
-		return expirationTime;
-	}
+    /**
+     * Returns the expiration time of the record being accessed during the
+     * failure.
+     *
+     * @since 7.0
+     */
+    public long getExpirationTime() {
+        return expirationTime;
+    }
 }

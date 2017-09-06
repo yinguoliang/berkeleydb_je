@@ -26,10 +26,7 @@ class RawSingleInput extends RawAbstractInput {
     private Object singleValue;
     private Format declaredFormat;
 
-    RawSingleInput(Catalog catalog,
-                   boolean rawAccess,
-                   IdentityHashMap converted,
-                   Object singleValue,
+    RawSingleInput(Catalog catalog, boolean rawAccess, IdentityHashMap converted, Object singleValue,
                    Format declaredFormat) {
         super(catalog, rawAccess, converted);
         this.singleValue = singleValue;
@@ -37,8 +34,7 @@ class RawSingleInput extends RawAbstractInput {
     }
 
     @Override
-    Object readNext()
-        throws RefreshException {
+    Object readNext() throws RefreshException {
 
         return checkAndConvert(singleValue, declaredFormat);
     }

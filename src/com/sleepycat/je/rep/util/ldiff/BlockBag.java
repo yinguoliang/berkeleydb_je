@@ -26,13 +26,13 @@ public class BlockBag implements Iterable<Block> {
     /* Map checksums to the corresponding block's index in blocks. */
     private final HashMap<Long, List<Integer>> chksums;
     /* Maintain the list of blocks in insertion order. */
-    private final List<Block> blocks;
+    private final List<Block>                  blocks;
 
     /*
      * The index in blocks of the first block that has not yet been removed.
      * Items in blocks prior to blockIndex have been deleted from the bag.
      */
-    private int blockIndex;
+    private int                                blockIndex;
 
     /**
      * Instantiate a new BlockBag object.
@@ -65,7 +65,7 @@ public class BlockBag implements Iterable<Block> {
      *
      * @param chksum The checksum to match
      * @return A List of blocks with the given checksum, in insertion order, or
-     * null if no matching blocks were found.
+     *         null if no matching blocks were found.
      */
     public List<Block> get(long chksum) {
         List<Integer> indices;
@@ -115,15 +115,14 @@ public class BlockBag implements Iterable<Block> {
             }
         }
 
-        return (blockIndex - startIndex <= 1) ? null : blocks.subList(
-                startIndex, blockIndex - 1);
+        return (blockIndex - startIndex <= 1) ? null : blocks.subList(startIndex, blockIndex - 1);
     }
 
     /**
      * Removes all blocks from the bag.
      *
      * @return A list of all blocks removed, or null if the bag is already
-     * empty.
+     *         empty.
      */
     public List<Block> removeAll() {
         List<Block> ret;

@@ -96,510 +96,355 @@ import com.sleepycat.je.utilint.TestHook;
 import com.sleepycat.je.utilint.TestHookExecute;
 
 /**
- *
- * Overview
- * --------
- *
- * The Evictor is responsible for managing the JE cache. The cache is
- * actually a collection of in-memory btree nodes, implemented by the
- * com.sleepycat.je.dbi.INList class. A subset of the nodes in te INList
- * are candidates for eviction. This subset is tracked in one or more
- * LRULists, which are maintained by the Evictor. When a node is evicted,
- * it is detached from its containing BTree and then removed from the INList
- * and from its containing LRUList. Once all references to an evicted node
- * are removed, it can be GC'd by the JVM.
- *
- * The Evictor owns a pool of threads that are available to handle eviction
- * tasks. The eviction pool is a standard java.util.concurrent thread pool,
- * and can be mutably configured in terms of core threads, max threads, and
- * keepalive times.
- *
- * Eviction is carried out by three types of threads:
- * 1. An application thread, in the course of doing critical eviction.
- * 2. Daemon threads, such as the cleaner or INCompressor, in the course of
- *    doing their respective duties.
- * 3. Eviction pool threads.
- *
- * Memory consumption is tracked by the MemoryBudget. The Arbiter, which is
- * also owned by the Evictor, is used to query the MemoryBudget and determine
- * whether eviction is actually needed, and if so, how many bytes should be
- * evicted by an evicting thread.
- *
- * Multiple threads can do eviction concurrently. As a result, it's important
- * that eviction is both thread safe and as parallel as possible.  Memory
- * thresholds are generally accounted for in an unsynchronized fashion, and are
- * seen as advisory. The only point of true synchronization is around the
- * selection of a node for eviction. The act of eviction itself can be done
- * concurrently.
- *
- * The eviction method is not reentrant, and a simple concurrent hash map
- * of threads is used to prevent recursive calls.
- *
- * Details on the implementation of the LRU-based eviction policy
+ * Overview -------- The Evictor is responsible for managing the JE cache. The
+ * cache is actually a collection of in-memory btree nodes, implemented by the
+ * com.sleepycat.je.dbi.INList class. A subset of the nodes in te INList are
+ * candidates for eviction. This subset is tracked in one or more LRULists,
+ * which are maintained by the Evictor. When a node is evicted, it is detached
+ * from its containing BTree and then removed from the INList and from its
+ * containing LRUList. Once all references to an evicted node are removed, it
+ * can be GC'd by the JVM. The Evictor owns a pool of threads that are available
+ * to handle eviction tasks. The eviction pool is a standard
+ * java.util.concurrent thread pool, and can be mutably configured in terms of
+ * core threads, max threads, and keepalive times. Eviction is carried out by
+ * three types of threads: 1. An application thread, in the course of doing
+ * critical eviction. 2. Daemon threads, such as the cleaner or INCompressor, in
+ * the course of doing their respective duties. 3. Eviction pool threads. Memory
+ * consumption is tracked by the MemoryBudget. The Arbiter, which is also owned
+ * by the Evictor, is used to query the MemoryBudget and determine whether
+ * eviction is actually needed, and if so, how many bytes should be evicted by
+ * an evicting thread. Multiple threads can do eviction concurrently. As a
+ * result, it's important that eviction is both thread safe and as parallel as
+ * possible. Memory thresholds are generally accounted for in an unsynchronized
+ * fashion, and are seen as advisory. The only point of true synchronization is
+ * around the selection of a node for eviction. The act of eviction itself can
+ * be done concurrently. The eviction method is not reentrant, and a simple
+ * concurrent hash map of threads is used to prevent recursive calls. Details on
+ * the implementation of the LRU-based eviction policy
  * --------------------------------------------------------------
- *
- * ------------------
- * Data structures
- * ------------------
- *
- * An LRU eviction policy is approximated by one or more LRULists. An LRUList
- * is a doubly linked list consisting of BTree nodes. If a node participates
- * in an LRUList, then whenever it is accessed, it moves to the "back" of the
- * list. When eviction is needed, the evictor evicts the nodes at the "front"
- * of the LRULists.
- *
- * An LRUList is implemented as 2 IN references: a "front" ref pointing to the
- * IN at the front of the list and a "back" ref, pointing to the IN at the back
- * of the list. In addition, each IN has "nextLRUNode" and "prevLRUNode" refs
- * for participating in an LRUList. This implementation works because an IN can
+ * ------------------ Data structures ------------------ An LRU eviction policy
+ * is approximated by one or more LRULists. An LRUList is a doubly linked list
+ * consisting of BTree nodes. If a node participates in an LRUList, then
+ * whenever it is accessed, it moves to the "back" of the list. When eviction is
+ * needed, the evictor evicts the nodes at the "front" of the LRULists. An
+ * LRUList is implemented as 2 IN references: a "front" ref pointing to the IN
+ * at the front of the list and a "back" ref, pointing to the IN at the back of
+ * the list. In addition, each IN has "nextLRUNode" and "prevLRUNode" refs for
+ * participating in an LRUList. This implementation works because an IN can
  * belong to at most 1 LRUList at a time. Furthermore, it is the responsibility
  * of the Evictor to know which LRUList a node belongs to at any given time
  * (more on this below). As a result, each LRUList can assume that a node will
  * either not be in any list at all, or will belong to "this" list. This way,
- * membership of a node to an LRUList can be tested by just checking that
- * either the nextLRUNode or prevLRUNode field of the node is non-null.
- *
- * The operations on an LRUList are:
- *
- * - addBack(IN) : 
- * Insert an IN at the back of the list. Assert that the node does not belong
- * to an LRUList already.
- *
- * - addFront(IN) : 
- * Insert an IN at the front of the list.  Assert that the node does not belong
- * to an LRUList already.
- *
- * - moveBack(IN) :
- * Move an IN to the back of the list, if it is in the list already. Noop
- * if the node is not in the list.
- *
- * - moveFront(IN) : 
- * Move an IN to the front of the list, if it is in the list already. Noop
- * if the node is not in the list.
- *
- * - removeFront() : 
- * Remove the IN at the front of the list and return it to the caller. 
- * Return null if the list is empty.
- *
- * - remove(IN) : 
- * Remove the IN from the list, if it is there. Return true if the node was
- * in the list, false otherwise.
- *
- * - contains(IN):
- * Return true if the node is contained in the list, false otherwise.
- *
- * All of the above methods are synchronized on the LRUList object. This may
- * create a synchronization bottleneck. To alleviate this, the Evictor uses
- * multiple LRULists, which taken together comprise a logical LRU list, called
- * an LRUSet. The number of LRULists per LRUSet (numLRULists) is fixed and
- * determined by a config parameter (max of 64). The LRULists are stored in
- * an array whose length is numLRULists.
- *
- * The Evictor actually maintains 2 LRUSets: priority-1 and priority-2.
- * Within an LRUSet, the nodeId is used to place a node to an LRUList: a
- * node with id N goes to the (N % numLRULists)-th list. In addition, each
- * node has a flag (isInPri2LRU) to identify which LRUSet it belongs to.
- * This way, the Evictor knows which LRUList a node should belong to, and 
- * accesses the appropriate LRUList instance when it needs to add/remove/move
- * a node within the LRU.
- *
- * Access to the isInPri2LRU flag is synchronized via the SH/EX node latch.
- *
- * When there is no off-heap cache configured, the priority-1 LRU is the
- * "mixed" one and the priority-2 LRU is the "dirty" one. When there is an
- * off-heap cache configured, the priority-1 LRU is the "normal" one and the
- * priority-2 LRU is the "level-2" one.
- *
- * Justification for the mixed and dirty LRUSets: We would like to keep dirty
- * INs in memory as much as possible to achieve "write absorption". Ideally,
- * dirty INs should be logged by the checkpointer only. So, we would like to
- * have the option in the Evictor to chose a clean IN to evict over a dirty
- * IN, even if the dirty IN is colder than the clean IN. In this mode, having
- * a single LRUSet will not perform very well in the situation when most (or
- * a lot) or the INs are dirty (because each time we get a dirty IN from an
- * LRUList, we would have to put it back to the list and try another IN until
- * we find a clean one, thus spending a lot of CPU time trying to select an
- * eviction target).
- *
- * Justification for the normal and level-2 LRUSets: With an off-heap cache,
- * if level-2 INs were not treated specially, the main cache evictor may run
- * out of space and (according to LRU) evict a level 2 IN, even though the IN
- * references off-heap BINs (which will also be evicted). The problem is that
- * we really don't want to evict the off-heap BINs (or their LNs) when the
- * off-heap cache is not full. Therefore we only evict level-2 INs with
- * off-heap children when there are no other nodes that can be evicted. A
- * level-2 IN is moved to the priority-2 LRUSet when it is encountered by the
- * evictor in the priority-1 LRUSet.
- *
- * Within each LRUSet, picking an LRUList to evict from is done in a round-
- * robin fashion. To this end, the Evictor maintains 2 int counters:
- * nextPri1LRUList and nextPri2LRUList. To evict from the priority-1 LRUSet, an
- * evicting thread picks the (nextPri1LRUList % numLRULists)-th list, and
- * then increments nextPri1LRUList. Similarly, to evict from the priority-2
- * LRUSet, an evicting thread picks the (nextPri2LRUList % numLRULists)-th
- * list, and then increments nextPri2LRUList. This does not have to be done in
- * a synchronized way.
- *
- * A new flag (called hasCachedChildren) is added to each IN to indicate
- * whether the IN has cached children or not. This flag is used and maintained
- * for upper INs (UINs) only. The need for this flag is explained below.
- * Access to this flag is synchronized via the SH/EX node latch.
- *
+ * membership of a node to an LRUList can be tested by just checking that either
+ * the nextLRUNode or prevLRUNode field of the node is non-null. The operations
+ * on an LRUList are: - addBack(IN) : Insert an IN at the back of the list.
+ * Assert that the node does not belong to an LRUList already. - addFront(IN) :
+ * Insert an IN at the front of the list. Assert that the node does not belong
+ * to an LRUList already. - moveBack(IN) : Move an IN to the back of the list,
+ * if it is in the list already. Noop if the node is not in the list. -
+ * moveFront(IN) : Move an IN to the front of the list, if it is in the list
+ * already. Noop if the node is not in the list. - removeFront() : Remove the IN
+ * at the front of the list and return it to the caller. Return null if the list
+ * is empty. - remove(IN) : Remove the IN from the list, if it is there. Return
+ * true if the node was in the list, false otherwise. - contains(IN): Return
+ * true if the node is contained in the list, false otherwise. All of the above
+ * methods are synchronized on the LRUList object. This may create a
+ * synchronization bottleneck. To alleviate this, the Evictor uses multiple
+ * LRULists, which taken together comprise a logical LRU list, called an LRUSet.
+ * The number of LRULists per LRUSet (numLRULists) is fixed and determined by a
+ * config parameter (max of 64). The LRULists are stored in an array whose
+ * length is numLRULists. The Evictor actually maintains 2 LRUSets: priority-1
+ * and priority-2. Within an LRUSet, the nodeId is used to place a node to an
+ * LRUList: a node with id N goes to the (N % numLRULists)-th list. In addition,
+ * each node has a flag (isInPri2LRU) to identify which LRUSet it belongs to.
+ * This way, the Evictor knows which LRUList a node should belong to, and
+ * accesses the appropriate LRUList instance when it needs to add/remove/move a
+ * node within the LRU. Access to the isInPri2LRU flag is synchronized via the
+ * SH/EX node latch. When there is no off-heap cache configured, the priority-1
+ * LRU is the "mixed" one and the priority-2 LRU is the "dirty" one. When there
+ * is an off-heap cache configured, the priority-1 LRU is the "normal" one and
+ * the priority-2 LRU is the "level-2" one. Justification for the mixed and
+ * dirty LRUSets: We would like to keep dirty INs in memory as much as possible
+ * to achieve "write absorption". Ideally, dirty INs should be logged by the
+ * checkpointer only. So, we would like to have the option in the Evictor to
+ * chose a clean IN to evict over a dirty IN, even if the dirty IN is colder
+ * than the clean IN. In this mode, having a single LRUSet will not perform very
+ * well in the situation when most (or a lot) or the INs are dirty (because each
+ * time we get a dirty IN from an LRUList, we would have to put it back to the
+ * list and try another IN until we find a clean one, thus spending a lot of CPU
+ * time trying to select an eviction target). Justification for the normal and
+ * level-2 LRUSets: With an off-heap cache, if level-2 INs were not treated
+ * specially, the main cache evictor may run out of space and (according to LRU)
+ * evict a level 2 IN, even though the IN references off-heap BINs (which will
+ * also be evicted). The problem is that we really don't want to evict the
+ * off-heap BINs (or their LNs) when the off-heap cache is not full. Therefore
+ * we only evict level-2 INs with off-heap children when there are no other
+ * nodes that can be evicted. A level-2 IN is moved to the priority-2 LRUSet
+ * when it is encountered by the evictor in the priority-1 LRUSet. Within each
+ * LRUSet, picking an LRUList to evict from is done in a round- robin fashion.
+ * To this end, the Evictor maintains 2 int counters: nextPri1LRUList and
+ * nextPri2LRUList. To evict from the priority-1 LRUSet, an evicting thread
+ * picks the (nextPri1LRUList % numLRULists)-th list, and then increments
+ * nextPri1LRUList. Similarly, to evict from the priority-2 LRUSet, an evicting
+ * thread picks the (nextPri2LRUList % numLRULists)-th list, and then increments
+ * nextPri2LRUList. This does not have to be done in a synchronized way. A new
+ * flag (called hasCachedChildren) is added to each IN to indicate whether the
+ * IN has cached children or not. This flag is used and maintained for upper INs
+ * (UINs) only. The need for this flag is explained below. Access to this flag
+ * is synchronized via the SH/EX node latch.
  * ---------------------------------------------------------------------------
  * LRUSet management: adding/removing/moving INs in/out of/within the LRUSets
  * ---------------------------------------------------------------------------
- *
- * We don't want to track upper IN (UIN) nodes that have cached children.
- * There are 2 reasons for this: (a) we cannot evict UINs with cached children
- * (the children must be evicted first) and (b) UINs will normally have high
- * access rate, and would add a lot of CPU overhead if they were tracked. 
- *
- * The hasCachedChildren flag is used as a quick way to determine whether a
- * UIN has cached children or not.
- *
- * Adding a node to the LRU.
- * -------------------------
- *
- * A IN N is added in an LRUSet via one of the following Evictor methods:
- * addBack(IN), addFront(IN), pri2AddBack(IN), or pri2AddFront(IN). The
- * first 2 add the node to the priority-1 LRUSet and set its isInPri2LRU flag
- * to false. The last 2 add the node to the priority-2 LRUSet and set its
- * isInPri2LRU flag to true.
- *
- * Note: DINs and DBINs are never added to the LRU.
- *
- * A node N is added to the LRU in the following situations:
- *
- * 1. N is fetched into memory from the log. Evictor.addBack(N) is called
- *    inside IN.postfetchInit() (just before N is connected to its parent).
- *
- * 2. N is a brand new node created during a split, and either N is a BIN or
- *    N does not get any cached children from its split sibling.
- *    Evictor.addFront(N) is called if N is a BIN and the cachemode is
- *    MAKE_COLD or EVICT_BIN. Otherwise, Evictor.addBack(child) is called.
- *
- * 3. N is a UIN that is being split, and before the split it had cached
- *    children, but all its cached children have now moved to its newly
- *    created sibling. Evictor.addBack(N) is called in this case.
- *
- * 4. N is a UIN that looses its last cached child (either because the child is
- *    evicted or it is deleted). Evictor.addBack(N) is called inside
- *    IN.setTarget(), if the target is null, N is a UIN, N's hasCachedChildren
- *    flag is true, and N after setting the target to null, N has no remaining
- *    cached children.
- *
- * 5. N is the 1st BIN in a brand new tree. In this case, Evictor.addBack(N)
- *    is called inside Tree.findBinForInsert().
- *
- * 6. N is a node visited during IN.rebuildINList() and N is either a BIN or
- *    a UIN with no cached children.
- *
- * 7. An evicting thread T removes N from the LRU, but after T EX-latches N,
- *    it determines that N is not evictable or should not be evicted, and
- *    should be put back in the LRU. T puts N back to the LRU using one of
- *    the above 4 methods (for details, read about the eviction processing
- *    below), but ONLY IF (a) N is still in the INList, and (b) N is not in
- *    the LRU already.
- *
- *    Case (b) can happen if N is a UIN and after T removed N from the LRU
- *    but before T could latch N, another thread T1 added a child to N and
- *    removed that child. Thus, by item 4 above, T1 adds N back to the LRU.
- *    Furthermore, since N is now back in the LRU, case (a) can now happen
- *    as well if another thread can evict N before T latches it.
- *
- * 8. When the checkpointer (or any other thread/operation) cleans a dirty IN,
- *    it must move it from the priority-2 LRUSet (if there) to the priority-1
- *    one. This is done via the Evictor.moveToPri1LRU(N) method: If the
- *    isInPri2LRU flag of N is true, LRUList.remove(N) is called to remove
- *    the node from the priority-2 LRUSet. If N was indeed in the priority-2
- *    LRUSet (i.e., LRUList.remove() returns true), addBack(N) is called to
- *    put it in the priority-1 LRUSet.
- *
- *    By moving N to the priority-1 LRUSet only after atomically removing it
- *    from the priority-2 LRUSet and checking that it was indeed there, we
- *    prevent N from being added into the LRU if N has been or would be removed
- *    from the LRU by a concurrently running evicting thread.
- *    
- * In cases 2, 3, 4, 5, 7, and 8 N is EX-latched. In case 1, the node is not
- * latched, but it is inaccessible by any other threads because it is not
- * connected to its parent yet and the parent is EX-latched (but N has already
- * been inserted in the INList; can this create any problems ?????). In case
- * 6 there is only one thread running. So, in all cases it's ok to set the
- * isInPri2LRU flag of the node.
- *
- * Question: can a thread T try to add a node N, seen as a Java obj instance,
- * into the LRU, while N is already there? I believe not, and LRUList addBack()
- * and addFront() methods assert that this cannot happen. In cases 1, 2, and 5
- * above N is newly created node, so it cannot be in the LRU already. In cases
- * 3 and 4, N is a UIN that has cached children, so it cannot be in the LRU.
- * In case 6 there is only 1 thread. Finally, in cases 7 and 8, T checks that
- * N is not in the LRU before attempting to add it (and the situation cannot
- * change between tis check and the insertion into the LRU because N is EX-
- * latched).
- *
- * Question: can a thread T try to add a node N, seen as a logical entity
- * represented by its nodeId, into the LRU, while N is already there?
- * Specifically, (a) can two Java instances, N1 and N2, of the same node
- * N exist in memory at the same time, and (b) while N1 is in the LRU, can
- * a thread T try to add N2 in the LRU? The answer to (a) is "yes", and as
- * far as I can think, the answer to (b) is "no", but there is no explicit
- * check in the code for this. Consider the following sequence of events:
- * Initially only N1 is in memory and in the LRU. An evicting thread T1
- * removes N1 from the LRU, thread T2 adds N1 in the LRU, thread T3 removes
- * N1 from the LRU and actually evicts it, thread T4 fetches N from the log,
- * thus creating instance N2 and adding N2 to the LRU, thread T1 finally
- * EX-latches N1 and has to decide what to do with it. The check in case
- * 7a above makes sure that N1 will not go back to the LRU. In fact the
- * same check makes sure that N1 will not be evicted (i.e., logged, if
- * dirty). T1 will just skip N1, thus allowing it to be GCed.
- *
- * Removing a node from the LRU
- * ----------------------------
- *
- * A node is removed from the LRU when it is selected as an eviction target
- * by an evicting thread. The thread chooses an LRUList list to evict from
- * and calls removeFront() on it. The node is not latched when it is removed
- * from the LRU in this case. The evicting thread is going to EX-latch the
- * node shortly after the removal. But as explain already earlier, between
- * the removal and the latching, another thread may put the node back to the
- * LRU, and as a result, another thread may also choose the same node for
- * eviction. The node may also be detached from the BTree, or its database
- * closed, or deleted.
- * 
- * A node may also be removing from the LRU by a non-evicting thread. This
- * is done via the Evictor.remove(IN) method. The method checks the node's
- * isInDrtryLRU flag to determine which LRUSet the node belongs to (if any)
- * and then calls LRUList.remove(N). The node must be at least SH latched
- * when the method is called. The method is a noop if the node is not in the
- * LRU. The node may not belong to any LRUList, because it has been selected
- * for eviction by another thread (and thus removed from LRU), but the
- * evicting thread has not yet latched the node. There are 3 cases (listed
+ * We don't want to track upper IN (UIN) nodes that have cached children. There
+ * are 2 reasons for this: (a) we cannot evict UINs with cached children (the
+ * children must be evicted first) and (b) UINs will normally have high access
+ * rate, and would add a lot of CPU overhead if they were tracked. The
+ * hasCachedChildren flag is used as a quick way to determine whether a UIN has
+ * cached children or not. Adding a node to the LRU. ------------------------- A
+ * IN N is added in an LRUSet via one of the following Evictor methods:
+ * addBack(IN), addFront(IN), pri2AddBack(IN), or pri2AddFront(IN). The first 2
+ * add the node to the priority-1 LRUSet and set its isInPri2LRU flag to false.
+ * The last 2 add the node to the priority-2 LRUSet and set its isInPri2LRU flag
+ * to true. Note: DINs and DBINs are never added to the LRU. A node N is added
+ * to the LRU in the following situations: 1. N is fetched into memory from the
+ * log. Evictor.addBack(N) is called inside IN.postfetchInit() (just before N is
+ * connected to its parent). 2. N is a brand new node created during a split,
+ * and either N is a BIN or N does not get any cached children from its split
+ * sibling. Evictor.addFront(N) is called if N is a BIN and the cachemode is
+ * MAKE_COLD or EVICT_BIN. Otherwise, Evictor.addBack(child) is called. 3. N is
+ * a UIN that is being split, and before the split it had cached children, but
+ * all its cached children have now moved to its newly created sibling.
+ * Evictor.addBack(N) is called in this case. 4. N is a UIN that looses its last
+ * cached child (either because the child is evicted or it is deleted).
+ * Evictor.addBack(N) is called inside IN.setTarget(), if the target is null, N
+ * is a UIN, N's hasCachedChildren flag is true, and N after setting the target
+ * to null, N has no remaining cached children. 5. N is the 1st BIN in a brand
+ * new tree. In this case, Evictor.addBack(N) is called inside
+ * Tree.findBinForInsert(). 6. N is a node visited during IN.rebuildINList() and
+ * N is either a BIN or a UIN with no cached children. 7. An evicting thread T
+ * removes N from the LRU, but after T EX-latches N, it determines that N is not
+ * evictable or should not be evicted, and should be put back in the LRU. T puts
+ * N back to the LRU using one of the above 4 methods (for details, read about
+ * the eviction processing below), but ONLY IF (a) N is still in the INList, and
+ * (b) N is not in the LRU already. Case (b) can happen if N is a UIN and after
+ * T removed N from the LRU but before T could latch N, another thread T1 added
+ * a child to N and removed that child. Thus, by item 4 above, T1 adds N back to
+ * the LRU. Furthermore, since N is now back in the LRU, case (a) can now happen
+ * as well if another thread can evict N before T latches it. 8. When the
+ * checkpointer (or any other thread/operation) cleans a dirty IN, it must move
+ * it from the priority-2 LRUSet (if there) to the priority-1 one. This is done
+ * via the Evictor.moveToPri1LRU(N) method: If the isInPri2LRU flag of N is
+ * true, LRUList.remove(N) is called to remove the node from the priority-2
+ * LRUSet. If N was indeed in the priority-2 LRUSet (i.e., LRUList.remove()
+ * returns true), addBack(N) is called to put it in the priority-1 LRUSet. By
+ * moving N to the priority-1 LRUSet only after atomically removing it from the
+ * priority-2 LRUSet and checking that it was indeed there, we prevent N from
+ * being added into the LRU if N has been or would be removed from the LRU by a
+ * concurrently running evicting thread. In cases 2, 3, 4, 5, 7, and 8 N is
+ * EX-latched. In case 1, the node is not latched, but it is inaccessible by any
+ * other threads because it is not connected to its parent yet and the parent is
+ * EX-latched (but N has already been inserted in the INList; can this create
+ * any problems ?????). In case 6 there is only one thread running. So, in all
+ * cases it's ok to set the isInPri2LRU flag of the node. Question: can a thread
+ * T try to add a node N, seen as a Java obj instance, into the LRU, while N is
+ * already there? I believe not, and LRUList addBack() and addFront() methods
+ * assert that this cannot happen. In cases 1, 2, and 5 above N is newly created
+ * node, so it cannot be in the LRU already. In cases 3 and 4, N is a UIN that
+ * has cached children, so it cannot be in the LRU. In case 6 there is only 1
+ * thread. Finally, in cases 7 and 8, T checks that N is not in the LRU before
+ * attempting to add it (and the situation cannot change between tis check and
+ * the insertion into the LRU because N is EX- latched). Question: can a thread
+ * T try to add a node N, seen as a logical entity represented by its nodeId,
+ * into the LRU, while N is already there? Specifically, (a) can two Java
+ * instances, N1 and N2, of the same node N exist in memory at the same time,
+ * and (b) while N1 is in the LRU, can a thread T try to add N2 in the LRU? The
+ * answer to (a) is "yes", and as far as I can think, the answer to (b) is "no",
+ * but there is no explicit check in the code for this. Consider the following
+ * sequence of events: Initially only N1 is in memory and in the LRU. An
+ * evicting thread T1 removes N1 from the LRU, thread T2 adds N1 in the LRU,
+ * thread T3 removes N1 from the LRU and actually evicts it, thread T4 fetches N
+ * from the log, thus creating instance N2 and adding N2 to the LRU, thread T1
+ * finally EX-latches N1 and has to decide what to do with it. The check in case
+ * 7a above makes sure that N1 will not go back to the LRU. In fact the same
+ * check makes sure that N1 will not be evicted (i.e., logged, if dirty). T1
+ * will just skip N1, thus allowing it to be GCed. Removing a node from the LRU
+ * ---------------------------- A node is removed from the LRU when it is
+ * selected as an eviction target by an evicting thread. The thread chooses an
+ * LRUList list to evict from and calls removeFront() on it. The node is not
+ * latched when it is removed from the LRU in this case. The evicting thread is
+ * going to EX-latch the node shortly after the removal. But as explain already
+ * earlier, between the removal and the latching, another thread may put the
+ * node back to the LRU, and as a result, another thread may also choose the
+ * same node for eviction. The node may also be detached from the BTree, or its
+ * database closed, or deleted. A node may also be removing from the LRU by a
+ * non-evicting thread. This is done via the Evictor.remove(IN) method. The
+ * method checks the node's isInDrtryLRU flag to determine which LRUSet the node
+ * belongs to (if any) and then calls LRUList.remove(N). The node must be at
+ * least SH latched when the method is called. The method is a noop if the node
+ * is not in the LRU. The node may not belong to any LRUList, because it has
+ * been selected for eviction by another thread (and thus removed from LRU), but
+ * the evicting thread has not yet latched the node. There are 3 cases (listed
  * below) where Evictor.remove(N) is called. In the first two cases
- * Evictor.remove(N) is invoked from INList.removeInternal(N). This makes
- * sure that N is removed from the LRU whenever it it removed from the
- * INList (to guarantee that the nodes in the LRU are always a subset of
- * the nodes in the INList).
- *
- * 1. When a tree branch containing N gets detached from its tree. In this
- *    case, INList.remove(N) is invoked inside accountForSubtreeRemoval() or
- *    accountForDeferredWriteSubtreeRemoval().
- * 
- * 2. When the database containing N gets deleted or truncated. In this case,
- *    INList.iter.remove() is called in DatabaseImpl.finishDeleteProcessing().
- *
- * 3. N is a UIN with no cached children (hasCachedChildren flag is false)
- *    and a new child for N is fetched. The call to Evictor.remove(N) is
- *    done inside IN.setTarget().
- *
- * Moving a node within the LRU
- * ----------------------------
- *
- * A node N is moved within its containing LRUList (if any) via the Evictor
- * moveBack(IN) and moveFront(IN) methods. The methods check the isInPri2LRU
- * flag of the node to determine the LRUSet the node belongs to and then move
- * the node to the back or to the front of the LRUList. The node will be at
- * least SH latched when these methods are called. Normally, the IN will be
- * in an LRUList. However, it may not belong to any LRUList, because it has
- * been selected for eviction by another thread (and thus removed from LRU),
- * but the evicting thread has not yet EX-latched the node. In this case,
- * these methods are is a noop. The methods are called in the following
- * situations:
- *
- * 1. N is latched with cachemode DEFAULT, KEEP_HOT, or EVICT_LN and N is a
- *    BIN or a UIN with no cached children (the hasCachedChildren flag is
- *    used to check if the UIN has cached children, so we don't need to
- *    iterate over all of the node's child entries). In this case,
- *    Evictor.moveBack(N) .
- *
- * 2. N is latched with cachemode MAKE_COLD or EVICT_BIN and N is a BIN.
- *    In this case, Evictor.moveFront(N) is called.
- * 
- * -------------------
- * Eviction Processing
- * -------------------
- *
- * A thread can initiate eviction by invoking the Evictor.doEviction() method.
- * This method implements an "eviction run". An eviction run consists of a
- * number of "eviction passes", where each pass is given as input a maximum
- * number of bytes to evict. An eviction pass is implemented by the
- * Evictor.evictBatch() method. 
- *
- * Inside Evictor.evictBatch(), an evicting thread T:
- * 
- * 1. Picks the priority-1 LRUset initially as the "current" LRUSet to be
- *    processed,
- *
- * 2. Initializes the max number of nodes to be processed per LRUSet to the
- *    current size of the priority-1 LRUSet,
- *
- * 3. Executes the following loop:
- *
- * 3.1. Picks a non-empty LRUList from the current LRUSet in a round-robin
- *      fashion, as explained earlier, and invokes LRUList.removeFront() to
- *      remove the node N at the front of the list. N becomes the current
- *      eviction target.
- *
- * 3.2. If the DB node N belongs to has been deleted or closed, skips this node,
- *      i.e., leaves N outside the LRU and goes to 3.4.
- *
- * 3.3. Calls ProcessTarget(N) (see below)
- *
- * 3.4. If the current LRUset is the priority-1 one and the number of target nodes
- *      processed reaches the max number allowed, the priority-2 LRUSet becomes
- *      the current one, the max number of nodes to be processed per LRUSet is
- *      set to the current size of the priority-2 LRUSet, and the number of
- *      nodes processed is reset to 0.
- *
- * 3.5. Breaks the loop if the max number of bytes to evict during this pass
- *      has been reached, or memConsumption is less than (maxMemory - M) (where
- *      M is a config param), or the number of nodes that have been processed
- *      in the current LRUSet reaches the max allowed.
- *
- * --------------------------
- * The processTarget() method
- * --------------------------
- *
- * This method is called after a node N has been selected for eviction (and as
- * result, removed from the LRU). The method EX-latches N and determines
- * whether it can/should really be evicted, and if not what is the appropriate
- * action to be taken by the evicting thread. Before returning, the method
- * unlatches N. Finally, it returns the number of bytes evicted (if any).
- *
- * If a decision is taken to evict N or mutate it to a BINDelta, N must first
- * be unlatched and its parent must be searched within the tree. During this
- * search, many things can happen to the unlatched N, and as a result, after
- * the parent is found and the N is relatched, processTarget() calls itself
- * recursively to re-consider all the possible actions for N.
- *
- * Let T be an evicting thread running processTarget() to determine what to do
- * with a target node N. The following is the list of possible outcomes:
- *
- * 1. SKIP - Do nothing with N if:
- *    (a) N is in the LRU. This can happen if N is a UIN and while it is
- *        unlatched by T, other threads fetch one or more of N's children,
- *        but then all of N's children are removed again, thus causing N to
- *        be put back to the LRU.
- *    (b) N is not in the INList. Given than N can be put back to the LRU while
- *        it is unlatched by T, it can also be selected as an eviction target
- *        by another thread and actually be evicted.
- *    (c) N is a UIN with cached children. N could have acquired children
- *        after the evicting thread removed it from the LRU, but before the
- *        evicting thread could EX-latch it.
- *    (d) N is the root of the DB naming tree or the DBmapping tree. 
- *    (e) N is dirty, but the DB is read-only.
- *    (f) N's environment used a shared cache and the environment has been
- *        closed or invalidated.
- *    (g) If a decision was taken to evict od mutate N, but the tree search
- *        (using N's keyId) to find N's parent, failed to find the parent, or
- *        N itself. This can happen if during the search, N was evicted by
- *        another thread, or a branch containing N was completely removed
- *        from the tree.
- *
- * 2. PUT BACK - Put N to the back of the LRUSet it last belonged to, if:
- *    (a) It is a BIN that was last accessed with KEEP_HOT cache mode.
- *    (b) N has an entry with a NULL LSN and a null target.
- *
- * 3. PARTIAL EVICT - perform partial eviction on N, if none of the cases
- *    listed above is true. Currently, partial eviction applies to BINs only
- *    and involves the eviction (stripping) of evictable LNs. If a cached LN
- *    is not  evictable, the whole BIN is not evictable as well. Currently,
- *    only MapLNs may be non-evictable (see MapLN.isEvictable()).
- *
- *    After partial eviction is performed the following outcomes are possible:
- *
- * 4. STRIPPED PUT BACK - Put N to the back of the LRUSet it last belonged to,
- *    if partial eviction did evict any bytes, and N is not a BIN in EVICT_BIN
- *    or MAKE_COLD cache mode.
- *
- * 5. PUT BACK - Put N to the back of the LRUSet it last belonged to, if
- *    no bytes were stripped, but partial eviction determined that N is not
- *    evictable.
- *
- * 6. MUTATE - Mutate N to a BINDelta, if none of the above apply and N is a
- *    BIN that can be mutated.
- *
- * 7. MOVE DIRTY TO PRI-2 LRU - Move N to the front of the priority-2 LRUSet,
- *    if none of the above apply and N is a dirty node that last belonged to
- *    the priority-1 LRUSet, and a dirty LRUSet is used (meaning that no
- *    off-heap cache is configured).
- *
- * 8. MOVE LEVEL-2 TO PRI-2 LRU - Move N to the front of the priority-2 LRUSet,
- *    if none of the above apply and N is a level-2 node with off-heap BINs
- *    that last belonged to the priority-1 LRUSet.
- *
- * 9. EVICT - Evict N is none of the above apply.
- *
- * -------
- * TODO:
- * -------
- *
- * 1. Decide what to do about assertions (keep, remove, convert to JE
- *    exceptions, convert to DEBUG-only expensive checks).
- *
+ * Evictor.remove(N) is invoked from INList.removeInternal(N). This makes sure
+ * that N is removed from the LRU whenever it it removed from the INList (to
+ * guarantee that the nodes in the LRU are always a subset of the nodes in the
+ * INList). 1. When a tree branch containing N gets detached from its tree. In
+ * this case, INList.remove(N) is invoked inside accountForSubtreeRemoval() or
+ * accountForDeferredWriteSubtreeRemoval(). 2. When the database containing N
+ * gets deleted or truncated. In this case, INList.iter.remove() is called in
+ * DatabaseImpl.finishDeleteProcessing(). 3. N is a UIN with no cached children
+ * (hasCachedChildren flag is false) and a new child for N is fetched. The call
+ * to Evictor.remove(N) is done inside IN.setTarget(). Moving a node within the
+ * LRU ---------------------------- A node N is moved within its containing
+ * LRUList (if any) via the Evictor moveBack(IN) and moveFront(IN) methods. The
+ * methods check the isInPri2LRU flag of the node to determine the LRUSet the
+ * node belongs to and then move the node to the back or to the front of the
+ * LRUList. The node will be at least SH latched when these methods are called.
+ * Normally, the IN will be in an LRUList. However, it may not belong to any
+ * LRUList, because it has been selected for eviction by another thread (and
+ * thus removed from LRU), but the evicting thread has not yet EX-latched the
+ * node. In this case, these methods are is a noop. The methods are called in
+ * the following situations: 1. N is latched with cachemode DEFAULT, KEEP_HOT,
+ * or EVICT_LN and N is a BIN or a UIN with no cached children (the
+ * hasCachedChildren flag is used to check if the UIN has cached children, so we
+ * don't need to iterate over all of the node's child entries). In this case,
+ * Evictor.moveBack(N) . 2. N is latched with cachemode MAKE_COLD or EVICT_BIN
+ * and N is a BIN. In this case, Evictor.moveFront(N) is called.
+ * ------------------- Eviction Processing ------------------- A thread can
+ * initiate eviction by invoking the Evictor.doEviction() method. This method
+ * implements an "eviction run". An eviction run consists of a number of
+ * "eviction passes", where each pass is given as input a maximum number of
+ * bytes to evict. An eviction pass is implemented by the Evictor.evictBatch()
+ * method. Inside Evictor.evictBatch(), an evicting thread T: 1. Picks the
+ * priority-1 LRUset initially as the "current" LRUSet to be processed, 2.
+ * Initializes the max number of nodes to be processed per LRUSet to the current
+ * size of the priority-1 LRUSet, 3. Executes the following loop: 3.1. Picks a
+ * non-empty LRUList from the current LRUSet in a round-robin fashion, as
+ * explained earlier, and invokes LRUList.removeFront() to remove the node N at
+ * the front of the list. N becomes the current eviction target. 3.2. If the DB
+ * node N belongs to has been deleted or closed, skips this node, i.e., leaves N
+ * outside the LRU and goes to 3.4. 3.3. Calls ProcessTarget(N) (see below) 3.4.
+ * If the current LRUset is the priority-1 one and the number of target nodes
+ * processed reaches the max number allowed, the priority-2 LRUSet becomes the
+ * current one, the max number of nodes to be processed per LRUSet is set to the
+ * current size of the priority-2 LRUSet, and the number of nodes processed is
+ * reset to 0. 3.5. Breaks the loop if the max number of bytes to evict during
+ * this pass has been reached, or memConsumption is less than (maxMemory - M)
+ * (where M is a config param), or the number of nodes that have been processed
+ * in the current LRUSet reaches the max allowed. -------------------------- The
+ * processTarget() method -------------------------- This method is called after
+ * a node N has been selected for eviction (and as result, removed from the
+ * LRU). The method EX-latches N and determines whether it can/should really be
+ * evicted, and if not what is the appropriate action to be taken by the
+ * evicting thread. Before returning, the method unlatches N. Finally, it
+ * returns the number of bytes evicted (if any). If a decision is taken to evict
+ * N or mutate it to a BINDelta, N must first be unlatched and its parent must
+ * be searched within the tree. During this search, many things can happen to
+ * the unlatched N, and as a result, after the parent is found and the N is
+ * relatched, processTarget() calls itself recursively to re-consider all the
+ * possible actions for N. Let T be an evicting thread running processTarget()
+ * to determine what to do with a target node N. The following is the list of
+ * possible outcomes: 1. SKIP - Do nothing with N if: (a) N is in the LRU. This
+ * can happen if N is a UIN and while it is unlatched by T, other threads fetch
+ * one or more of N's children, but then all of N's children are removed again,
+ * thus causing N to be put back to the LRU. (b) N is not in the INList. Given
+ * than N can be put back to the LRU while it is unlatched by T, it can also be
+ * selected as an eviction target by another thread and actually be evicted. (c)
+ * N is a UIN with cached children. N could have acquired children after the
+ * evicting thread removed it from the LRU, but before the evicting thread could
+ * EX-latch it. (d) N is the root of the DB naming tree or the DBmapping tree.
+ * (e) N is dirty, but the DB is read-only. (f) N's environment used a shared
+ * cache and the environment has been closed or invalidated. (g) If a decision
+ * was taken to evict od mutate N, but the tree search (using N's keyId) to find
+ * N's parent, failed to find the parent, or N itself. This can happen if during
+ * the search, N was evicted by another thread, or a branch containing N was
+ * completely removed from the tree. 2. PUT BACK - Put N to the back of the
+ * LRUSet it last belonged to, if: (a) It is a BIN that was last accessed with
+ * KEEP_HOT cache mode. (b) N has an entry with a NULL LSN and a null target. 3.
+ * PARTIAL EVICT - perform partial eviction on N, if none of the cases listed
+ * above is true. Currently, partial eviction applies to BINs only and involves
+ * the eviction (stripping) of evictable LNs. If a cached LN is not evictable,
+ * the whole BIN is not evictable as well. Currently, only MapLNs may be
+ * non-evictable (see MapLN.isEvictable()). After partial eviction is performed
+ * the following outcomes are possible: 4. STRIPPED PUT BACK - Put N to the back
+ * of the LRUSet it last belonged to, if partial eviction did evict any bytes,
+ * and N is not a BIN in EVICT_BIN or MAKE_COLD cache mode. 5. PUT BACK - Put N
+ * to the back of the LRUSet it last belonged to, if no bytes were stripped, but
+ * partial eviction determined that N is not evictable. 6. MUTATE - Mutate N to
+ * a BINDelta, if none of the above apply and N is a BIN that can be mutated. 7.
+ * MOVE DIRTY TO PRI-2 LRU - Move N to the front of the priority-2 LRUSet, if
+ * none of the above apply and N is a dirty node that last belonged to the
+ * priority-1 LRUSet, and a dirty LRUSet is used (meaning that no off-heap cache
+ * is configured). 8. MOVE LEVEL-2 TO PRI-2 LRU - Move N to the front of the
+ * priority-2 LRUSet, if none of the above apply and N is a level-2 node with
+ * off-heap BINs that last belonged to the priority-1 LRUSet. 9. EVICT - Evict N
+ * is none of the above apply. ------- TODO: ------- 1. Decide what to do about
+ * assertions (keep, remove, convert to JE exceptions, convert to DEBUG-only
+ * expensive checks).
  */
 public class Evictor implements EnvConfigObserver {
 
     /*
      * If new eviction source enums are added, a new stat is created, and
-     * EnvironmentStats must be updated to add a getter method.
-     *
-     * CRITICAL eviction is called by operations executed app or daemon
-     * threads which detect that the cache has reached its limits
-     * CACHE_MODE eviction is called by operations that use a specific
-     * Cursor.
-     * EVICTORThread is the eviction pool
-     * MANUAL is the call to Environment.evictMemory, called by recovery or
-     *   application code.
+     * EnvironmentStats must be updated to add a getter method. CRITICAL
+     * eviction is called by operations executed app or daemon threads which
+     * detect that the cache has reached its limits CACHE_MODE eviction is
+     * called by operations that use a specific Cursor. EVICTORThread is the
+     * eviction pool MANUAL is the call to Environment.evictMemory, called by
+     * recovery or application code.
      */
     public enum EvictionSource {
         /* Using ordinal for array values! */
-        EVICTORTHREAD, MANUAL, CRITICAL, CACHEMODE, DAEMON;
+        EVICTORTHREAD,
+        MANUAL,
+        CRITICAL,
+        CACHEMODE,
+        DAEMON;
 
         public StatDefinition getNumBytesEvictedStatDef() {
-            return new StatDefinition("nBytesEvicted" + toString(),
-                                      NUM_BYTES_EVICTED_DESC);
+            return new StatDefinition("nBytesEvicted" + toString(), NUM_BYTES_EVICTED_DESC);
         }
     }
 
     /*
      * The purpose of EvictionDebugStats is to capture the stats of a single
-     * eviction run (i.e., an execution of the Evictor.doEviction() method by
-     * a single thread). An instance of EvictionDebugStats is created at the
-     * start of doEviction() and is passed around to the methods called from
-     * doEviction(). At the end of doEviction(), the EvictionDebugStats
-     * instance can be printed out (for debugging), or (TODO) the captured
-     * stats can be loaded to the global Evictor.stats.
+     * eviction run (i.e., an execution of the Evictor.doEviction() method by a
+     * single thread). An instance of EvictionDebugStats is created at the start
+     * of doEviction() and is passed around to the methods called from
+     * doEviction(). At the end of doEviction(), the EvictionDebugStats instance
+     * can be printed out (for debugging), or (TODO) the captured stats can be
+     * loaded to the global Evictor.stats.
      */
     static class EvictionDebugStats {
         boolean inPri1LRU;
         boolean withParent;
 
-        long pri1Size;
-        long pri2Size;
+        long    pri1Size;
+        long    pri2Size;
 
-        int numSelectedPri1;
-        int numSelectedPri2;
+        int     numSelectedPri1;
+        int     numSelectedPri2;
 
-        int numPutBackPri1;
-        int numPutBackPri2;
+        int     numPutBackPri1;
+        int     numPutBackPri2;
 
-        int numBINsStripped1Pri1;
-        int numBINsStripped2Pri1;
-        int numBINsStripped1Pri2;
-        int numBINsStripped2Pri2;
+        int     numBINsStripped1Pri1;
+        int     numBINsStripped2Pri1;
+        int     numBINsStripped1Pri2;
+        int     numBINsStripped2Pri2;
 
-        int numBINsMutatedPri1;
-        int numBINsMutatedPri2;
+        int     numBINsMutatedPri1;
+        int     numBINsMutatedPri2;
 
-        int numUINsMoved1;
-        int numUINsMoved2;
-        int numBINsMoved1;
-        int numBINsMoved2;
+        int     numUINsMoved1;
+        int     numUINsMoved2;
+        int     numBINsMoved1;
+        int     numBINsMoved2;
 
-        int numUINsEvictedPri1;
-        int numUINsEvictedPri2;
-        int numBINsEvictedPri1;
-        int numBINsEvictedPri2;
+        int     numUINsEvictedPri1;
+        int     numUINsEvictedPri2;
+        int     numBINsEvictedPri1;
+        int     numBINsEvictedPri2;
 
         void reset() {
             inPri1LRU = true;
@@ -768,10 +613,10 @@ public class Evictor implements EnvConfigObserver {
     }
 
     /*
-     * The purpose of LRUDebugStats is to capture stats on the current state
-     * of an LRUSet. This is done via a call to LRUEvictor.getPri1LRUStats(),
-     * or LRUEvictor.getPri2LRUStats(). For now at least, these methods are
-     * meant to be used for debugging and unit testing only.
+     * The purpose of LRUDebugStats is to capture stats on the current state of
+     * an LRUSet. This is done via a call to LRUEvictor.getPri1LRUStats(), or
+     * LRUEvictor.getPri2LRUStats(). For now at least, these methods are meant
+     * to be used for debugging and unit testing only.
      */
     static class LRUDebugStats {
         int size;
@@ -821,12 +666,12 @@ public class Evictor implements EnvConfigObserver {
 
         private static final boolean doExpensiveCheck = false;
 
-        private final int id;
+        private final int            id;
 
-        private int size = 0;
+        private int                  size             = 0;
 
-        private IN front = null;
-        private IN back = null;
+        private IN                   front            = null;
+        private IN                   back             = null;
 
         LRUList(int id) {
             this.id = id;
@@ -835,18 +680,14 @@ public class Evictor implements EnvConfigObserver {
         synchronized void addBack(IN node) {
 
             /* Make sure node is not in any LRUlist already */
-            if (node.getNextLRUNode() != null ||
-                node.getPrevLRUNode() != null) {
-                
-                throw EnvironmentFailureException.unexpectedState(
-                   node.getEnv(),
-                   Thread.currentThread().getId() + "-" +
-                   Thread.currentThread().getName() +
-                   "-" + node.getEnv().getName() + 
-                   "Attempting to add node " + node.getNodeId() +
-                   " in the LRU, but node is already in the LRU.");
+            if (node.getNextLRUNode() != null || node.getPrevLRUNode() != null) {
+
+                throw EnvironmentFailureException.unexpectedState(node.getEnv(),
+                        Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                                + node.getEnv().getName() + "Attempting to add node " + node.getNodeId()
+                                + " in the LRU, but node is already in the LRU.");
             }
-            assert(!node.isDIN() && !node.isDBIN());
+            assert (!node.isDIN() && !node.isDBIN());
 
             node.setNextLRUNode(node);
 
@@ -854,7 +695,7 @@ public class Evictor implements EnvConfigObserver {
                 node.setPrevLRUNode(back);
                 back.setNextLRUNode(node);
             } else {
-                assert(front == null);
+                assert (front == null);
                 node.setPrevLRUNode(node);
             }
 
@@ -866,22 +707,18 @@ public class Evictor implements EnvConfigObserver {
 
             ++size;
         }
-        
+
         synchronized void addFront(IN node) {
 
             /* Make sure node is not in any LRUlist already */
-            if (node.getNextLRUNode() != null ||
-                node.getPrevLRUNode() != null) {
-                
-                throw EnvironmentFailureException.unexpectedState(
-                   node.getEnv(),
-                   Thread.currentThread().getId() + "-" +
-                   Thread.currentThread().getName() +
-                   "-" + node.getEnv().getName() + 
-                   "Attempting to add node " + node.getNodeId() +
-                   " in the LRU, but node is already in the LRU.");
+            if (node.getNextLRUNode() != null || node.getPrevLRUNode() != null) {
+
+                throw EnvironmentFailureException.unexpectedState(node.getEnv(),
+                        Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                                + node.getEnv().getName() + "Attempting to add node " + node.getNodeId()
+                                + " in the LRU, but node is already in the LRU.");
             }
-            assert(!node.isDIN() && !node.isDBIN());
+            assert (!node.isDIN() && !node.isDBIN());
 
             node.setPrevLRUNode(node);
 
@@ -889,7 +726,7 @@ public class Evictor implements EnvConfigObserver {
                 node.setNextLRUNode(front);
                 front.setPrevLRUNode(node);
             } else {
-                assert(back == null);
+                assert (back == null);
                 node.setNextLRUNode(node);
             }
 
@@ -906,128 +743,118 @@ public class Evictor implements EnvConfigObserver {
 
             /* If the node is not in the list, don't do anything */
             if (node.getNextLRUNode() == null) {
-                assert(node.getPrevLRUNode() == null);
+                assert (node.getPrevLRUNode() == null);
                 return;
             }
 
             if (doExpensiveCheck && !contains2(node)) {
-                System.out.println("LRUList.moveBack(): list " + id +
-                                   "does not contain node " +
-                                   node.getNodeId() +
-                                   " Thread: " +
-                                   Thread.currentThread().getId() + "-" +
-                                   Thread.currentThread().getName() +
-                                   " isBIN: " + node.isBIN() +
-                                   " inPri2LRU: " + node.isInPri2LRU());
-                assert(false);
+                System.out.println("LRUList.moveBack(): list " + id + "does not contain node " + node.getNodeId()
+                        + " Thread: " + Thread.currentThread().getId() + "-" + Thread.currentThread().getName()
+                        + " isBIN: " + node.isBIN() + " inPri2LRU: " + node.isInPri2LRU());
+                assert (false);
             }
 
             if (node.getNextLRUNode() == node) {
                 /* The node is aready at the back */
-                assert(back == node);
-                assert(node.getPrevLRUNode().getNextLRUNode() == node);
+                assert (back == node);
+                assert (node.getPrevLRUNode().getNextLRUNode() == node);
 
             } else {
-                assert(front != back);
-                assert(size > 1);
+                assert (front != back);
+                assert (size > 1);
 
                 if (node.getPrevLRUNode() == node) {
-                    /* the node is at the front  */
-                    assert(front == node);
-                    assert(node.getNextLRUNode().getPrevLRUNode() == node);
+                    /* the node is at the front */
+                    assert (front == node);
+                    assert (node.getNextLRUNode().getPrevLRUNode() == node);
 
                     front = node.getNextLRUNode();
                     front.setPrevLRUNode(front);
                 } else {
                     /* the node is in the "middle" */
-                    assert(front != node && back != node);
-                    assert(node.getPrevLRUNode().getNextLRUNode() == node);
-                    assert(node.getNextLRUNode().getPrevLRUNode() == node);
+                    assert (front != node && back != node);
+                    assert (node.getPrevLRUNode().getNextLRUNode() == node);
+                    assert (node.getNextLRUNode().getPrevLRUNode() == node);
 
                     node.getPrevLRUNode().setNextLRUNode(node.getNextLRUNode());
                     node.getNextLRUNode().setPrevLRUNode(node.getPrevLRUNode());
                 }
-                
+
                 node.setNextLRUNode(node);
                 node.setPrevLRUNode(back);
-                
+
                 back.setNextLRUNode(node);
                 back = node;
             }
         }
-        
+
         synchronized void moveFront(IN node) {
-            
+
             /* If the node is not in the list, don't do anything */
             if (node.getNextLRUNode() == null) {
-                assert(node.getPrevLRUNode() == null);
+                assert (node.getPrevLRUNode() == null);
                 return;
             }
 
             if (doExpensiveCheck && !contains2(node)) {
-                System.out.println("LRUList.moveFront(): list " + id +
-                                   "does not contain node " +
-                                   node.getNodeId() +
-                                   " Thread: " +
-                                   Thread.currentThread().getId() + "-" +
-                                   Thread.currentThread().getName() +
-                                   " isBIN: " + node.isBIN() +
-                                   " inPri2LRU: " + node.isInPri2LRU());
-                assert(false);
+                System.out.println("LRUList.moveFront(): list " + id + "does not contain node " + node.getNodeId()
+                        + " Thread: " + Thread.currentThread().getId() + "-" + Thread.currentThread().getName()
+                        + " isBIN: " + node.isBIN() + " inPri2LRU: " + node.isInPri2LRU());
+                assert (false);
             }
 
             if (node.getPrevLRUNode() == node) {
                 /* the node is aready at the front */
-                assert(front == node);
-                assert(node.getNextLRUNode().getPrevLRUNode() == node);
+                assert (front == node);
+                assert (node.getNextLRUNode().getPrevLRUNode() == node);
 
             } else {
-                assert(front != back);
-                assert(size > 1);
+                assert (front != back);
+                assert (size > 1);
 
                 if (node.getNextLRUNode() == node) {
                     /* the node is at the back */
-                    assert(back == node);
-                    assert(node.getPrevLRUNode().getNextLRUNode() == node);
+                    assert (back == node);
+                    assert (node.getPrevLRUNode().getNextLRUNode() == node);
 
                     back = node.getPrevLRUNode();
                     back.setNextLRUNode(back);
                 } else {
                     /* the node is in the "middle" */
-                    assert(front != node && back != node);
-                    assert(node.getPrevLRUNode().getNextLRUNode() == node);
-                    assert(node.getNextLRUNode().getPrevLRUNode() == node);
+                    assert (front != node && back != node);
+                    assert (node.getPrevLRUNode().getNextLRUNode() == node);
+                    assert (node.getNextLRUNode().getPrevLRUNode() == node);
 
                     node.getPrevLRUNode().setNextLRUNode(node.getNextLRUNode());
                     node.getNextLRUNode().setPrevLRUNode(node.getPrevLRUNode());
                 }
-                
+
                 node.setPrevLRUNode(node);
                 node.setNextLRUNode(front);
-                
+
                 front.setPrevLRUNode(node);
                 front = node;
             }
         }
-        
+
         synchronized IN removeFront() {
             if (front == null) {
-                assert(back == null);
+                assert (back == null);
                 return null;
             }
 
             IN res = front;
 
             if (front == back) {
-                assert(front.getNextLRUNode() == front);
-                assert(front.getPrevLRUNode() == front);
-                assert(size == 1);
+                assert (front.getNextLRUNode() == front);
+                assert (front.getPrevLRUNode() == front);
+                assert (size == 1);
 
                 front = null;
                 back = null;
 
             } else {
-                assert(size > 1);
+                assert (size > 1);
 
                 front = front.getNextLRUNode();
                 front.setPrevLRUNode(front);
@@ -1039,61 +866,56 @@ public class Evictor implements EnvConfigObserver {
 
             return res;
         }
-        
+
         synchronized boolean remove(IN node) {
 
             /* If the node is not in the list, don't do anything */
             if (node.getNextLRUNode() == null) {
-                assert(node.getPrevLRUNode() == null);
+                assert (node.getPrevLRUNode() == null);
                 return false;
             }
 
-            assert(node.getPrevLRUNode() != null);
+            assert (node.getPrevLRUNode() != null);
 
             if (doExpensiveCheck && !contains2(node)) {
-                System.out.println("LRUList.remove(): list " + id +
-                                   "does not contain node " +
-                                   node.getNodeId() +
-                                   " Thread: " +
-                                   Thread.currentThread().getId() + "-" +
-                                   Thread.currentThread().getName() +
-                                   " isBIN: " + node.isBIN() +
-                                   " inPri2LRU: " + node.isInPri2LRU());
-                assert(false);
+                System.out.println("LRUList.remove(): list " + id + "does not contain node " + node.getNodeId()
+                        + " Thread: " + Thread.currentThread().getId() + "-" + Thread.currentThread().getName()
+                        + " isBIN: " + node.isBIN() + " inPri2LRU: " + node.isInPri2LRU());
+                assert (false);
             }
 
             if (front == back) {
-                assert(size == 1);
-                assert(front == node);
-                assert(front.getNextLRUNode() == front);
-                assert(front.getPrevLRUNode() == front);
+                assert (size == 1);
+                assert (front == node);
+                assert (front.getNextLRUNode() == front);
+                assert (front.getPrevLRUNode() == front);
 
                 front = null;
                 back = null;
 
             } else if (node.getPrevLRUNode() == node) {
                 /* node is at the front */
-                assert(front == node);
-                assert(node.getNextLRUNode().getPrevLRUNode() == node);
+                assert (front == node);
+                assert (node.getNextLRUNode().getPrevLRUNode() == node);
 
                 front = node.getNextLRUNode();
                 front.setPrevLRUNode(front);
 
             } else if (node.getNextLRUNode() == node) {
                 /* the node is at the back */
-                assert(back == node);
-                assert(node.getPrevLRUNode().getNextLRUNode() == node);
-                
+                assert (back == node);
+                assert (node.getPrevLRUNode().getNextLRUNode() == node);
+
                 back = node.getPrevLRUNode();
                 back.setNextLRUNode(back);
             } else {
                 /* the node is in the "middle" */
-                assert(size > 2);
-                assert(front != back);
-                assert(front != node && back != node);
-                assert(node.getPrevLRUNode().getNextLRUNode() == node);
-                assert(node.getNextLRUNode().getPrevLRUNode() == node);
-                
+                assert (size > 2);
+                assert (front != back);
+                assert (front != node && back != node);
+                assert (node.getPrevLRUNode().getNextLRUNode() == node);
+                assert (node.getNextLRUNode().getPrevLRUNode() == node);
+
                 node.getPrevLRUNode().setNextLRUNode(node.getNextLRUNode());
                 node.getNextLRUNode().setPrevLRUNode(node.getPrevLRUNode());
             }
@@ -1108,7 +930,7 @@ public class Evictor implements EnvConfigObserver {
         synchronized void removeINsForEnv(EnvironmentImpl env) {
 
             if (front == null) {
-                assert(back == null);
+                assert (back == null);
                 return;
             }
 
@@ -1125,11 +947,11 @@ public class Evictor implements EnvConfigObserver {
                     node.setPrevLRUNode(null);
 
                     if (front == back) {
-                        assert(size == 1);
-                        assert(front == node);
-                        assert(nextNode == front);
-                        assert(prevNode == front);
-                        
+                        assert (size == 1);
+                        assert (front == node);
+                        assert (nextNode == front);
+                        assert (prevNode == front);
+
                         front = null;
                         back = null;
                         --size;
@@ -1137,9 +959,9 @@ public class Evictor implements EnvConfigObserver {
 
                     } else if (prevNode == node) {
                         /* node is at the front */
-                        assert(size > 1);
-                        assert(front == node);
-                        assert(nextNode.getPrevLRUNode() == node);
+                        assert (size > 1);
+                        assert (front == node);
+                        assert (nextNode.getPrevLRUNode() == node);
 
                         front = nextNode;
                         front.setPrevLRUNode(front);
@@ -1148,22 +970,22 @@ public class Evictor implements EnvConfigObserver {
 
                     } else if (nextNode == node) {
                         /* the node is at the back */
-                        assert(size > 1);
-                        assert(back == node);
-                        assert(prevNode.getNextLRUNode() == node);
-                        
+                        assert (size > 1);
+                        assert (back == node);
+                        assert (prevNode.getNextLRUNode() == node);
+
                         back = prevNode;
                         back.setNextLRUNode(back);
                         --size;
                         break;
                     } else {
                         /* the node is in the "middle" */
-                        assert(size > 2);
-                        assert(front != back);
-                        assert(front != node && back != node);
-                        assert(prevNode.getNextLRUNode() == node);
-                        assert(nextNode.getPrevLRUNode() == node);
-                
+                        assert (size > 2);
+                        assert (front != back);
+                        assert (front != node && back != node);
+                        assert (prevNode.getNextLRUNode() == node);
+                        assert (nextNode.getPrevLRUNode() == node);
+
                         prevNode.setNextLRUNode(nextNode);
                         nextNode.setPrevLRUNode(prevNode);
                         node = nextNode;
@@ -1184,7 +1006,7 @@ public class Evictor implements EnvConfigObserver {
         private boolean contains2(IN node) {
 
             if (front == null) {
-                assert(back == null);
+                assert (back == null);
                 return false;
             }
 
@@ -1208,7 +1030,7 @@ public class Evictor implements EnvConfigObserver {
         synchronized List<IN> copyList() {
 
             if (front == null) {
-                assert(back == null);
+                assert (back == null);
                 return Collections.emptyList();
             }
 
@@ -1236,7 +1058,7 @@ public class Evictor implements EnvConfigObserver {
         synchronized void getStats(EnvironmentImpl env, LRUDebugStats stats) {
 
             if (front == null) {
-                assert(back == null);
+                assert (back == null);
                 return;
             }
 
@@ -1281,205 +1103,197 @@ public class Evictor implements EnvConfigObserver {
      */
     private static class EnvInfo {
         EnvironmentImpl env;
-        INList ins;
+        INList          ins;
     }
 
     /* Prevent endless eviction loops under extreme resource constraints. */
-    private static final int MAX_BATCHES_PER_RUN = 100;
+    private static final int         MAX_BATCHES_PER_RUN       = 100;
 
-    private static final boolean traceUINs = false;
-    private static final boolean traceBINs = false;
-    private static final Level traceLevel = Level.INFO;
+    private static final boolean     traceUINs                 = false;
+    private static final boolean     traceBINs                 = false;
+    private static final Level       traceLevel                = Level.INFO;
 
     /* LRU-TODO: remove */
-    private static final boolean collectEvictionDebugStats = false;
+    private static final boolean     collectEvictionDebugStats = false;
 
     /**
-     * Number of LRULists per LRUSet. This is a configuration parameter.
-     * 
-     * In general, using only one LRUList may create a synchronization
-     * bottleneck, because all LRUList methods are synchronized and are
-     * invoked with high frequency from multiple thread. To alleviate
-     * this bottleneck, we need the option to break a single LRUList
-     * into multiple ones comprising an "LRUSet" (even though this
-     * reduces the quality of the LRU approximation).
+     * Number of LRULists per LRUSet. This is a configuration parameter. In
+     * general, using only one LRUList may create a synchronization bottleneck,
+     * because all LRUList methods are synchronized and are invoked with high
+     * frequency from multiple thread. To alleviate this bottleneck, we need the
+     * option to break a single LRUList into multiple ones comprising an
+     * "LRUSet" (even though this reduces the quality of the LRU approximation).
      */
-    private final int numLRULists;
+    private final int                numLRULists;
 
     /*
      * This is true when an off-heap cache is in use. If true, then the
-     * priority-2 LRUSet is always used for level 2 INs, and useDirtyLRUSet
-     * and mutateBins are both set to false.
+     * priority-2 LRUSet is always used for level 2 INs, and useDirtyLRUSet and
+     * mutateBins are both set to false.
      */
-    private final boolean useOffHeapCache;
+    private final boolean            useOffHeapCache;
 
     /**
-     * Whether to use the priority-2 LRUSet for dirty nodes or not.
-     *
-     * When useOffHeapCache is true, useDirtyLRUSet is always false. When
+     * Whether to use the priority-2 LRUSet for dirty nodes or not. When
+     * useOffHeapCache is true, useDirtyLRUSet is always false. When
      * useOffHeapCache is false, useDirtyLRUSet is set via a configuration
      * parameter.
      */
-    private final boolean useDirtyLRUSet;
+    private final boolean            useDirtyLRUSet;
 
     /*
      * Whether to allow deltas when logging a dirty BIN that is being evicted.
      * This is a configuration parameter.
      */
-    private final boolean allowBinDeltas;
+    private final boolean            allowBinDeltas;
 
     /*
      * Whether to mutate BINs to BIN deltas rather than evicting the full node.
-     *
      * When useOffHeapCache is true, mutateBins is always false. When
      * useOffHeapCache is false, mutateBins is set via a configuration
      * parameter.
      */
-    private final boolean mutateBins;
+    private final boolean            mutateBins;
 
     /*
-     * Access count after which we clear the DatabaseImpl cache.
-     * This is a configuration parameter.
+     * Access count after which we clear the DatabaseImpl cache. This is a
+     * configuration parameter.
      */
-    private int dbCacheClearCount;
+    private int                      dbCacheClearCount;
 
     /*
-     * This is a configuration parameter. If true, eviction is done by a pool
-     * of evictor threads, as well as being done inline by application threads.
-     * Note: runEvictorThreads is needed as a distinct flag, rather than
-     * setting maxThreads to 0, because the ThreadPoolExecutor does not permit
+     * This is a configuration parameter. If true, eviction is done by a pool of
+     * evictor threads, as well as being done inline by application threads.
+     * Note: runEvictorThreads is needed as a distinct flag, rather than setting
+     * maxThreads to 0, because the ThreadPoolExecutor does not permit
      * maxThreads to be 0.
      */
-    private boolean runEvictorThreads;
+    private boolean                  runEvictorThreads;
 
     /* This is a configuration parameter. */
-    private int terminateMillis;
+    private int                      terminateMillis;
 
     /* The thread pool used to manage the background evictor threads. */
     private final ThreadPoolExecutor evictionPool;
 
     /* Flag to help shutdown launched eviction tasks. */
-    private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
+    private final AtomicBoolean      shutdownRequested         = new AtomicBoolean(false);
 
-    private int maxPoolThreads;
-    private final AtomicInteger activePoolThreads = new AtomicInteger(0);
+    private int                      maxPoolThreads;
+    private final AtomicInteger      activePoolThreads         = new AtomicInteger(0);
 
     /*
      * Whether this evictor (and the memory cache) is shared by multiple
      * environments
      */
-    private final boolean isShared;
+    private final boolean            isShared;
 
     /*
      * In case of multiple environments sharing a cache (and this Evictor),
-     * firstEnvImpl references the 1st EnvironmentImpl to be created with
-     * the shared cache.
+     * firstEnvImpl references the 1st EnvironmentImpl to be created with the
+     * shared cache.
      */
-    private final EnvironmentImpl firstEnvImpl;
+    private final EnvironmentImpl    firstEnvImpl;
 
-    private final List<EnvInfo> envInfos;
+    private final List<EnvInfo>      envInfos;
 
     /**
      * This is used only when this evictor is shared by multiple envs. It
-     * "points" to the next env to perform "special eviction" in. 
+     * "points" to the next env to perform "special eviction" in.
      */
-    private int specialEvictionIndex = 0;
+    private int                      specialEvictionIndex      = 0;
 
     /*
      *
      */
-    private final Arbiter arbiter;
+    private final Arbiter            arbiter;
 
     /**
-     * With an off-heap cache configured:
-     * pri1LRUSet contains nodes of any type and level. A freshly cached node
-     * goes into this LRUSet. A level-2 node will go to the pri2LRUSet if it is
-     * selected for eviction from the pri1LRUSet and it contains off-heap BINs.
-     * A node will move from the pri2LRUSet to the pri1LRUSet when its last
-     * off-heap BIN is evicted from the off-heap cache.
-     *
-     * Without an off-heap cache configured:
-     * pri1LRUSet contains both clean and dirty nodes. A freshly cached node
-     * goes into this LRUSet. A dirty node will go to the pri2LRUSet if it is
-     * selected for eviction from the pri1LRUSet. A node will move from the
-     * pri2LRUSet to the pri1LRUSet when it gets logged (i.e., cleaned) by
-     * the checkpointer.
+     * With an off-heap cache configured: pri1LRUSet contains nodes of any type
+     * and level. A freshly cached node goes into this LRUSet. A level-2 node
+     * will go to the pri2LRUSet if it is selected for eviction from the
+     * pri1LRUSet and it contains off-heap BINs. A node will move from the
+     * pri2LRUSet to the pri1LRUSet when its last off-heap BIN is evicted from
+     * the off-heap cache. Without an off-heap cache configured: pri1LRUSet
+     * contains both clean and dirty nodes. A freshly cached node goes into this
+     * LRUSet. A dirty node will go to the pri2LRUSet if it is selected for
+     * eviction from the pri1LRUSet. A node will move from the pri2LRUSet to the
+     * pri1LRUSet when it gets logged (i.e., cleaned) by the checkpointer.
      */
-    private final LRUList[] pri1LRUSet;
-    private final LRUList[] pri2LRUSet;
-    
+    private final LRUList[]          pri1LRUSet;
+    private final LRUList[]          pri2LRUSet;
+
     /**
-     * nextPri1LRUList is used to implement the traversal of the lists in
-     * the pri1LRUSet by one or more evicting threads. Such a thread will
-     * select for eviction the front node from the (nextPri1LRUList %
-     * numLRULists)-th list, and then increment nextPri1LRUList.
-     * nextPri2LRUList plays the same role for the priority-2 LRUSet.
+     * nextPri1LRUList is used to implement the traversal of the lists in the
+     * pri1LRUSet by one or more evicting threads. Such a thread will select for
+     * eviction the front node from the (nextPri1LRUList % numLRULists)-th list,
+     * and then increment nextPri1LRUList. nextPri2LRUList plays the same role
+     * for the priority-2 LRUSet.
      */
-    private int nextPri1LRUList = 0;
-    private int nextPri2LRUList = 0;
+    private int                      nextPri1LRUList           = 0;
+    private int                      nextPri2LRUList           = 0;
 
     /*
      * The evictor is disabled during the 1st phase of recovery. The
-     * RecoveryManager enables the evictor after it finishes its 1st
-     * phase.
+     * RecoveryManager enables the evictor after it finishes its 1st phase.
      */
-    private boolean isEnabled = false;
+    private boolean                  isEnabled                 = false;
 
     /* Eviction calls cannot be recursive. */
-    private ReentrancyGuard reentrancyGuard;
+    private ReentrancyGuard          reentrancyGuard;
 
-    private final Logger logger;
+    private final Logger             logger;
 
     /*
      * Stats
      */
-    private final StatGroup stats;
+    private final StatGroup          stats;
 
     /*
      * Number of eviction tasks that were submitted to the background evictor
      * pool, but were refused because all eviction threads were busy.
      */
-    private final AtomicLongStat nThreadUnavailable;
+    private final AtomicLongStat     nThreadUnavailable;
 
     /* Number of evictBatch() invocations. */
-    private final LongStat nEvictionRuns;
+    private final LongStat           nEvictionRuns;
 
     /*
      * Number of nodes selected as eviction targets. An eviction target may
      * actually be evicted, or skipped, or put back to the LRU, potentially
      * after partial eviction or BIN-delta mutation is done on it.
      */
-    private final LongStat nNodesTargeted;
+    private final LongStat           nNodesTargeted;
 
     /* Number of nodes evicted. */
-    private final LongStat nNodesEvicted;
+    private final LongStat           nNodesEvicted;
 
     /* Number of closed database root nodes evicted. */
-    private final LongStat nRootNodesEvicted;
+    private final LongStat           nRootNodesEvicted;
 
     /* Number of dirty nodes logged and evicted. */
-    private final LongStat nDirtyNodesEvicted;
+    private final LongStat           nDirtyNodesEvicted;
 
     /* Number of LNs evicted. */
-    private final LongStat nLNsEvicted;
+    private final LongStat           nLNsEvicted;
 
     /* Number of BINs stripped. */
-    private final LongStat nNodesStripped;
+    private final LongStat           nNodesStripped;
 
     /* Number of BINs mutated to deltas. */
-    private final LongStat nNodesMutated;
+    private final LongStat           nNodesMutated;
 
     /* Number of target nodes put back to the LRU w/o any other action taken */
-    private final LongStat nNodesPutBack;
+    private final LongStat           nNodesPutBack;
 
     /* Number of target nodes skipped. */
-    private final LongStat nNodesSkipped;
+    private final LongStat           nNodesSkipped;
 
     /* Number of target nodes moved to the priority-2 LRU */
-    private final LongStat nNodesMovedToPri2LRU;
+    private final LongStat           nNodesMovedToPri2LRU;
 
     /* Number of bytes evicted per eviction source. */
-    private final AtomicLongStat[] numBytesEvicted;
+    private final AtomicLongStat[]   numBytesEvicted;
 
     /*
      * Tree related cache hit/miss stats. A subset of the cache misses recorded
@@ -1487,78 +1301,76 @@ public class Evictor implements EnvConfigObserver {
      * Recorded by IN.fetchIN and IN.fetchLN, but grouped with evictor stats.
      * Use AtomicLongStat for multithreading safety.
      */
-    private final AtomicLongStat nLNFetch;
+    private final AtomicLongStat     nLNFetch;
 
-    private final AtomicLongStat nLNFetchMiss;
+    private final AtomicLongStat     nLNFetchMiss;
 
-    /* 
-     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called
-     * to fetch a UIN.
+    /*
+     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called to
+     * fetch a UIN.
      */
-    private final AtomicLongStat nUpperINFetch;
+    private final AtomicLongStat     nUpperINFetch;
 
-    /* 
-     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called
-     * to fetch a UIN and that UIN was not already cached.
+    /*
+     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called to
+     * fetch a UIN and that UIN was not already cached.
      */
-    private final AtomicLongStat nUpperINFetchMiss;
+    private final AtomicLongStat     nUpperINFetchMiss;
 
-    /* 
-     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called
-     * to fetch a BIN.
+    /*
+     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called to
+     * fetch a BIN.
      */
-    private final AtomicLongStat nBINFetch;
+    private final AtomicLongStat     nBINFetch;
 
-    /* 
-     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called
-     * to fetch a BIN and that BIN was not already cached.
+    /*
+     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called to
+     * fetch a BIN and that BIN was not already cached.
      */
-    private final AtomicLongStat nBINFetchMiss;
+    private final AtomicLongStat     nBINFetchMiss;
 
-    /* 
-     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called
-     * to fetch a BIN, that BIN was not already cached, and a BIN-delta was
-     * fetched from disk.
+    /*
+     * Number of times IN.fetchIN() or IN.fetchINWithNoLatch() was called to
+     * fetch a BIN, that BIN was not already cached, and a BIN-delta was fetched
+     * from disk.
      */
-    private final AtomicLongStat nBINDeltaFetchMiss;
+    private final AtomicLongStat     nBINDeltaFetchMiss;
 
-    private final FloatStat binFetchMissRatio;
+    private final FloatStat          binFetchMissRatio;
 
     /*
      * Number of calls to BIN.mutateToFullBIN()
      */
-    private final AtomicLongStat nFullBINMiss;
+    private final AtomicLongStat     nFullBINMiss;
 
     /*
      * Number of blind operations on BIN deltas
      */
-    private final AtomicLongStat nBinDeltaBlindOps;
+    private final AtomicLongStat     nBinDeltaBlindOps;
 
     /* Stats for IN compact array representations currently in cache. */
-    private final AtomicLong nINSparseTarget;
-    private final AtomicLong nINNoTarget;
-    private final AtomicLong nINCompactKey;
+    private final AtomicLong         nINSparseTarget;
+    private final AtomicLong         nINNoTarget;
+    private final AtomicLong         nINCompactKey;
 
     /* Number of envs sharing the cache. */
-    private final IntStat sharedCacheEnvs;
+    private final IntStat            sharedCacheEnvs;
 
     /* Debugging and unit test support. */
 
     /*
      * Number of consecutive "no-eviction" events (i.e. when evictBatch()
-     * returns 0). It is incremented at each "no-eviction" event and reset
-     * to 0 when eviction does occur. It is used to determine whether to
-     * log a WARNING for a "no-eviction" event: only 1 warning is logged
-     * per sequence of consecutive "no-eviction" events (to avoid flooding
-     * the logger files).
+     * returns 0). It is incremented at each "no-eviction" event and reset to 0
+     * when eviction does occur. It is used to determine whether to log a
+     * WARNING for a "no-eviction" event: only 1 warning is logged per sequence
+     * of consecutive "no-eviction" events (to avoid flooding the logger files).
      */
-    private int numNoEvictionEvents = 0;
+    private int                      numNoEvictionEvents       = 0;
 
-    private TestHook<Object> preEvictINHook;
-    private TestHook<IN> evictProfile;
+    private TestHook<Object>         preEvictINHook;
+    private TestHook<IN>             evictProfile;
 
-    public Evictor(EnvironmentImpl envImpl)
-        throws DatabaseException {
+    public Evictor(EnvironmentImpl envImpl) throws DatabaseException {
 
         isShared = envImpl.getSharedCache();
 
@@ -1578,8 +1390,7 @@ public class Evictor implements EnvConfigObserver {
         nNodesMutated = new LongStat(stats, EVICTOR_NODES_MUTATED);
         nNodesPutBack = new LongStat(stats, EVICTOR_NODES_PUT_BACK);
         nNodesSkipped = new LongStat(stats, EVICTOR_NODES_SKIPPED);
-        nNodesMovedToPri2LRU = new LongStat(
-            stats, EVICTOR_NODES_MOVED_TO_PRI2_LRU);
+        nNodesMovedToPri2LRU = new LongStat(stats, EVICTOR_NODES_MOVED_TO_PRI2_LRU);
 
         nLNFetch = new AtomicLongStat(stats, LN_FETCH);
         nBINFetch = new AtomicLongStat(stats, BIN_FETCH);
@@ -1600,8 +1411,7 @@ public class Evictor implements EnvConfigObserver {
 
         sharedCacheEnvs = new IntStat(stats, EVICTOR_SHARED_CACHE_ENVS);
 
-        EnumSet<EvictionSource> allSources =
-            EnumSet.allOf(EvictionSource.class);
+        EnumSet<EvictionSource> allSources = EnumSet.allOf(EvictionSource.class);
 
         int numSources = allSources.size();
 
@@ -1611,8 +1421,7 @@ public class Evictor implements EnvConfigObserver {
 
             int index = source.ordinal();
 
-            numBytesEvicted[index] = new AtomicLongStat(
-                stats, source.getNumBytesEvictedStatDef());
+            numBytesEvicted[index] = new AtomicLongStat(stats, source.getNumBytesEvictedStatDef());
         }
 
         arbiter = new Arbiter(firstEnvImpl);
@@ -1622,22 +1431,16 @@ public class Evictor implements EnvConfigObserver {
 
         DbConfigManager configManager = firstEnvImpl.getConfigManager();
 
-        int corePoolSize = configManager.getInt(
-            EnvironmentParams.EVICTOR_CORE_THREADS);
-        maxPoolThreads = configManager.getInt(
-            EnvironmentParams.EVICTOR_MAX_THREADS);
-        long keepAliveTime = configManager.getDuration(
-            EnvironmentParams.EVICTOR_KEEP_ALIVE);
-        terminateMillis = configManager.getDuration(
-            EnvironmentParams.EVICTOR_TERMINATE_TIMEOUT);
-        dbCacheClearCount = configManager.getInt(
-            EnvironmentParams.ENV_DB_CACHE_CLEAR_COUNT);
-        numLRULists = configManager.getInt(
-            EnvironmentParams.EVICTOR_N_LRU_LISTS);
+        int corePoolSize = configManager.getInt(EnvironmentParams.EVICTOR_CORE_THREADS);
+        maxPoolThreads = configManager.getInt(EnvironmentParams.EVICTOR_MAX_THREADS);
+        long keepAliveTime = configManager.getDuration(EnvironmentParams.EVICTOR_KEEP_ALIVE);
+        terminateMillis = configManager.getDuration(EnvironmentParams.EVICTOR_TERMINATE_TIMEOUT);
+        dbCacheClearCount = configManager.getInt(EnvironmentParams.ENV_DB_CACHE_CLEAR_COUNT);
+        numLRULists = configManager.getInt(EnvironmentParams.EVICTOR_N_LRU_LISTS);
 
         pri1LRUSet = new LRUList[numLRULists];
         pri2LRUSet = new LRUList[numLRULists];
-        
+
         for (int i = 0; i < numLRULists; ++i) {
             pri1LRUSet[i] = new LRUList(i);
             pri2LRUSet[i] = new LRUList(numLRULists + i);
@@ -1655,31 +1458,22 @@ public class Evictor implements EnvConfigObserver {
             useOffHeapCache = true;
 
         } else {
-            mutateBins = configManager.getBoolean(
-                EnvironmentParams.EVICTOR_MUTATE_BINS);
+            mutateBins = configManager.getBoolean(EnvironmentParams.EVICTOR_MUTATE_BINS);
 
-            useDirtyLRUSet = configManager.getBoolean(
-                EnvironmentParams.EVICTOR_USE_DIRTY_LRU);
+            useDirtyLRUSet = configManager.getBoolean(EnvironmentParams.EVICTOR_USE_DIRTY_LRU);
 
             useOffHeapCache = false;
         }
 
-        RejectedExecutionHandler rejectHandler = new RejectEvictHandler(
-            nThreadUnavailable);
+        RejectedExecutionHandler rejectHandler = new RejectEvictHandler(nThreadUnavailable);
 
-        evictionPool = new ThreadPoolExecutor(
-            corePoolSize, maxPoolThreads, keepAliveTime,
-            TimeUnit.MILLISECONDS,
-            new ArrayBlockingQueue<Runnable>(1),
-            new StoppableThreadFactory(
-                isShared ? null : envImpl, "JEEvictor", logger),
-            rejectHandler);
+        evictionPool = new ThreadPoolExecutor(corePoolSize, maxPoolThreads, keepAliveTime, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<Runnable>(1),
+                new StoppableThreadFactory(isShared ? null : envImpl, "JEEvictor", logger), rejectHandler);
 
-        allowBinDeltas = configManager.getBoolean(
-            EnvironmentParams.EVICTOR_ALLOW_BIN_DELTAS);
+        allowBinDeltas = configManager.getBoolean(EnvironmentParams.EVICTOR_ALLOW_BIN_DELTAS);
 
-        runEvictorThreads = configManager.getBoolean(
-            EnvironmentParams.ENV_RUN_EVICTOR);
+        runEvictorThreads = configManager.getBoolean(EnvironmentParams.ENV_RUN_EVICTOR);
 
         /*
          * Request notification of mutable property changes. Do this after all
@@ -1693,28 +1487,20 @@ public class Evictor implements EnvConfigObserver {
      * Respond to config updates.
      */
     @Override
-    public void envConfigUpdate(
-        DbConfigManager configManager,
-        EnvironmentMutableConfig ignore)
-        throws DatabaseException {
+    public void envConfigUpdate(DbConfigManager configManager, EnvironmentMutableConfig ignore)
+            throws DatabaseException {
 
-        int corePoolSize = configManager.getInt(
-            EnvironmentParams.EVICTOR_CORE_THREADS);
-        maxPoolThreads = configManager.getInt(
-            EnvironmentParams.EVICTOR_MAX_THREADS);
-        long keepAliveTime = configManager.getDuration(
-            EnvironmentParams.EVICTOR_KEEP_ALIVE);
-        terminateMillis = configManager.getDuration(
-            EnvironmentParams.EVICTOR_TERMINATE_TIMEOUT);
-        dbCacheClearCount = configManager.getInt(
-            EnvironmentParams.ENV_DB_CACHE_CLEAR_COUNT);
+        int corePoolSize = configManager.getInt(EnvironmentParams.EVICTOR_CORE_THREADS);
+        maxPoolThreads = configManager.getInt(EnvironmentParams.EVICTOR_MAX_THREADS);
+        long keepAliveTime = configManager.getDuration(EnvironmentParams.EVICTOR_KEEP_ALIVE);
+        terminateMillis = configManager.getDuration(EnvironmentParams.EVICTOR_TERMINATE_TIMEOUT);
+        dbCacheClearCount = configManager.getInt(EnvironmentParams.ENV_DB_CACHE_CLEAR_COUNT);
 
         evictionPool.setCorePoolSize(corePoolSize);
         evictionPool.setMaximumPoolSize(maxPoolThreads);
         evictionPool.setKeepAliveTime(keepAliveTime, TimeUnit.MILLISECONDS);
 
-        runEvictorThreads = configManager.getBoolean(
-            EnvironmentParams.ENV_RUN_EVICTOR);
+        runEvictorThreads = configManager.getBoolean(EnvironmentParams.ENV_RUN_EVICTOR);
     }
 
     public void setEnabled(boolean v) {
@@ -1731,10 +1517,9 @@ public class Evictor implements EnvConfigObserver {
     public void shutdown() {
 
         /*
-         * Set the shutdown flag so that outstanding eviction tasks end
-         * early. The call to evictionPool.shutdown is a ThreadPoolExecutor
-         * call, and is an orderly shutdown that waits for and in flight tasks
-         * to end.
+         * Set the shutdown flag so that outstanding eviction tasks end early.
+         * The call to evictionPool.shutdown is a ThreadPoolExecutor call, and
+         * is an orderly shutdown that waits for and in flight tasks to end.
          */
         shutdownRequested.set(true);
         evictionPool.shutdown();
@@ -1747,9 +1532,7 @@ public class Evictor implements EnvConfigObserver {
          */
         boolean shutdownFinished = false;
         try {
-            shutdownFinished =
-                evictionPool.awaitTermination(terminateMillis,
-                                              TimeUnit.MILLISECONDS);
+            shutdownFinished = evictionPool.awaitTermination(terminateMillis, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             /* We've been interrupted, just give up and end. */
         } finally {
@@ -1783,7 +1566,7 @@ public class Evictor implements EnvConfigObserver {
             throw EnvironmentFailureException.unexpectedState();
         }
     }
-    
+
     public synchronized void removeSharedCacheEnv(EnvironmentImpl env) {
         if (!isShared) {
             throw EnvironmentFailureException.unexpectedState();
@@ -1837,10 +1620,10 @@ public class Evictor implements EnvConfigObserver {
 
         if (isEnabled && node.getEnv().getInMemoryINs().isEnabled()) {
 
-            assert(node.getInListResident());
+            assert (node.getInListResident());
 
             node.setInPri2LRU(false);
-            pri1LRUSet[(int)(node.getNodeId() % numLRULists)].addBack(node);
+            pri1LRUSet[(int) (node.getNodeId() % numLRULists)].addBack(node);
         }
     }
 
@@ -1852,10 +1635,10 @@ public class Evictor implements EnvConfigObserver {
 
         if (isEnabled && node.getEnv().getInMemoryINs().isEnabled()) {
 
-            assert(node.getInListResident());
+            assert (node.getInListResident());
 
             node.setInPri2LRU(false);
-            pri1LRUSet[(int)(node.getNodeId() % numLRULists)].addFront(node);
+            pri1LRUSet[(int) (node.getNodeId() % numLRULists)].addFront(node);
         }
     }
 
@@ -1864,23 +1647,23 @@ public class Evictor implements EnvConfigObserver {
      */
     private void pri2AddBack(IN node) {
 
-        assert(node.isLatchExclusiveOwner());
-        assert(node.getInListResident());
+        assert (node.isLatchExclusiveOwner());
+        assert (node.getInListResident());
 
         node.setInPri2LRU(true);
-        pri2LRUSet[(int)(node.getNodeId() % numLRULists)].addBack(node);
+        pri2LRUSet[(int) (node.getNodeId() % numLRULists)].addBack(node);
     }
-    
+
     /*
      * Add the node to the front of the priority-2 LRUSet.
      */
     private void pri2AddFront(IN node) {
 
-        assert(node.isLatchExclusiveOwner());
-        assert(node.getInListResident());
+        assert (node.isLatchExclusiveOwner());
+        assert (node.getInListResident());
 
         node.setInPri2LRU(true);
-        pri2LRUSet[(int)(node.getNodeId() % numLRULists)].addFront(node);
+        pri2LRUSet[(int) (node.getNodeId() % numLRULists)].addFront(node);
     }
 
     /**
@@ -1888,26 +1671,26 @@ public class Evictor implements EnvConfigObserver {
      */
     public void moveBack(IN node) {
 
-        assert(node.isLatchOwner());
+        assert (node.isLatchOwner());
 
         if (node.isInPri2LRU()) {
-            pri2LRUSet[(int)(node.getNodeId() % numLRULists)].moveBack(node);
+            pri2LRUSet[(int) (node.getNodeId() % numLRULists)].moveBack(node);
         } else {
-            pri1LRUSet[(int)(node.getNodeId() % numLRULists)].moveBack(node);
+            pri1LRUSet[(int) (node.getNodeId() % numLRULists)].moveBack(node);
         }
     }
-    
+
     /**
      * Move the node to the front of its containing LRUList, if any.
      */
     public void moveFront(IN node) {
 
-        assert(node.isLatchOwner());
+        assert (node.isLatchOwner());
 
         if (node.isInPri2LRU()) {
-            pri2LRUSet[(int)(node.getNodeId() % numLRULists)].moveFront(node);
+            pri2LRUSet[(int) (node.getNodeId() % numLRULists)].moveFront(node);
         } else {
-            pri1LRUSet[(int)(node.getNodeId() % numLRULists)].moveFront(node);
+            pri1LRUSet[(int) (node.getNodeId() % numLRULists)].moveFront(node);
         }
     }
 
@@ -1916,9 +1699,9 @@ public class Evictor implements EnvConfigObserver {
      */
     public void remove(IN node) {
 
-        assert(node.isLatchOwner());
+        assert (node.isLatchOwner());
 
-        int listId = (int)(node.getNodeId() % numLRULists);
+        int listId = (int) (node.getNodeId() % numLRULists);
 
         if (node.isInPri2LRU()) {
             pri2LRUSet[listId].remove(node);
@@ -1928,21 +1711,21 @@ public class Evictor implements EnvConfigObserver {
     }
 
     /**
-     * Move the node from the priority-2 LRUSet to the priority-1 LRUSet, if
-     * the node is indeed in the priority-2 LRUSet.
+     * Move the node from the priority-2 LRUSet to the priority-1 LRUSet, if the
+     * node is indeed in the priority-2 LRUSet.
      */
     public void moveToPri1LRU(IN node) {
 
-        assert(node.isLatchExclusiveOwner());
+        assert (node.isLatchExclusiveOwner());
 
         if (!node.isInPri2LRU()) {
             return;
         }
 
-        int listId = (int)(node.getNodeId() % numLRULists);
+        int listId = (int) (node.getNodeId() % numLRULists);
 
         if (pri2LRUSet[listId].remove(node)) {
-            assert(node.getInListResident());
+            assert (node.getInListResident());
             node.setInPri2LRU(false);
             pri1LRUSet[listId].addBack(node);
         }
@@ -1950,9 +1733,9 @@ public class Evictor implements EnvConfigObserver {
 
     public boolean contains(IN node) {
 
-        assert(node.isLatchOwner());
+        assert (node.isLatchOwner());
 
-        int listId = (int)(node.getNodeId() % numLRULists);
+        int listId = (int) (node.getNodeId() % numLRULists);
 
         if (node.isInPri2LRU()) {
             return pri2LRUSet[listId].contains(node);
@@ -2038,8 +1821,8 @@ public class Evictor implements EnvConfigObserver {
              * Only do eviction if the memory budget overage fulfills the
              * critical eviction requirements. This allows evictor threads to
              * take the burden of eviction whenever possible, rather than
-             * slowing other threads and risking a growing cleaner or
-             * compressor backlog.
+             * slowing other threads and risking a growing cleaner or compressor
+             * backlog.
              */
             if (arbiter.needCriticalEviction()) {
                 doEvict(EvictionSource.DAEMON, backgroundIO);
@@ -2050,20 +1833,16 @@ public class Evictor implements EnvConfigObserver {
     /*
      * Eviction invoked by the API
      */
-    public void doManualEvict()
-        throws DatabaseException {
+    public void doManualEvict() throws DatabaseException {
 
-        doEvict(EvictionSource.MANUAL, true/*backgroundIO*/);
+        doEvict(EvictionSource.MANUAL, true/* backgroundIO */);
     }
 
     /**
      * Evict a specific IN, used by tests.
      */
     public long doTestEvict(IN target, EvictionSource source) {
-        return doEvictOneIN(
-            target,
-            source == EvictionSource.CACHEMODE ? CacheMode.EVICT_BIN : null,
-            source);
+        return doEvictOneIN(target, source == EvictionSource.CACHEMODE ? CacheMode.EVICT_BIN : null, source);
     }
 
     /**
@@ -2073,21 +1852,17 @@ public class Evictor implements EnvConfigObserver {
         return doEvictOneIN(target, cacheMode, EvictionSource.CACHEMODE);
     }
 
-    private long doEvictOneIN(IN target,
-                              CacheMode cacheMode,
-                              EvictionSource source) {
-        assert(target.isBIN());
-        assert(target.isLatchOwner());
+    private long doEvictOneIN(IN target, CacheMode cacheMode, EvictionSource source) {
+        assert (target.isBIN());
+        assert (target.isLatchOwner());
 
         /*
          * If a dirty BIN is being evicted via a cache mode and an off-heap
-         * cache is not used, do not evict the node since it would be
-         * logged. When an off-heap cache is used, we can evict dirty nodes
-         * without logging them.
+         * cache is not used, do not evict the node since it would be logged.
+         * When an off-heap cache is used, we can evict dirty nodes without
+         * logging them.
          */
-        if (source == EvictionSource.CACHEMODE &&
-            target.getDirty() &&
-            !useOffHeapCache) {
+        if (source == EvictionSource.CACHEMODE && target.getDirty() && !useOffHeapCache) {
 
             try {
                 long evictedBytes = 0;
@@ -2114,10 +1889,9 @@ public class Evictor implements EnvConfigObserver {
 
             target.releaseLatch();
 
-            final long evictedBytes = processTarget(
-                null /* rootEvictor */, target, null /* parent */,
-                -1 /* entry index within parent */,
-                false /* backgroundIO */, source, null /* debug stats */);
+            final long evictedBytes = processTarget(null /* rootEvictor */, target, null /* parent */,
+                    -1 /* entry index within parent */, false /* backgroundIO */, source,
+                    null /* debug stats */);
 
             numBytesEvicted[source.ordinal()].add(evictedBytes);
 
@@ -2159,12 +1933,11 @@ public class Evictor implements EnvConfigObserver {
     }
 
     /**
-     * This is where the real work is done.
-     * Can execute concurrently, called by app threads or by background evictor
+     * This is where the real work is done. Can execute concurrently, called by
+     * app threads or by background evictor
      */
-    void doEvict(EvictionSource source, boolean backgroundIO)
-        throws DatabaseException {
-        
+    void doEvict(EvictionSource source, boolean backgroundIO) throws DatabaseException {
+
         if (!isEnabled) {
             return;
         }
@@ -2178,7 +1951,7 @@ public class Evictor implements EnvConfigObserver {
         try {
 
             /*
-             * Repeat as necessary to keep up with allocations.  Stop if no
+             * Repeat as necessary to keep up with allocations. Stop if no
              * progress is made, to prevent an infinite loop.
              */
             boolean progress = true;
@@ -2193,14 +1966,12 @@ public class Evictor implements EnvConfigObserver {
                 evictionStats.pri2Size = getPri2LRUSize();
             }
 
-            while (progress &&
-                   nBatches < MAX_BATCHES_PER_RUN &&
-                   !shutdownRequested.get()) {
+            while (progress && nBatches < MAX_BATCHES_PER_RUN && !shutdownRequested.get()) {
 
                 /*
-                 * Do eviction only if memory consumption is over budget.
-                 * If so, try to evict (memoryConsumption + M - maxMemory)
-                 * bytes, where M is a config param.
+                 * Do eviction only if memory consumption is over budget. If so,
+                 * try to evict (memoryConsumption + M - maxMemory) bytes, where
+                 * M is a config param.
                  */
                 long maxEvictBytes = arbiter.getEvictionPledge();
 
@@ -2208,20 +1979,15 @@ public class Evictor implements EnvConfigObserver {
                     break;
                 }
 
-                bytesEvicted = evictBatch(
-                    source, backgroundIO, maxEvictBytes, evictionStats);
+                bytesEvicted = evictBatch(source, backgroundIO, maxEvictBytes, evictionStats);
 
                 numBytesEvicted[source.ordinal()].add(bytesEvicted);
 
                 if (bytesEvicted == 0) {
 
-                    if (arbiter.stillNeedsEviction() &&
-                        numNoEvictionEvents == 0 &&
-                        logger.isLoggable(Level.FINE)) {
+                    if (arbiter.stillNeedsEviction() && numNoEvictionEvents == 0 && logger.isLoggable(Level.FINE)) {
                         ++numNoEvictionEvents;
-                        LoggerUtils.fine(
-                            logger, firstEnvImpl,
-                            "Eviction pass failed to evict any bytes");
+                        LoggerUtils.fine(logger, firstEnvImpl, "Eviction pass failed to evict any bytes");
                     } else {
                         ++numNoEvictionEvents;
                     }
@@ -2242,8 +2008,7 @@ public class Evictor implements EnvConfigObserver {
             if (source == EvictionSource.EVICTORTHREAD) {
                 if (logger.isLoggable(Level.FINEST)) {
                     LoggerUtils.finest(logger, firstEnvImpl,
-                                       "Thread evicted " + bytesEvicted +
-                                       " bytes in " + nBatches + " batches");
+                            "Thread evicted " + bytesEvicted + " bytes in " + nBatches + " batches");
                 }
             }
         } finally {
@@ -2254,12 +2019,8 @@ public class Evictor implements EnvConfigObserver {
     /**
      * Not private because it is used in unit test.
      */
-    long evictBatch(
-        Evictor.EvictionSource source,
-        boolean bgIO,
-        long maxEvictBytes,
-        EvictionDebugStats evictionStats)
-        throws DatabaseException {
+    long evictBatch(Evictor.EvictionSource source, boolean bgIO, long maxEvictBytes, EvictionDebugStats evictionStats)
+            throws DatabaseException {
 
         long totalEvictedBytes = 0;
         boolean inPri1LRUSet = true;
@@ -2270,11 +2031,10 @@ public class Evictor implements EnvConfigObserver {
         assert TestHookExecute.doHookSetupIfSet(evictProfile);
 
         /*
-         * Perform special eviction,i.e., evict non-tree memory.
-         *
-         * TODO: special eviction is done serially. We may want to absolve
-         * application threads of that responsibility, to avoid blocking, and
-         * only have evictor threads do special eviction.
+         * Perform special eviction,i.e., evict non-tree memory. TODO: special
+         * eviction is done serially. We may want to absolve application threads
+         * of that responsibility, to avoid blocking, and only have evictor
+         * threads do special eviction.
          */
         synchronized (this) {
             if (isShared) {
@@ -2286,7 +2046,7 @@ public class Evictor implements EnvConfigObserver {
                     EnvInfo info = envInfos.get(specialEvictionIndex);
                     specialEvictionIndex++;
 
-                   totalEvictedBytes = info.env.specialEviction();
+                    totalEvictedBytes = info.env.specialEviction();
                 }
             } else {
                 totalEvictedBytes = firstEnvImpl.specialEviction();
@@ -2298,9 +2058,8 @@ public class Evictor implements EnvConfigObserver {
         final MemoryBudget memBudget = firstEnvImpl.getMemoryBudget();
 
         try {
-            while (totalEvictedBytes < maxEvictBytes &&
-                   numNodesScannedThisBatch < maxNodesScannedThisBatch &&
-                   arbiter.stillNeedsEviction()) {
+            while (totalEvictedBytes < maxEvictBytes && numNodesScannedThisBatch < maxNodesScannedThisBatch
+                    && arbiter.stillNeedsEviction()) {
 
                 if (!isShared && !memBudget.isTreeUsageAboveMinimum()) {
                     break;
@@ -2327,22 +2086,17 @@ public class Evictor implements EnvConfigObserver {
                      * Check to make sure the target's DB was not deleted or
                      * truncated after selecting the target. Furthermore,
                      * prevent the DB from being deleted while we're working
-                     * with it (this is done by the dbCache.getDb() call).
-                     *
-                     * Also check that the refreshedDb is the same instance
-                     * as the targetDb. If not, then the MapLN associated with
-                     * targetDb was recently evicted (which can happen after
-                     * all handles to the DB are closed). In this case,
-                     * targetDb and its INs are orphaned and cannot be
-                     * processed; they should simply be removed from the
-                     * LRU [#21686]
+                     * with it (this is done by the dbCache.getDb() call). Also
+                     * check that the refreshedDb is the same instance as the
+                     * targetDb. If not, then the MapLN associated with targetDb
+                     * was recently evicted (which can happen after all handles
+                     * to the DB are closed). In this case, targetDb and its INs
+                     * are orphaned and cannot be processed; they should simply
+                     * be removed from the LRU [#21686]
                      */
-                    final DatabaseImpl refreshedDb =
-                        dbCache.getDb(dbEnv, targetDb.getId());
+                    final DatabaseImpl refreshedDb = dbCache.getDb(dbEnv, targetDb.getId());
 
-                    if (refreshedDb != null &&
-                        !refreshedDb.isDeleted() &&
-                        refreshedDb == targetDb) {
+                    if (refreshedDb != null && !refreshedDb.isDeleted() && refreshedDb == targetDb) {
 
                         long evictedBytes = 0;
 
@@ -2354,12 +2108,11 @@ public class Evictor implements EnvConfigObserver {
                             rootEvictor.stats = evictionStats;
 
                             /* try to evict the root */
-                            targetDb.getTree().withRootLatchedExclusive(
-                                rootEvictor);
+                            targetDb.getTree().withRootLatchedExclusive(rootEvictor);
 
                             /*
                              * If the root IN was flushed, write the dirtied
-                             *  MapLN.
+                             * MapLN.
                              */
                             if (rootEvictor.flushed) {
                                 dbEnv.getDbTree().modifyDbRoot(targetDb);
@@ -2368,37 +2121,30 @@ public class Evictor implements EnvConfigObserver {
                             evictedBytes = rootEvictor.evictedBytes;
 
                         } else {
-                            evictedBytes = processTarget(
-                                null,  /* rootEvictor */
-                                target, null, /* parent */
-                                -1, /* parent entry index */
-                                bgIO, source, evictionStats);
+                            evictedBytes = processTarget(null, /* rootEvictor */
+                                    target, null, /* parent */
+                                    -1, /* parent entry index */
+                                    bgIO, source, evictionStats);
                         }
-                        
+
                         totalEvictedBytes += evictedBytes;
 
                     } else {
                         /*
                          * We don't expect to find in the INList an IN whose
-                         * database that has finished delete processing,
-                         * because it should have been removed from the
-                         * INList during post-delete cleanup. 
+                         * database that has finished delete processing, because
+                         * it should have been removed from the INList during
+                         * post-delete cleanup.
                          */
-                        if (targetDb.isDeleteFinished() &&
-                            target.getInListResident()) {
-                            final String inInfo =
-                                " IN type=" + target.getLogType() + " id=" +
-                                target.getNodeId() + " not expected on INList";
-                            final String errMsg = (refreshedDb == null) ?
-                                inInfo :
-                                ("Database " + refreshedDb.getDebugName() +
-                                 " id=" + refreshedDb.getId() + " rootLsn=" +
-                                 DbLsn.getNoFormatString
-                                 (refreshedDb.getTree().getRootLsn()) +
-                                 ' ' + inInfo);
-                            
-                            throw EnvironmentFailureException.
-                                unexpectedState(errMsg);
+                        if (targetDb.isDeleteFinished() && target.getInListResident()) {
+                            final String inInfo = " IN type=" + target.getLogType() + " id=" + target.getNodeId()
+                                    + " not expected on INList";
+                            final String errMsg = (refreshedDb == null) ? inInfo
+                                    : ("Database " + refreshedDb.getDebugName() + " id=" + refreshedDb.getId()
+                                            + " rootLsn=" + DbLsn.getNoFormatString(refreshedDb.getTree().getRootLsn())
+                                            + ' ' + inInfo);
+
+                            throw EnvironmentFailureException.unexpectedState(errMsg);
                         }
                     }
                 }
@@ -2407,9 +2153,8 @@ public class Evictor implements EnvConfigObserver {
                  * Move to the priority-2 LRUSet, if we are done processing the
                  * priority-1 LRUSet.
                  */
-                if (numNodesScannedThisBatch >= maxNodesScannedThisBatch &&
-                    totalEvictedBytes < maxEvictBytes &&
-                    inPri1LRUSet) {
+                if (numNodesScannedThisBatch >= maxNodesScannedThisBatch && totalEvictedBytes < maxEvictBytes
+                        && inPri1LRUSet) {
 
                     numNodesScannedThisBatch = 0;
                     maxNodesScannedThisBatch = getPri2LRUSize();
@@ -2429,8 +2174,8 @@ public class Evictor implements EnvConfigObserver {
     }
 
     /**
-     * Returns a copy of the LRU list, for tightly controlled testing.
-     * Requires that there is exactly one LRU list configured.
+     * Returns a copy of the LRU list, for tightly controlled testing. Requires
+     * that there is exactly one LRU list configured.
      */
     public List<IN> getPri1LRUList() {
         assert pri1LRUSet.length == 1;
@@ -2443,16 +2188,11 @@ public class Evictor implements EnvConfigObserver {
             int listId = Math.abs(nextPri1LRUList++) % numLRULists;
             IN target = pri1LRUSet[listId].removeFront();
 
-            if (target != null &&
-                ((traceUINs && target.isUpperIN()) ||
-                 (traceBINs && target.isBIN()))) {
-                LoggerUtils.envLogMsg(
-                    traceLevel, target.getEnv(),
-                    Thread.currentThread().getId() + "-" +
-                    Thread.currentThread().getName() +
-                    "-" + target.getEnv().getName() + 
-                    " XXXX priority-1 Eviction target: " +
-                    target.getNodeId());
+            if (target != null && ((traceUINs && target.isUpperIN()) || (traceBINs && target.isBIN()))) {
+                LoggerUtils.envLogMsg(traceLevel, target.getEnv(),
+                        Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                                + target.getEnv().getName() + " XXXX priority-1 Eviction target: "
+                                + target.getNodeId());
             }
 
             return target;
@@ -2461,15 +2201,10 @@ public class Evictor implements EnvConfigObserver {
         int listId = Math.abs(nextPri2LRUList++) % numLRULists;
         IN target = pri2LRUSet[listId].removeFront();
 
-        if (target != null && 
-            ((traceUINs && target.isUpperIN()) ||
-             (traceBINs && target.isBIN()))) {
-            LoggerUtils.envLogMsg(
-                traceLevel, target.getEnv(),
-                Thread.currentThread().getId() + "-" +
-                Thread.currentThread().getName() +
-                "-" + target.getEnv().getName() + 
-                " XXXX Pri2 Eviction target: " + target.getNodeId());
+        if (target != null && ((traceUINs && target.isUpperIN()) || (traceBINs && target.isBIN()))) {
+            LoggerUtils.envLogMsg(traceLevel, target.getEnv(),
+                    Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                            + target.getEnv().getName() + " XXXX Pri2 Eviction target: " + target.getNodeId());
         }
 
         return target;
@@ -2477,78 +2212,66 @@ public class Evictor implements EnvConfigObserver {
 
     class RootEvictor implements WithRootLatched {
 
-        IN target;
-        boolean backgroundIO;
-        EvictionSource source;
-        EvictionDebugStats stats = null;
+        IN                 target;
+        boolean            backgroundIO;
+        EvictionSource     source;
+        EvictionDebugStats stats        = null;
 
-        ChildReference rootRef;
-        boolean flushed = false;
-        long evictedBytes = 0;
+        ChildReference     rootRef;
+        boolean            flushed      = false;
+        long               evictedBytes = 0;
 
-        public IN doWork(ChildReference root)
-            throws DatabaseException {
+        public IN doWork(ChildReference root) throws DatabaseException {
 
             /*
-             * Do not call fetchTarget since this root or DB should be
-             * resident already if it is to be the target of eviction. If
-             * it is not present, it has been evicted by another thread and
-             * should not be fetched for two reasons: 1) this would be
-             * counterproductive, 2) to guard against bringing in a root
-             * for an evicted DB.
+             * Do not call fetchTarget since this root or DB should be resident
+             * already if it is to be the target of eviction. If it is not
+             * present, it has been evicted by another thread and should not be
+             * fetched for two reasons: 1) this would be counterproductive, 2)
+             * to guard against bringing in a root for an evicted DB.
              */
             IN rootIN = (IN) root.getTarget();
             if (rootIN == null) {
                 return null;
             }
-            
+
             rootRef = root;
 
             /*
-             * Latch the target and re-check that all conditions still hold.
-             * The latch on the target will be released by processTarget().
+             * Latch the target and re-check that all conditions still hold. The
+             * latch on the target will be released by processTarget().
              */
             rootIN.latchNoUpdateLRU();
 
             if (rootIN == target && rootIN.isRoot()) {
-                evictedBytes = processTarget(
-                    this, null, /* target */
-                    null, /* parent */
-                    -1, /* entry index within parent */
-                    backgroundIO, source, stats);
+                evictedBytes = processTarget(this, null, /* target */
+                        null, /* parent */
+                        -1, /* entry index within parent */
+                        backgroundIO, source, stats);
             } else {
                 rootIN.releaseLatch();
             }
-            
+
             return null;
         }
     }
 
     /**
      * Decide what to do with an eviction target and carry out the decision.
-     * Return the number of bytes evicted (if any).
-     *
-     * This method is called from evictBatch() after an IN has been selected
-     * for eviction. It EX-latches the IN and determines whether it can/should
-     * really be evicted, and if not what is the appropriate action to be
-     * taken by the evicting thread.
-     *
-     * If a decision is taken to evict the target or mutate it to a BINDelta,
-     * the target must first be unlatched and its parent must be searched
-     * within the tree. During this search, many things can happen to the
-     * unlatched target, and as a result, after the parent is found and the
-     * target is relatched, processTarget() calls itself recursivelly to
-     * re-consider all the possible actions on the target.
+     * Return the number of bytes evicted (if any). This method is called from
+     * evictBatch() after an IN has been selected for eviction. It EX-latches
+     * the IN and determines whether it can/should really be evicted, and if not
+     * what is the appropriate action to be taken by the evicting thread. If a
+     * decision is taken to evict the target or mutate it to a BINDelta, the
+     * target must first be unlatched and its parent must be searched within the
+     * tree. During this search, many things can happen to the unlatched target,
+     * and as a result, after the parent is found and the target is relatched,
+     * processTarget() calls itself recursivelly to re-consider all the possible
+     * actions on the target.
      */
-    private long processTarget(
-        RootEvictor rootEvictor,
-        IN target,
-        IN parent,
-        int index,
-        boolean bgIO,
-        EvictionSource source,
-        EvictionDebugStats stats)
-        throws DatabaseException {
+    private long processTarget(RootEvictor rootEvictor, IN target, IN parent, int index, boolean bgIO,
+                               EvictionSource source, EvictionDebugStats stats)
+            throws DatabaseException {
 
         boolean targetIsLatched = false;
         boolean parentIsLatched = false;
@@ -2560,7 +2283,7 @@ public class Evictor implements EnvConfigObserver {
 
         try {
             if (parent != null) {
-                assert(parent.isLatchExclusiveOwner());
+                assert (parent.isLatchExclusiveOwner());
                 parentIsLatched = true;
 
                 if (target != parent.getTarget(index)) {
@@ -2599,14 +2322,14 @@ public class Evictor implements EnvConfigObserver {
             }
 
             /*
-             * Normally, UINs that have cached children are not in the LRU,
-             * and as a result, cannot be selected for eviction. However, a
+             * Normally, UINs that have cached children are not in the LRU, and
+             * as a result, cannot be selected for eviction. However, a
              * childless UIN may be selected for eviction and then acquire
-             * cached children in the time after its removal from its LRUSet
-             * and before it is EX-latched by the evicting thread.
+             * cached children in the time after its removal from its LRUSet and
+             * before it is EX-latched by the evicting thread.
              */
             if (target.isUpperIN() && target.hasCachedChildrenFlag()) {
-                assert(target.hasCachedChildren());
+                assert (target.hasCachedChildren());
                 skip(target, stats);
                 return 0;
             }
@@ -2614,12 +2337,11 @@ public class Evictor implements EnvConfigObserver {
             /*
              * Disallow eviction of the mapping and naming DB roots, because
              * their eviction and re-fetching is a special case that is not
-             * worth supporting.  [#13415]
+             * worth supporting. [#13415]
              */
             if (target.isRoot()) {
                 DatabaseId dbId = db.getId();
-                if (dbId.equals(DbTree.ID_DB_ID) ||
-                    dbId.equals(DbTree.NAME_DB_ID)) {
+                if (dbId.equals(DbTree.ID_DB_ID) || dbId.equals(DbTree.NAME_DB_ID)) {
                     skip(target, stats);
                     return 0;
                 }
@@ -2630,14 +2352,12 @@ public class Evictor implements EnvConfigObserver {
              * recovery here, on a per-target basis. For a private
              * evictor/cache, we can do it in alert().
              */
-            if (isShared && dbEnv.isInInit() &&
-                source == EvictionSource.EVICTORTHREAD) {
+            if (isShared && dbEnv.isInInit() && source == EvictionSource.EVICTORTHREAD) {
                 putBack(target, stats, 0);
                 return 0;
             }
 
-            assert !(dbEnv.isInInit() &&
-                source == EvictionSource.EVICTORTHREAD);
+            assert !(dbEnv.isInInit() && source == EvictionSource.EVICTORTHREAD);
 
             if (isShared) {
 
@@ -2660,10 +2380,10 @@ public class Evictor implements EnvConfigObserver {
             /*
              * Attempt partial eviction. The partialEviction() method also
              * determines whether the IN in evictable or not. For now,
-             * partialEviction() will consider a node to be non-evictable if
-             * it is a BIN that (a) has cursors registered on it, or (b) has
-             * a resident non-evictable LN, which can happen only for MapLNs
-             * (see MapLN.isEvictable()).
+             * partialEviction() will consider a node to be non-evictable if it
+             * is a BIN that (a) has cursors registered on it, or (b) has a
+             * resident non-evictable LN, which can happen only for MapLNs (see
+             * MapLN.isEvictable()).
              */
             evictedBytes = target.partialEviction();
 
@@ -2671,21 +2391,19 @@ public class Evictor implements EnvConfigObserver {
             evictedBytes &= ~IN.NON_EVICTABLE_IN;
 
             /*
-             * If we could evict some bytes from this node, put it back in
-             * the LRU, unless it is a BIN being explicitly evicted via a cache
+             * If we could evict some bytes from this node, put it back in the
+             * LRU, unless it is a BIN being explicitly evicted via a cache
              * mode, in which case we should evict it, if possible.
              */
-            if (evictedBytes > 0 && 
-                (target.isUpperIN() || source != EvictionSource.CACHEMODE)) {
+            if (evictedBytes > 0 && (target.isUpperIN() || source != EvictionSource.CACHEMODE)) {
                 strippedPutBack(target, stats);
                 return evictedBytes;
             }
 
             /*
-             * If the node is not evictable, put it back.
-             *
-             * TODO: Logically this check should come after BIN mutation, not
-             * before, but currently this would have little or no impact.
+             * If the node is not evictable, put it back. TODO: Logically this
+             * check should come after BIN mutation, not before, but currently
+             * this would have little or no impact.
              */
             if (!isEvictable) {
                 putBack(target, stats, 5);
@@ -2697,14 +2415,12 @@ public class Evictor implements EnvConfigObserver {
              * mutated to a BINDelta and it is not a BIN being explicitly
              * evicted via a cache mode.
              */
-            if (target.isBIN() &&
-                source != EvictionSource.CACHEMODE &&
-                mutateBins &&
-                ((BIN)target).canMutateToBINDelta()) {
-                
-                BIN bin = (BIN)target;
+            if (target.isBIN() && source != EvictionSource.CACHEMODE && mutateBins
+                    && ((BIN) target).canMutateToBINDelta()) {
+
+                BIN bin = (BIN) target;
                 evictedBytes += bin.mutateToBINDelta();
-                assert(evictedBytes > 0);
+                assert (evictedBytes > 0);
                 binDeltaPutBack(target, stats);
 
                 return evictedBytes;
@@ -2714,9 +2430,7 @@ public class Evictor implements EnvConfigObserver {
              * Give the node a second chance, if it is dirty and is not in the
              * priority-2 LRUSet already.
              */
-            if (useDirtyLRUSet &&
-                target.getDirty() &&
-                !target.isInPri2LRU()) {
+            if (useDirtyLRUSet && target.getDirty() && !target.isInPri2LRU()) {
 
                 moveToPri2LRU(target, stats);
                 return evictedBytes;
@@ -2726,17 +2440,15 @@ public class Evictor implements EnvConfigObserver {
              * Give the node a second chance, if it has off-heap BIN children
              * and is not in the priority-2 LRUSet already.
              */
-            if (useOffHeapCache &&
-                target.hasOffHeapBINIds() &&
-                !target.isInPri2LRU()) {
+            if (useOffHeapCache && target.hasOffHeapBINIds() && !target.isInPri2LRU()) {
 
                 moveToPri2LRU(target, stats);
                 return evictedBytes;
             }
 
             /*
-             * Evict the node. To do so, we must find and latch the
-             * parent IN first, if we have not done this already.
+             * Evict the node. To do so, we must find and latch the parent IN
+             * first, if we have not done this already.
              */
             if (rootEvictor != null) {
                 evictedBytes += evictRoot(rootEvictor, bgIO, source, stats);
@@ -2747,8 +2459,7 @@ public class Evictor implements EnvConfigObserver {
             } else {
                 assert TestHookExecute.doHookIfSet(preEvictINHook);
                 targetIsLatched = false;
-                evictedBytes += findParentAndRetry(
-                    target, bgIO, source, stats);
+                evictedBytes += findParentAndRetry(target, bgIO, source, stats);
             }
 
             return evictedBytes;
@@ -2757,7 +2468,7 @@ public class Evictor implements EnvConfigObserver {
             if (targetIsLatched) {
                 target.releaseLatch();
             }
-            
+
             if (parentIsLatched) {
                 parent.releaseLatch();
             }
@@ -2766,15 +2477,10 @@ public class Evictor implements EnvConfigObserver {
 
     private void skip(IN target, EvictionDebugStats stats) {
 
-        if ((traceUINs && target.isUpperIN()) ||
-            (traceBINs && target.isBIN())) {
-            LoggerUtils.envLogMsg(
-                traceLevel, target.getEnv(),
-                Thread.currentThread().getId() + "-" +
-                    Thread.currentThread().getName() +
-                    "-" + target.getEnv().getName() +
-                    " XXXX SKIPPED Eviction Target: " +
-                    target.getNodeId());
+        if ((traceUINs && target.isUpperIN()) || (traceBINs && target.isBIN())) {
+            LoggerUtils.envLogMsg(traceLevel, target.getEnv(),
+                    Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                            + target.getEnv().getName() + " XXXX SKIPPED Eviction Target: " + target.getNodeId());
         }
 
         nNodesSkipped.increment();
@@ -2782,15 +2488,11 @@ public class Evictor implements EnvConfigObserver {
 
     private void putBack(IN target, EvictionDebugStats stats, int caller) {
 
-        if ((traceUINs && target.isUpperIN()) ||
-            (traceBINs && target.isBIN())) {
-            LoggerUtils.envLogMsg(
-                traceLevel, target.getEnv(),
-                Thread.currentThread().getId() + "-" +
-                Thread.currentThread().getName() +
-                "-" + target.getEnv().getName() + 
-                " XXXX PUT-BACK-" + caller + " Eviction Target: " +
-                target.getNodeId());
+        if ((traceUINs && target.isUpperIN()) || (traceBINs && target.isBIN())) {
+            LoggerUtils.envLogMsg(traceLevel, target.getEnv(),
+                    Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                            + target.getEnv().getName() + " XXXX PUT-BACK-" + caller + " Eviction Target: "
+                            + target.getNodeId());
         }
 
         if (target.isInPri2LRU()) {
@@ -2808,15 +2510,10 @@ public class Evictor implements EnvConfigObserver {
 
     private void strippedPutBack(IN target, EvictionDebugStats stats) {
 
-        if ((traceUINs && target.isUpperIN()) ||
-            (traceBINs && target.isBIN())) {
-            LoggerUtils.envLogMsg(
-                traceLevel, target.getEnv(),
-                Thread.currentThread().getId() + "-" +
-                Thread.currentThread().getName() +
-                "-" + target.getEnv().getName() + 
-                " XXXX STRIPPED Eviction Target: " +
-                target.getNodeId());
+        if ((traceUINs && target.isUpperIN()) || (traceBINs && target.isBIN())) {
+            LoggerUtils.envLogMsg(traceLevel, target.getEnv(),
+                    Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                            + target.getEnv().getName() + " XXXX STRIPPED Eviction Target: " + target.getNodeId());
         }
 
         if (target.isInPri2LRU()) {
@@ -2824,7 +2521,7 @@ public class Evictor implements EnvConfigObserver {
         } else {
             addBack(target);
         }
-                    
+
         if (stats != null) {
             stats.incNumStripped();
         }
@@ -2834,15 +2531,10 @@ public class Evictor implements EnvConfigObserver {
 
     private void binDeltaPutBack(IN target, EvictionDebugStats stats) {
 
-        if ((traceUINs && target.isUpperIN()) ||
-            (traceBINs && target.isBIN())) {
-            LoggerUtils.envLogMsg(
-                traceLevel, target.getEnv(),
-                Thread.currentThread().getId() + "-" +
-                Thread.currentThread().getName() +
-                "-" + target.getEnv().getName() + 
-                " XXXX MUTATED Eviction Target: " +
-                target.getNodeId());
+        if ((traceUINs && target.isUpperIN()) || (traceBINs && target.isBIN())) {
+            LoggerUtils.envLogMsg(traceLevel, target.getEnv(),
+                    Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                            + target.getEnv().getName() + " XXXX MUTATED Eviction Target: " + target.getNodeId());
         }
 
         if (target.isInPri2LRU()) {
@@ -2860,15 +2552,10 @@ public class Evictor implements EnvConfigObserver {
 
     private void moveToPri2LRU(IN target, EvictionDebugStats stats) {
 
-        if ((traceUINs && target.isUpperIN()) ||
-            (traceBINs && target.isBIN())) {
-            LoggerUtils.envLogMsg(
-                traceLevel, target.getEnv(),
-                Thread.currentThread().getId() + "-" +
-                    Thread.currentThread().getName() +
-                "-" + target.getEnv().getName() + 
-                " XXXX MOVED-TO_PRI2 Eviction Target: " +
-                target.getNodeId());
+        if ((traceUINs && target.isUpperIN()) || (traceBINs && target.isBIN())) {
+            LoggerUtils.envLogMsg(traceLevel, target.getEnv(),
+                    Thread.currentThread().getId() + "-" + Thread.currentThread().getName() + "-"
+                            + target.getEnv().getName() + " XXXX MOVED-TO_PRI2 Eviction Target: " + target.getNodeId());
         }
 
         if (stats != null) {
@@ -2880,40 +2567,30 @@ public class Evictor implements EnvConfigObserver {
         nNodesMovedToPri2LRU.increment();
     }
 
-    private long findParentAndRetry(
-        IN target,
-        boolean backgroundIO,
-        EvictionSource source,
-        EvictionDebugStats stats) {
-        
+    private long findParentAndRetry(IN target, boolean backgroundIO, EvictionSource source, EvictionDebugStats stats) {
+
         Tree tree = target.getDatabase().getTree();
 
         /*
-         * Pass false for doFetch to avoid fetching a full BIN when a
-         * delta is in cache. This also avoids a fetch when the node
-         * was evicted while unlatched, but that should be very rare.
+         * Pass false for doFetch to avoid fetching a full BIN when a delta is
+         * in cache. This also avoids a fetch when the node was evicted while
+         * unlatched, but that should be very rare.
          */
-        SearchResult result = tree.getParentINForChildIN(
-            target, false, /*useTargetLevel*/
-            false, /*doFetch*/ CacheMode.UNCHANGED);
+        SearchResult result = tree.getParentINForChildIN(target, false, /* useTargetLevel */
+                false, /* doFetch */ CacheMode.UNCHANGED);
 
         if (result.exactParentFound) {
             return processTarget(null, /* rootEvictor */
-                                 target,
-                                 result.parent,
-                                 result.index,
-                                 backgroundIO,
-                                 source,
-                                 stats);
+                    target, result.parent, result.index, backgroundIO, source, stats);
         }
 
         /*
-         * The target has been detached from the tree and it should stay
-         * out of the LRU. It should not be in the INList, because whenever
-         * we detach a node we remove it from the INList, but in case we
-         * forgot to do this somewhere, we can just remove it here. 
+         * The target has been detached from the tree and it should stay out of
+         * the LRU. It should not be in the INList, because whenever we detach a
+         * node we remove it from the INList, but in case we forgot to do this
+         * somewhere, we can just remove it here.
          */
-        assert(result.parent == null);
+        assert (result.parent == null);
 
         target.latchNoUpdateLRU();
 
@@ -2922,11 +2599,9 @@ public class Evictor implements EnvConfigObserver {
 
                 firstEnvImpl.getInMemoryINs().remove(target);
 
-                throw EnvironmentFailureException.unexpectedState(
-                    "Node " + target.getNodeId() +
-                    " has been detached from the in-memory tree," +
-                    " but it is still in the INList. lastLogged=" +
-                    DbLsn.getNoFormatString(target.getLastLoggedLsn()));
+                throw EnvironmentFailureException.unexpectedState("Node " + target.getNodeId()
+                        + " has been detached from the in-memory tree," + " but it is still in the INList. lastLogged="
+                        + DbLsn.getNoFormatString(target.getLastLoggedLsn()));
             }
         } finally {
             target.releaseLatch();
@@ -2935,13 +2610,8 @@ public class Evictor implements EnvConfigObserver {
         return 0;
     }
 
-    private long evict(
-        IN target,
-        IN parent,
-        int index,
-        boolean backgroundIO,
-        EvictionDebugStats stats) {
-        
+    private long evict(IN target, IN parent, int index, boolean backgroundIO, EvictionDebugStats stats) {
+
         final DatabaseImpl db = target.getDatabase();
         final EnvironmentImpl dbEnv = db.getEnv();
         final OffHeapCache ohCache = dbEnv.getOffHeapCache();
@@ -2951,8 +2621,7 @@ public class Evictor implements EnvConfigObserver {
         boolean storedOffHeap = false;
 
         if (useOffHeapCache && target.isBIN()) {
-            storedOffHeap = ohCache.storeEvictedBIN(
-                (BIN) target, parent, index);
+            storedOffHeap = ohCache.storeEvictedBIN((BIN) target, parent, index);
         }
         if (target.getNormalizedLevel() == 2) {
             ohCache.flushAndDiscardBINChildren(target, backgroundIO);
@@ -2963,18 +2632,16 @@ public class Evictor implements EnvConfigObserver {
 
         if (target.getDirty() && !storedOffHeap) {
 
-            Provisional provisional = dbEnv.coordinateWithCheckpoint(
-                db, target.getLevel(), parent);
+            Provisional provisional = dbEnv.coordinateWithCheckpoint(db, target.getLevel(), parent);
 
-            loggedLsn = target.log(
-                allowBinDeltas, provisional, backgroundIO, parent);
+            loggedLsn = target.log(allowBinDeltas, provisional, backgroundIO, parent);
 
             logged = true;
         }
 
         long evictedBytes = target.getBudgetedMemorySize();
 
-        parent.detachNode(index, logged /*updateLsn*/, loggedLsn);
+        parent.detachNode(index, logged /* updateLsn */, loggedLsn);
 
         nNodesEvicted.increment();
 
@@ -2989,11 +2656,8 @@ public class Evictor implements EnvConfigObserver {
         return evictedBytes;
     }
 
-    private long evictRoot(
-        RootEvictor rootEvictor,
-        boolean backgroundIO,
-        EvictionSource source,
-        EvictionDebugStats stats) {
+    private long evictRoot(RootEvictor rootEvictor, boolean backgroundIO, EvictionSource source,
+                           EvictionDebugStats stats) {
 
         final ChildReference rootRef = rootEvictor.rootRef;
         final IN target = (IN) rootRef.getTarget();
@@ -3002,26 +2666,22 @@ public class Evictor implements EnvConfigObserver {
         final INList inList = dbEnv.getInMemoryINs();
 
         if (target.getNormalizedLevel() == 2) {
-            dbEnv.getOffHeapCache().flushAndDiscardBINChildren(
-                target, backgroundIO);
+            dbEnv.getOffHeapCache().flushAndDiscardBINChildren(target, backgroundIO);
         }
 
         if (target.getDirty()) {
-            Provisional provisional = dbEnv.coordinateWithCheckpoint(
-                db, target.getLevel(), null /*parent*/);
+            Provisional provisional = dbEnv.coordinateWithCheckpoint(db, target.getLevel(), null /* parent */);
 
-            long newLsn = target.log(
-                false /*allowDeltas*/, provisional,
-                backgroundIO, null  /*parent*/);
-            
+            long newLsn = target.log(false /* allowDeltas */, provisional, backgroundIO, null /* parent */);
+
             rootRef.setLsn(newLsn);
             rootEvictor.flushed = true;
         }
-        
+
         inList.remove(target);
 
         long evictBytes = target.getBudgetedMemorySize();
-        
+
         rootRef.clearTarget();
 
         nNodesEvicted.increment();
@@ -3066,17 +2726,16 @@ public class Evictor implements EnvConfigObserver {
             sharedCacheEnvs.set(envInfos.size());
         }
 
-        float binFetchMisses = (float)nBINFetchMiss.get();
-        float binFetches = (float)nBINFetch.get();
+        float binFetchMisses = (float) nBINFetchMiss.get();
+        float binFetches = (float) nBINFetch.get();
 
-        binFetchMissRatio.set(
-            (binFetches > 0 ? (binFetchMisses / binFetches) : 0));
+        binFetchMissRatio.set((binFetches > 0 ? (binFetchMisses / binFetches) : 0));
 
         StatGroup copy = stats.cloneGroup(config.getClear());
 
         /*
-         * These stats are not cleared. They represent the current state of
-         * the cache.
+         * These stats are not cleared. They represent the current state of the
+         * cache.
          */
         new LongStat(copy, CACHED_IN_SPARSE_TARGET, nINSparseTarget.get());
         new LongStat(copy, CACHED_IN_NO_TARGET, nINNoTarget.get());
@@ -3098,7 +2757,7 @@ public class Evictor implements EnvConfigObserver {
 
             if (config.getFast()) {
 
-                /* 
+                /*
                  * This is a slow stat for shared envs, because of the need to
                  * synchronize.
                  */
@@ -3106,11 +2765,11 @@ public class Evictor implements EnvConfigObserver {
             }
 
             List<EnvInfo> copy = null;
-            synchronized(this) {
+            synchronized (this) {
                 copy = new ArrayList<EnvInfo>(envInfos);
             }
-            
-            for (EnvInfo ei: copy) {
+
+            for (EnvInfo ei : copy) {
                 totalINListStats.addAll(ei.env.getInMemoryINs().loadStats());
             }
 
@@ -3171,11 +2830,10 @@ public class Evictor implements EnvConfigObserver {
         return nINCompactKey;
     }
 
-
     static class ReentrancyGuard {
         private final ConcurrentHashMap<Thread, Thread> activeThreads;
-        private final EnvironmentImpl envImpl;
-        private final Logger logger;
+        private final EnvironmentImpl                   envImpl;
+        private final Logger                            logger;
 
         ReentrancyGuard(EnvironmentImpl envImpl, Logger logger) {
             this.envImpl = envImpl;
@@ -3187,13 +2845,10 @@ public class Evictor implements EnvConfigObserver {
             Thread thisThread = Thread.currentThread();
             if (activeThreads.containsKey(thisThread)) {
                 /* We don't really expect a reentrant call. */
-                LoggerUtils.severe(logger, envImpl,
-                                   "reentrant call to eviction from " +
-                                   LoggerUtils.getStackTrace());
+                LoggerUtils.severe(logger, envImpl, "reentrant call to eviction from " + LoggerUtils.getStackTrace());
 
                 /* If running w/assertions, in testing mode, assert here. */
-                assert false: "reentrant call to eviction from " +
-                    LoggerUtils.getStackTrace();
+                assert false : "reentrant call to eviction from " + LoggerUtils.getStackTrace();
                 return false;
             }
 
@@ -3235,30 +2890,28 @@ public class Evictor implements EnvConfigObserver {
             this.threadUnavailableStat = threadUnavailableStat;
         }
 
-        public void rejectedExecution(Runnable r,
-                                      ThreadPoolExecutor executor) {
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
             threadUnavailableStat.increment();
         }
     }
 
     /**
-     * Caches DatabaseImpls to reduce DbTree.getDb overhead.
-     *
-     * SharedEvictor, unlike PrivateEvictor, must maintain a cache map for each
+     * Caches DatabaseImpls to reduce DbTree.getDb overhead. SharedEvictor,
+     * unlike PrivateEvictor, must maintain a cache map for each
      * EnvironmentImpl, since each cache map is logically associated with a
      * single DbTree instance.
      */
     static class DbCache {
 
-        boolean shared = false;
+        boolean                                                   shared            = false;
 
-        int nOperations = 0;
+        int                                                       nOperations       = 0;
 
-        int dbCacheClearCount = 0;
+        int                                                       dbCacheClearCount = 0;
 
         final Map<EnvironmentImpl, Map<DatabaseId, DatabaseImpl>> envMap;
 
-        final Map<DatabaseId, DatabaseImpl> dbMap;
+        final Map<DatabaseId, DatabaseImpl>                       dbMap;
 
         DbCache(boolean shared, int dbCacheClearCount) {
 
@@ -3266,8 +2919,7 @@ public class Evictor implements EnvConfigObserver {
             this.dbCacheClearCount = dbCacheClearCount;
 
             if (shared) {
-                envMap = 
-                new HashMap<EnvironmentImpl, Map<DatabaseId, DatabaseImpl>>();
+                envMap = new HashMap<EnvironmentImpl, Map<DatabaseId, DatabaseImpl>>();
 
                 dbMap = null;
             } else {
@@ -3280,10 +2932,9 @@ public class Evictor implements EnvConfigObserver {
          * Calls DbTree.getDb for the given environment and database ID, and
          * caches the result to optimize multiple calls for the same DB.
          *
-         * @param env identifies which environment the dbId parameter
-         * belongs to.  For PrivateEvictor, it is the same as the
-         * Evictor.firstEnvImpl field.
-         *
+         * @param env identifies which environment the dbId parameter belongs
+         *            to. For PrivateEvictor, it is the same as the
+         *            Evictor.firstEnvImpl field.
          * @param dbId is the DB to get.
          */
         DatabaseImpl getDb(EnvironmentImpl env, DatabaseId dbId) {
@@ -3301,16 +2952,14 @@ public class Evictor implements EnvConfigObserver {
             }
 
             /*
-             * Clear DB cache after dbCacheClearCount operations, to
-             * prevent starving other threads that need exclusive access to
-             * the MapLN (for example, DbTree.deleteMapLN).  [#21015]
-             *
-             * Note that we clear the caches for all environments after
-             * dbCacheClearCount total operations, rather than after
-             * dbCacheClearCount operations for a single environment,
-             * because the total is a more accurate representation of
-             * elapsed time, during which other threads may be waiting for
-             * exclusive access to the MapLN.
+             * Clear DB cache after dbCacheClearCount operations, to prevent
+             * starving other threads that need exclusive access to the MapLN
+             * (for example, DbTree.deleteMapLN). [#21015] Note that we clear
+             * the caches for all environments after dbCacheClearCount total
+             * operations, rather than after dbCacheClearCount operations for a
+             * single environment, because the total is a more accurate
+             * representation of elapsed time, during which other threads may be
+             * waiting for exclusive access to the MapLN.
              */
             nOperations += 1;
             if ((nOperations % dbCacheClearCount) == 0) {
@@ -3325,8 +2974,7 @@ public class Evictor implements EnvConfigObserver {
          */
         void releaseDbs(EnvironmentImpl env) {
             if (shared) {
-                for (Map.Entry<EnvironmentImpl, Map<DatabaseId, DatabaseImpl>>
-                     entry : envMap.entrySet()) {
+                for (Map.Entry<EnvironmentImpl, Map<DatabaseId, DatabaseImpl>> entry : envMap.entrySet()) {
 
                     final EnvironmentImpl sharingEnv = entry.getKey();
                     final Map<DatabaseId, DatabaseImpl> map = entry.getValue();

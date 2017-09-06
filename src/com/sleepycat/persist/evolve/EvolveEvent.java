@@ -23,7 +23,7 @@ package com.sleepycat.persist.evolve;
 public class EvolveEvent {
 
     private EvolveStats stats;
-    private String entityClassName;
+    private String      entityClassName;
 
     EvolveEvent() {
         this.stats = new EvolveStats();

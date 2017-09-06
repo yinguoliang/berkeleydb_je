@@ -47,37 +47,25 @@ import com.sleepycat.je.utilint.DbLsn;
 import com.sleepycat.je.utilint.VLSN;
 
 /**
- * @hidden
- * Dumps the log using VLSNReaders. These are special FileReaders which use the
- * vlsnIndex to optimize their traversal of the log. Most common use for this
- * utility is as a debugging device for the VLSNReaders, because it mimics the
- * way feeders and syncup search the log.
+ * @hidden Dumps the log using VLSNReaders. These are special FileReaders which
+ *         use the vlsnIndex to optimize their traversal of the log. Most common
+ *         use for this utility is as a debugging device for the VLSNReaders,
+ *         because it mimics the way feeders and syncup search the log.
  */
 public class DbFeederPrintLog {
 
     /**
      * Dump a JE log into human readable form.
+     * 
      * @throws InterruptedException
      */
-    private void dump(File envHome,
-                      String groupName,
-                      String nodeName,
-                      String host,
-                      boolean forward,
-                      long startLsn,
-                      VLSN startVLSN,
-                      @SuppressWarnings("unused") boolean verbose)
-        throws IOException,
-               EnvironmentNotFoundException,
-               EnvironmentLockedException,
-               DatabaseException,
-               InterruptedException,
-               ChecksumException {
+    private void dump(File envHome, String groupName, String nodeName, String host, boolean forward, long startLsn,
+                      VLSN startVLSN, @SuppressWarnings("unused") boolean verbose)
+            throws IOException, EnvironmentNotFoundException, EnvironmentLockedException, DatabaseException,
+            InterruptedException, ChecksumException {
 
         /* Create a single replicator */
-        Durability durability = new Durability(SyncPolicy.NO_SYNC,
-                                               SyncPolicy.NO_SYNC,
-                                               ReplicaAckPolicy.NONE);
+        Durability durability = new Durability(SyncPolicy.NO_SYNC, SyncPolicy.NO_SYNC, ReplicaAckPolicy.NONE);
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(false);
@@ -85,36 +73,29 @@ public class DbFeederPrintLog {
         envConfig.setDurability(durability);
 
         ReplicationConfig repConfig = new ReplicationConfig();
-        repConfig.setConfigParam
-            (ReplicationConfig.ENV_CONSISTENCY_TIMEOUT, "1 min");
+        repConfig.setConfigParam(ReplicationConfig.ENV_CONSISTENCY_TIMEOUT, "1 min");
         repConfig.setGroupName(groupName);
         repConfig.setNodeName(nodeName);
         int port = Integer.parseInt(RepParams.DEFAULT_PORT.getDefault());
         String hostName = host + ":" + port;
         repConfig.setNodeHostPort(hostName);
         repConfig.setHelperHosts(hostName);
-        final ReplicatedEnvironment rep =
-            RepInternal.createDetachedEnv(envHome, repConfig, envConfig);
+        final ReplicatedEnvironment rep = RepInternal.createDetachedEnv(envHome, repConfig, envConfig);
         try {
             ReplicatedEnvironment.State state = rep.getState();
             if (state != ReplicatedEnvironment.State.DETACHED) {
-                throw EnvironmentFailureException.unexpectedState
-                    ("joinState=" + state);
+                throw EnvironmentFailureException.unexpectedState("joinState=" + state);
             }
 
-            EnvironmentImpl envImpl =
-                DbInternal.getNonNullEnvImpl(rep);
-            VLSNIndex vlsnIndex =
-                RepInternal.getNonNullRepImpl(rep).getVLSNIndex();
+            EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(rep);
+            VLSNIndex vlsnIndex = RepInternal.getNonNullRepImpl(rep).getVLSNIndex();
             if (forward) {
                 startLsn = DbLsn.NULL_LSN;
             } else {
                 startLsn = envImpl.getFileManager().getLastUsedLsn();
             }
 
-            int readBufferSize =
-                envImpl.getConfigManager().getInt
-                (EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+            int readBufferSize = envImpl.getConfigManager().getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
             FeederReader feederReader = null;
             FeederSyncupReader backwardsReader = null;
 
@@ -136,23 +117,17 @@ public class DbFeederPrintLog {
             }
 
             if (forward) {
-                feederReader = new FeederReader(envImpl, vlsnIndex, startLsn,
-                                                readBufferSize,
-                                                new NameIdPair("n0", 0));
+                feederReader = new FeederReader(envImpl, vlsnIndex, startLsn, readBufferSize, new NameIdPair("n0", 0));
                 feederReader.initScan(scanVLSN);
             } else {
-                backwardsReader = new FeederSyncupReader
-                    (envImpl, vlsnIndex,
-                     startLsn, readBufferSize,
-                     new NameIdPair("n0", 0),
-                     scanVLSN,
-                     DbLsn.NULL_LSN);
+                backwardsReader = new FeederSyncupReader(envImpl, vlsnIndex, startLsn, readBufferSize,
+                        new NameIdPair("n0", 0), scanVLSN, DbLsn.NULL_LSN);
             }
 
             OutputWireRecord record = null;
             System.out.println("<DbPrintLog>");
             long lastLsn = 0;
-            do  {
+            do {
                 if (forward) {
                     record = feederReader.scanForwards(scanVLSN, 0);
                     scanVLSN = scanVLSN.getNext();
@@ -163,8 +138,7 @@ public class DbFeederPrintLog {
                     lastLsn = backwardsReader.getLastLsn();
                 }
                 if (record != null) {
-                    System.out.println
-                    ("lsn=" + DbLsn.getNoFormatString(lastLsn) + " " + record);
+                    System.out.println("lsn=" + DbLsn.getNoFormatString(lastLsn) + " " + record);
                 }
             } while (record != null);
 
@@ -202,27 +176,23 @@ public class DbFeederPrintLog {
                         long startFileNum = CmdUtil.readLongNumber(arg);
                         startLsn = DbLsn.makeLsn(startFileNum, 0);
                     } else {
-                        long startFileNum =
-                            CmdUtil.readLongNumber(arg.substring(0, slashOff));
-                        long startOffset = CmdUtil.readLongNumber
-                            (arg.substring(slashOff + 1));
+                        long startFileNum = CmdUtil.readLongNumber(arg.substring(0, slashOff));
+                        long startOffset = CmdUtil.readLongNumber(arg.substring(slashOff + 1));
                         startLsn = DbLsn.makeLsn(startFileNum, startOffset);
                     }
                 } else if (nextArg.equals("-e")) {
                     whichArg++;
                     String arg = CmdUtil.getArg(argv, whichArg);
                     int slashOff = arg.indexOf("/");
-                    /* SuppressWarnings because -e is not yet implemented.*/
+                    /* SuppressWarnings because -e is not yet implemented. */
                     if (slashOff < 0) {
                         @SuppressWarnings("unused")
                         long endFileNum = CmdUtil.readLongNumber(arg);
                     } else {
                         @SuppressWarnings("unused")
-                        long endFileNum =
-                            CmdUtil.readLongNumber(arg.substring(0, slashOff));
+                        long endFileNum = CmdUtil.readLongNumber(arg.substring(0, slashOff));
                         @SuppressWarnings("unused")
-                        long endOffset = CmdUtil.readLongNumber
-                            (arg.substring(slashOff + 1));
+                        long endOffset = CmdUtil.readLongNumber(arg.substring(slashOff + 1));
                     }
                 } else if (nextArg.equals("-q")) {
                     verbose = false;
@@ -233,8 +203,7 @@ public class DbFeederPrintLog {
                     String arg = CmdUtil.getArg(argv, whichArg);
                     startVLSN = new VLSN(CmdUtil.readLongNumber(arg));
                 } else {
-                    System.err.println
-                        (nextArg + " is not a supported option.");
+                    System.err.println(nextArg + " is not a supported option.");
                     usage();
                     System.exit(-1);
                 }
@@ -242,8 +211,7 @@ public class DbFeederPrintLog {
             }
 
             DbFeederPrintLog printer = new DbFeederPrintLog();
-            printer.dump(envHome, groupName, nodeName, host, forward, startLsn,
-                         startVLSN, verbose);
+            printer.dump(envHome, groupName, nodeName, host, forward, startLsn, startVLSN, verbose);
 
         } catch (Throwable e) {
             e.printStackTrace();
@@ -254,8 +222,7 @@ public class DbFeederPrintLog {
     }
 
     private static void usage() {
-        System.out.println("Usage: " +
-                           CmdUtil.getJavaCommand(DbPrintLog.class));
+        System.out.println("Usage: " + CmdUtil.getJavaCommand(DbPrintLog.class));
         System.out.println(" -h  <envHomeDir>");
         System.out.println(" -e  <end file number or LSN, in hex>");
         System.out.println(" -s  <start file number or LSN, in hex>");

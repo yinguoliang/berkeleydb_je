@@ -21,8 +21,8 @@ import com.sleepycat.je.DatabaseEntry;
 public class DatabaseUtil {
 
     /*
-     * The global JE test mode flag.  When true, certain instrumentation is
-     * turned on.  This flag is always true during unit testing.
+     * The global JE test mode flag. When true, certain instrumentation is
+     * turned on. This flag is always true during unit testing.
      */
     public static final boolean TEST = Boolean.getBoolean("JE_TEST");
 
@@ -31,8 +31,7 @@ public class DatabaseUtil {
      *
      * @throws IllegalArgumentException via any API method
      */
-    public static void checkForNullParam(final Object param,
-                                         final String name) {
+    public static void checkForNullParam(final Object param, final String name) {
         if (param == null) {
             throw new IllegalArgumentException(name + " cannot be null");
         }
@@ -43,34 +42,28 @@ public class DatabaseUtil {
      *
      * @throws IllegalArgumentException via any API method
      */
-    public static void checkForZeroLengthArrayParam(final Object[] param,
-                                                    final String name) {
+    public static void checkForZeroLengthArrayParam(final Object[] param, final String name) {
         checkForNullParam(param, name);
 
         if (param.length == 0) {
-            throw new IllegalArgumentException(
-                "'" + name + "' param cannot be zero length");
+            throw new IllegalArgumentException("'" + name + "' param cannot be zero length");
         }
     }
 
     /**
      * Throw an exception if the entry is null or the data field is not set.
      *
-     * @throws IllegalArgumentException via any API method that takes a
-     * required DatabaseEntry param
+     * @throws IllegalArgumentException via any API method that takes a required
+     *             DatabaseEntry param
      */
-    public static void checkForNullDbt(final DatabaseEntry entry,
-                                       final String name,
-                                       final boolean checkData) {
+    public static void checkForNullDbt(final DatabaseEntry entry, final String name, final boolean checkData) {
         if (entry == null) {
-            throw new IllegalArgumentException(
-                "'" + name + "' param cannot be null");
+            throw new IllegalArgumentException("'" + name + "' param cannot be null");
         }
 
         if (checkData) {
             if (entry.getData() == null) {
-                throw new IllegalArgumentException(
-                    "Data field for '" + name + "' param cannot be null");
+                throw new IllegalArgumentException("Data field for '" + name + "' param cannot be null");
             }
         }
     }
@@ -78,11 +71,9 @@ public class DatabaseUtil {
     /**
      * Throw an exception if the entry has the partial flag set.
      */
-    public static void checkForPartial(final DatabaseEntry entry,
-                                       final String name) {
+    public static void checkForPartial(final DatabaseEntry entry, final String name) {
         if (entry.getPartial()) {
-            throw new IllegalArgumentException(
-                "'" + name + "' param may not be partial");
+            throw new IllegalArgumentException("'" + name + "' param may not be partial");
         }
     }
 }

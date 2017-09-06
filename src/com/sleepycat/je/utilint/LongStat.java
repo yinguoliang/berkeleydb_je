@@ -21,7 +21,7 @@ import com.sleepycat.je.utilint.StatDefinition.StatType;
 public class LongStat extends Stat<Long> {
     private static final long serialVersionUID = 1L;
 
-    protected long counter;
+    protected long            counter;
 
     public LongStat(StatGroup group, StatDefinition definition) {
         super(group, definition);
@@ -71,7 +71,7 @@ public class LongStat extends Stat<Long> {
     }
 
     @Override
-    public void negate () {
+    public void negate() {
         if (definition.getType() == StatType.INCREMENTAL) {
             counter = -counter;
         }
@@ -89,6 +89,6 @@ public class LongStat extends Stat<Long> {
 
     @Override
     public boolean isNotSet() {
-       return (counter == 0);
+        return (counter == 0);
     }
 }

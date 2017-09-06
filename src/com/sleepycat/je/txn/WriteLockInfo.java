@@ -47,60 +47,60 @@ public class WriteLockInfo {
 
     /*
      * The LSN of the record's abort version. This is stored persistently in
-     * each logrec renerated by T on R. May be null if R was created by T
-     * (will definitely be null if the txn did not reuse an existing slot for
-     * the new record).
+     * each logrec renerated by T on R. May be null if R was created by T (will
+     * definitely be null if the txn did not reuse an existing slot for the new
+     * record).
      */
-    private long abortLsn;
+    private long               abortLsn;
 
     /*
-     * Whether the record's abort version is a deletion version or not.
-     * It is stored persistently in each logrec renerated by T on R.
+     * Whether the record's abort version is a deletion version or not. It is
+     * stored persistently in each logrec renerated by T on R.
      */
-    private boolean abortKnownDeleted;
+    private boolean            abortKnownDeleted;
 
     /*
      * See comment for abortData field below.
      */
-    private byte[] abortKey;
+    private byte[]             abortKey;
 
     /*
      * If the record's abort version was embedded in a BIN, the associated
-     * logrec that contains that version may have been cleaned away by the
-     * time the txn aborts. So, we must save in each logrec the data portion
-     * of the abort version. abortdata serves this purpose. If key updates
-     * are allowed in the containing DB, the key of the abort version is
-     * saved in abortKey as well. Finally, if VLSN caching in BINs is enabled,
-     * the VLSN of the abort version is saved in abortVLSN as well.
+     * logrec that contains that version may have been cleaned away by the time
+     * the txn aborts. So, we must save in each logrec the data portion of the
+     * abort version. abortdata serves this purpose. If key updates are allowed
+     * in the containing DB, the key of the abort version is saved in abortKey
+     * as well. Finally, if VLSN caching in BINs is enabled, the VLSN of the
+     * abort version is saved in abortVLSN as well.
      */
-    private byte[] abortData;
+    private byte[]             abortData;
 
     /*
      * See comment for abortData field above.
      */
-    private long abortVLSN = VLSN.NULL_VLSN_SEQUENCE;
+    private long               abortVLSN          = VLSN.NULL_VLSN_SEQUENCE;
 
     /*
-     * The on-disk size of the abort version, or zero if abortLsn is NULL_LSN
-     * or if the size is not known. Used for obsolete counting during commit.
-     * Not stored persistently.
+     * The on-disk size of the abort version, or zero if abortLsn is NULL_LSN or
+     * if the size is not known. Used for obsolete counting during commit. Not
+     * stored persistently.
      */
-    private int abortLogSize;
+    private int                abortLogSize;
 
     /* Abort expiration time. Is negative if in hours, positive if in days. */
-    private int abortExpiration;
+    private int                abortExpiration;
 
     /*
-     * The containing database, or null if abortLsn is NULL_LSN.  Used for
+     * The containing database, or null if abortLsn is NULL_LSN. Used for
      * obsolete counting during a commit.
      */
-    private DatabaseImpl db;
+    private DatabaseImpl       db;
 
     /*
-     * True if the LSN has never been locked before by this Txn. Used so we
-     * can determine when to set abortLsn.
+     * True if the LSN has never been locked before by this Txn. Used so we can
+     * determine when to set abortLsn.
      */
-    private boolean neverLocked;
+    private boolean            neverLocked;
 
     static final WriteLockInfo basicWriteLockInfo = new WriteLockInfo();
 
@@ -143,11 +143,11 @@ public class WriteLockInfo {
         abortData = v;
     }
 
-   public long getAbortVLSN() {
+    public long getAbortVLSN() {
         return abortVLSN;
     }
 
-   public void setAbortVLSN(long v) {
+    public void setAbortVLSN(long v) {
         abortVLSN = v;
     }
 
@@ -189,7 +189,7 @@ public class WriteLockInfo {
 
     /*
      * Copy all the information needed to create a clone of the lock.
-     */    
+     */
     public void copyAllInfo(WriteLockInfo source) {
         abortLsn = source.abortLsn;
         abortKnownDeleted = source.abortKnownDeleted;
@@ -204,15 +204,10 @@ public class WriteLockInfo {
 
     @Override
     public String toString() {
-        return "abortLsn=" +
-            DbLsn.getNoFormatString(abortLsn) +
-            " abortKnownDeleted=" + abortKnownDeleted +
-            " abortKey=" + Key.getNoFormatString(abortKey) +
-            " abortData=" + Key.getNoFormatString(abortData) +
-            " abortLogSize=" + abortLogSize +
-            " abortVLSN=" + String.format("%,d", abortVLSN) +
-            " abortExpiration=" + getAbortExpiration() +
-            " abortExpirationInHours=" + isAbortExpirationInHours() +
-            " neverLocked=" + neverLocked;
+        return "abortLsn=" + DbLsn.getNoFormatString(abortLsn) + " abortKnownDeleted=" + abortKnownDeleted
+                + " abortKey=" + Key.getNoFormatString(abortKey) + " abortData=" + Key.getNoFormatString(abortData)
+                + " abortLogSize=" + abortLogSize + " abortVLSN=" + String.format("%,d", abortVLSN)
+                + " abortExpiration=" + getAbortExpiration() + " abortExpirationInHours=" + isAbortExpirationInHours()
+                + " neverLocked=" + neverLocked;
     }
 }

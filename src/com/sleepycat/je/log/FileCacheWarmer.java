@@ -23,33 +23,27 @@ import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
  * Warm-up the file system cache during startup, for some portion of the log
- * that is not being read by recovery.
- *
- * This functionality is documented for the most part by {@link
- * EnvironmentConfig#LOG_FILE_WARM_UP_SIZE}.
- *
- * One thing not mentioned is that cleaner log deletion is disabled during the
- * warm-up. This is necessary to avoid dealing with the possibility of files
- * being deleted while being read for warm-up. Although it is extremely likely
- * that warm-up will finish before a cleaner-checkpoint cycle, we disable file
- * deletions simply to avoid having to code for this remote possibility. This
- * isn't documented because file deletions will probably never be prevented by
+ * that is not being read by recovery. This functionality is documented for the
+ * most part by {@link EnvironmentConfig#LOG_FILE_WARM_UP_SIZE}. One thing not
+ * mentioned is that cleaner log deletion is disabled during the warm-up. This
+ * is necessary to avoid dealing with the possibility of files being deleted
+ * while being read for warm-up. Although it is extremely likely that warm-up
+ * will finish before a cleaner-checkpoint cycle, we disable file deletions
+ * simply to avoid having to code for this remote possibility. This isn't
+ * documented because file deletions will probably never be prevented by
  * warm-up, documenting this would only cause unnecessary confusion.
  */
 public class FileCacheWarmer extends Thread {
 
     private final EnvironmentImpl envImpl;
-    private final long recoveryStartLsn;
-    private final long endOfLogLsn;
-    private final int warmUpSize;
-    private final int bufSize;
-    private volatile boolean stop;
+    private final long            recoveryStartLsn;
+    private final long            endOfLogLsn;
+    private final int             warmUpSize;
+    private final int             bufSize;
+    private volatile boolean      stop;
 
-    FileCacheWarmer(final EnvironmentImpl envImpl,
-                    final long recoveryStartLsn,
-                    final long endOfLogLsn,
-                    final int warmUpSize,
-                    final int bufSize) {
+    FileCacheWarmer(final EnvironmentImpl envImpl, final long recoveryStartLsn, final long endOfLogLsn,
+                    final int warmUpSize, final int bufSize) {
         this.envImpl = envImpl;
         this.recoveryStartLsn = recoveryStartLsn;
         this.endOfLogLsn = endOfLogLsn;
@@ -59,8 +53,8 @@ public class FileCacheWarmer extends Thread {
     }
 
     /**
-     * Stops this thread. At most one read will occur after calling this
-     * method, and then the thread will exit.
+     * Stops this thread. At most one read will occur after calling this method,
+     * and then the thread will exit.
      */
     void shutdown() {
         stop = true;
@@ -76,9 +70,8 @@ public class FileCacheWarmer extends Thread {
              * Log error as SEVERE but do not invalidate environment since it
              * perfectly usable.
              */
-            LoggerUtils.traceAndLogException(
-                envImpl, FileCacheWarmer.class.getName(), "run",
-                "Unable to warm file system cache due to exception", e);
+            LoggerUtils.traceAndLogException(envImpl, FileCacheWarmer.class.getName(), "run",
+                    "Unable to warm file system cache due to exception", e);
 
         } finally {
             /* Ensure that this thread can be GC'd after it stops. */
@@ -86,15 +79,13 @@ public class FileCacheWarmer extends Thread {
         }
     }
 
-    private void doRun()
-        throws Throwable {
+    private void doRun() throws Throwable {
 
         final FileManager fm = envImpl.getFileManager();
 
         final long ONE_MB = 1L << 20;
 
-        long remaining = (warmUpSize * ONE_MB) -
-            DbLsn.getTrueDistance(recoveryStartLsn, endOfLogLsn, fm);
+        long remaining = (warmUpSize * ONE_MB) - DbLsn.getTrueDistance(recoveryStartLsn, endOfLogLsn, fm);
 
         if (remaining <= 0) {
             return;
@@ -121,12 +112,10 @@ public class FileCacheWarmer extends Thread {
                     raf.close();
                     raf = null;
 
-                    final Long nextFileNum = fm.getFollowingFileNum(
-                        fileNum, false /*forward*/);
+                    final Long nextFileNum = fm.getFollowingFileNum(fileNum, false /* forward */);
 
                     if (nextFileNum == null) {
-                        throw new RuntimeException(
-                            "No file preceding " + fileNum);
+                        throw new RuntimeException("No file preceding " + fileNum);
                     }
 
                     fileNum = nextFileNum;
@@ -143,8 +132,7 @@ public class FileCacheWarmer extends Thread {
                 final int read = raf.read(buf, 0, bytes);
 
                 if (read != bytes) {
-                    throw new IllegalStateException(
-                        "Requested " + bytes + " bytes but read " + read);
+                    throw new IllegalStateException("Requested " + bytes + " bytes but read " + read);
                 }
 
                 remaining -= bytes;

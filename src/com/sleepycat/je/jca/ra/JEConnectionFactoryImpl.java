@@ -25,38 +25,32 @@ import com.sleepycat.je.TransactionConfig;
 
 public class JEConnectionFactoryImpl implements JEConnectionFactory {
 
-    private static final long serialVersionUID = 410682596L;
+    private static final long                              serialVersionUID = 410682596L;
 
     /*
-     * These are not transient because SJSAS seems to need to serialize
-     * them when leaving them in JNDI.
+     * These are not transient because SJSAS seems to need to serialize them
+     * when leaving them in JNDI.
      */
-    private final /* transient */ ConnectionManager manager;
+    private final /* transient */ ConnectionManager        manager;
     private final /* transient */ ManagedConnectionFactory factory;
-    private Reference reference;
+    private Reference                                      reference;
 
     /* Make the constructor public for serializability testing. */
-    public JEConnectionFactoryImpl(ConnectionManager manager,
-                            ManagedConnectionFactory factory) {
+    public JEConnectionFactoryImpl(ConnectionManager manager, ManagedConnectionFactory factory) {
         this.manager = manager;
         this.factory = factory;
     }
 
-    public JEConnection getConnection(String jeRootDir,
-                                      EnvironmentConfig envConfig)
-        throws JEException {
+    public JEConnection getConnection(String jeRootDir, EnvironmentConfig envConfig) throws JEException {
 
         return getConnection(jeRootDir, envConfig, null);
     }
 
-    public JEConnection getConnection(String jeRootDir,
-                                      EnvironmentConfig envConfig,
-                                      TransactionConfig transConfig)
-        throws JEException {
+    public JEConnection getConnection(String jeRootDir, EnvironmentConfig envConfig, TransactionConfig transConfig)
+            throws JEException {
 
         JEConnection dc = null;
-         JERequestInfo jeInfo =
-             new JERequestInfo(new File(jeRootDir), envConfig, transConfig);
+        JERequestInfo jeInfo = new JERequestInfo(new File(jeRootDir), envConfig, transConfig);
         try {
             dc = (JEConnection) manager.allocateConnection(factory, jeInfo);
         } catch (ResourceException e) {

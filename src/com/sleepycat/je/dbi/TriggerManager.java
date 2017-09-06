@@ -39,9 +39,7 @@ public class TriggerManager {
     /**
      * Invokes the trigger methods associated with the opening of a database.
      */
-    public static void runOpenTriggers(Locker locker,
-                                       Database db,
-                                       boolean isNew) {
+    public static void runOpenTriggers(Locker locker, Database db, boolean isNew) {
 
         runOpenTriggers(locker, DbInternal.getDbImpl(db), isNew);
     }
@@ -49,60 +47,46 @@ public class TriggerManager {
     /**
      * Invokes the trigger methods associated with the opening of a database.
      */
-    public static void runOpenTriggers(Locker locker,
-                                       DatabaseImpl dbImpl,
-                                       final boolean isNew) {
+    public static void runOpenTriggers(Locker locker, DatabaseImpl dbImpl, final boolean isNew) {
 
         runTriggers(dbImpl, locker, new TriggerInvoker(isNew) {
 
             @Override
             public void run(Transaction triggerTransaction, Trigger dbt) {
                 if (dbt instanceof PersistentTrigger) {
-                    Environment env =
-                        getOpenTriggerEnvironment(triggerTransaction);
-                    ((PersistentTrigger)dbt).open(triggerTransaction, env,
-                                                  isNew);
+                    Environment env = getOpenTriggerEnvironment(triggerTransaction);
+                    ((PersistentTrigger) dbt).open(triggerTransaction, env, isNew);
                 }
             }
         });
     }
 
     /**
-     * Returns the environment handle that will be passed in as an argument to
-     * a database open trigger.
-     *
-     * To ensure that an environment handle is always available, an internal
-     * handle is created and stored in the EnvironmentImpl. The lifetime of the
-     * internal handle (Environment or ReplicatedEnvironment) roughly aligns
-     * with the lifetime of the underlying EnvironmentImpl, or it's subtype
-     * RepImpl.
-     *
-     * For standalone environments, using explicit transactions, the
-     * environment handle that's passed as the argument is the one used to
-     * initiate the transaction. When using AutoTransactions to open a
-     * database, the environment argument to the trigger is the internal
-     * environment handle.
-     *
-     * For replicated environments, the argument to the trigger is the internal
-     * environment handle in all cases. This is done to make the behavior of
-     * the parameter deterministic and independent of the interaction of the
-     * application level database open operations with those initiated from the
-     * "replay" stream.
+     * Returns the environment handle that will be passed in as an argument to a
+     * database open trigger. To ensure that an environment handle is always
+     * available, an internal handle is created and stored in the
+     * EnvironmentImpl. The lifetime of the internal handle (Environment or
+     * ReplicatedEnvironment) roughly aligns with the lifetime of the underlying
+     * EnvironmentImpl, or it's subtype RepImpl. For standalone environments,
+     * using explicit transactions, the environment handle that's passed as the
+     * argument is the one used to initiate the transaction. When using
+     * AutoTransactions to open a database, the environment argument to the
+     * trigger is the internal environment handle. For replicated environments,
+     * the argument to the trigger is the internal environment handle in all
+     * cases. This is done to make the behavior of the parameter deterministic
+     * and independent of the interaction of the application level database open
+     * operations with those initiated from the "replay" stream.
      *
      * @param transaction the transaction associated with the trigger
-     *
-     * @return the environment or null (if the environment is
-     * non-transactional)
+     * @return the environment or null (if the environment is non-transactional)
      */
-    private static Environment
-        getOpenTriggerEnvironment(Transaction transaction) {
+    private static Environment getOpenTriggerEnvironment(Transaction transaction) {
 
         if (transaction == null) {
             return null;
         }
 
-        final EnvironmentImpl envImpl =
-            DbInternal.getTxn(transaction).getEnvironmentImpl();
+        final EnvironmentImpl envImpl = DbInternal.getTxn(transaction).getEnvironmentImpl();
 
         /*
          * Always return the same internal environment handle for replicated
@@ -130,10 +114,9 @@ public class TriggerManager {
         runTriggers(dbImpl, locker, new TriggerInvoker(false) {
 
             @Override
-            public void run(@SuppressWarnings("unused")
-                            Transaction triggerTransaction, Trigger dbt) {
+            public void run(@SuppressWarnings("unused") Transaction triggerTransaction, Trigger dbt) {
                 if (dbt instanceof PersistentTrigger) {
-                    ((PersistentTrigger)dbt).close();
+                    ((PersistentTrigger) dbt).close();
                 }
             }
         });
@@ -143,15 +126,14 @@ public class TriggerManager {
      * Invokes the trigger methods associated with the removal of a database.
      * Note that this also results in the invocation of removeTrigger methods.
      */
-    public static void runRemoveTriggers(Locker locker,
-                                         DatabaseImpl dbImpl) {
+    public static void runRemoveTriggers(Locker locker, DatabaseImpl dbImpl) {
 
         runTriggers(dbImpl, locker, new TriggerInvoker(true) {
 
             @Override
             public void run(Transaction triggerTransaction, Trigger dbt) {
                 if (dbt instanceof PersistentTrigger) {
-                    ((PersistentTrigger)dbt).remove(triggerTransaction);
+                    ((PersistentTrigger) dbt).remove(triggerTransaction);
                 }
             }
         });
@@ -161,26 +143,23 @@ public class TriggerManager {
             @Override
             public void run(Transaction triggerTransaction, Trigger dbt) {
                 if (dbt instanceof PersistentTrigger) {
-                    ((PersistentTrigger)dbt).removeTrigger(triggerTransaction);
+                    ((PersistentTrigger) dbt).removeTrigger(triggerTransaction);
                 }
             }
         });
     }
 
     /**
-     * Invokes the trigger methods associated with the truncation of a
-     * database.
+     * Invokes the trigger methods associated with the truncation of a database.
      */
-    public static void runTruncateTriggers(Locker locker,
-                                           final DatabaseImpl newDb) {
+    public static void runTruncateTriggers(Locker locker, final DatabaseImpl newDb) {
 
         runTriggers(newDb, locker, new TriggerInvoker(true) {
 
             @Override
-            public void run(Transaction triggerTransaction,
-                            Trigger dbt) {
+            public void run(Transaction triggerTransaction, Trigger dbt) {
                 if (dbt instanceof PersistentTrigger) {
-                    ((PersistentTrigger)dbt).truncate(triggerTransaction);
+                    ((PersistentTrigger) dbt).truncate(triggerTransaction);
                     dbt.setDatabaseName(newDb.getName());
                 }
             }
@@ -190,19 +169,15 @@ public class TriggerManager {
     /**
      * Invokes the trigger methods associated with the renaming of a database.
      */
-    public static void runRenameTriggers(Locker locker,
-                                         DatabaseImpl dbImpl,
-                                         final String newName) {
+    public static void runRenameTriggers(Locker locker, DatabaseImpl dbImpl, final String newName) {
 
         runTriggers(dbImpl, locker, new TriggerInvoker(true) {
 
             @Override
-            public void run(Transaction triggerTransaction,
-                            Trigger dbt) {
+            public void run(Transaction triggerTransaction, Trigger dbt) {
 
                 if (dbt instanceof PersistentTrigger) {
-                    ((PersistentTrigger)dbt).rename(triggerTransaction,
-                                                    newName);
+                    ((PersistentTrigger) dbt).rename(triggerTransaction, newName);
                     dbt.setDatabaseName(newName);
                 }
             }
@@ -213,8 +188,8 @@ public class TriggerManager {
 
     /**
      * Invokes the trigger methods associated with the commit of a transaction.
-     * Trigger methods are only invoked if the txn was associated with a
-     * trigger invocation.
+     * Trigger methods are only invoked if the txn was associated with a trigger
+     * invocation.
      */
     public static void runCommitTriggers(Txn txn) {
 
@@ -231,10 +206,9 @@ public class TriggerManager {
             runTriggers(dbImpl, txn, new TriggerInvoker(false) {
 
                 @Override
-                public void run(Transaction triggerTransaction,
-                                Trigger dbt) {
+                public void run(Transaction triggerTransaction, Trigger dbt) {
                     if (dbt instanceof TransactionTrigger) {
-                        ((TransactionTrigger)dbt).commit(triggerTransaction);
+                        ((TransactionTrigger) dbt).commit(triggerTransaction);
                     }
                 }
             });
@@ -243,12 +217,12 @@ public class TriggerManager {
 
     /**
      * Invokes the trigger methods associated with the abort of a transaction.
-     * Trigger methods are only invoked if the txn was associated with a
-     * trigger invocation.
+     * Trigger methods are only invoked if the txn was associated with a trigger
+     * invocation.
      */
     public static void runAbortTriggers(Txn txn) {
 
-       assert txn != null;
+        assert txn != null;
 
         final Set<DatabaseImpl> triggerDbs = txn.getTriggerDbs();
 
@@ -264,7 +238,7 @@ public class TriggerManager {
                 public void run(Transaction triggerTransaction, Trigger dbt) {
 
                     if (dbt instanceof TransactionTrigger) {
-                        ((TransactionTrigger)dbt).abort(triggerTransaction);
+                        ((TransactionTrigger) dbt).abort(triggerTransaction);
                         if (!dbImpl.getName().equals(dbt.getDatabaseName())) {
                             dbt.setDatabaseName(dbImpl.getName());
                         }
@@ -277,11 +251,8 @@ public class TriggerManager {
     /**
      * Invokes the trigger methods associated with a put operation.
      */
-    public static void runPutTriggers(Locker locker,
-                                      DatabaseImpl dbImpl,
-                                      final DatabaseEntry key,
-                                      final DatabaseEntry oldData,
-                                      final DatabaseEntry newData) {
+    public static void runPutTriggers(Locker locker, DatabaseImpl dbImpl, final DatabaseEntry key,
+                                      final DatabaseEntry oldData, final DatabaseEntry newData) {
         assert key != null;
         assert newData != null;
 
@@ -298,9 +269,7 @@ public class TriggerManager {
     /**
      * Invokes the trigger methods associated with a delete operation.
      */
-    public static void runDeleteTriggers(Locker locker,
-                                         DatabaseImpl dbImpl,
-                                         final DatabaseEntry key,
+    public static void runDeleteTriggers(Locker locker, DatabaseImpl dbImpl, final DatabaseEntry key,
                                          final DatabaseEntry oldData) {
         assert key != null;
 
@@ -320,14 +289,10 @@ public class TriggerManager {
      * invalidates the environment.
      *
      * @param dbImpl the database associated with potential triggers
-     *
      * @param locker provides the transaction associated with the operation
-     *
      * @param invoker encapsulates the trigger invoker
      */
-    private static void runTriggers(final DatabaseImpl dbImpl,
-                                    final Locker       locker,
-                                    TriggerInvoker     invoker) {
+    private static void runTriggers(final DatabaseImpl dbImpl, final Locker locker, TriggerInvoker invoker) {
 
         final List<Trigger> triggers = dbImpl.getTriggers();
 
@@ -335,8 +300,7 @@ public class TriggerManager {
             return;
         }
 
-        Transaction triggerTransaction =
-            (locker instanceof Txn) ? ((Txn)locker).getTransaction() : null;
+        Transaction triggerTransaction = (locker instanceof Txn) ? ((Txn) locker).getTransaction() : null;
 
         try {
             for (Trigger trigger : triggers) {
@@ -393,9 +357,7 @@ public class TriggerManager {
      * @param oldTriggers the current list of triggers
      * @param newTriggers the new list of triggers
      */
-    public static void invokeAddRemoveTriggers(Locker locker,
-                                               List<Trigger> oldTriggers,
-                                               List<Trigger> newTriggers) {
+    public static void invokeAddRemoveTriggers(Locker locker, List<Trigger> oldTriggers, List<Trigger> newTriggers) {
 
         Set<String> oldNames = new MapOver<String, Trigger>(oldTriggers) {
             @Override
@@ -411,8 +373,7 @@ public class TriggerManager {
             }
         }.run(new HashSet<String>());
 
-        Transaction txn = (locker instanceof Txn) ?
-                ((Txn)locker).getTransaction() : null;
+        Transaction txn = (locker instanceof Txn) ? ((Txn) locker).getTransaction() : null;
 
         /* First invoke removeTrigger */
         if (oldTriggers != null) {
@@ -439,7 +400,7 @@ public class TriggerManager {
      * @param <R> The result element type for the list being returned.
      * @param <E> The type of the element being mapped over.
      */
-    public static abstract class MapOver<R,E> {
+    public static abstract class MapOver<R, E> {
         final Collection<E> c;
 
         public MapOver(Collection<E> c) {

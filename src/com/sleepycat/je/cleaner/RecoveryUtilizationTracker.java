@@ -25,30 +25,32 @@ import com.sleepycat.je.utilint.DbLsn;
 
 /**
  * Accumulates changes to the utilization profile during recovery.
- *
- * <p>Per-database information is keyed by DatabaseId because the DatabaseImpl
- * is not always available during recovery.  In fact this is the only reason
- * that a "local" tracker is used during recovery -- to avoid requiring that
- * the DatabaseImpl is available, which is necessary to use the "global"
- * UtilizationTracker.  There is no requirement to accumulate totals locally,
- * since recovery is single threaded.</p>
- *
- * <p>When finished with this object, its information should be added to the
+ * <p>
+ * Per-database information is keyed by DatabaseId because the DatabaseImpl is
+ * not always available during recovery. In fact this is the only reason that a
+ * "local" tracker is used during recovery -- to avoid requiring that the
+ * DatabaseImpl is available, which is necessary to use the "global"
+ * UtilizationTracker. There is no requirement to accumulate totals locally,
+ * since recovery is single threaded.
+ * </p>
+ * <p>
+ * When finished with this object, its information should be added to the
  * Environment's UtilizationTracker and DatabaseImpl objects by calling
- * transferToUtilizationTracker.  This is done at the end of recovery, just
- * prior to the checkpoint.  It does not have to be done under the log write
- * latch, since recovery is single threaded.</p>
+ * transferToUtilizationTracker. This is done at the end of recovery, just prior
+ * to the checkpoint. It does not have to be done under the log write latch,
+ * since recovery is single threaded.
+ * </p>
  */
 public class RecoveryUtilizationTracker extends BaseLocalUtilizationTracker {
 
     /* File number -> LSN of FileSummaryLN */
-    private final Map<Long, Long> fileSummaryLsns;
+    private final Map<Long, Long>       fileSummaryLsns;
 
-    /* DatabaseId  -> LSN of MapLN */
+    /* DatabaseId -> LSN of MapLN */
     private final Map<DatabaseId, Long> databaseLsns;
 
     public RecoveryUtilizationTracker(EnvironmentImpl env) {
-        super(env, new HashMap<Object,DbFileSummaryMap>());
+        super(env, new HashMap<Object, DbFileSummaryMap>());
         fileSummaryLsns = new HashMap<Long, Long>();
         databaseLsns = new HashMap<DatabaseId, Long>();
     }
@@ -70,66 +72,44 @@ public class RecoveryUtilizationTracker extends BaseLocalUtilizationTracker {
     /**
      * Counts the addition of all new log entries including LNs.
      */
-    public void countNewLogEntry(
-        long lsn,
-        LogEntryType type,
-        int size,
-        DatabaseId dbId) {
-        
+    public void countNewLogEntry(long lsn, LogEntryType type, int size, DatabaseId dbId) {
+
         countNew(lsn, dbId, type, size);
     }
 
     /**
-     * Counts the LSN of a node obsolete unconditionally.
-     *
-     * Even when trackOffset is true, duplicate offsets are not checked (no
-     * assertion is fired) because recovery is known to count the same LSN
-     * offset twice in certain circumstances.
+     * Counts the LSN of a node obsolete unconditionally. Even when trackOffset
+     * is true, duplicate offsets are not checked (no assertion is fired)
+     * because recovery is known to count the same LSN offset twice in certain
+     * circumstances.
      */
-    public void countObsoleteUnconditional(
-        long lsn,
-        LogEntryType type,
-        int size,
-        DatabaseId dbId,
-        boolean trackOffset) {
+    public void countObsoleteUnconditional(long lsn, LogEntryType type, int size, DatabaseId dbId,
+                                           boolean trackOffset) {
 
-        countObsolete(
-            lsn, dbId, type, size,
-            true,       // countPerFile
-            true,       // countPerDb
-            trackOffset,
-            false);     // checkDupOffsets
+        countObsolete(lsn, dbId, type, size, true, // countPerFile
+                true, // countPerDb
+                trackOffset, false); // checkDupOffsets
     }
 
     /**
      * Counts the oldLsn of a node obsolete if it has not already been counted
-     * at the point of lsn in the log.
-     *
-     * Even when trackOffset is true, duplicate offsets are not checked (no
-     * assertion is fired) because recovery is known to count the same LSN
-     * offset twice in certain circumstances.
+     * at the point of lsn in the log. Even when trackOffset is true, duplicate
+     * offsets are not checked (no assertion is fired) because recovery is known
+     * to count the same LSN offset twice in certain circumstances.
      *
      * @return whether the file was previously uncounted.
      */
-    public boolean countObsoleteIfUncounted(
-        long oldLsn,
-        long newLsn,
-        LogEntryType type,
-        int size,
-        DatabaseId dbId,
-        boolean trackOffset) {
-        
+    public boolean countObsoleteIfUncounted(long oldLsn, long newLsn, LogEntryType type, int size, DatabaseId dbId,
+                                            boolean trackOffset) {
+
         Long fileNum = Long.valueOf(DbLsn.getFileNumber(oldLsn));
 
         boolean fileUncounted = isFileUncounted(fileNum, newLsn);
         boolean dbUncounted = isDbUncounted(dbId, newLsn);
 
-        countObsolete(
-            oldLsn, dbId, type, size,
-            fileUncounted, // countPerFile
-            dbUncounted,   // countPerDb
-            trackOffset,
-            false);        // checkDupOffsets
+        countObsolete(oldLsn, dbId, type, size, fileUncounted, // countPerFile
+                dbUncounted, // countPerDb
+                trackOffset, false); // checkDupOffsets
 
         return fileUncounted;
     }
@@ -143,20 +123,18 @@ public class RecoveryUtilizationTracker extends BaseLocalUtilizationTracker {
 
         long fsLsn = DbLsn.longToLsn(fileSummaryLsns.get(fileNum));
 
-        int cmpFsLsnToNewLsn = (fsLsn != DbLsn.NULL_LSN ?
-                                DbLsn.compareTo(fsLsn, lsn) : -1);
+        int cmpFsLsnToNewLsn = (fsLsn != DbLsn.NULL_LSN ? DbLsn.compareTo(fsLsn, lsn) : -1);
 
         return cmpFsLsnToNewLsn < 0;
     }
 
     /**
-     * Returns whether the MapLN for the given database ID is prior to the
-     * given LSN.
+     * Returns whether the MapLN for the given database ID is prior to the given
+     * LSN.
      */
     private boolean isDbUncounted(DatabaseId dbId, long lsn) {
         long dbLsn = DbLsn.longToLsn(databaseLsns.get(dbId));
-        int cmpDbLsnToLsn = (dbLsn != DbLsn.NULL_LSN) ?
-            DbLsn.compareTo(dbLsn, lsn) : -1;
+        int cmpDbLsnToLsn = (dbLsn != DbLsn.NULL_LSN) ? DbLsn.compareTo(dbLsn, lsn) : -1;
         return cmpDbLsnToLsn < 0;
     }
 
@@ -178,12 +156,11 @@ public class RecoveryUtilizationTracker extends BaseLocalUtilizationTracker {
     }
 
     /**
-     * Returns the DatabaseImpl from the database key, which in this case is
-     * the DatabaseId.
+     * Returns the DatabaseImpl from the database key, which in this case is the
+     * DatabaseId.
      */
     @Override
-    DatabaseImpl databaseKeyToDatabaseImpl(Object databaseKey)
-        throws DatabaseException {
+    DatabaseImpl databaseKeyToDatabaseImpl(Object databaseKey) throws DatabaseException {
 
         DatabaseId dbId = (DatabaseId) databaseKey;
         return env.getDbTree().getDb(dbId);

@@ -27,12 +27,12 @@ public class KeyRange {
      */
     public static final byte[] ZERO_LENGTH_BYTE_ARRAY = new byte[0];
 
-    Comparator<byte[]> comparator;
-    DatabaseEntry beginKey;
-    DatabaseEntry endKey;
-    boolean singleKey;
-    boolean beginInclusive;
-    boolean endInclusive;
+    Comparator<byte[]>         comparator;
+    DatabaseEntry              beginKey;
+    DatabaseEntry              endKey;
+    boolean                    singleKey;
+    boolean                    beginInclusive;
+    boolean                    endInclusive;
 
     /**
      * Creates an unconstrained key range.
@@ -44,8 +44,7 @@ public class KeyRange {
     /**
      * Creates a range for a single key.
      */
-    public KeyRange subRange(DatabaseEntry key)
-        throws KeyRangeException {
+    public KeyRange subRange(DatabaseEntry key) throws KeyRangeException {
 
         if (!check(key)) {
             throw new KeyRangeException("singleKey out of range");
@@ -63,9 +62,8 @@ public class KeyRange {
      * Creates a range that is the intersection of this range and the given
      * range parameters.
      */
-    public KeyRange subRange(DatabaseEntry beginKey, boolean beginInclusive,
-                             DatabaseEntry endKey, boolean endInclusive)
-        throws KeyRangeException {
+    public KeyRange subRange(DatabaseEntry beginKey, boolean beginInclusive, DatabaseEntry endKey, boolean endInclusive)
+            throws KeyRangeException {
 
         if (beginKey == null) {
             beginKey = this.beginKey;
@@ -95,8 +93,7 @@ public class KeyRange {
     }
 
     /**
-     * Returns the key of a single-key range, or null if not a single-key
-     * range.
+     * Returns the key of a single-key range, or null if not a single-key range.
      */
     public final DatabaseEntry getSingleKey() {
 
@@ -117,9 +114,8 @@ public class KeyRange {
     @Override
     public String toString() {
 
-        return "[KeyRange " + beginKey + ' ' + beginInclusive +
-                              endKey + ' ' + endInclusive +
-                              (singleKey ? " single" : "");
+        return "[KeyRange " + beginKey + ' ' + beginInclusive + endKey + ' ' + endInclusive
+                + (singleKey ? " single" : "");
     }
 
     /**
@@ -149,18 +145,18 @@ public class KeyRange {
     /**
      * Returns whether the given key is within range with respect to the
      * beginning of the range.
-     *
-     * <p>The inclusive parameter should be true for checking a key read from
-     * the database; this will require that the key is within range.  When
+     * <p>
+     * The inclusive parameter should be true for checking a key read from the
+     * database; this will require that the key is within range. When
      * inclusive=false the key is allowed to be equal to the beginKey for the
-     * range; this is used for checking a new exclusive bound of a
-     * sub-range.</p>
-     *
-     * <p>Note that when inclusive=false and beginInclusive=true our check is
-     * not exactly correct because in theory we should allow the key to be "one
-     * less" than the existing bound; however, checking for "one less"  is
-     * impossible so we do the best we can and test the bounds
-     * conservatively.</p>
+     * range; this is used for checking a new exclusive bound of a sub-range.
+     * </p>
+     * <p>
+     * Note that when inclusive=false and beginInclusive=true our check is not
+     * exactly correct because in theory we should allow the key to be "one less
+     * " than the existing bound; however, checking for "one less" is impossible
+     * so we do the best we can and test the bounds conservatively.
+     * </p>
      */
     public boolean checkBegin(DatabaseEntry key, boolean inclusive) {
 
@@ -174,8 +170,8 @@ public class KeyRange {
     }
 
     /**
-     * Returns whether the given key is within range with respect to the
-     * end of the range.  See checkBegin for details.
+     * Returns whether the given key is within range with respect to the end of
+     * the range. See checkBegin for details.
      */
     public boolean checkEnd(DatabaseEntry key, boolean inclusive) {
 
@@ -196,9 +192,8 @@ public class KeyRange {
         if (comparator != null) {
             return comparator.compare(getByteArray(key1), getByteArray(key2));
         } else {
-            return compareBytes
-                    (key1.getData(), key1.getOffset(), key1.getSize(),
-                     key2.getData(), key2.getOffset(), key2.getSize());
+            return compareBytes(key1.getData(), key1.getOffset(), key1.getSize(), key2.getData(), key2.getOffset(),
+                    key2.getSize());
 
         }
     }
@@ -217,8 +212,7 @@ public class KeyRange {
      * Compares two keys as unsigned byte arrays, which is the default
      * comparison used by JE/DB.
      */
-    public static int compareBytes(byte[] data1, int offset1, int size1,
-                                   byte[] data2, int offset2, int size2) {
+    public static int compareBytes(byte[] data1, int offset1, int size1, byte[] data2, int offset2, int size2) {
 
         for (int i = 0; i < size1 && i < size2; i++) {
 
@@ -241,8 +235,7 @@ public class KeyRange {
     /**
      * Compares two byte arrays for equality.
      */
-    public static boolean equalBytes(byte[] data1, int offset1, int size1,
-                                     byte[] data2, int offset2, int size2) {
+    public static boolean equalBytes(byte[] data1, int offset1, int size1, byte[] data2, int offset2, int size2) {
         if (size1 != size2) {
             return false;
         }
@@ -281,11 +274,11 @@ public class KeyRange {
         return getByteArrayInternal(entry, maxBytes);
     }
 
-    private static byte[] getByteArrayInternal(DatabaseEntry entry,
-                                               int maxBytes) {
+    private static byte[] getByteArrayInternal(DatabaseEntry entry, int maxBytes) {
 
         byte[] bytes = entry.getData();
-        if (bytes == null) return null;
+        if (bytes == null)
+            return null;
         int size = Math.min(entry.getSize(), maxBytes);
         byte[] data;
         if (size == 0) {
@@ -334,11 +327,10 @@ public class KeyRange {
     }
 
     /**
-     * Converts the byte array of this thang to space-separated integers,
-     * and suffixed by the record number if applicable.
+     * Converts the byte array of this thang to space-separated integers, and
+     * suffixed by the record number if applicable.
      *
      * @param dbt the thang to convert.
-     *
      * @return the resulting string.
      */
     public static String toString(DatabaseEntry dbt) {
@@ -348,7 +340,8 @@ public class KeyRange {
         byte[] data = dbt.getData();
         for (int i = dbt.getOffset(); i < len; i++) {
             String num = Integer.toHexString(data[i]);
-            if (num.length() < 2) buf.append('0');
+            if (num.length() < 2)
+                buf.append('0');
             buf.append(num);
         }
         return buf.toString();
