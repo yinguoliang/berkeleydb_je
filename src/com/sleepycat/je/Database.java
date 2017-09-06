@@ -1383,8 +1383,10 @@ public class Database implements Closeable {
 
             trace(Level.FINEST, "Database.put", String.valueOf(putType), txn, key, data, null);
 
-            final Locker locker = LockerFactory.getWritableLocker(envHandle, txn, dbImpl.isInternalDb(),
-                    isTransactional(), dbImpl.isReplicated()); // autoTxnIsReplicated
+            boolean b1 = dbImpl.isInternalDb();
+            boolean b2 = isTransactional();
+            boolean b3 = dbImpl.isReplicated();
+            final Locker locker = LockerFactory.getWritableLocker(envHandle, txn, b1, b2, b3); // autoTxnIsReplicated
 
             try {
                 try (final Cursor cursor = new Cursor(this, locker, DEFAULT_CURSOR_CONFIG)) {
