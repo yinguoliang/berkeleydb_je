@@ -21,20 +21,18 @@ import com.sleepycat.je.evictor.Evictor;
 import com.sleepycat.je.utilint.SizeofMarker;
 
 /**
- * The abstract class that defines the various formats used to represent
- * the keys associated with the IN node. The class is also used to store
- * embedded records, where the actual key and the data portion of a record are
- * stored together as a single byte sequence.
- * 
- * There are currently two supported representations:
+ * The abstract class that defines the various formats used to represent the
+ * keys associated with the IN node. The class is also used to store embedded
+ * records, where the actual key and the data portion of a record are stored
+ * together as a single byte sequence. There are currently two supported
+ * representations:
  * <ol>
  * <li>A default representation <code>Default</code> that's capable of holding
  * any set of keys.</li>
- * <li>
- * A compact representation <code>MaxKeySize</code> that's more efficient for
- * holding small keys (LTE 16 bytes) in length. If key prefixing is in use this
- * represents the unprefixed part of the key, since that's what is stored in
- * this array.</li>
+ * <li>A compact representation <code>MaxKeySize</code> that's more efficient
+ * for holding small keys (LTE 16 bytes) in length. If key prefixing is in use
+ * this represents the unprefixed part of the key, since that's what is stored
+ * in this array.</li>
  * </ol>
  * <p>
  * The choice of representation is made when an IN node is first read in from
@@ -42,16 +40,18 @@ import com.sleepycat.je.utilint.SizeofMarker;
  * more storage efficient than the default representation for the set of keys
  * currently associated with the IN.
  * <p>
- * Note that no attempt is currently made to optimize the storage
- * representation as keys are added to, or removed from, the
- * <code>Default</code> representation to minimize the chances of transitionary
- * "back and forth" representation changes that could prove to be expensive.
+ * Note that no attempt is currently made to optimize the storage representation
+ * as keys are added to, or removed from, the <code>Default</code>
+ * representation to minimize the chances of transitionary "back and forth"
+ * representation changes that could prove to be expensive.
  */
-public abstract class INKeyRep
-    extends INArrayRep<INKeyRep, INKeyRep.Type, byte[]> {
+public abstract class INKeyRep extends INArrayRep<INKeyRep, INKeyRep.Type, byte[]> {
 
     /* The different representations for keys. */
-    public enum Type { DEFAULT, MAX_KEY_SIZE };
+    public enum Type {
+        DEFAULT,
+        MAX_KEY_SIZE
+    };
 
     public INKeyRep() {
     }
@@ -59,9 +59,9 @@ public abstract class INKeyRep
     public abstract int length();
 
     /**
-     * Returns true if the key bytes mem usage is accounted for internally
-     * here, or false if each key has a separate byte array and its mem usage
-     * is accounted for by the parent.
+     * Returns true if the key bytes mem usage is accounted for internally here,
+     * or false if each key has a separate byte array and its mem usage is
+     * accounted for by the parent.
      */
     public abstract boolean accountsForKeyByteMemUsage();
 
@@ -75,17 +75,10 @@ public abstract class INKeyRep
 
     public abstract byte[] getKey(int idx, boolean embeddedData);
 
-    public abstract byte[] getFullKey(
-        byte[] prefix,
-        int idx,
-        boolean embeddedData);
+    public abstract byte[] getFullKey(byte[] prefix, int idx, boolean embeddedData);
 
-    public abstract int compareKeys(
-        byte[] searchKey,
-        byte[] prefix,
-        int idx,
-        boolean embeddedData,
-        Comparator<byte[]> comparator);
+    public abstract int compareKeys(byte[] searchKey, byte[] prefix, int idx, boolean embeddedData,
+                                    Comparator<byte[]> comparator);
 
     /**
      * The default representation that's capable of storing keys of any size.
@@ -142,8 +135,8 @@ public abstract class INKeyRep
         public INKeyRep setData(int idx, byte[] data, IN parent) {
 
             /*
-             * TODO #21488: optimize this to avoid creation of new combined
-             * key, when possible.
+             * TODO #21488: optimize this to avoid creation of new combined key,
+             * when possible.
              */
             return set(idx, getKey(idx, true), data, parent);
         }
@@ -161,7 +154,7 @@ public abstract class INKeyRep
         @Override
         public byte[] getData(int idx) {
 
-            assert(keys[idx] != null);
+            assert (keys[idx] != null);
             return DupKeyData.getData(keys[idx], 0, keys[idx].length);
         }
 
@@ -180,10 +173,7 @@ public abstract class INKeyRep
         }
 
         @Override
-        public byte[] getFullKey(
-            byte[] prefix,
-            int idx, 
-            boolean embeddedData) {
+        public byte[] getFullKey(byte[] prefix, int idx, boolean embeddedData) {
 
             if (prefix == null || prefix.length == 0) {
                 return getKey(idx, embeddedData);
@@ -192,7 +182,7 @@ public abstract class INKeyRep
             byte[] suffix = keys[idx];
 
             if (suffix == null) {
-                assert(!embeddedData);
+                assert (!embeddedData);
                 suffix = Key.EMPTY_KEY;
             }
 
@@ -213,49 +203,34 @@ public abstract class INKeyRep
         }
 
         @Override
-        public int compareKeys(
-            byte[] searchKey,
-            byte[] prefix,
-            int idx,
-            boolean embeddedData,
-            Comparator<byte[]> comparator)
-        {
+        public int compareKeys(byte[] searchKey, byte[] prefix, int idx, boolean embeddedData,  Comparator<byte[]> comparator) {
             if (comparator != null) {
                 byte[] myKey = getFullKey(prefix, idx, embeddedData);
-                return  Key.compareKeys(searchKey, myKey, comparator);
+                return Key.compareKeys(searchKey, myKey, comparator);
             }
 
             int cmp = 0;
 
             if (prefix == null || prefix.length == 0) {
 
-                return compareSuffixes(
-                    searchKey, 0, searchKey.length, idx, embeddedData);
+                return compareSuffixes(searchKey, 0, searchKey.length, idx, embeddedData);
             }
 
-            cmp = Key.compareUnsignedBytes(
-                searchKey, 0, Math.min(searchKey.length, prefix.length),
-                prefix, 0, prefix.length);
+            cmp = Key.compareUnsignedBytes(searchKey, 0, Math.min(searchKey.length, prefix.length), prefix, 0, prefix.length);
 
             if (cmp == 0) {
 
                 int searchKeyOffset = prefix.length;
                 int searchKeyLen = searchKey.length - prefix.length;
 
-                return compareSuffixes(
-                    searchKey, searchKeyOffset, searchKeyLen,
-                    idx, embeddedData);
+                return compareSuffixes(searchKey, searchKeyOffset, searchKeyLen, idx, embeddedData);
             }
 
             return cmp;
         }
 
-        private int compareSuffixes(
-            byte[] searchKey,
-            int searchKeyOff,
-            int searchKeyLen,
-            int idx,
-            boolean embeddedData) {
+        private int compareSuffixes(byte[] searchKey, int searchKeyOff, int searchKeyLen, int idx,
+                                    boolean embeddedData) {
 
             byte[] myKey = keys[idx];
             int myKeyLen;
@@ -269,10 +244,8 @@ public abstract class INKeyRep
                 myKeyLen = myKey.length;
             }
 
-            return Key.compareUnsignedBytes(
-                searchKey, searchKeyOff, searchKeyLen, myKey, 0, myKeyLen);
+            return Key.compareUnsignedBytes(searchKey, searchKeyOff, searchKeyLen, myKey, 0, myKeyLen);
         }
-
 
         @Override
         public INKeyRep copy(int from, int to, int n, IN parent) {
@@ -321,20 +294,16 @@ public abstract class INKeyRep
 
             long defaultSizeWithKeys = calculateMemorySize() + defaultKeyBytes;
 
-            if (defaultSizeWithKeys >
-                MaxKeySize.calculateMemorySize(keys.length, maxKeyLength)) {
+            if (defaultSizeWithKeys > MaxKeySize.calculateMemorySize(keys.length, maxKeyLength)) {
                 return compactToMaxKeySizeRep(maxKeyLength, parent);
             }
 
             return this;
         }
 
-        private MaxKeySize compactToMaxKeySizeRep(
-            int maxKeyLength,
-            IN parent) {
-            
-            MaxKeySize newRep =
-                new MaxKeySize(keys.length, (short) maxKeyLength);
+        private MaxKeySize compactToMaxKeySizeRep(int maxKeyLength, IN parent) {
+
+            MaxKeySize newRep = new MaxKeySize(keys.length, (short) maxKeyLength);
 
             for (int i = 0; i < keys.length; i++) {
                 INKeyRep rep = newRep.set(i, keys[i], parent);
@@ -353,8 +322,7 @@ public abstract class INKeyRep
              * Assume empty keys array. The memory consumed by the actual keys
              * is accounted for by the IN.getEntryInMemorySize() method.
              */
-            return MemoryBudget.DEFAULT_KEYVALS_OVERHEAD +
-                MemoryBudget.objectArraySize(keys.length);
+            return MemoryBudget.DEFAULT_KEYVALS_OVERHEAD + MemoryBudget.objectArraySize(keys.length);
         }
 
         @Override
@@ -377,44 +345,40 @@ public abstract class INKeyRep
      * one byte to hold the actual key length. This makes key retreival fast.
      * However, insertion and deletion for larger keys moves bytes proportional
      * to the storage length of the keys. This is why the representation is
-     * restricted to keys LTE 16 bytes in size.
-     *
-     * On a 32 bit VM the per key overhead for the Default representation is 4
-     * bytes for the pointer + 16 bytes for each byte array key object, for a
-     * total of 20 bytes/key. On a 64 bit machine the overheads are much
-     * larger: 8 bytes for the pointer plus 24 bytes per key.
-     *
-     * The more fully populated the IN the more the savings with this
-     * representation since the single byte array is sized to hold all the keys
-     * regardless of the actual number of keys that are present.
-     *
-     * It's worth noting that the storage savings here are realized in addition
-     * to the storage benefits of key prefixing, since the keys stored in the
-     * key array are the smaller key values after the prefix has been stripped,
-     * reducing the length of the key and making it more likely that it's small
-     * enough for this specialized representation.
+     * restricted to keys LTE 16 bytes in size. On a 32 bit VM the per key
+     * overhead for the Default representation is 4 bytes for the pointer + 16
+     * bytes for each byte array key object, for a total of 20 bytes/key. On a
+     * 64 bit machine the overheads are much larger: 8 bytes for the pointer
+     * plus 24 bytes per key. The more fully populated the IN the more the
+     * savings with this representation since the single byte array is sized to
+     * hold all the keys regardless of the actual number of keys that are
+     * present. It's worth noting that the storage savings here are realized in
+     * addition to the storage benefits of key prefixing, since the keys stored
+     * in the key array are the smaller key values after the prefix has been
+     * stripped, reducing the length of the key and making it more likely that
+     * it's small enough for this specialized representation.
      */
     public static class MaxKeySize extends INKeyRep {
 
-        private static final int LENGTH_BYTES = 1;
-        public static final byte DEFAULT_MAX_KEY_LENGTH = 16;
-        public static final int MAX_KEYS = 256;
-        private static final byte NULL_KEY = Byte.MAX_VALUE;
+        private static final int  LENGTH_BYTES           = 1;
+        public static final byte  DEFAULT_MAX_KEY_LENGTH = 16;
+        public static final int   MAX_KEYS               = 256;
+        private static final byte NULL_KEY               = Byte.MAX_VALUE;
 
         /*
          * The array is sized to hold all the keys associated with the IN node.
          * Each key is allocated a fixed amount of storage equal to the maximum
          * length of all the keys in the IN node + 1 byte to hold the size of
-         * each key. The length is biased, by -128. That is, a zero length
-         * key is represented by -128, a 1 byte key by -127, etc.
+         * each key. The length is biased, by -128. That is, a zero length key
+         * is represented by -128, a 1 byte key by -127, etc.
          */
-        private final byte[] keys;
+        private final byte[]      keys;
 
-        /* 
-         * The number of butes used to store each key ==
-         * DEFAULT_MAX_KEY_LENGTH (16) + LENGTH_BYTES (1) 
+        /*
+         * The number of butes used to store each key == DEFAULT_MAX_KEY_LENGTH
+         * (16) + LENGTH_BYTES (1)
          */
-        private final short fixedKeyLen;
+        private final short       fixedKeyLen;
 
         public MaxKeySize(int nodeMaxEntries, short maxKeyLen) {
 
@@ -441,9 +405,7 @@ public abstract class INKeyRep
 
         @Override
         public INKeyRep resize(int capacity) {
-            return new MaxKeySize(
-                Arrays.copyOfRange(keys, 0, capacity * fixedKeyLen),
-                fixedKeyLen);
+            return new MaxKeySize(Arrays.copyOfRange(keys, 0, capacity * fixedKeyLen), fixedKeyLen);
         }
 
         @Override
@@ -496,8 +458,8 @@ public abstract class INKeyRep
         public INKeyRep setData(int idx, byte[] data, IN parent) {
 
             /*
-             * TODO #21488: optimize this to avoid creation of new combined
-             * key, when possible.
+             * TODO #21488: optimize this to avoid creation of new combined key,
+             * when possible.
              */
             return set(idx, getKey(idx, true), data, parent);
         }
@@ -550,7 +512,7 @@ public abstract class INKeyRep
 
             int slotOff = idx * fixedKeyLen;
 
-            assert(keys[slotOff] != NULL_KEY);
+            assert (keys[slotOff] != NULL_KEY);
 
             int slotLen = keys[slotOff] - Byte.MIN_VALUE;
 
@@ -565,7 +527,7 @@ public abstract class INKeyRep
             int slotOff = idx * fixedKeyLen;
 
             if (keys[slotOff] == NULL_KEY) {
-                assert(!embeddedData);
+                assert (!embeddedData);
                 return Key.EMPTY_KEY;
             }
 
@@ -583,10 +545,7 @@ public abstract class INKeyRep
         }
 
         @Override
-        public byte[] getFullKey(
-            byte[] prefix,
-            int idx,
-            boolean embeddedData) {
+        public byte[] getFullKey(byte[] prefix, int idx, boolean embeddedData) {
 
             if (prefix == null || prefix.length == 0) {
                 return getKey(idx, embeddedData);
@@ -595,7 +554,7 @@ public abstract class INKeyRep
             int slotOff = idx * fixedKeyLen;
 
             if (keys[slotOff] == NULL_KEY) {
-                assert(!embeddedData);
+                assert (!embeddedData);
                 return prefix;
             }
 
@@ -619,49 +578,37 @@ public abstract class INKeyRep
         }
 
         @Override
-        public int compareKeys(
-            byte[] searchKey,
-            byte[] prefix,
-            int idx,
-            boolean embeddedData,
-            Comparator<byte[]> comparator) {
+        public int compareKeys(byte[] searchKey, byte[] prefix, int idx, boolean embeddedData,
+                               Comparator<byte[]> comparator) {
 
             if (comparator != null) {
                 byte[] myKey = getFullKey(prefix, idx, embeddedData);
-                return  Key.compareKeys(searchKey, myKey, comparator);
+                return Key.compareKeys(searchKey, myKey, comparator);
             }
 
             int cmp = 0;
 
             if (prefix == null || prefix.length == 0) {
 
-                return compareSuffixes(
-                    searchKey, 0, searchKey.length, idx, embeddedData);
+                return compareSuffixes(searchKey, 0, searchKey.length, idx, embeddedData);
             }
 
-            cmp = Key.compareUnsignedBytes(
-                searchKey, 0, Math.min(searchKey.length, prefix.length),
-                prefix, 0, prefix.length);
+            cmp = Key.compareUnsignedBytes(searchKey, 0, Math.min(searchKey.length, prefix.length), prefix, 0,
+                    prefix.length);
 
             if (cmp == 0) {
 
                 int searchKeyOff = prefix.length;
                 int searchKeyLen = searchKey.length - prefix.length;
 
-                return compareSuffixes(
-                    searchKey, searchKeyOff, searchKeyLen,
-                    idx, embeddedData);
+                return compareSuffixes(searchKey, searchKeyOff, searchKeyLen, idx, embeddedData);
             }
 
             return cmp;
         }
 
-        private int compareSuffixes(
-            byte[] searchKey,
-            int searchKeyOff,
-            int searchKeyLen,
-            int idx,
-            boolean embeddedData) {
+        private int compareSuffixes(byte[] searchKey, int searchKeyOff, int searchKeyLen, int idx,
+                                    boolean embeddedData) {
 
             int myKeyOff = idx * fixedKeyLen;
             int myKeyLen = 0;
@@ -673,24 +620,19 @@ public abstract class INKeyRep
                 myKeyOff += LENGTH_BYTES;
 
                 if (embeddedData) {
-                    myKeyLen = DupKeyData.getKeyLength(
-                        keys, myKeyOff, myKeyLen);
+                    myKeyLen = DupKeyData.getKeyLength(keys, myKeyOff, myKeyLen);
                 }
             } else {
-                assert(!embeddedData);
+                assert (!embeddedData);
                 myKeyOff += LENGTH_BYTES;
             }
 
-            return Key.compareUnsignedBytes(
-                searchKey, searchKeyOff, searchKeyLen,
-                keys, myKeyOff, myKeyLen);
+            return Key.compareUnsignedBytes(searchKey, searchKeyOff, searchKeyLen, keys, myKeyOff, myKeyLen);
         }
 
         @Override
         public INKeyRep copy(int from, int to, int n, IN parent) {
-            System.arraycopy(keys, (from * fixedKeyLen),
-                             keys, (to * fixedKeyLen),
-                             n * fixedKeyLen);
+            System.arraycopy(keys, (from * fixedKeyLen), keys, (to * fixedKeyLen), n * fixedKeyLen);
             return this;
         }
 
@@ -702,14 +644,12 @@ public abstract class INKeyRep
 
         @Override
         public long calculateMemorySize() {
-            return MemoryBudget.MAX_KEY_SIZE_KEYVALS_OVERHEAD +
-                   MemoryBudget.byteArraySize(keys.length);
+            return MemoryBudget.MAX_KEY_SIZE_KEYVALS_OVERHEAD + MemoryBudget.byteArraySize(keys.length);
         }
 
         private static long calculateMemorySize(int maxKeys, int maxKeySize) {
-            return MemoryBudget.MAX_KEY_SIZE_KEYVALS_OVERHEAD +
-                   MemoryBudget.byteArraySize(maxKeys *
-                                              (maxKeySize + LENGTH_BYTES));
+            return MemoryBudget.MAX_KEY_SIZE_KEYVALS_OVERHEAD
+                    + MemoryBudget.byteArraySize(maxKeys * (maxKeySize + LENGTH_BYTES));
         }
 
         @Override

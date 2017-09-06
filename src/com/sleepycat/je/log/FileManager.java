@@ -1229,8 +1229,7 @@ public class FileManager {
                      */
                     boolean success = false;
                     try {
-                        openFileHandle(fileHandle, FileMode.READ_MODE,
-                                       null /*existingHandle*/);
+                        openFileHandle(fileHandle, FileMode.READ_MODE, null /*existingHandle*/);
                         success = true;
                     } finally {
                         if (!success) {
@@ -1358,8 +1357,7 @@ public class FileManager {
             for (String fileName2 : fileNames) {
                 fileName = fileName2;
                 try {
-                    newFile = fileFactory.createFile(dbEnvHome, fileName,
-                                                     mode.getModeValue());
+                    newFile = fileFactory.createFile(dbEnvHome, fileName, mode.getModeValue());
                     break;
                 } catch (FileNotFoundException e) {
                     /* Save the first exception thrown. */
@@ -3292,9 +3290,7 @@ public class FileManager {
      */
     public static FileFactory fileFactory = new FileFactory() {
 
-        public RandomAccessFile createFile(File envHome,
-                                           String fullName,
-                                           String mode)
+        public RandomAccessFile createFile(File envHome, String fullName, String mode)
             throws FileNotFoundException {
 
             return new DefaultRandomAccessFile(fullName, mode);

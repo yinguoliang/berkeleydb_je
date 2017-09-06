@@ -1361,8 +1361,7 @@ public class CursorImpl implements Cloneable {
          * because blindInsertion will be true only if we know already that the
          * key does not exist in the tree.
          */
-        int insertIndex = bin.insertEntry1(
-            ln, key, data, DbLsn.NULL_LSN, blindInsertion);
+        int insertIndex = bin.insertEntry1(ln, key, data, DbLsn.NULL_LSN, blindInsertion);
 
         if ((insertIndex & IN.INSERT_SUCCESS) == 0) {
             /*

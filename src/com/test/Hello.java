@@ -21,7 +21,7 @@ public class Hello {
 		DatabaseConfig dbConfig = new DatabaseConfig();
 		dbConfig.setAllowCreate(true);
 		db = env.openDatabase(null, "my", dbConfig);
-		for (int i = 0; i < 1000; i++) {
+		for (int i = 0; i < 100000; i++) {
 			String key = "mykey" + i;
 			String value = "myvalue----" + i;
 			DatabaseEntry k = new DatabaseEntry(key.getBytes());

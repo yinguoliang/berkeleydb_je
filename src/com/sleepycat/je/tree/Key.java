@@ -231,7 +231,7 @@ public final class Key implements Comparable<Key> {
                                            int off2,
                                            int len2) {
         int limit = Math.min(len1, len2);
-
+        
         for (int i = 0; i < limit; i++) {
             byte b1 = key1[i + off1];
             byte b2 = key2[i + off2];

@@ -1629,6 +1629,7 @@ public class Database implements Closeable {
 	 *             if the database has been closed.
 	 */
 	public OperationStatus put(final Transaction txn, final DatabaseEntry key, final DatabaseEntry data) {
+	    
 		final OperationResult result = put(txn, key, data, Put.OVERWRITE, null);
 
 		EnvironmentFailureException.assertState(result != null);
