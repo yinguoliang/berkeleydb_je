@@ -49,14 +49,14 @@ import org.junit.Test;
 public class BINDeltaOperationTest extends DualTestCase {
 
     /*
-     * N_RECORDS is set to 110 and NODE_MAX_ENTRIES to 100. This results in
-     * a tree with 2 BIN, the first of which has 40 entries.
+     * N_RECORDS is set to 110 and NODE_MAX_ENTRIES to 100. This results in a
+     * tree with 2 BIN, the first of which has 40 entries.
      */
     private static final int N_RECORDS = 110;
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
+    private final File       envHome;
+    private Environment      env;
+    private Database         db;
 
     public BINDeltaOperationTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -72,16 +72,11 @@ public class BINDeltaOperationTest extends DualTestCase {
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         envConfig.setDurability(Durability.COMMIT_NO_SYNC);
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR,
-            "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         envConfig.setConfigParam(EnvironmentConfig.NODE_MAX_ENTRIES, "100");
         env = create(envHome, envConfig);
 
@@ -114,17 +109,16 @@ public class BINDeltaOperationTest extends DualTestCase {
         checkData(null);
 
         /*
-         * Update only enough records in the 1st BIN to make it a delta
-         * when it gets selected for eviction.
+         * Update only enough records in the 1st BIN to make it a delta when it
+         * gets selected for eviction.
          */
         writeDeltaFraction();
 
         env.checkpoint(new CheckpointConfig().setForce(true));
 
-
         BIN bin = getFirstBIN();
         assertFalse(bin.isBINDelta(false));
- 
+
         EnvironmentStats stats = env.getStats(StatsConfig.CLEAR);
         final long initialBINs = stats.getNCachedBINs();
         final long initialDeltas = stats.getNCachedBINDeltas();
@@ -174,8 +168,8 @@ public class BINDeltaOperationTest extends DualTestCase {
         assertEquals(1, stats.getNNotResident());
 
         /*
-         * Make sure that cursors 1 and 2 were adjusted correctly when the
-         * delta got mutated.
+         * Make sure that cursors 1 and 2 were adjusted correctly when the delta
+         * got mutated.
          */
         confirmCurrentKey(cursor1, 6);
         confirmCurrentKey(cursor2, 10);
@@ -272,7 +266,7 @@ public class BINDeltaOperationTest extends DualTestCase {
          * Open in normal mode (not deferred-write) and write a BIN-delta. Then
          * close the env in order to start the next step with an empty cache.
          */
-        open(false /*deferredWrite*/);
+        open(false /* deferredWrite */);
 
         writeData();
         checkData(null);
@@ -291,7 +285,7 @@ public class BINDeltaOperationTest extends DualTestCase {
          * search, when fetching the BIN-delta, saying that BIN-deltas aren't
          * allowed with deferred-write.
          */
-        open(true /*deferredWrite*/);
+        open(true /* deferredWrite */);
 
         Cursor cursor = db.openCursor(null, null);
         searchExistingKey(cursor, 6, true);
@@ -336,14 +330,13 @@ public class BINDeltaOperationTest extends DualTestCase {
         assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
     }
 
-
     private void checkData(final Transaction txn) {
         checkData(txn, N_RECORDS);
     }
 
     /**
-     * Reads all keys, but does not read data to avoid changing the
-     * nNotResident stat.
+     * Reads all keys, but does not read data to avoid changing the nNotResident
+     * stat.
      */
     private void checkData(final Transaction txn, final int nRecords) {
 
@@ -355,22 +348,17 @@ public class BINDeltaOperationTest extends DualTestCase {
 
         for (int i = 0; i < nRecords; i += 1) {
 
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNext(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, null));
 
             assertEquals(i, TestUtils.getTestVal(key.getData()));
         }
 
-        assertEquals(OperationStatus.NOTFOUND,
-            cursor.getNext(key, data, null));
+        assertEquals(OperationStatus.NOTFOUND, cursor.getNext(key, data, null));
 
         cursor.close();
     }
 
-    private void searchExistingKey(
-        final Cursor cursor,
-        final int keyVal,
-        boolean exactSearch) {
+    private void searchExistingKey(final Cursor cursor, final int keyVal, boolean exactSearch) {
 
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry();
@@ -378,15 +366,13 @@ public class BINDeltaOperationTest extends DualTestCase {
         key.setData(TestUtils.getTestArray(keyVal));
 
         data.setPartial(true);
-        
+
         if (exactSearch) {
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getSearchKey(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(key, data, null));
         } else {
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getSearchKeyRange(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getSearchKeyRange(key, data, null));
         }
-        
+
         assertEquals(keyVal, TestUtils.getTestVal(key.getData()));
     }
 
@@ -396,8 +382,7 @@ public class BINDeltaOperationTest extends DualTestCase {
         final DatabaseEntry data = new DatabaseEntry();
         data.setPartial(true);
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getCurrent(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getCurrent(key, data, null));
 
         assertEquals(keyVal, TestUtils.getTestVal(key.getData()));
 
@@ -414,15 +399,14 @@ public class BINDeltaOperationTest extends DualTestCase {
         final DatabaseEntry key = new DatabaseEntry();
         data.setData(null);
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getCurrent(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getCurrent(key, data, null));
 
         assertEquals(dataVal, TestUtils.getTestVal(data.getData()));
     }
 
     /**
-     * Reads first key and returns its BIN. Does not read data to avoid
-     * changing the nNotResident stat.
+     * Reads first key and returns its BIN. Does not read data to avoid changing
+     * the nNotResident stat.
      */
     private BIN getFirstBIN() {
 
@@ -432,8 +416,7 @@ public class BINDeltaOperationTest extends DualTestCase {
 
         final Cursor cursor = db.openCursor(null, null);
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getFirst(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(key, data, null));
 
         final BIN bin = DbInternal.getCursorImpl(cursor).getBIN();
         cursor.close();
@@ -443,8 +426,7 @@ public class BINDeltaOperationTest extends DualTestCase {
 
     private void mutateToDelta(BIN bin) {
 
-        OffHeapCache ohCache =
-            DbInternal.getNonNullEnvImpl(env).getOffHeapCache();
+        OffHeapCache ohCache = DbInternal.getNonNullEnvImpl(env).getOffHeapCache();
 
         if (!ohCache.isEnabled()) {
             evict(bin, false);
@@ -460,9 +442,9 @@ public class BINDeltaOperationTest extends DualTestCase {
     }
 
     /**
-     * Simulated eviction of the BIN, if it were selected.  This may only do
-     * partial eviction, if LNs are present or it can be mutated to a delta.
-     * We expect that some memory will be reclaimed.
+     * Simulated eviction of the BIN, if it were selected. This may only do
+     * partial eviction, if LNs are present or it can be mutated to a delta. We
+     * expect that some memory will be reclaimed.
      */
     private void evict(BIN bin, boolean force) {
 

@@ -42,24 +42,20 @@ public class JoinGroupTest extends RepTestBase {
 
     @Override
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
 
         /* Add a secondary node */
         repEnvInfo = RepTestUtils.setupExtendEnvInfo(repEnvInfo, 1);
-        repEnvInfo[repEnvInfo.length - 1].getRepConfig().setNodeType(
-            NodeType.SECONDARY);
+        repEnvInfo[repEnvInfo.length - 1].getRepConfig().setNodeType(NodeType.SECONDARY);
     }
 
     /**
      * Simulates the scenario where an entire group goes down and is restarted.
      */
     @Test
-    public void testAllJoinLeaveJoinGroup()
-        throws DatabaseException,
-               InterruptedException {
+    public void testAllJoinLeaveJoinGroup() throws DatabaseException, InterruptedException {
 
         createGroup();
         ReplicatedEnvironment masterRep = repEnvInfo[0].getEnv();
@@ -72,7 +68,7 @@ public class JoinGroupTest extends RepTestBase {
         /*
          * Restart the group, using a longer join wait time to allow the
          * secondary to query the primaries a second time after the election is
-         * complete.  See RepNode.MASTER_QUERY_INTERVAL.
+         * complete. See RepNode.MASTER_QUERY_INTERVAL.
          */
         final long masterQueryInterval = 10000;
         restartNodes(JOIN_WAIT_TIME + masterQueryInterval, repEnvInfo);
@@ -80,8 +76,7 @@ public class JoinGroupTest extends RepTestBase {
 
     // Tests repeated opens of the same environment
     @Test
-    public void testRepeatedOpen()
-        throws UnknownMasterException, DatabaseException {
+    public void testRepeatedOpen() throws UnknownMasterException, DatabaseException {
 
         /* All nodes have joined. */
         createGroup();
@@ -91,19 +86,15 @@ public class JoinGroupTest extends RepTestBase {
         assertEquals(State.MASTER, state);
 
         /* Already joined, rejoin replica, by creating another handle. */
-        ReplicatedEnvironment r1Handle = new ReplicatedEnvironment
-            (repEnvInfo[1].getEnvHome(),
-             repEnvInfo[1].getRepConfig(),
-             repEnvInfo[1].getEnvConfig());
+        ReplicatedEnvironment r1Handle = new ReplicatedEnvironment(repEnvInfo[1].getEnvHome(),
+                repEnvInfo[1].getRepConfig(), repEnvInfo[1].getEnvConfig());
         state = r1Handle.getState();
         assertEquals(State.REPLICA, state);
         r1Handle.close();
     }
 
     @Test
-    public void testDefaultJoinGroup()
-        throws UnknownMasterException,
-               DatabaseException {
+    public void testDefaultJoinGroup() throws UnknownMasterException, DatabaseException {
 
         createGroup();
         ReplicatedEnvironment masterRep = repEnvInfo[0].getEnv();
@@ -114,39 +105,30 @@ public class JoinGroupTest extends RepTestBase {
 
         /* Replicas should have caught up when they re-open their handles. */
         for (RepEnvInfo ri : repEnvInfo) {
-            ReplicatedEnvironment rep =
-                (ri.getEnv() == null) ? ri.openEnv() : ri.getEnv();
-            VLSN repVLSN = RepInternal.getNonNullRepImpl(rep).
-                getVLSNIndex().getRange().getLast();
+            ReplicatedEnvironment rep = (ri.getEnv() == null) ? ri.openEnv() : ri.getEnv();
+            VLSN repVLSN = RepInternal.getNonNullRepImpl(rep).getVLSNIndex().getRange().getLast();
             assertTrue(new VLSN(ct.getVLSN()).compareTo(repVLSN) <= 0);
         }
     }
 
     @Test
-    public void testDefaultJoinGroupHelper()
-        throws UnknownMasterException,
-               DatabaseException {
+    public void testDefaultJoinGroupHelper() throws UnknownMasterException, DatabaseException {
 
         for (int i = 0; i < repEnvInfo.length; i++) {
             RepEnvInfo ri = repEnvInfo[i];
             if ((i + 1) == repEnvInfo.length) {
                 /* Use a non-master helper for the last replicator. */
-                ReplicationConfig config =
-                    RepTestUtils.createRepConfig((short) (i + 1));
+                ReplicationConfig config = RepTestUtils.createRepConfig((short) (i + 1));
                 String hpPairs = "";
                 // Skip the master, use all the other nodes
                 for (int j = 1; j < i; j++) {
-                    hpPairs +=
-                        "," + repEnvInfo[j].getRepConfig().getNodeHostPort();
+                    hpPairs += "," + repEnvInfo[j].getRepConfig().getNodeHostPort();
                 }
                 hpPairs = hpPairs.substring(1);
                 config.setHelperHosts(hpPairs);
                 File envHome = ri.getEnvHome();
-                ri = repEnvInfo[i] =
-                        new RepEnvInfo(envHome,
-                                       config,
-                                       RepTestUtils.createEnvConfig
-                                       (Durability.COMMIT_SYNC));
+                ri = repEnvInfo[i] = new RepEnvInfo(envHome, config,
+                        RepTestUtils.createEnvConfig(Durability.COMMIT_SYNC));
             }
             ri.openEnv();
             State state = ri.getEnv().getState();
@@ -155,9 +137,7 @@ public class JoinGroupTest extends RepTestBase {
     }
 
     @Test
-    public void testTimeConsistencyJoinGroup()
-        throws UnknownMasterException,
-               DatabaseException{
+    public void testTimeConsistencyJoinGroup() throws UnknownMasterException, DatabaseException {
 
         createGroup();
         ReplicatedEnvironment masterRep = repEnvInfo[0].getEnv();
@@ -167,22 +147,16 @@ public class JoinGroupTest extends RepTestBase {
         /* Populates just the master. */
         populateDB(masterRep, TEST_DB_NAME, 1000);
 
-        repEnvInfo[1].openEnv
-            (new TimeConsistencyPolicy(1, TimeUnit.MILLISECONDS,
-                                       RepTestUtils.MINUTE_MS,
-                                       TimeUnit.MILLISECONDS));
-        ReplicatedEnvironmentStats stats =
-            repEnvInfo[1].getEnv().getRepStats(StatsConfig.DEFAULT);
+        repEnvInfo[1].openEnv(
+                new TimeConsistencyPolicy(1, TimeUnit.MILLISECONDS, RepTestUtils.MINUTE_MS, TimeUnit.MILLISECONDS));
+        ReplicatedEnvironmentStats stats = repEnvInfo[1].getEnv().getRepStats(StatsConfig.DEFAULT);
 
         assertEquals(1, stats.getTrackerLagConsistencyWaits());
         assertTrue(stats.getTrackerLagConsistencyWaitMs() > 0);
     }
 
     @Test
-    public void testVLSNConsistencyJoinGroup()
-        throws UnknownMasterException,
-               DatabaseException,
-               InterruptedException {
+    public void testVLSNConsistencyJoinGroup() throws UnknownMasterException, DatabaseException, InterruptedException {
 
         createGroup();
         ReplicatedEnvironment masterRep = repEnvInfo[0].getEnv();
@@ -190,15 +164,11 @@ public class JoinGroupTest extends RepTestBase {
         leaveGroupAllButMaster();
         /* Populates just the master. */
         populateDB(masterRep, TEST_DB_NAME, 100);
-        UUID uuid =
-            RepInternal.getNonNullRepImpl(masterRep).getRepNode().getUUID();
-        long masterVLSN = RepInternal.getNonNullRepImpl(masterRep).
-            getVLSNIndex().getRange().getLast().
-            getSequence()+2 /* 1 new entry + txn commit record */;
+        UUID uuid = RepInternal.getNonNullRepImpl(masterRep).getRepNode().getUUID();
+        long masterVLSN = RepInternal.getNonNullRepImpl(masterRep).getVLSNIndex().getRange().getLast().getSequence()
+                + 2 /* 1 new entry + txn commit record */;
 
-        JoinCommitThread jt =
-            new JoinCommitThread(new CommitToken(uuid,masterVLSN),
-                                 repEnvInfo[1]);
+        JoinCommitThread jt = new JoinCommitThread(new CommitToken(uuid, masterVLSN), repEnvInfo[1]);
         jt.start();
         Thread.sleep(5000);
         // supply the vlsn it's waiting for. Record count MUST sync up with
@@ -215,8 +185,7 @@ public class JoinGroupTest extends RepTestBase {
      * the group.
      */
     @Test
-    public void testCopyEnvJoin()
-        throws Throwable {
+    public void testCopyEnvJoin() throws Throwable {
 
         createGroup(1);
         assertTrue(repEnvInfo[0].isMaster());
@@ -232,14 +201,12 @@ public class JoinGroupTest extends RepTestBase {
         File[] envFiles = repEnvHome.listFiles();
         for (File envFile : envFiles) {
             if (envFile.getName().contains(".jdb")) {
-                throw new IllegalStateException
-                    ("Replica home should not contain any jdb files");
+                throw new IllegalStateException("Replica home should not contain any jdb files");
             }
         }
 
         /* Copy the jdb files from the master to the replica. */
-        SharedTestUtils.copyFiles(repEnvInfo[0].getEnvHome(),
-                                  repEnvInfo[1].getEnvHome());
+        SharedTestUtils.copyFiles(repEnvInfo[0].getEnvHome(), repEnvInfo[1].getEnvHome());
 
         /* Reopen the master. */
         repEnvInfo[0].openEnv();
@@ -250,8 +217,7 @@ public class JoinGroupTest extends RepTestBase {
         assertTrue(repEnvInfo[1].isReplica());
 
         /* Read the data to make sure data is correctly copied. */
-        Database db =
-            repEnvInfo[1].getEnv().openDatabase(null, "testDB", dbconfig);
+        Database db = repEnvInfo[1].getEnv().openDatabase(null, "testDB", dbconfig);
         for (int i = 0; i < 1000; i++) {
             IntegerBinding.intToEntry(i, key);
             db.get(null, key, data, null);
@@ -262,9 +228,9 @@ public class JoinGroupTest extends RepTestBase {
 
     /* Utility thread for joining group. */
     class JoinCommitThread extends Thread {
-        final RepEnvInfo replicator;
+        final RepEnvInfo  replicator;
         final CommitToken commitToken;
-        Exception testException = null;
+        Exception         testException = null;
 
         JoinCommitThread(CommitToken commitToken, RepEnvInfo replicator) {
             this.commitToken = commitToken;
@@ -274,14 +240,10 @@ public class JoinGroupTest extends RepTestBase {
         @Override
         public void run() {
             try {
-                ReplicatedEnvironment repenv= replicator.openEnv
-                    (new CommitPointConsistencyPolicy(commitToken,
-                                                      RepTestUtils.MINUTE_MS,
-                                                      TimeUnit.MILLISECONDS));
-                assertEquals(ReplicatedEnvironment.State.REPLICA,
-                             repenv.getState());
-                ReplicatedEnvironmentStats stats =
-                    replicator.getEnv().getRepStats(StatsConfig.DEFAULT);
+                ReplicatedEnvironment repenv = replicator.openEnv(
+                        new CommitPointConsistencyPolicy(commitToken, RepTestUtils.MINUTE_MS, TimeUnit.MILLISECONDS));
+                assertEquals(ReplicatedEnvironment.State.REPLICA, repenv.getState());
+                ReplicatedEnvironmentStats stats = replicator.getEnv().getRepStats(StatsConfig.DEFAULT);
 
                 assertEquals(1, stats.getTrackerVLSNConsistencyWaits());
                 assertTrue(stats.getTrackerVLSNConsistencyWaitMs() > 0);

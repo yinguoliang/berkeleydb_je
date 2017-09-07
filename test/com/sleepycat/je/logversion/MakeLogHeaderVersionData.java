@@ -24,15 +24,16 @@ import com.sleepycat.je.util.TestUtils;
  * This standalone command line program creates a single 00000000.jdb log file.
  * It was used to generate maxversion.jdb and minversion.jdb, and although it
  * may never need to be used again, below are instructions.
- *
- * <p>Before running this program change LogEntryType.LOG_VERSION to
+ * <p>
+ * Before running this program change LogEntryType.LOG_VERSION to
  * Integer.MAX_VALUE or one temporarily, just for creating a file with the
- * maximum or minimum version number.  A single command line argument is
- * required for the home directory.  After running this program rename the
- * 00000000.jdb file to maxversion.jdb or minversion.jdb file in the directory
- * of this source package.  When adding it to CVS make sure to use -kb since it
- * is a binary file.  Don't forget to change LogEntryType.LOG_VERSION back to
- * the correct value.</p>
+ * maximum or minimum version number. A single command line argument is required
+ * for the home directory. After running this program rename the 00000000.jdb
+ * file to maxversion.jdb or minversion.jdb file in the directory of this source
+ * package. When adding it to CVS make sure to use -kb since it is a binary
+ * file. Don't forget to change LogEntryType.LOG_VERSION back to the correct
+ * value.
+ * </p>
  *
  * @see LogHeaderVersionTest
  */
@@ -41,8 +42,7 @@ public class MakeLogHeaderVersionData {
     private MakeLogHeaderVersionData() {
     }
 
-    public static void main(String[] args)
-        throws Exception {
+    public static void main(String[] args) throws Exception {
 
         if (args.length != 1) {
             throw new Exception("Home directory arg is required.");
@@ -59,14 +59,10 @@ public class MakeLogHeaderVersionData {
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         /* Make as small a log as possible to save space in CVS. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
 
         Environment env = new Environment(homeDir, envConfig);
         env.close();

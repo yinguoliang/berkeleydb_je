@@ -47,51 +47,41 @@ import org.junit.Test;
  * are deleted unexpectedly.
  */
 public class LogFileDeletionCrashEnvTest extends TestBase {
-    private Environment env;
-    private Database db;
-    private File envHome;
-    private Cursor c;
+    private Environment                    env;
+    private Database                       db;
+    private File                           envHome;
+    private Cursor                         c;
 
-    private final int recNum = 1000 * 50; //(1000 * 500) * 50 files
-    private final int dataLen = 500;
-    private static final int dirs = 3;
+    private final int                      recNum                       = 1000 * 50;   //(1000 * 500) * 50 files
+    private final int                      dataLen                      = 500;
+    private static final int               dirs                         = 3;
 
-    private static final EnvironmentConfig envConfigWithDetectSingle
-        = initConfig();
-    private static final EnvironmentConfig envConfigWithoutDetectSingle
-        = initConfig();
-    private static final EnvironmentConfig envConfigWithDetectMulti
-        = initConfig();
-    private static final EnvironmentConfig envConfigWithoutDetectMulti
-        = initConfig();
+    private static final EnvironmentConfig envConfigWithDetectSingle    = initConfig();
+    private static final EnvironmentConfig envConfigWithoutDetectSingle = initConfig();
+    private static final EnvironmentConfig envConfigWithDetectMulti     = initConfig();
+    private static final EnvironmentConfig envConfigWithoutDetectMulti  = initConfig();
 
     static {
-        envConfigWithoutDetectSingle.setConfigParam(
-            EnvironmentParams.LOG_DETECT_FILE_DELETE.getName(), "false");
+        envConfigWithoutDetectSingle.setConfigParam(EnvironmentParams.LOG_DETECT_FILE_DELETE.getName(), "false");
 
-        envConfigWithDetectMulti.setConfigParam(
-            EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), dirs + "");
+        envConfigWithDetectMulti.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), dirs + "");
 
-        envConfigWithoutDetectMulti.setConfigParam(
-            EnvironmentParams.LOG_DETECT_FILE_DELETE.getName(), "false");
-        envConfigWithoutDetectMulti.setConfigParam(
-            EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), dirs + "");
+        envConfigWithoutDetectMulti.setConfigParam(EnvironmentParams.LOG_DETECT_FILE_DELETE.getName(), "false");
+        envConfigWithoutDetectMulti.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), dirs + "");
     }
 
     @Before
-    public void setUp() 
-        throws Exception {
+    public void setUp() throws Exception {
         envHome = SharedTestUtils.getTestDir();
         super.setUp();
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
 
         if (c != null) {
             try {
-                c.close(); 
+                c.close();
             } catch (EnvironmentFailureException efe) {
 
             }
@@ -100,7 +90,7 @@ public class LogFileDeletionCrashEnvTest extends TestBase {
 
         if (db != null) {
             try {
-                db.close(); 
+                db.close();
             } catch (EnvironmentFailureException efe) {
 
             }
@@ -120,10 +110,8 @@ public class LogFileDeletionCrashEnvTest extends TestBase {
         config.setAllowCreate(true);
         config.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
         config.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        config.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-            "false");
-        config.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR,
-            "false");
+        config.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        config.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         config.setCacheSize(1000000);
         config.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, "1000000");
         return config;
@@ -237,10 +225,7 @@ public class LogFileDeletionCrashEnvTest extends TestBase {
         tranverseDb(true);
     }
 
-    private void testDirDeletionInternal(
-        EnvironmentConfig config,
-        String action,
-        Boolean root) {
+    private void testDirDeletionInternal(EnvironmentConfig config, String action, Boolean root) {
 
         openEnvAndDb(config);
         initialDb();
@@ -263,7 +248,7 @@ public class LogFileDeletionCrashEnvTest extends TestBase {
 
     public void initialDb() {
         try {
-            for (int i = 0 ; i < recNum; i++) {
+            for (int i = 0; i < recNum; i++) {
                 final DatabaseEntry key = new DatabaseEntry();
                 IntegerBinding.intToEntry(i, key);
                 final DatabaseEntry data = new DatabaseEntry(new byte[dataLen]);
@@ -273,17 +258,14 @@ public class LogFileDeletionCrashEnvTest extends TestBase {
             throw new RuntimeException("Initiate Database fails.", dbe);
         }
 
-        final int totalFiles =
-            DbInternal.getEnvironmentImpl(env).getFileManager().                            
-            getAllFileNumbers().length;
+        final int totalFiles = DbInternal.getEnvironmentImpl(env).getFileManager().getAllFileNumbers().length;
         assert totalFiles < 100 : "Total file number is " + totalFiles;
     }
 
     public void deleteFiles() {
         final EnvironmentImpl envImpl = DbInternal.getEnvironmentImpl(env);
         final FileManager fm = envImpl.getFileManager();
-        int nDirs = envImpl.getConfigManager().getInt(
-            EnvironmentParams.LOG_N_DATA_DIRECTORIES);
+        int nDirs = envImpl.getConfigManager().getInt(EnvironmentParams.LOG_N_DATA_DIRECTORIES);
         if (nDirs == 0) {
             nDirs = 1;
         }
@@ -292,9 +274,7 @@ public class LogFileDeletionCrashEnvTest extends TestBase {
             files[index].delete();
         }
 
-        final int totalFiles =
-            DbInternal.getEnvironmentImpl(env).getFileManager().                            
-            getAllFileNumbers().length;
+        final int totalFiles = DbInternal.getEnvironmentImpl(env).getFileManager().getAllFileNumbers().length;
         assert totalFiles == nDirs : "Total file number is " + totalFiles;
     }
 
@@ -304,7 +284,7 @@ public class LogFileDeletionCrashEnvTest extends TestBase {
             String envHomePath = envHome.getCanonicalPath();
             String dataDirPath = envHomePath + "/data001";
             String envHomePathNew = envHomePath + ".new";
-            String dataDirPathNew = dataDirPath + ".new" ;
+            String dataDirPathNew = dataDirPath + ".new";
 
             if (action.equals("envHome")) {
                 shellCmd = "rm -rf " + envHomePath;
@@ -312,59 +292,54 @@ public class LogFileDeletionCrashEnvTest extends TestBase {
                 shellCmd = "rm -rf " + dataDirPath;
             } else if (action.equals("rename")) {
                 if (root.booleanValue()) {
-                    shellCmd =
-                        "mv " + envHomePath + " " + envHomePathNew +
-                        " && " + "sleep 5" +
-                        " && " + "rm -rf " + envHomePathNew;
+                    shellCmd = "mv " + envHomePath + " " + envHomePathNew + " && " + "sleep 5" + " && " + "rm -rf "
+                            + envHomePathNew;
                 } else {
                     shellCmd = "mv " + dataDirPath + " " + dataDirPathNew;
                 }
             }
 
-            final ProcessBuilder pb =
-                new ProcessBuilder("/bin/bash", "-c", shellCmd); 
+            final ProcessBuilder pb = new ProcessBuilder("/bin/bash", "-c", shellCmd);
             pb.redirectErrorStream(true);
             final Process p = pb.start();
             if (p != null) {
                 final int retvalue = p.waitFor();
                 if (retvalue != 0) {
-                    throw new IOException(
-                        "The created process exit abnormally");
+                    throw new IOException("The created process exit abnormally");
                 }
             } else {
                 throw new IOException("The created process is null");
             }
         } catch (Exception e) {
-            throw new RuntimeException(
-                "Some error happens when executing " + shellCmd, e);
+            throw new RuntimeException("Some error happens when executing " + shellCmd, e);
         }
     }
 
     public void tranverseDb(boolean check) {
-        boolean detect = DbInternal.getEnvironmentImpl(env).getConfigManager().
-            getBoolean(EnvironmentParams.LOG_DETECT_FILE_DELETE);
+        boolean detect = DbInternal.getEnvironmentImpl(env).getConfigManager()
+                .getBoolean(EnvironmentParams.LOG_DETECT_FILE_DELETE);
         try {
             final DatabaseEntry key = new DatabaseEntry();
             final DatabaseEntry data = new DatabaseEntry();
-            assert c.getFirst(key, data, null) == OperationStatus.SUCCESS :
-                "The db should contain at least one record";
+            assert c.getFirst(key, data, null) == OperationStatus.SUCCESS : "The db should contain at least one record";
             /* Sleep at least 1s to let the TimerTask to execute. */
-            try {Thread.sleep(1000);} catch (Exception e) {}
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
+            }
             while (c.getNext(key, data, null) == OperationStatus.SUCCESS) {
                 //Do nothing
             }
 
             if (check) {
                 if (detect) {
-                    fail("With detecting log file deletion, we should catch" +
-                        "EnvironmentFailureException.");
+                    fail("With detecting log file deletion, we should catch" + "EnvironmentFailureException.");
                 }
             }
         } catch (EnvironmentFailureException efe) {
             if (check) {
                 if (!detect) {
-                    fail("Without detecting log file deletion, we should" +
-                        "not catch EnvironmentFailureException");
+                    fail("Without detecting log file deletion, we should" + "not catch EnvironmentFailureException");
                 }
             }
             // Leave tearDown() to close cursor, db and env.

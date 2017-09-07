@@ -50,18 +50,17 @@ import com.sleepycat.util.test.TestBase;
 public class InvisibleTest extends TestBase {
 
     private static boolean verbose = Boolean.getBoolean("verbose");
-    private final File envHome;
+    private final File     envHome;
 
     public InvisibleTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     /**
-     * @throws FileNotFoundException 
+     * @throws FileNotFoundException
      */
     @Test
-    public void testBasic() 
-        throws FileNotFoundException {
+    public void testBasic() throws FileNotFoundException {
 
         final String filler = "--------------------------------------------";
 
@@ -69,12 +68,11 @@ public class InvisibleTest extends TestBase {
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
         List<TestInfo> allData = new ArrayList<TestInfo>();
-        Map<Long, List<Long>> invisibleEntriesByFile = 
-            new HashMap<Long, List<Long>>();
+        Map<Long, List<Long>> invisibleEntriesByFile = new HashMap<Long, List<Long>>();
         try {
             LogManager logManager = envImpl.getLogManager();
-            
-            /* 
+
+            /*
              * Setup test data. Insert a number of records, then make all the
              * even entries invisible.
              */
@@ -98,11 +96,10 @@ public class InvisibleTest extends TestBase {
             }
 
             /*
-             * We want to run this test on multiple files, so make sure that
-             * the invisible entries occupy at least three distinct files.
+             * We want to run this test on multiple files, so make sure that the
+             * invisible entries occupy at least three distinct files.
              */
-            assertTrue("size=" + invisibleEntriesByFile.size(),
-                       invisibleEntriesByFile.size() > 3);
+            assertTrue("size=" + invisibleEntriesByFile.size(), invisibleEntriesByFile.size() > 3);
 
             if (verbose) {
                 for (TestInfo info : allData) {
@@ -111,9 +108,9 @@ public class InvisibleTest extends TestBase {
                 System.out.println("------------------------");
             }
 
-            /* 
-             * Invisibility marking only works on log entries that are 
-             * on disk. Flush everything to disk.
+            /*
+             * Invisibility marking only works on log entries that are on disk.
+             * Flush everything to disk.
              */
             logManager.flushSync();
 
@@ -126,13 +123,13 @@ public class InvisibleTest extends TestBase {
             /* Check that we can read both visible and invisible log entries. */
             scanAll(envImpl, allData, false /* onlyReadVisible */);
 
-            /* 
+            /*
              * Check that we can fetch invisible log entries through the log
              * manager. This kind of fetch is done when executing rollbacks and
-             * constructing the txn chain.
-             * We want the fetch to go disk and not to fetch from the log
-             * buffers, so write some more stuff to the log so that all
-             * invisible entries are flushed out of the log buffers.
+             * constructing the txn chain. We want the fetch to go disk and not
+             * to fetch from the log buffers, so write some more stuff to the
+             * log so that all invisible entries are flushed out of the log
+             * buffers.
              */
             for (int i = 0; i < 50; i++) {
                 Trace t = new Trace("debug " + filler + i);
@@ -158,15 +155,14 @@ public class InvisibleTest extends TestBase {
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
 
-        /* 
-         * Turn off cleaning so that it doesn't interfere with
-         * what is in the log.
+        /*
+         * Turn off cleaning so that it doesn't interfere with what is in the
+         * log.
          */
         DbInternal.disableParameterValidation(envConfig);
 
-        /* 
-         * Use uniformly small log files, to make the invisible bit cross
-         * files.  
+        /*
+         * Use uniformly small log files, to make the invisible bit cross files.
          */
         envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, "1000");
         envConfig.setConfigParam("je.env.runCleaner", "false");
@@ -181,8 +177,7 @@ public class InvisibleTest extends TestBase {
         return new Environment(envHome, envConfig);
     }
 
-    private void makeInvisible(EnvironmentImpl envImpl,
-                               Map<Long, List<Long>> invisibleEntries) {
+    private void makeInvisible(EnvironmentImpl envImpl, Map<Long, List<Long>> invisibleEntries) {
 
         FileManager fileManager = envImpl.getFileManager();
         for (Map.Entry<Long, List<Long>> entry : invisibleEntries.entrySet()) {
@@ -192,16 +187,13 @@ public class InvisibleTest extends TestBase {
         fileManager.force(invisibleEntries.keySet());
     }
 
-    private void scanOnlyVisible(EnvironmentImpl envImpl,
-                                 List<TestInfo> allData) {
+    private void scanOnlyVisible(EnvironmentImpl envImpl, List<TestInfo> allData) {
         scanAll(envImpl, allData, true /* onlyReadVisible */);
     }
 
-    private void scanAll(EnvironmentImpl envImpl,
-                         List<TestInfo> allData,
-                         boolean onlyReadVisible) {
+    private void scanAll(EnvironmentImpl envImpl, List<TestInfo> allData, boolean onlyReadVisible) {
 
-        /* 
+        /*
          * Make a list of expected Trace entries. If we are skipping invisible
          * entries, only include the visible ones.
          */
@@ -214,57 +206,53 @@ public class InvisibleTest extends TestBase {
             } else {
                 expectedData.add(info.trace);
             }
-        }   
-            
+        }
+
         TestReader reader = new TestReader(envImpl, onlyReadVisible);
-        int i = (onlyReadVisible)? 1 : 0;
+        int i = (onlyReadVisible) ? 1 : 0;
         while (reader.readNextEntry()) {
-            assertEquals(allData.get(i).isInvisible,
-                         reader.isInvisible());
+            assertEquals(allData.get(i).isInvisible, reader.isInvisible());
             i += (onlyReadVisible) ? 2 : 1;
         }
         assertEquals(expectedData, reader.getTraces());
     }
 
-    /** 
+    /**
      * Check that invisible log entries throw a checksum exception by default,
      * and that they can be read only through the special log manager method
      * that expects and fixes invisibility.
-     * @throws FileNotFoundException 
+     * 
+     * @throws FileNotFoundException
      */
-    private void fetchInvisible(EnvironmentImpl envImpl, 
-                                List<TestInfo> allData) 
-        throws FileNotFoundException {
+    private void fetchInvisible(EnvironmentImpl envImpl, List<TestInfo> allData) throws FileNotFoundException {
 
         LogManager logManager = envImpl.getLogManager();
         for (TestInfo info : allData) {
 
             if (!info.isInvisible) {
                 continue;
-            } 
+            }
 
-            SingleItemEntry<?> okEntry = (SingleItemEntry<?>) 
-                logManager.getLogEntryAllowInvisible(info.lsn).getEntry();
+            SingleItemEntry<?> okEntry = (SingleItemEntry<?>) logManager.getLogEntryAllowInvisible(info.lsn).getEntry();
             assertEquals(info.trace, okEntry.getMainItem());
 
             try {
                 logManager.getLogEntry(info.lsn);
                 fail("Should have thrown exception for " + info);
-            } catch(EnvironmentFailureException expected) {
-                assertEquals(EnvironmentFailureReason.LOG_INTEGRITY,
-                             expected.getReason());
-            } 
-        }   
+            } catch (EnvironmentFailureException expected) {
+                assertEquals(EnvironmentFailureReason.LOG_INTEGRITY, expected.getReason());
+            }
+        }
     }
 
-    /* 
+    /*
      * Struct to package together test information.
      */
     private static class TestInfo {
-        final long lsn;
-        final Trace trace;
+        final long    lsn;
+        final Trace   trace;
         final boolean isInvisible;
-        
+
         TestInfo(long lsn, Trace trace, boolean isInvisible) {
             this.lsn = lsn;
             this.trace = trace;
@@ -273,51 +261,43 @@ public class InvisibleTest extends TestBase {
 
         @Override
         public String toString() {
-            return DbLsn.getNoFormatString(lsn) + 
-            (isInvisible ? " INVISIBLE " : " visible ") + trace;
+            return DbLsn.getNoFormatString(lsn) + (isInvisible ? " INVISIBLE " : " visible ") + trace;
         }
     }
 
-    /* 
+    /*
      * A FileReader that can read visible or invisible entries, upon command.
      */
     private static class TestReader extends FileReader {
 
-        private final boolean readVisible;
+        private final boolean  readVisible;
         private final LogEntry entry;
 
-        private List<Trace> tracers;
-        private Trace currentTrace;
+        private List<Trace>    tracers;
+        private Trace          currentTrace;
 
         public TestReader(EnvironmentImpl envImpl, boolean readVisible) {
 
-            super(envImpl, 
-                  1024 /* readBufferSize*/,
-                  true /* forward */,
-                  0L, 
-                  null /* singleFileNumber */,
-                  DbLsn.NULL_LSN /* endOfFileLsn */,
-                  DbLsn.NULL_LSN /* finishLsn */);
+            super(envImpl, 1024 /* readBufferSize */, true /* forward */, 0L, null /* singleFileNumber */,
+                    DbLsn.NULL_LSN /* endOfFileLsn */, DbLsn.NULL_LSN /* finishLsn */);
             this.readVisible = readVisible;
             this.entry = LogEntryType.LOG_TRACE.getSharedLogEntry();
             tracers = new ArrayList<Trace>();
         }
 
         /**
-         * @return true if this reader should process this entry, or just
-         * skip over it.
+         * @return true if this reader should process this entry, or just skip
+         *         over it.
          * @throws DatabaseException from subclasses.
          */
         @Override
-        protected boolean isTargetEntry()
-            throws DatabaseException {
+        protected boolean isTargetEntry() throws DatabaseException {
 
             if (readVisible && currentEntryHeader.isInvisible()) {
                 return false;
             }
 
-            if (currentEntryHeader.getType() == 
-                LogEntryType.LOG_TRACE.getTypeNum()) {
+            if (currentEntryHeader.getType() == LogEntryType.LOG_TRACE.getTypeNum()) {
                 return true;
             }
 
@@ -325,19 +305,18 @@ public class InvisibleTest extends TestBase {
         }
 
         @Override
-        protected boolean processEntry(ByteBuffer entryBuffer)
-                throws DatabaseException {
+        protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
             entry.readEntry(envImpl, currentEntryHeader, entryBuffer);
             currentTrace = (Trace) entry.getMainItem();
             tracers.add(currentTrace);
             return true;
         }
-        
+
         public List<Trace> getTraces() {
             return tracers;
         }
-        
+
         boolean isInvisible() {
             return currentEntryHeader.isInvisible();
         }

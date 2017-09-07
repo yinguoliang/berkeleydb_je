@@ -43,8 +43,8 @@ import com.sleepycat.util.test.TestBase;
  */
 public class LogFileGapTest extends TestBase {
     private static final String DB_NAME = "testDb";
-    private final File envHome;
-    private Environment env;
+    private final File          envHome;
+    private Environment         env;
 
     public LogFileGapTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -52,43 +52,40 @@ public class LogFileGapTest extends TestBase {
 
     @After
     public void tearDown() {
-        
+
         if (env != null) {
             env.close();
         }
     }
 
-    /* 
-     * Test the case that we can recover after truncating some log entries on
-     * an invalidated Environment, it will truncate to the FileHeader.
+    /*
+     * Test the case that we can recover after truncating some log entries on an
+     * invalidated Environment, it will truncate to the FileHeader.
      */
     @Test
-    public void testLogFileAllTruncate() 
-        throws Throwable {
+    public void testLogFileAllTruncate() throws Throwable {
 
         createEnvAndData();
         createLogFileGapAndRecover(true, true, false);
     }
 
     /*
-     * Test the case that we can recover after truncating some log entries on
-     * an invalidated Environment, it won't truncate the FileHeader.
+     * Test the case that we can recover after truncating some log entries on an
+     * invalidated Environment, it won't truncate the FileHeader.
      */
     @Test
-    public void testLogFileNotTruncateAll()
-        throws Throwable {
+    public void testLogFileNotTruncateAll() throws Throwable {
 
         createEnvAndData();
         createLogFileGapAndRecover(true, false, false);
     }
 
     /*
-     * Test that an EnvironmentFailureException will be thrown if a log file 
-     * gap is detected during the recovery.
+     * Test that an EnvironmentFailureException will be thrown if a log file gap
+     * is detected during the recovery.
      */
     @Test
-    public void testLogFileGapRecover()
-        throws Throwable {
+    public void testLogFileGapRecover() throws Throwable {
 
         createEnvAndData();
         createLogFileGapAndRecover(false, false, true);
@@ -119,34 +116,29 @@ public class LogFileGapTest extends TestBase {
         /* Disable all daemon threads. */
         envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
         envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam
-            (EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
-        envConfig.setConfigParam
-            (EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, "2000");
 
         return envConfig;
     }
 
-    /* 
+    /*
      * Truncate the log file to create a log file gap and see if we correctly
      * throw out an EnvironmentFailureException.
      */
-    private void createLogFileGapAndRecover(boolean invalidateEnvironment,
-                                            boolean truncateFileHeader,
+    private void createLogFileGapAndRecover(boolean invalidateEnvironment, boolean truncateFileHeader,
                                             boolean setLogFileEnd)
-        throws Throwable {
+            throws Throwable {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-        int readBufferSize = envImpl.getConfigManager().getInt
-            (EnvironmentParams.LOG_ITERATOR_READ_SIZE);
-        LastFileReader fileReader =
-            new LastFileReader(envImpl, readBufferSize);
+        int readBufferSize = envImpl.getConfigManager().getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+        LastFileReader fileReader = new LastFileReader(envImpl, readBufferSize);
 
         /*
          * If we want to truncate to the FileHeader, the reader will only read
-         * once, otherwise, it will read two entries. 
+         * once, otherwise, it will read two entries.
          */
         int threshold = (truncateFileHeader ? 1 : 2);
         int counter = 0;
@@ -161,19 +153,15 @@ public class LogFileGapTest extends TestBase {
         long truncatedLsn = fileReader.getLastLsn();
 
         if (invalidateEnvironment) {
-            envImpl.invalidate(EnvironmentFailureException.unexpectedState
-                    ("Invalidate Environment for testing"));
+            envImpl.invalidate(EnvironmentFailureException.unexpectedState("Invalidate Environment for testing"));
             envImpl.abnormalClose();
         }
 
         if (setLogFileEnd) {
-            envImpl.getFileManager().truncateSingleFile
-                (DbLsn.getFileNumber(truncatedLsn),
-                 DbLsn.getFileOffset(truncatedLsn));
+            envImpl.getFileManager().truncateSingleFile(DbLsn.getFileNumber(truncatedLsn),
+                    DbLsn.getFileOffset(truncatedLsn));
         } else {
-            envImpl.getFileManager().truncateLog
-                (DbLsn.getFileNumber(truncatedLsn),
-                 DbLsn.getFileOffset(truncatedLsn));
+            envImpl.getFileManager().truncateLog(DbLsn.getFileNumber(truncatedLsn), DbLsn.getFileOffset(truncatedLsn));
         }
 
         /* Do a log file flip. */

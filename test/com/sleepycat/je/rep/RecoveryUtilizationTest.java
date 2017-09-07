@@ -46,26 +46,20 @@ public class RecoveryUtilizationTest extends TestBase {
      * DupCountLNs are strange hybrid beasts. They are not replicated, because
      * they are incremented as a side effect of applying LNs. At recovery time,
      * any DupCountLNs that are part of a replicated txn must be recovered and
-     * resurrected just like other replicated LNs though.
-     *
-     * This test is trying to create a log has a DupCountLN followed by its DIN
-     * parent, like this:
-     *
-     * 100 DupCountLN for uncommitted, replicated txn
-     * 200 DIN that refers to DupCountLN
-     *
-     * where the log entries are within a checkpoint interval that will be 
-     * processed at recovery. The bug is that DupCountLN, which is not a 
-     * replicated log entry, was being undone by recovery because it was not 
+     * resurrected just like other replicated LNs though. This test is trying to
+     * create a log has a DupCountLN followed by its DIN parent, like this: 100
+     * DupCountLN for uncommitted, replicated txn 200 DIN that refers to
+     * DupCountLN where the log entries are within a checkpoint interval that
+     * will be processed at recovery. The bug is that DupCountLN, which is not a
+     * replicated log entry, was being undone by recovery because it was not
      * committed. Then it was redone by recovery because it is in a replicated
-     * txn. Although the logical outcome was correct -- the DIN parent 
-     * continued to point to DupCountLN 100, the utilization was wrong.
+     * txn. Although the logical outcome was correct -- the DIN parent continued
+     * to point to DupCountLN 100, the utilization was wrong.
      * 
-     * @throws InterruptedException 
+     * @throws InterruptedException
      */
     @Test
-    public void testDupCountRecoverySR17879() 
-        throws IOException, InterruptedException {
+    public void testDupCountRecoverySR17879() throws IOException, InterruptedException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -75,7 +69,7 @@ public class RecoveryUtilizationTest extends TestBase {
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
         RepEnvInfo replicaInfo = null;
         ReplicatedEnvironment replica = null;
-        for (RepEnvInfo info: repEnvInfo) {
+        for (RepEnvInfo info : repEnvInfo) {
             if (info.getEnv() != master) {
                 replicaInfo = info;
                 replica = replicaInfo.getEnv();
@@ -92,7 +86,7 @@ public class RecoveryUtilizationTest extends TestBase {
             IntegerBinding.intToEntry(2, data);
             assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
 
-            /* 
+            /*
              * Now begin what will be an uncommitted txn, that will result in
              * the update of the dup tree, thereby logging a DupCountLN to the
              * log.
@@ -101,16 +95,16 @@ public class RecoveryUtilizationTest extends TestBase {
             IntegerBinding.intToEntry(3, data);
             assertEquals(OperationStatus.SUCCESS, db.put(txnA, key, data));
 
-            /* 
-             * Now ensure that the replica receives the changes from txnA.  To
-             * do that, make and commit an unrelated change, purely as a way of
+            /*
+             * Now ensure that the replica receives the changes from txnA. To do
+             * that, make and commit an unrelated change, purely as a way of
              * ensuring that the replica proceeds to a known spot in the
              * replication stream.
              */
             Transaction txnB = master.beginTransaction(null, null);
             IntegerBinding.intToEntry(10, key);
             IntegerBinding.intToEntry(10, data);
-            assertEquals(OperationStatus.SUCCESS, db.put(txnB, key, data));    
+            assertEquals(OperationStatus.SUCCESS, db.put(txnB, key, data));
             txnB.commit();
             RepTestUtils.syncGroupToLastCommit(repEnvInfo, 2);
 
@@ -127,14 +121,14 @@ public class RecoveryUtilizationTest extends TestBase {
             replicaInfo.openEnv();
 
             /*
-             * Check that the utilization offsets match those in the tree. 
-             * When the bug is in effect, this will fail.
+             * Check that the utilization offsets match those in the tree. When
+             * the bug is in effect, this will fail.
              */
             Database repDb = openDb(replicaInfo.getEnv());
             try {
                 VerifyUtils.checkLsns(repDb);
             } finally {
-        	repDb.close();
+                repDb.close();
             }
 
         } finally {

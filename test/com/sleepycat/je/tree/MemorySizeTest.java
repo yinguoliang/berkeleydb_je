@@ -51,8 +51,8 @@ import com.sleepycat.utilint.StringUtils;
  */
 public class MemorySizeTest extends DualTestCase {
     private Environment env;
-    private final File envHome;
-    private Database db;
+    private final File  envHome;
+    private Database    db;
 
     public MemorySizeTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -61,8 +61,7 @@ public class MemorySizeTest extends DualTestCase {
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
 
@@ -70,21 +69,14 @@ public class MemorySizeTest extends DualTestCase {
         Txn.ACCUMULATED_LIMIT = 0;
 
         /*
-         * Properties for creating an environment.
-         * Disable the evictor for this test, use larger BINS
+         * Properties for creating an environment. Disable the evictor for this
+         * test, use larger BINS
          */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(),
-                                 "false");
-        envConfig.setConfigParam(
-                       EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(),
-                       "false");
-        envConfig.setConfigParam(
-                       EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(),
-                       "false");
-        envConfig.setConfigParam(
-                       EnvironmentParams.ENV_RUN_CLEANER.getName(),
-                       "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
 
         /* Don't checkpoint utilization info for this test. */
         DbInternal.setCheckpointUP(envConfig, false);
@@ -97,8 +89,7 @@ public class MemorySizeTest extends DualTestCase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         if (env != null) {
             close(env);
@@ -108,8 +99,7 @@ public class MemorySizeTest extends DualTestCase {
 
     /* Test that the KeyPrefix changes should result in memory changes. */
     @Test
-    public void testKeyPrefixChange()
-        throws Throwable {
+    public void testKeyPrefixChange() throws Throwable {
 
         final String dbName = "testDB";
         final String value = "herococo";
@@ -138,8 +128,7 @@ public class MemorySizeTest extends DualTestCase {
             cursor = db.openCursor(txn, null);
             int counter = 0;
             boolean hasKeyPrefix = false;
-            while (cursor.getNext(key, data, LockMode.DEFAULT) ==
-                   OperationStatus.SUCCESS) {
+            while (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
                 counter++;
 
                 final String keyString = StringUtils.fromUTF8(key.getData());
@@ -148,8 +137,7 @@ public class MemorySizeTest extends DualTestCase {
 
                 /* Check that record is ordered by bytes. */
                 assertEquals(keyString.substring(0, keyLength - 2), value);
-                assertEquals(keyString.substring(keyLength - 2, keyLength - 1),
-                             new Integer(counter).toString());
+                assertEquals(keyString.substring(keyLength - 2, keyLength - 1), new Integer(counter).toString());
 
                 /*
                  * If the BIN has KeyPrefix, reset the KeyPrefix and check the
@@ -157,16 +145,14 @@ public class MemorySizeTest extends DualTestCase {
                  * checking that the memory does change is sufficient.
                  */
                 if (bin.getKeyPrefix() != null) {
-                    assertEquals(StringUtils.fromUTF8(bin.getKeyPrefix()),
-                                 value);
+                    assertEquals(StringUtils.fromUTF8(bin.getKeyPrefix()), value);
                     hasKeyPrefix = true;
                     long formerMemorySize = bin.getInMemorySize();
                     /* Change the KeyPrefix of this BIN. */
                     bin.latch();
                     bin.setKeyPrefix(StringUtils.toUTF8("hero"));
                     bin.releaseLatch();
-                    assertEquals(StringUtils.fromUTF8(bin.getKeyPrefix()),
-                                 "hero");
+                    assertEquals(StringUtils.fromUTF8(bin.getKeyPrefix()), "hero");
                     /* Check the MemorySize has changed. */
                     assertTrue(bin.getInMemorySize() != formerMemorySize);
                     break;
@@ -193,32 +179,22 @@ public class MemorySizeTest extends DualTestCase {
     }
 
     /*
-     * Do a series of these actions and make sure that the stored memory
-     * sizes match the calculated memory size.
-     * - create db
-     * - insert records, no split
-     * - cause IN split
-     * - modify
-     * - delete, compress
-     * - checkpoint
-     * - evict
-     * - insert duplicates
-     * - cause duplicate IN split
-     * - do an abort
-     *
-     * After duplicate storage was redone in JE 5, this test no longer
-     * exercises memory maintenance as thoroughly, since dup LNs are always
-     * evicted immediately.  A non-dups test may be needed in the future.
+     * Do a series of these actions and make sure that the stored memory sizes
+     * match the calculated memory size. - create db - insert records, no split
+     * - cause IN split - modify - delete, compress - checkpoint - evict -
+     * insert duplicates - cause duplicate IN split - do an abort After
+     * duplicate storage was redone in JE 5, this test no longer exercises
+     * memory maintenance as thoroughly, since dup LNs are always evicted
+     * immediately. A non-dups test may be needed in the future.
      */
     @Test
-    public void testMemSizeMaintenanceDups()
-        throws Throwable {
+    public void testMemSizeMaintenanceDups() throws Throwable {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         try {
             initDb(true);
 
-            /* Insert one record. Adds two INs and an LN to our cost.*/
+            /* Insert one record. Adds two INs and an LN to our cost. */
             insert((byte) 1, 10, (byte) 1, 100, true);
             TestUtils.validateNodeMemUsage(envImpl, true);
 
@@ -280,7 +256,7 @@ public class MemorySizeTest extends DualTestCase {
 
             /* modify (use same data) and abort */
             modify((byte) 5, 10, (byte) 5, 100, false);
-            /* Abort will evict LN.  Count to fetch LN back into tree. */
+            /* Abort will evict LN. Count to fetch LN back into tree. */
             checkCount(11);
             TestUtils.validateNodeMemUsage(envImpl, true);
 
@@ -294,7 +270,7 @@ public class MemorySizeTest extends DualTestCase {
             TestUtils.validateNodeMemUsage(envImpl, true);
 
             /* Delete dup */
-            delete((byte) 3, 10, (byte)34, 200, false);
+            delete((byte) 3, 10, (byte) 34, 200, false);
             TestUtils.validateNodeMemUsage(envImpl, true);
 
             /* insert and abort */
@@ -314,21 +290,17 @@ public class MemorySizeTest extends DualTestCase {
     }
 
     /*
-     * Do a series of these actions and make sure that the stored memory
-     * sizes match the calculated memory size.
-     * - create db
-     * - insert records, cause split
-     * - delete
-     * - insert and re-use slots.
+     * Do a series of these actions and make sure that the stored memory sizes
+     * match the calculated memory size. - create db - insert records, cause
+     * split - delete - insert and re-use slots.
      */
     @Test
-    public void testSlotReuseMaintenance()
-        throws Exception {
+    public void testSlotReuseMaintenance() throws Exception {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         try {
 
-            initDb(true /*dups*/);
+            initDb(true /* dups */);
 
             /* Insert enough records to create one node. */
             insert((byte) 1, 10, (byte) 1, 100, true);
@@ -336,7 +308,7 @@ public class MemorySizeTest extends DualTestCase {
             insert((byte) 3, 10, (byte) 3, 100, true);
             TestUtils.validateNodeMemUsage(envImpl, true);
 
-            /* Delete  */
+            /* Delete */
             delete((byte) 3, 10, true);
             checkCount(2);
             TestUtils.validateNodeMemUsage(envImpl, true);
@@ -354,8 +326,7 @@ public class MemorySizeTest extends DualTestCase {
         }
     }
 
-    private void initDb(boolean dups)
-        throws DatabaseException {
+    private void initDb(boolean dups) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -364,44 +335,31 @@ public class MemorySizeTest extends DualTestCase {
         db = env.openDatabase(null, "foo", dbConfig);
     }
 
-    private void insert(byte keyVal, int keySize,
-                        byte dataVal, int dataSize,
-                        boolean commit)
-        throws DatabaseException {
+    private void insert(byte keyVal, int keySize, byte dataVal, int dataSize, boolean commit) throws DatabaseException {
 
         Transaction txn = null;
         if (!commit) {
             txn = env.beginTransaction(null, null);
         }
-        assertEquals(OperationStatus.SUCCESS,
-                     db.put(null, getEntry(keyVal, keySize),
-                            getEntry(dataVal, dataSize)));
+        assertEquals(OperationStatus.SUCCESS, db.put(null, getEntry(keyVal, keySize), getEntry(dataVal, dataSize)));
         if (!commit) {
             txn.abort();
         }
     }
 
-    private void modify(byte keyVal, int keySize,
-                        byte dataVal, int dataSize,
-                        boolean commit)
-        throws DatabaseException {
+    private void modify(byte keyVal, int keySize, byte dataVal, int dataSize, boolean commit) throws DatabaseException {
 
         Transaction txn = null;
 
         txn = env.beginTransaction(null, null);
         Cursor cursor = db.openCursor(txn, null);
         DatabaseEntry data = new DatabaseEntry();
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchKey(getEntry(keyVal, keySize),
-                                         data, LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(getEntry(keyVal, keySize), data, LockMode.DEFAULT));
         /* To avoid changing memory sizes, do not delete unless necessary. */
         if (!data.equals(getEntry(dataVal, dataSize))) {
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.delete());
+            assertEquals(OperationStatus.SUCCESS, cursor.delete());
         }
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.put(getEntry(keyVal, keySize),
-                                getEntry(dataVal, dataSize)));
+        assertEquals(OperationStatus.SUCCESS, cursor.put(getEntry(keyVal, keySize), getEntry(dataVal, dataSize)));
         cursor.close();
 
         if (commit) {
@@ -411,31 +369,25 @@ public class MemorySizeTest extends DualTestCase {
         }
     }
 
-    private void delete(byte keyVal, int keySize, boolean commit)
-        throws DatabaseException {
+    private void delete(byte keyVal, int keySize, boolean commit) throws DatabaseException {
 
         Transaction txn = null;
         if (!commit) {
             txn = env.beginTransaction(null, null);
         }
-        assertEquals(OperationStatus.SUCCESS,
-                     db.delete(txn, getEntry(keyVal, keySize)));
+        assertEquals(OperationStatus.SUCCESS, db.delete(txn, getEntry(keyVal, keySize)));
         if (!commit) {
             txn.abort();
         }
     }
 
-    private void delete(byte keyVal, int keySize,
-                        byte dataVal, int dataSize, boolean commit)
-        throws DatabaseException {
+    private void delete(byte keyVal, int keySize, byte dataVal, int dataSize, boolean commit) throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
         Cursor cursor = db.openCursor(txn, null);
         assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchBoth(getEntry(keyVal, keySize),
-                                          getEntry(dataVal, dataSize),
-                                          LockMode.DEFAULT));
-        assertEquals(OperationStatus.SUCCESS,  cursor.delete());
+                cursor.getSearchBoth(getEntry(keyVal, keySize), getEntry(dataVal, dataSize), LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.delete());
         cursor.close();
 
         if (commit) {
@@ -446,11 +398,10 @@ public class MemorySizeTest extends DualTestCase {
     }
 
     /*
-     * Fake compressing daemon by call BIN.compress explicitly on all
-     * BINS on the IN list.
+     * Fake compressing daemon by call BIN.compress explicitly on all BINS on
+     * the IN list.
      */
-    private void compress()
-        throws DatabaseException {
+    private void compress() throws DatabaseException {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         INList inList = envImpl.getInMemoryINs();
@@ -462,18 +413,14 @@ public class MemorySizeTest extends DualTestCase {
     }
 
     /*
-     * Fake eviction daemon by call BIN.evictLNs explicitly on all
-     * BINS on the IN list.
-     *
-     * Not currently used but may be needed later for a non-dups test.
+     * Fake eviction daemon by call BIN.evictLNs explicitly on all BINS on the
+     * IN list. Not currently used but may be needed later for a non-dups test.
      */
-    private void evict()
-        throws DatabaseException {
+    private void evict() throws DatabaseException {
 
         INList inList = DbInternal.getNonNullEnvImpl(env).getInMemoryINs();
         for (IN in : inList) {
-            if (in instanceof BIN &&
-                !in.getDatabase().getDbType().isInternal()) {
+            if (in instanceof BIN && !in.getDatabase().getDbType().isInternal()) {
                 BIN bin = (BIN) in;
                 bin.latch();
                 try {
@@ -495,14 +442,12 @@ public class MemorySizeTest extends DualTestCase {
         return new DatabaseEntry(bArray);
     }
 
-    private void checkCount(int expectedCount)
-        throws DatabaseException {
+    private void checkCount(int expectedCount) throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
         Cursor cursor = db.openCursor(txn, null);
         int count = 0;
-        while (cursor.getNext(new DatabaseEntry(), new DatabaseEntry(),
-                              LockMode.DEFAULT) == OperationStatus.SUCCESS) {
+        while (cursor.getNext(new DatabaseEntry(), new DatabaseEntry(), LockMode.DEFAULT) == OperationStatus.SUCCESS) {
             count++;
         }
         cursor.close();

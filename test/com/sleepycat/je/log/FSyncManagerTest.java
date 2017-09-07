@@ -46,23 +46,19 @@ public class FSyncManagerTest extends TestBase {
     }
 
     @Test
-    public void testBasic()
-        throws Throwable{
+    public void testBasic() throws Throwable {
 
         Environment env = null;
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
-            envConfig.setConfigParam(EnvironmentConfig.LOG_FSYNC_TIMEOUT,
-                                     "50000000");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_FSYNC_TIMEOUT, "50000000");
             envConfig.setAllowCreate(true);
             env = new Environment(envHome, envConfig);
 
             WaitVal waitVal = new WaitVal(0);
 
-            FSyncManager syncManager =
-                new TestSyncManager(DbInternal.getNonNullEnvImpl(env),
-                                    waitVal);
+            FSyncManager syncManager = new TestSyncManager(DbInternal.getNonNullEnvImpl(env), waitVal);
             JUnitThread t1 = new TestSyncThread(syncManager);
             JUnitThread t2 = new TestSyncThread(syncManager);
             JUnitThread t3 = new TestSyncThread(syncManager);
@@ -70,7 +66,7 @@ public class FSyncManagerTest extends TestBase {
             t2.start();
             t3.start();
 
-            /* Wait for all threads to request a sync, so they form a group.*/
+            /* Wait for all threads to request a sync, so they form a group. */
             Thread.sleep(500);
 
             /* Free thread 1. */
@@ -84,10 +80,9 @@ public class FSyncManagerTest extends TestBase {
             t3.join();
 
             /*
-             * All three threads ask for fsyncs.
-             * 2 do fsyncs -- the initial leader, and the leader of the
-             * waiting group of 2.
-             * The last thread gets a free ride.
+             * All three threads ask for fsyncs. 2 do fsyncs -- the initial
+             * leader, and the leader of the waiting group of 2. The last thread
+             * gets a free ride.
              */
             assertEquals(3, syncManager.getNFSyncRequests());
             assertEquals(2, syncManager.getNFSyncs());
@@ -99,15 +94,18 @@ public class FSyncManagerTest extends TestBase {
         }
     }
 
-    /* This test class waits for an object instead of executing a sync.
-     * This way, we can manipulate grouping behavior.
+    /*
+     * This test class waits for an object instead of executing a sync. This
+     * way, we can manipulate grouping behavior.
      */
     class TestSyncManager extends FSyncManager {
         private final WaitVal waitVal;
+
         TestSyncManager(EnvironmentImpl env, WaitVal waitVal) {
             super(env);
             this.waitVal = waitVal;
         }
+
         @Override
         protected void executeFSync() {
             try {
@@ -124,14 +122,14 @@ public class FSyncManagerTest extends TestBase {
 
     class TestSyncThread extends JUnitThread {
         private final FSyncManager syncManager;
+
         TestSyncThread(FSyncManager syncManager) {
             super("syncThread");
             this.syncManager = syncManager;
         }
 
         @Override
-        public void testBody()
-            throws Throwable {
+        public void testBody() throws Throwable {
             syncManager.flushAndSync(true);
         }
     }
@@ -144,14 +142,14 @@ public class FSyncManagerTest extends TestBase {
         }
     }
 
-    private final int SIM_THREADS = 10;
-    private final int SIM_ITERS = 50;
+    private final int SIM_THREADS        = 10;
+    private final int SIM_ITERS          = 50;
     private final int SIM_MAX_EXECUTE_MS = 1000;
 
     /**
      * Simulates fsync by maintaining a map of entries that represent writes.
      * Before calling FSyncManager.fsync an entry is added to the map, and we
-     * expect it to be removed from the map when fsync returns.  The overridden
+     * expect it to be removed from the map when fsync returns. The overridden
      * executeFSync method removes all entries from the map.
      */
     @Test
@@ -164,8 +162,7 @@ public class FSyncManagerTest extends TestBase {
             envConfig.setAllowCreate(true);
             env = new Environment(envHome, envConfig);
 
-            final SimSyncManager syncManager =
-                new SimSyncManager(DbInternal.getNonNullEnvImpl(env));
+            final SimSyncManager syncManager = new SimSyncManager(DbInternal.getNonNullEnvImpl(env));
 
             threads = new JUnitThread[SIM_THREADS];
             for (int i = 0; i < SIM_THREADS; i += 1) {
@@ -228,14 +225,13 @@ public class FSyncManagerTest extends TestBase {
     class SimSyncManager extends FSyncManager {
 
         private final Map<Integer, Integer> entries;
-        private final AtomicInteger nextEntry;
-        private final Random rnd;
-        private volatile boolean failure;
+        private final AtomicInteger         nextEntry;
+        private final Random                rnd;
+        private volatile boolean            failure;
 
         SimSyncManager(EnvironmentImpl env) {
             super(env);
-            entries =
-                Collections.synchronizedMap(new HashMap<Integer, Integer>());
+            entries = Collections.synchronizedMap(new HashMap<Integer, Integer>());
             nextEntry = new AtomicInteger(1);
             rnd = new Random(123);
             failure = false;

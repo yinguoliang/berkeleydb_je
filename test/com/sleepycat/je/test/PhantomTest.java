@@ -52,74 +52,69 @@ import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * Tests phantom prevention (range locking) added in SR [#10477].
- *
- * <p>We test that with a serializable txn, range locking will prevent phantoms
- * from appearing.  We also test that phantoms *do* appear for non-serializable
- * isolation levels.  These include read-uncommitted, read-committed and
- * repeatable-read now.</p>
- *
- * <p>Test method names have the suffix _Sucess or _NotFound depending on
- * whether they're testing a read operation with a SUCCESS or NOTFOUND outcome.
- * If they're testing duplicates, the _Dup suffix is also added.  Finally, a
- * suffix is added for the isolation level at run time.</p>
- *
- * <p>All tests are for the case where the reader txn locks a range and then
- * the writer txn tries to insert into the locked range.  The reverse (where
- * the writer inserts first) works without range locking because the reader
- * will block on the inserted key, so we don't test that here.</p>
- *
- * <p>We test all read operations with and without duplicates (with duplicates
- * the test name has _Dup appended) except for the following cases which are
+ * <p>
+ * We test that with a serializable txn, range locking will prevent phantoms
+ * from appearing. We also test that phantoms *do* appear for non-serializable
+ * isolation levels. These include read-uncommitted, read-committed and
+ * repeatable-read now.
+ * </p>
+ * <p>
+ * Test method names have the suffix _Sucess or _NotFound depending on whether
+ * they're testing a read operation with a SUCCESS or NOTFOUND outcome. If
+ * they're testing duplicates, the _Dup suffix is also added. Finally, a suffix
+ * is added for the isolation level at run time.
+ * </p>
+ * <p>
+ * All tests are for the case where the reader txn locks a range and then the
+ * writer txn tries to insert into the locked range. The reverse (where the
+ * writer inserts first) works without range locking because the reader will
+ * block on the inserted key, so we don't test that here.
+ * </p>
+ * <p>
+ * We test all read operations with and without duplicates (with duplicates the
+ * test name has _Dup appended) except for the following cases which are
  * meaningless without duplicates because get{Next,Prev}Dup always return
- * NOTFOUND when duplicates are not configured:
- * testGetNextDup_Success, testGetNextDup_NotFound,
- * testGetPrevDup_Success, testGetPrevDup_NotFound.</p>
+ * NOTFOUND when duplicates are not configured: testGetNextDup_Success,
+ * testGetNextDup_NotFound, testGetPrevDup_Success, testGetPrevDup_NotFound.
+ * </p>
  */
 @RunWith(Parameterized.class)
 public class PhantomTest extends DualTestCase {
 
-    private static final TransactionConfig READ_UNCOMMITTED_CONFIG
-                                           = new TransactionConfig();
-    private static final TransactionConfig READ_COMMITTED_CONFIG
-                                           = new TransactionConfig();
-    private static final TransactionConfig REPEATABLE_READ_CONFIG
-                                           = new TransactionConfig();
-    private static final TransactionConfig SERIALIZABLE_CONFIG
-                                           = new TransactionConfig();
+    private static final TransactionConfig READ_UNCOMMITTED_CONFIG = new TransactionConfig();
+    private static final TransactionConfig READ_COMMITTED_CONFIG   = new TransactionConfig();
+    private static final TransactionConfig REPEATABLE_READ_CONFIG  = new TransactionConfig();
+    private static final TransactionConfig SERIALIZABLE_CONFIG     = new TransactionConfig();
     static {
         READ_UNCOMMITTED_CONFIG.setReadUncommitted(true);
         READ_COMMITTED_CONFIG.setReadCommitted(true);
         SERIALIZABLE_CONFIG.setSerializableIsolation(true);
     }
-    private static final TransactionConfig[] TXN_CONFIGS = {
-        READ_UNCOMMITTED_CONFIG,
-        READ_COMMITTED_CONFIG,
-        REPEATABLE_READ_CONFIG,
-        SERIALIZABLE_CONFIG,
-    };
+    private static final TransactionConfig[] TXN_CONFIGS       = { READ_UNCOMMITTED_CONFIG, READ_COMMITTED_CONFIG,
+            REPEATABLE_READ_CONFIG, SERIALIZABLE_CONFIG, };
 
-    private static final String DB_NAME = "PhantomTest";
+    private static final String              DB_NAME           = "PhantomTest";
 
-    private static final int MAX_INSERT_MILLIS = 5000;
+    private static final int                 MAX_INSERT_MILLIS = 5000;
 
-    private File envHome;
-    private Environment env;
-    private Database db;
-    private final TransactionConfig txnConfig;
-    private JUnitThread writerThread;
-    private final boolean txnSerializable;
-    private boolean dups;
-    private boolean insertFinished;
+    private File                             envHome;
+    private Environment                      env;
+    private Database                         db;
+    private final TransactionConfig          txnConfig;
+    private JUnitThread                      writerThread;
+    private final boolean                    txnSerializable;
+    private boolean                          dups;
+    private boolean                          insertFinished;
 
     @Parameters
     public static List<Object[]> genParams() {
         List<Object[]> list = new ArrayList<Object[]>();
 
         for (TransactionConfig txnConfig : TXN_CONFIGS)
-            list.add(new Object[]{txnConfig});
+            list.add(new Object[] { txnConfig });
 
         return list;
-     }
+    }
 
     public PhantomTest(TransactionConfig txnConfig) {
         envHome = SharedTestUtils.getTestDir();
@@ -141,8 +136,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         super.tearDown();
         envHome = null;
@@ -158,8 +152,7 @@ public class PhantomTest extends DualTestCase {
     /**
      * Opens the environment and database.
      */
-    private void openEnv(boolean dups)
-        throws DatabaseException {
+    private void openEnv(boolean dups) throws DatabaseException {
 
         openEnv(dups, null);
     }
@@ -167,8 +160,7 @@ public class PhantomTest extends DualTestCase {
     /**
      * Opens the environment and database.
      */
-    private void openEnv(boolean dups, EnvironmentConfig envConfig)
-        throws DatabaseException {
+    private void openEnv(boolean dups, EnvironmentConfig envConfig) throws DatabaseException {
 
         this.dups = dups;
         if (envConfig == null) {
@@ -178,14 +170,10 @@ public class PhantomTest extends DualTestCase {
         }
 
         /* Disable the daemons so the don't interfere with stats. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
 
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
@@ -201,8 +189,7 @@ public class PhantomTest extends DualTestCase {
     /**
      * Closes the environment and database.
      */
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (db != null) {
             db.close();
@@ -215,8 +202,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchKey_Success()
-        throws DatabaseException {
+    public void testGetSearchKey_Success() throws DatabaseException {
 
         openEnv(false);
 
@@ -242,8 +228,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchKey_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchKey_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
 
@@ -292,8 +277,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchKey_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchKey_NotFound() throws DatabaseException, InterruptedException {
 
         openEnv(false);
 
@@ -316,8 +300,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(2);
 
         /*
-         * If serializable, getSearchKey should return NOTFOUND again;
-         * otherwise getSearchKey should see key 2.
+         * If serializable, getSearchKey should return NOTFOUND again; otherwise
+         * getSearchKey should see key 2.
          */
         if (txnSerializable) {
             assertEquals(OperationStatus.NOTFOUND, searchKey(cursor, 2));
@@ -341,8 +325,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchKey_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchKey_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
 
@@ -367,8 +350,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(1, 1);
 
         /*
-         * If serializable, getSearchKey should return NOTFOUND again;
-         * otherwise getSearchKey should see {1,1}.
+         * If serializable, getSearchKey should return NOTFOUND again; otherwise
+         * getSearchKey should see {1,1}.
          */
         if (txnSerializable) {
             assertEquals(OperationStatus.NOTFOUND, searchKey(cursor, 1, 1));
@@ -392,18 +375,16 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchBoth_Success()
-        throws DatabaseException {
+    public void testGetSearchBoth_Success() throws DatabaseException {
 
-        doTestGetSearchBoth_Success(false /*useRangeSearch*/);
+        doTestGetSearchBoth_Success(false /* useRangeSearch */);
     }
 
     /**
      * In a non-duplicates DB, getSearchBoth and getSearchBothRange are
      * equivalent.
      */
-    private void doTestGetSearchBoth_Success(boolean useRangeSearch)
-        throws DatabaseException {
+    private void doTestGetSearchBoth_Success(boolean useRangeSearch) throws DatabaseException {
 
         openEnv(false);
 
@@ -413,8 +394,7 @@ public class PhantomTest extends DualTestCase {
         /* getSearchBoth[Range] returns {2,0}. */
         Transaction readerTxn = env.beginTransaction(null, txnConfig);
         Cursor cursor = db.openCursor(readerTxn, null);
-        assertEquals(OperationStatus.SUCCESS,
-                     searchBoth(cursor, 2, 0, useRangeSearch));
+        assertEquals(OperationStatus.SUCCESS, searchBoth(cursor, 2, 0, useRangeSearch));
 
         /* Insertions are never blocked. */
         try {
@@ -430,8 +410,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchBoth_Success_Dup()
-        throws DatabaseException {
+    public void testGetSearchBoth_Success_Dup() throws DatabaseException {
 
         openEnv(true);
 
@@ -461,18 +440,16 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchBoth_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchBoth_NotFound() throws DatabaseException, InterruptedException {
 
-        doTestGetSearchBoth_NotFound(false /*useRangeSearch*/);
+        doTestGetSearchBoth_NotFound(false /* useRangeSearch */);
     }
 
     /**
      * In a non-duplicates DB, getSearchBoth and getSearchBothRange are
      * equivalent.
      */
-    private void doTestGetSearchBoth_NotFound(boolean useRangeSearch)
-        throws DatabaseException, InterruptedException {
+    private void doTestGetSearchBoth_NotFound(boolean useRangeSearch) throws DatabaseException, InterruptedException {
 
         openEnv(false);
 
@@ -482,8 +459,7 @@ public class PhantomTest extends DualTestCase {
         /* getSearchBoth for key 2 returns NOTFOUND. */
         Transaction readerTxn = env.beginTransaction(null, txnConfig);
         Cursor cursor = db.openCursor(readerTxn, null);
-        assertEquals(OperationStatus.NOTFOUND,
-                     searchBoth(cursor, 2, useRangeSearch));
+        assertEquals(OperationStatus.NOTFOUND, searchBoth(cursor, 2, useRangeSearch));
 
         /* Insertions before 2 are never blocked. */
         try {
@@ -500,11 +476,9 @@ public class PhantomTest extends DualTestCase {
          * otherwise getSearchBoth should see key 2.
          */
         if (txnSerializable) {
-            assertEquals(OperationStatus.NOTFOUND,
-                         searchBoth(cursor, 2, useRangeSearch));
+            assertEquals(OperationStatus.NOTFOUND, searchBoth(cursor, 2, useRangeSearch));
         } else {
-            assertEquals(OperationStatus.SUCCESS,
-                         searchBoth(cursor, 2, useRangeSearch));
+            assertEquals(OperationStatus.SUCCESS, searchBoth(cursor, 2, useRangeSearch));
         }
 
         /* Close reader to allow writer to finish. */
@@ -515,8 +489,7 @@ public class PhantomTest extends DualTestCase {
         /* getSearchBoth returns key 2. */
         readerTxn = env.beginTransaction(null, txnConfig);
         cursor = db.openCursor(readerTxn, null);
-        assertEquals(OperationStatus.SUCCESS,
-                     searchBoth(cursor, 2, useRangeSearch));
+        assertEquals(OperationStatus.SUCCESS, searchBoth(cursor, 2, useRangeSearch));
         cursor.close();
         readerTxn.commit();
 
@@ -524,8 +497,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchBoth_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchBoth_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
 
@@ -577,8 +549,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchKeyRange_Success()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchKeyRange_Success() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -640,8 +611,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchKeyRange_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchKeyRange_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -711,8 +681,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchKeyRange_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchKeyRange_NotFound() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -771,8 +740,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchKeyRange_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchKeyRange_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -837,14 +805,13 @@ public class PhantomTest extends DualTestCase {
     /*
      * A testGetSearchBothRange_Success test case is not possible because it is
      * not possible to insert a duplicate when only one LN for the key already
-     * exists, without locking the existing LN.  Therefore, the insert thread
+     * exists, without locking the existing LN. Therefore, the insert thread
      * will deadlock with the reader thread, which has the existing LN locked.
      * This is a testing anomoly, not a bug.
      */
 
     @Test
-    public void testGetSearchBothRange_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchBothRange_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -916,15 +883,13 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetSearchBothRange_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchBothRange_NotFound() throws DatabaseException, InterruptedException {
 
-        doTestGetSearchBoth_NotFound(true /*useRangeSearch*/);
+        doTestGetSearchBoth_NotFound(true /* useRangeSearch */);
     }
 
     @Test
-    public void testGetSearchBothRange_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetSearchBothRange_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -990,8 +955,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetFirst_Success()
-        throws DatabaseException, InterruptedException {
+    public void testGetFirst_Success() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -1048,8 +1012,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetFirst_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetFirst_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1112,8 +1075,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetFirst_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetFirst_NotFound() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -1159,8 +1121,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetFirst_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetFirst_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1207,8 +1168,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetLast_Success()
-        throws DatabaseException, InterruptedException {
+    public void testGetLast_Success() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -1236,8 +1196,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(2);
 
         /*
-         * If serializable, getLast should return key 1 again; otherwise
-         * getLast should see key 2.
+         * If serializable, getLast should return key 1 again; otherwise getLast
+         * should see key 2.
          */
         status = cursor.getLast(key, data, null);
         assertEquals(OperationStatus.SUCCESS, status);
@@ -1265,8 +1225,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetLast_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetLast_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1297,8 +1256,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(1, 3);
 
         /*
-         * If serializable, getLast should return {1,2} again; otherwise
-         * getLast should see {1,3}.
+         * If serializable, getLast should return {1,2} again; otherwise getLast
+         * should see {1,3}.
          */
         status = cursor.getLast(key, data, null);
         assertEquals(OperationStatus.SUCCESS, status);
@@ -1329,8 +1288,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetLast_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetLast_NotFound() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -1376,8 +1334,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetLast_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetLast_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1425,8 +1382,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNext_Success()
-        throws DatabaseException, InterruptedException {
+    public void testGetNext_Success() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -1457,8 +1413,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(2);
 
         /*
-         * If serializable, getNext should return key 3 again; otherwise
-         * getNext should see key 2.
+         * If serializable, getNext should return key 3 again; otherwise getNext
+         * should see key 2.
          */
         assertEquals(OperationStatus.SUCCESS, searchKey(cursor, 1));
         status = cursor.getNext(key, data, null);
@@ -1488,8 +1444,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNext_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetNext_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1523,8 +1478,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(1, 2);
 
         /*
-         * If serializable, getNext should return {1,3} again; otherwise
-         * getNext should see {1,2}.
+         * If serializable, getNext should return {1,3} again; otherwise getNext
+         * should see {1,2}.
          */
         assertEquals(OperationStatus.SUCCESS, searchBoth(cursor, 1, 1));
         status = cursor.getNext(key, data, null);
@@ -1557,8 +1512,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNext_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetNext_NotFound() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -1617,8 +1571,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNext_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetNext_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1681,8 +1634,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNextDup_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetNextDup_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1750,8 +1702,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNextDup_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetNextDup_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1818,8 +1769,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNextNoDup_Success()
-        throws DatabaseException, InterruptedException {
+    public void testGetNextNoDup_Success() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -1881,8 +1831,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNextNoDup_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetNextNoDup_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -1952,8 +1901,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNextNoDup_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetNextNoDup_NotFound() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -1981,8 +1929,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(2);
 
         /*
-         * If serializable, getNextNoDup should return NOTFOUND again;
-         * otherwise getNextNoDup should see key 2.
+         * If serializable, getNextNoDup should return NOTFOUND again; otherwise
+         * getNextNoDup should see key 2.
          */
         assertEquals(OperationStatus.SUCCESS, searchKey(cursor, 1));
         status = cursor.getNextNoDup(key, data, null);
@@ -2012,8 +1960,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetNextNoDup_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetNextNoDup_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2043,8 +1990,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(2, 1);
 
         /*
-         * If serializable, getNextNoDup should return NOTFOUND again;
-         * otherwise getNextNoDup should see {2,1}.
+         * If serializable, getNextNoDup should return NOTFOUND again; otherwise
+         * getNextNoDup should see {2,1}.
          */
         assertEquals(OperationStatus.SUCCESS, searchBoth(cursor, 1, 1));
         status = cursor.getNextNoDup(key, data, null);
@@ -2076,8 +2023,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrev_Success()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrev_Success() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -2108,8 +2054,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(2);
 
         /*
-         * If serializable, getPrev should return key 1 again; otherwise
-         * getPrev should see key 2.
+         * If serializable, getPrev should return key 1 again; otherwise getPrev
+         * should see key 2.
          */
         assertEquals(OperationStatus.SUCCESS, searchKey(cursor, 3));
         status = cursor.getPrev(key, data, null);
@@ -2139,8 +2085,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrev_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrev_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2174,8 +2119,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(1, 2);
 
         /*
-         * If serializable, getPrev should return {1,1} again; otherwise
-         * getPrev should see {1,2}.
+         * If serializable, getPrev should return {1,1} again; otherwise getPrev
+         * should see {1,2}.
          */
         assertEquals(OperationStatus.SUCCESS, searchBoth(cursor, 1, 3));
         status = cursor.getPrev(key, data, null);
@@ -2208,8 +2153,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrev_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrev_NotFound() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -2268,8 +2212,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrev_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrev_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2332,8 +2275,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrevDup_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrevDup_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2401,8 +2343,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrevDup_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrevDup_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2465,8 +2406,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrevNoDup_Success()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrevNoDup_Success() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -2528,8 +2468,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrevNoDup_Success_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrevNoDup_Success_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2599,8 +2538,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrevNoDup_NotFound()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrevNoDup_NotFound() throws DatabaseException, InterruptedException {
 
         openEnv(false);
         DatabaseEntry key = new DatabaseEntry();
@@ -2628,8 +2566,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(1);
 
         /*
-         * If serializable, getPrevNoDup should return NOTFOUND again;
-         * otherwise getPrevNoDup should see key 1.
+         * If serializable, getPrevNoDup should return NOTFOUND again; otherwise
+         * getPrevNoDup should see key 1.
          */
         assertEquals(OperationStatus.SUCCESS, searchKey(cursor, 2));
         status = cursor.getPrevNoDup(key, data, null);
@@ -2659,8 +2597,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testGetPrevNoDup_NotFound_Dup()
-        throws DatabaseException, InterruptedException {
+    public void testGetPrevNoDup_NotFound_Dup() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2690,8 +2627,8 @@ public class PhantomTest extends DualTestCase {
         startInsert(1, 1);
 
         /*
-         * If serializable, getPrevNoDup should return NOTFOUND again;
-         * otherwise getPrevNoDup should see {1,1}.
+         * If serializable, getPrevNoDup should return NOTFOUND again; otherwise
+         * getPrevNoDup should see {1,1}.
          */
         assertEquals(OperationStatus.SUCCESS, searchBoth(cursor, 2, 2));
         status = cursor.getPrevNoDup(key, data, null);
@@ -2723,8 +2660,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testIllegalTransactionConfig()
-        throws DatabaseException {
+    public void testIllegalTransactionConfig() throws DatabaseException {
 
         openEnv(false);
         TransactionConfig config = new TransactionConfig();
@@ -2742,15 +2678,14 @@ public class PhantomTest extends DualTestCase {
     /*
      * In other tests we test TransactionConfig.setReadUncommitted and
      * TransactionConfig.setSerializableIsolation to make sure they result in
-     * expected non-serializable or serializable behavior.  Below we check
+     * expected non-serializable or serializable behavior. Below we check
      * EnvironmentConfig.setSerializableIsolation,
      * CursorConfig.setSerializableIsolation, CursorConfig.setReadUncommitted
      * and LockMode.READ_UNCOMMITTED, although for a single test case only.
      */
 
     @Test
-    public void testEnvironmentConfig()
-        throws DatabaseException {
+    public void testEnvironmentConfig() throws DatabaseException {
 
         EnvironmentConfig config = TestUtils.initEnvConfig();
         /* Control over isolation level is required by this test. */
@@ -2762,8 +2697,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testCursorConfig()
-        throws DatabaseException {
+    public void testCursorConfig() throws DatabaseException {
 
         CursorConfig config = new CursorConfig();
         checkSerializable(false, null, config, null);
@@ -2773,8 +2707,7 @@ public class PhantomTest extends DualTestCase {
     }
 
     @Test
-    public void testReadUncommittedLockMode()
-        throws DatabaseException {
+    public void testReadUncommittedLockMode() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         /* Control over isolation level is required by this test. */
@@ -2784,11 +2717,9 @@ public class PhantomTest extends DualTestCase {
         checkSerializable(false, envConfig, null, LockMode.READ_UNCOMMITTED);
     }
 
-    private void checkSerializable(boolean expectSerializable,
-                                   EnvironmentConfig envConfig,
-                                   CursorConfig cursorConfig,
+    private void checkSerializable(boolean expectSerializable, EnvironmentConfig envConfig, CursorConfig cursorConfig,
                                    LockMode lockMode)
-        throws DatabaseException {
+            throws DatabaseException {
 
         openEnv(false, envConfig);
         DatabaseEntry key = new DatabaseEntry();
@@ -2829,8 +2760,7 @@ public class PhantomTest extends DualTestCase {
      * during insert.
      */
     @Test
-    public void testSingleDegree3TxnOptimization()
-        throws DatabaseException {
+    public void testSingleDegree3TxnOptimization() throws DatabaseException {
 
         openEnv(false);
 
@@ -2855,12 +2785,11 @@ public class PhantomTest extends DualTestCase {
 
     /**
      * Tests a particular getSearchBothRange bug that has come up in several
-     * contexts.  This test is probably redundant with GetSearchBothTest but
-     * I've left it here for good measure.
+     * contexts. This test is probably redundant with GetSearchBothTest but I've
+     * left it here for good measure.
      */
     @Test
-    public void testSingleDatumBug()
-        throws DatabaseException {
+    public void testSingleDatumBug() throws DatabaseException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2899,12 +2828,11 @@ public class PhantomTest extends DualTestCase {
 
     /**
      * Tests that searchKey returns SUCCESS when it must skip over a deleted
-     * duplicate.  This did not work at one point and was causing warnings
+     * duplicate. This did not work at one point and was causing warnings
      * (Cursor Not Initialized) in duplicate.conf testing.
      */
     @Test
-    public void testSearchKeySkipDeletedDup()
-        throws DatabaseException {
+    public void testSearchKeySkipDeletedDup() throws DatabaseException {
 
         openEnv(true);
 
@@ -2929,11 +2857,10 @@ public class PhantomTest extends DualTestCase {
 
     /**
      * Tests that getNextDup returns NOTFOUND when it skips over a deleted
-     * duplicate for the following main key.  [#19026]
+     * duplicate for the following main key. [#19026]
      */
     @Test
-    public void testNextAfterDupDeleteBug()
-        throws DatabaseException, InterruptedException {
+    public void testNextAfterDupDeleteBug() throws DatabaseException, InterruptedException {
 
         openEnv(true);
         DatabaseEntry key = new DatabaseEntry();
@@ -2954,13 +2881,13 @@ public class PhantomTest extends DualTestCase {
         txn.commit(Durability.COMMIT_NO_SYNC);
 
         /*
-         * When positioned on {1,1}, getNextDup should always return NOTFOUND.
-         * A bug (fixed in [#19026]) caused the cursor to move to {2,2} and
-         * return SUCCESS.  This only occurred with serializable isolation, and
-         * when the deleted {2,1} record had not been compressed. The
-         * underlying cause is that CursorImpl.getNextWithKeyChangeStatus was
-         * not indicating a key change when skipping over the first deleted
-         * duplicate ({2,1} in this case) in the duplicate set.
+         * When positioned on {1,1}, getNextDup should always return NOTFOUND. A
+         * bug (fixed in [#19026]) caused the cursor to move to {2,2} and return
+         * SUCCESS. This only occurred with serializable isolation, and when the
+         * deleted {2,1} record had not been compressed. The underlying cause is
+         * that CursorImpl.getNextWithKeyChangeStatus was not indicating a key
+         * change when skipping over the first deleted duplicate ({2,1} in this
+         * case) in the duplicate set.
          */
         txn = env.beginTransaction(null, txnConfig);
         cursor = db.openCursor(txn, null);
@@ -2976,8 +2903,7 @@ public class PhantomTest extends DualTestCase {
     /**
      * Performs getSearchKey on the given key, expects data to be zero.
      */
-    private OperationStatus searchKey(Cursor cursor, int keyVal)
-        throws DatabaseException {
+    private OperationStatus searchKey(Cursor cursor, int keyVal) throws DatabaseException {
 
         return searchKey(cursor, keyVal, 0);
     }
@@ -2985,8 +2911,7 @@ public class PhantomTest extends DualTestCase {
     /**
      * Performs getSearchKey on the given key, expects given data value.
      */
-    private OperationStatus searchKey(Cursor cursor, int keyVal, int dataVal)
-        throws DatabaseException {
+    private OperationStatus searchKey(Cursor cursor, int keyVal, int dataVal) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -3002,22 +2927,17 @@ public class PhantomTest extends DualTestCase {
     /**
      * Performs getSearchBoth on the given key and zero data.
      */
-    private OperationStatus searchBoth(Cursor cursor, int keyVal)
-        throws DatabaseException {
+    private OperationStatus searchBoth(Cursor cursor, int keyVal) throws DatabaseException {
 
         return searchBoth(cursor, keyVal, 0, false);
     }
 
     /**
-     * Performs getSearchBoth on the given key and zero data.
-     *
-     * getSearchBoth and getSearchBothRange are equivalent for a non-dup DB, so
-     * we allowing testing either.
+     * Performs getSearchBoth on the given key and zero data. getSearchBoth and
+     * getSearchBothRange are equivalent for a non-dup DB, so we allowing
+     * testing either.
      */
-    private OperationStatus searchBoth(Cursor cursor,
-                                       int keyVal,
-                                       boolean useRangeSearch)
-        throws DatabaseException {
+    private OperationStatus searchBoth(Cursor cursor, int keyVal, boolean useRangeSearch) throws DatabaseException {
 
         return searchBoth(cursor, keyVal, 0, useRangeSearch);
     }
@@ -3025,23 +2945,18 @@ public class PhantomTest extends DualTestCase {
     /**
      * Performs getSearchBoth on the given key and data.
      */
-    private OperationStatus searchBoth(Cursor cursor, int keyVal, int dataVal)
-        throws DatabaseException {
+    private OperationStatus searchBoth(Cursor cursor, int keyVal, int dataVal) throws DatabaseException {
 
         return searchBoth(cursor, keyVal, dataVal, false);
     }
 
     /**
-     * Performs getSearchBoth on the given key and data.
-     *
-     * getSearchBoth and getSearchBothRange are equivalent for a non-dup DB, so
-     * we allowing testing either.
+     * Performs getSearchBoth on the given key and data. getSearchBoth and
+     * getSearchBothRange are equivalent for a non-dup DB, so we allowing
+     * testing either.
      */
-    private OperationStatus searchBoth(Cursor cursor,
-                                       int keyVal,
-                                       int dataVal,
-                                       boolean useRangeSearch)
-        throws DatabaseException {
+    private OperationStatus searchBoth(Cursor cursor, int keyVal, int dataVal, boolean useRangeSearch)
+            throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -3063,8 +2978,7 @@ public class PhantomTest extends DualTestCase {
     /**
      * Inserts the given key in a new transaction and commits it.
      */
-    private void insert(int keyVal)
-        throws DatabaseException {
+    private void insert(int keyVal) throws DatabaseException {
 
         insert(keyVal, 0);
     }
@@ -3072,8 +2986,7 @@ public class PhantomTest extends DualTestCase {
     /**
      * Inserts the given key and data in a new transaction and commits it.
      */
-    private void insert(int keyVal, int dataVal)
-        throws DatabaseException {
+    private void insert(int keyVal, int dataVal) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -3098,8 +3011,7 @@ public class PhantomTest extends DualTestCase {
     /**
      * Starts writer thread and waits for it to start the insert.
      */
-    private void startInsert(final int keyVal)
-        throws DatabaseException, InterruptedException {
+    private void startInsert(final int keyVal) throws DatabaseException, InterruptedException {
 
         startInsert(keyVal, 0);
     }
@@ -3107,15 +3019,13 @@ public class PhantomTest extends DualTestCase {
     /**
      * Starts writer thread and waits for it to start the insert.
      */
-    private void startInsert(final int keyVal, final int dataVal)
-        throws DatabaseException, InterruptedException {
+    private void startInsert(final int keyVal, final int dataVal) throws DatabaseException, InterruptedException {
 
         EnvironmentStats origStats = env.getStats(null);
         insertFinished = false;
 
         writerThread = new JUnitThread("Writer") {
-            public void testBody()
-                throws DatabaseException {
+            public void testBody() throws DatabaseException {
                 DatabaseEntry key = new DatabaseEntry();
                 DatabaseEntry data = new DatabaseEntry();
                 OperationStatus status;

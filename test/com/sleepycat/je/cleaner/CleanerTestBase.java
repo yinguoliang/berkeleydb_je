@@ -27,16 +27,16 @@ import com.sleepycat.util.test.TestBase;
 
 public class CleanerTestBase extends TestBase {
 
-    protected final File envHome;
-    protected boolean envMultiSubDir;
-    protected Environment env;
+    protected final File       envHome;
+    protected boolean          envMultiSubDir;
+    protected Environment      env;
 
     protected static final int DATA_DIRS = 3;
-    
+
     public CleanerTestBase() {
         envHome = SharedTestUtils.getTestDir();
     }
-    
+
     public static List<Object[]> getEnv(boolean[] envMultiSubDirParams) {
         List<Object[]> list = new ArrayList<Object[]>();
         for (boolean env : envMultiSubDirParams)
@@ -46,8 +46,7 @@ public class CleanerTestBase extends TestBase {
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         if (envMultiSubDir) {
@@ -56,8 +55,7 @@ public class CleanerTestBase extends TestBase {
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
 
         try {
             if (env != null) {

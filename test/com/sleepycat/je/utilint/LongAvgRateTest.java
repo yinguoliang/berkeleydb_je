@@ -33,8 +33,7 @@ public class LongAvgRateTest extends TestBase {
     private LongAvgRate avg;
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         avg = new LongAvgRate("stat", 3000, MILLISECONDS);
@@ -116,7 +115,7 @@ public class LongAvgRateTest extends TestBase {
         assertEquals(Long.valueOf(3), avg.get());
     }
 
-    @Test(expected=NullPointerException.class)
+    @Test(expected = NullPointerException.class)
     public void testAddAverageNullArg() {
         avg.add(null);
     }

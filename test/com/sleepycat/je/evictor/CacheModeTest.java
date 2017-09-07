@@ -67,47 +67,37 @@ import com.sleepycat.util.test.TestBase;
 public class CacheModeTest extends TestBase {
 
     /* Records occupy three BINs. */
-    private static final int FIRST_REC = 0;
-    private static final int LAST_REC = 7;
-    private static final int NODE_MAX = 5;
+    private static final int FIRST_REC       = 0;
+    private static final int LAST_REC        = 7;
+    private static final int NODE_MAX        = 5;
 
-    private File envHome;
-    private Environment env;
-    private Database db;
-    private IN root;
-    private BIN[] bins;
-    private DatabaseEntry[] keys;
-    private boolean resetOnFailure;
-    private CursorConfig cursorConfig;
+    private File             envHome;
+    private Environment      env;
+    private Database         db;
+    private IN               root;
+    private BIN[]            bins;
+    private DatabaseEntry[]  keys;
+    private boolean          resetOnFailure;
+    private CursorConfig     cursorConfig;
 
-    private boolean embeddedLNs = false;
-    private boolean useOffHeapCache = false;
+    private boolean          embeddedLNs     = false;
+    private boolean          useOffHeapCache = false;
 
     @Parameterized.Parameters
     public static List<Object[]> genParams() {
         final List<Object[]> params = new ArrayList<Object[]>();
-        /*0*/ params.add(
-            new Object[] { Boolean.FALSE, Boolean.FALSE, Boolean.FALSE });
-        /*1*/ params.add(
-            new Object[] { Boolean.FALSE, Boolean.FALSE, Boolean.TRUE });
-        /*2*/ params.add(
-            new Object[] { Boolean.FALSE, Boolean.TRUE, Boolean.FALSE });
-        /*3*/ params.add(
-            new Object[] { Boolean.FALSE, Boolean.TRUE, Boolean.TRUE });
-        /*4*/ params.add(
-            new Object[] { Boolean.TRUE, Boolean.FALSE, Boolean.FALSE });
-        /*5*/ params.add(
-            new Object[] { Boolean.TRUE, Boolean.FALSE, Boolean.TRUE });
-        /*6*/ params.add(
-            new Object[] { Boolean.TRUE, Boolean.TRUE, Boolean.FALSE });
-        /*7*/ params.add(
-            new Object[] { Boolean.TRUE, Boolean.TRUE, Boolean.TRUE });
+        /* 0 */ params.add(new Object[] { Boolean.FALSE, Boolean.FALSE, Boolean.FALSE });
+        /* 1 */ params.add(new Object[] { Boolean.FALSE, Boolean.FALSE, Boolean.TRUE });
+        /* 2 */ params.add(new Object[] { Boolean.FALSE, Boolean.TRUE, Boolean.FALSE });
+        /* 3 */ params.add(new Object[] { Boolean.FALSE, Boolean.TRUE, Boolean.TRUE });
+        /* 4 */ params.add(new Object[] { Boolean.TRUE, Boolean.FALSE, Boolean.FALSE });
+        /* 5 */ params.add(new Object[] { Boolean.TRUE, Boolean.FALSE, Boolean.TRUE });
+        /* 6 */ params.add(new Object[] { Boolean.TRUE, Boolean.TRUE, Boolean.FALSE });
+        /* 7 */ params.add(new Object[] { Boolean.TRUE, Boolean.TRUE, Boolean.TRUE });
         return params;
     }
 
-    public CacheModeTest(final boolean resetOnFailure,
-                         final boolean embeddedLNs,
-                         final boolean useOffHeapCache) {
+    public CacheModeTest(final boolean resetOnFailure, final boolean embeddedLNs, final boolean useOffHeapCache) {
 
         envHome = SharedTestUtils.getTestDir();
 
@@ -115,15 +105,12 @@ public class CacheModeTest extends TestBase {
         this.embeddedLNs = embeddedLNs;
         this.useOffHeapCache = useOffHeapCache;
 
-        cursorConfig =
-            resetOnFailure ?
-            (new CursorConfig().setNonSticky(true)) :
-            null;
+        cursorConfig = resetOnFailure ? (new CursorConfig().setNonSticky(true)) : null;
     }
 
     @After
     public void tearDown() {
-        
+
         if (env != null) {
             try {
                 env.close();
@@ -151,27 +138,19 @@ public class CacheModeTest extends TestBase {
         final EnvironmentConfig envConfig = new EnvironmentConfig();
 
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.STATS_COLLECT, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.STATS_COLLECT, "false");
 
         envConfig.setOffHeapCacheSize(useOffHeapCache ? 10000000 : 0);
         /* Use one LRU list for easier testing. */
         envConfig.setConfigParam(EnvironmentConfig.EVICTOR_N_LRU_LISTS, "1");
 
         /* Force embedded LN setting. We use 1 byte data values. */
-        envConfig.setConfigParam(
-            EnvironmentConfig.TREE_MAX_EMBEDDED_LN,
-            embeddedLNs ? "1" : "0");
+        envConfig.setConfigParam(EnvironmentConfig.TREE_MAX_EMBEDDED_LN, embeddedLNs ? "1" : "0");
 
         env = new Environment(envHome, envConfig);
 
@@ -196,8 +175,7 @@ public class CacheModeTest extends TestBase {
         env.sync();
 
         /* Get root/parent IN in this two level tree. */
-        root = DbInternal.getDbImpl(db).
-               getTree().getRootIN(CacheMode.UNCHANGED);
+        root = DbInternal.getDbImpl(db).getTree().getRootIN(CacheMode.UNCHANGED);
         root.releaseLatch();
         assertEquals(root.toString(), 3, root.getNEntries());
 
@@ -209,7 +187,7 @@ public class CacheModeTest extends TestBase {
             keys[i] = new DatabaseEntry();
             keys[i].setData(bins[i].getKey(0));
             //System.out.println("key " + i + ": " +
-                               //IntegerBinding.entryToInt(keys[i]));
+            //IntegerBinding.entryToInt(keys[i]));
         }
     }
 
@@ -232,8 +210,8 @@ public class CacheModeTest extends TestBase {
 
     /**
      * Configure a tiny cache size and set a trap that fires an assertion when
-     * eviction occurs.  This is used for testing EVICT_BIN and MAKE_COLD,
-     * which should never cause critical eviction.
+     * eviction occurs. This is used for testing EVICT_BIN and MAKE_COLD, which
+     * should never cause critical eviction.
      */
     private void setEvictionTrap() {
 
@@ -242,30 +220,32 @@ public class CacheModeTest extends TestBase {
         env.setMutableConfig(envConfig);
 
         /* Fill the cache artificially. */
-        DbInternal.getNonNullEnvImpl(env).getMemoryBudget().
-            updateAdminMemoryUsage(MemoryBudget.MIN_MAX_MEMORY_SIZE);
+        DbInternal.getNonNullEnvImpl(env).getMemoryBudget().updateAdminMemoryUsage(MemoryBudget.MIN_MAX_MEMORY_SIZE);
 
         class MyHook implements TestHook<Boolean> {
             public Boolean getHookValue() {
                 fail("Eviction should not occur in EVICT_BIN mode");
                 return false; /* For compiler, will never happen. */
             }
+
             public void hookSetup() {
                 throw new UnsupportedOperationException();
             }
+
             public void doIOHook() {
                 throw new UnsupportedOperationException();
             }
+
             public void doHook() {
                 throw new UnsupportedOperationException();
             }
+
             public void doHook(Boolean obj) {
-                throw new UnsupportedOperationException();                
+                throw new UnsupportedOperationException();
             }
         }
 
-        DbInternal.getNonNullEnvImpl(env).getEvictor().setRunnableHook
-            (new MyHook());
+        DbInternal.getNonNullEnvImpl(env).getEvictor().setRunnableHook(new MyHook());
     }
 
     private void clearEvictionTrap() {
@@ -276,8 +256,8 @@ public class CacheModeTest extends TestBase {
         envConfig.setCacheSize(64 * 1024 * 1024);
         env.setMutableConfig(envConfig);
 
-        DbInternal.getNonNullEnvImpl(env).getMemoryBudget().
-            updateAdminMemoryUsage(0 - MemoryBudget.MIN_MAX_MEMORY_SIZE);
+        DbInternal.getNonNullEnvImpl(env).getMemoryBudget()
+                .updateAdminMemoryUsage(0 - MemoryBudget.MIN_MAX_MEMORY_SIZE);
     }
 
     private void readFirstAndLastRecord() {
@@ -325,10 +305,8 @@ public class CacheModeTest extends TestBase {
 
             assertTrue("" + i, i < list.size());
 
-            assertSame(
-                "expect-node=" + bins[i].getNodeId() +
-                "actual-node=" + list.get(i).getNodeId(),
-                bins[i], list.get(i));
+            assertSame("expect-node=" + bins[i].getNodeId() + "actual-node=" + list.get(i).getNodeId(), bins[i],
+                    list.get(i));
         }
     }
 
@@ -406,47 +384,30 @@ public class CacheModeTest extends TestBase {
         }
 
         /* Everything is resident, no eviction should occur with UNCHANGED. */
-        checkEvictionWithCursorScan(
-            CacheMode.UNCHANGED,
-            false /*expectLNEviction*/,
-            false /*expectBINEviction*/);
+        checkEvictionWithCursorScan(CacheMode.UNCHANGED, false /* expectLNEviction */, false /* expectBINEviction */);
 
         /* And LRU list should not change. */
         assertEquals(mruList, getMRUList());
 
         /* Evict all LNs with EVICT_LN. */
-        checkEvictionWithCursorScan(
-            CacheMode.EVICT_LN,
-            true /*expectLNEviction*/,
-            false /*expectBINEviction*/);
+        checkEvictionWithCursorScan(CacheMode.EVICT_LN, true /* expectLNEviction */, false /* expectBINEviction */);
 
         mruList = getMRUList();
 
         /* Now LNs should be evicted using UNCHANGED. */
-        checkEvictionWithCursorScan(
-            CacheMode.UNCHANGED,
-            true /*expectLNEviction*/,
-            false /*expectBINEviction*/);
+        checkEvictionWithCursorScan(CacheMode.UNCHANGED, true /* expectLNEviction */, false /* expectBINEviction */);
 
         /* But LRU list should not change. */
         assertEquals(mruList, getMRUList());
 
         /* Evict all BINs using EVICT_BIN. */
-        checkEvictionWithCursorScan(
-            CacheMode.EVICT_BIN,
-            true /*expectLNEviction*/,
-            true /*expectBINEviction*/);
+        checkEvictionWithCursorScan(CacheMode.EVICT_BIN, true /* expectLNEviction */, true /* expectBINEviction */);
 
         /* Now BINs should be evicted using UNCHANGED. */
-        checkEvictionWithCursorScan(
-            CacheMode.UNCHANGED,
-            true /*expectLNEviction*/,
-            true /*expectBINEviction*/);
+        checkEvictionWithCursorScan(CacheMode.UNCHANGED, true /* expectLNEviction */, true /* expectBINEviction */);
     }
 
-    private void checkEvictionWithCursorScan(CacheMode mode,
-                                             boolean expectLNEviction,
-                                             boolean expectBINEviction) {
+    private void checkEvictionWithCursorScan(CacheMode mode, boolean expectLNEviction, boolean expectBINEviction) {
 
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry();
@@ -524,7 +485,6 @@ public class CacheModeTest extends TestBase {
 
     /**
      * CacheMode.EVICT_LN assigns min generation to BIN but not to ancestors.
-     *
      * evicts LN, but does not evict BIN.
      */
     @Test
@@ -606,10 +566,7 @@ public class CacheModeTest extends TestBase {
         env.sync();
 
         /* Scanning with EVICT_BIN should evict all BINs. */
-        checkEvictionWithCursorScan(
-            CacheMode.EVICT_BIN,
-            true /*expectLNEviction*/,
-            true /*expectBINEviction*/);
+        checkEvictionWithCursorScan(CacheMode.EVICT_BIN, true /* expectLNEviction */, true /* expectBINEviction */);
 
         /*
          * All LNs should be evicted when accessing a dirty BIN.
@@ -617,10 +574,7 @@ public class CacheModeTest extends TestBase {
         if (!embeddedLNs) {
 
             /* Load all BINs and LNs into cache. */
-            checkEvictionWithCursorScan(
-                CacheMode.DEFAULT,
-                false /*expectLNEviction*/,
-                false /*expectBINEviction*/);
+            checkEvictionWithCursorScan(CacheMode.DEFAULT, false /* expectLNEviction */, false /* expectBINEviction */);
 
             bins[0] = (BIN) root.getTarget(0);
             bins[1] = (BIN) root.getTarget(1);
@@ -759,7 +713,7 @@ public class CacheModeTest extends TestBase {
         /*
          * With a non-sticky cursor, if we attempt an operation that may move
          * the cursor, we will always evict the LN because there is no dup
-         * cursor to compare with, to see if the position has changed.  This is
+         * cursor to compare with, to see if the position has changed. This is
          * an expected drawback of using a non-sticky cursor.
          */
         final int expectFetchWithoutPositionChange = resetOnFailure ? 1 : 0;
@@ -777,13 +731,11 @@ public class CacheModeTest extends TestBase {
         if (embeddedLNs) {
             assertEquals(0, TestUtils.getNLNsLoaded(stats));
         } else {
-            assertEquals(
-                expectFetchWithoutPositionChange,
-                TestUtils.getNLNsLoaded(stats));
+            assertEquals(expectFetchWithoutPositionChange, TestUtils.getNLNsLoaded(stats));
         }
 
         /*
-         * No fetch needed to access 1st again.  Note that no fetch occurs here
+         * No fetch needed to access 1st again. Note that no fetch occurs here
          * even with a non-sticky cursor, because getCurrent cannot move the
          * cursor.
          */
@@ -809,9 +761,7 @@ public class CacheModeTest extends TestBase {
         if (embeddedLNs) {
             assertNull(bins[0].getTarget(0));
         } else {
-            assertEquals(
-                expectFetchWithoutPositionChange,
-                TestUtils.getNLNsLoaded(stats));
+            assertEquals(expectFetchWithoutPositionChange, TestUtils.getNLNsLoaded(stats));
         }
 
         cursor.close();
@@ -820,9 +770,9 @@ public class CacheModeTest extends TestBase {
 
     /**
      * CacheMode.EVICT_BIN does not evict the BIN when two consecutive Cursor
-     * operations end up on the same BIN.  If we stay on the same BIN but move
-     * to a new LN, only the LN is evicted.  If we stay on the same LN, neither
-     * LN nor BIN is evicted.
+     * operations end up on the same BIN. If we stay on the same BIN but move to
+     * a new LN, only the LN is evicted. If we stay on the same LN, neither LN
+     * nor BIN is evicted.
      */
     @Test
     public void testEvictBinOnlyWhenMovingAway() {
@@ -917,9 +867,9 @@ public class CacheModeTest extends TestBase {
     }
 
     /**
-     * CacheMode can be set via the Environment, Database and Cursor
-     * properties.  Database CacheMode overrides Environment CacheMode.  Cursor
-     * CacheMode overrides Database and Environment CacheMode.
+     * CacheMode can be set via the Environment, Database and Cursor properties.
+     * Database CacheMode overrides Environment CacheMode. Cursor CacheMode
+     * overrides Database and Environment CacheMode.
      */
     @Test
     public void testModeProperties() {
@@ -935,59 +885,46 @@ public class CacheModeTest extends TestBase {
         assertSame(CacheMode.KEEP_HOT, cursor.getCacheMode());
         status = cursor.getFirst(key, data, null);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.KEEP_HOT,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.KEEP_HOT, DbInternal.getCursorImpl(cursor).getCacheMode());
 
         /* Then overridden by cursor. */
         cursor.setCacheMode(CacheMode.EVICT_LN);
         assertSame(CacheMode.EVICT_LN, cursor.getCacheMode());
         status = cursor.getFirst(key, data, null);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.EVICT_LN,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.EVICT_LN, DbInternal.getCursorImpl(cursor).getCacheMode());
 
         /* Then overridden by ReadOptions. */
-        OperationResult result = cursor.get(
-            key, data, Get.SEARCH,
-            new ReadOptions().setCacheMode(CacheMode.EVICT_BIN));
+        OperationResult result = cursor.get(key, data, Get.SEARCH, new ReadOptions().setCacheMode(CacheMode.EVICT_BIN));
         assertNotNull(result);
-        assertSame(CacheMode.EVICT_BIN,
-            DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.EVICT_BIN, DbInternal.getCursorImpl(cursor).getCacheMode());
 
         /* Cursor default was not changed. */
         status = cursor.getFirst(key, data, null);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.EVICT_LN,
-            DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.EVICT_LN, DbInternal.getCursorImpl(cursor).getCacheMode());
 
         /* Then overridden by WriteOptions. */
-        result = cursor.put(
-            key, data, Put.OVERWRITE,
-            new WriteOptions().setCacheMode(CacheMode.EVICT_BIN));
+        result = cursor.put(key, data, Put.OVERWRITE, new WriteOptions().setCacheMode(CacheMode.EVICT_BIN));
         assertNotNull(result);
-        assertSame(CacheMode.EVICT_BIN,
-            DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.EVICT_BIN, DbInternal.getCursorImpl(cursor).getCacheMode());
 
         /* Cursor default was not changed. */
         status = cursor.getFirst(key, data, null);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.EVICT_LN,
-            DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.EVICT_LN, DbInternal.getCursorImpl(cursor).getCacheMode());
         cursor.close();
 
         /* Env property does not apply to internal databases. */
         DbTree dbTree = DbInternal.getNonNullEnvImpl(env).getDbTree();
         DatabaseImpl dbImpl = dbTree.getDb(DbTree.ID_DB_ID);
-        BasicLocker locker =
-            BasicLocker.createBasicLocker(DbInternal.getNonNullEnvImpl(env));
+        BasicLocker locker = BasicLocker.createBasicLocker(DbInternal.getNonNullEnvImpl(env));
         cursor = DbInternal.makeCursor(dbImpl, locker, null);
         assertSame(CacheMode.DEFAULT, cursor.getCacheMode());
-        assertSame(CacheMode.DEFAULT,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.DEFAULT, DbInternal.getCursorImpl(cursor).getCacheMode());
         cursor.getFirst(new DatabaseEntry(), new DatabaseEntry(), null);
         assertSame(CacheMode.DEFAULT, cursor.getCacheMode());
-        assertSame(CacheMode.DEFAULT,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.DEFAULT, DbInternal.getCursorImpl(cursor).getCacheMode());
         cursor.close();
         locker.operationEnd();
         dbTree.releaseDb(dbImpl);
@@ -1003,16 +940,14 @@ public class CacheModeTest extends TestBase {
         data.setData(new byte[1]);
         status = cursor.put(key, data);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.MAKE_COLD,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.MAKE_COLD, DbInternal.getCursorImpl(cursor).getCacheMode());
 
         /* Then overridden by cursor. */
         cursor.setCacheMode(CacheMode.EVICT_LN);
         assertSame(CacheMode.EVICT_LN, cursor.getCacheMode());
         status = cursor.getFirst(key, data, null);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.EVICT_LN,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.EVICT_LN, DbInternal.getCursorImpl(cursor).getCacheMode());
         cursor.close();
 
         /* Opening another handle on the db will override the property. */
@@ -1022,8 +957,7 @@ public class CacheModeTest extends TestBase {
         assertSame(CacheMode.DEFAULT, cursor.getCacheMode());
         status = cursor.getFirst(key, data, null);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.DEFAULT,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.DEFAULT, DbInternal.getCursorImpl(cursor).getCacheMode());
         cursor.close();
 
         /* Open another handle, set mode to null, close immediately. */
@@ -1035,8 +969,7 @@ public class CacheModeTest extends TestBase {
         assertSame(CacheMode.KEEP_HOT, cursor.getCacheMode());
         status = cursor.getFirst(key, data, null);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.KEEP_HOT,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.KEEP_HOT, DbInternal.getCursorImpl(cursor).getCacheMode());
         cursor.close();
 
         /* Set env property to null, DEFAULT is then used. */
@@ -1045,8 +978,7 @@ public class CacheModeTest extends TestBase {
         assertSame(CacheMode.DEFAULT, cursor.getCacheMode());
         status = cursor.getFirst(key, data, null);
         assertSame(OperationStatus.SUCCESS, status);
-        assertSame(CacheMode.DEFAULT,
-                   DbInternal.getCursorImpl(cursor).getCacheMode());
+        assertSame(CacheMode.DEFAULT, DbInternal.getCursorImpl(cursor).getCacheMode());
         cursor.close();
 
         db3.close();

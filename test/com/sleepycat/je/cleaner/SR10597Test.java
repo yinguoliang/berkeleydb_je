@@ -39,7 +39,7 @@ import com.sleepycat.je.util.TestUtils;
 @RunWith(Parameterized.class)
 public class SR10597Test extends CleanerTestBase {
 
-    private static final String DB_NAME = "foo";
+    private static final String           DB_NAME     = "foo";
 
     private static final CheckpointConfig forceConfig = new CheckpointConfig();
     static {
@@ -51,27 +51,20 @@ public class SR10597Test extends CleanerTestBase {
     /**
      * Opens the environment and database.
      */
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig config = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(config);
         config.setAllowCreate(true);
         /* Do not run the daemons. */
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         /* Use a small log file size to make cleaning more frequent. */
-        config.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                              Integer.toString(1024));
+        config.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(1024));
         if (envMultiSubDir) {
-            config.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                  DATA_DIRS + "");
+            config.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, config);
 
@@ -80,20 +73,19 @@ public class SR10597Test extends CleanerTestBase {
 
     public SR10597Test(boolean multiSubDir) {
         envMultiSubDir = multiSubDir;
-        customName = envMultiSubDir ? "multi-sub-dir" : null ;
+        customName = envMultiSubDir ? "multi-sub-dir" : null;
     }
-    
+
     @Parameters
     public static List<Object[]> genParams() {
-        
-        return getEnv(new boolean[] {false, true});
+
+        return getEnv(new boolean[] { false, true });
     }
-    
+
     /**
      * Opens that database.
      */
-    private void openDb()
-        throws DatabaseException {
+    private void openDb() throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -104,8 +96,7 @@ public class SR10597Test extends CleanerTestBase {
     /**
      * Closes the environment and database.
      */
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (db != null) {
             db.close();
@@ -120,8 +111,7 @@ public class SR10597Test extends CleanerTestBase {
     /**
      */
     @Test
-    public void testSR10597()
-        throws DatabaseException {
+    public void testSR10597() throws DatabaseException {
 
         openEnv();
 
@@ -134,8 +124,7 @@ public class SR10597Test extends CleanerTestBase {
             db.put(null, key, data);
         }
         Cursor cursor = db.openCursor(null, null);
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchKey(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(key, data, null));
         assertEquals(COUNT, cursor.count());
         cursor.close();
 
@@ -154,11 +143,10 @@ public class SR10597Test extends CleanerTestBase {
 
         /*
          * Before the fix to 10597, when cleaning the log we would be looking
-         * for an LN with containsDuplicates=true.  We assumed that when we
-         * found the BIN entry, it must point to a DIN.  But because we
-         * deleted and compressed above, the entry is actually an LN.  This
-         * caused a ClassCastException at the bottom of
-         * Tree.getParentBINForChildLN.
+         * for an LN with containsDuplicates=true. We assumed that when we found
+         * the BIN entry, it must point to a DIN. But because we deleted and
+         * compressed above, the entry is actually an LN. This caused a
+         * ClassCastException at the bottom of Tree.getParentBINForChildLN.
          */
         closeEnv();
     }

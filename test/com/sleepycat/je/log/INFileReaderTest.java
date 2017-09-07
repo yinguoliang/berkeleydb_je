@@ -51,17 +51,16 @@ public class INFileReaderTest extends TestBase {
 
     static private final boolean DEBUG = false;
 
-    private final File envHome;
-    private Environment env;
-    
+    private final File           envHome;
+    private Environment          env;
+
     /*
-     * Need a handle onto the true environment in order to create
-     * a reader
+     * Need a handle onto the true environment in order to create a reader
      */
-    private EnvironmentImpl envImpl;
-    private Database db;
-    private long maxNodeId;
-    private List<CheckInfo> checkList;
+    private EnvironmentImpl      envImpl;
+    private Database             db;
+    private long                 maxNodeId;
+    private List<CheckInfo>      checkList;
 
     public INFileReaderTest() {
         super();
@@ -70,22 +69,20 @@ public class INFileReaderTest extends TestBase {
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         /*
          * Note that we use the official Environment class to make the
-         * environment, so that everything is set up, but we then go a
-         * backdoor route to get to the underlying EnvironmentImpl class
-         * so that we don't require that the Environment.getDbEnvironment
-         * method be unnecessarily public.
+         * environment, so that everything is set up, but we then go a backdoor
+         * route to get to the underlying EnvironmentImpl class so that we don't
+         * require that the Environment.getDbEnvironment method be unnecessarily
+         * public.
          */
         super.setUp();
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
-        envConfig.setConfigParam
-            (EnvironmentParams.BIN_DELTA_PERCENT.getName(), "75");
+        envConfig.setConfigParam(EnvironmentParams.BIN_DELTA_PERCENT.getName(), "75");
         envConfig.setAllowCreate(true);
 
         /* Disable noisy cleaner database usage. */
@@ -93,18 +90,16 @@ public class INFileReaderTest extends TestBase {
         DbInternal.setCreateUP(envConfig, false);
         DbInternal.setCheckpointUP(envConfig, false);
         /* Don't run the cleaner without a UtilizationProfile. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
 
         env = new Environment(envHome, envConfig);
 
-        envImpl =DbInternal.getNonNullEnvImpl(env);
+        envImpl = DbInternal.getNonNullEnvImpl(env);
 
     }
 
     @After
-    public void tearDown()
-        throws DatabaseException {
+    public void tearDown() throws DatabaseException {
 
         envImpl = null;
         env.close();
@@ -114,13 +109,11 @@ public class INFileReaderTest extends TestBase {
      * Test no log file
      */
     @Test
-    public void testNoFile()
-        throws DatabaseException {
+    public void testNoFile() throws DatabaseException {
 
         /* Make a log file with a valid header, but no data. */
-        INFileReader reader = new INFileReader
-            (envImpl, 1000, DbLsn.NULL_LSN, DbLsn.NULL_LSN, false,
-             DbLsn.NULL_LSN, DbLsn.NULL_LSN, null);
+        INFileReader reader = new INFileReader(envImpl, 1000, DbLsn.NULL_LSN, DbLsn.NULL_LSN, false, DbLsn.NULL_LSN,
+                DbLsn.NULL_LSN, null);
         reader.addTargetType(LogEntryType.LOG_IN);
         reader.addTargetType(LogEntryType.LOG_BIN);
         reader.addTargetType(LogEntryType.LOG_IN_DELETE_INFO);
@@ -136,8 +129,7 @@ public class INFileReaderTest extends TestBase {
      * Run with an empty file
      */
     @Test
-    public void testEmpty()
-        throws IOException, DatabaseException {
+    public void testEmpty() throws IOException, DatabaseException {
 
         /* Make a log file with a valid header, but no data. */
         FileManager fileManager = envImpl.getFileManager();
@@ -145,9 +137,8 @@ public class INFileReaderTest extends TestBase {
         FileManagerTestUtils.createLogFile(fileManager, envImpl, 10000);
         fileManager.clear();
 
-        INFileReader reader = new INFileReader
-            (envImpl, 1000, DbLsn.NULL_LSN, DbLsn.NULL_LSN, false,
-             DbLsn.NULL_LSN, DbLsn.NULL_LSN, null);
+        INFileReader reader = new INFileReader(envImpl, 1000, DbLsn.NULL_LSN, DbLsn.NULL_LSN, false, DbLsn.NULL_LSN,
+                DbLsn.NULL_LSN, null);
         reader.addTargetType(LogEntryType.LOG_IN);
         reader.addTargetType(LogEntryType.LOG_BIN);
         reader.addTargetType(LogEntryType.LOG_IN_DELETE_INFO);
@@ -163,44 +154,35 @@ public class INFileReaderTest extends TestBase {
      * Run with defaults, read whole log
      */
     @Test
-    public void testBasic()
-        throws IOException, DatabaseException {
+    public void testBasic() throws IOException, DatabaseException {
 
         DbConfigManager cm = envImpl.getConfigManager();
-        doTest(50,
-               cm.getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE),
-               0,
-               false);
+        doTest(50, cm.getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE), 0, false);
     }
 
     /**
      * Run with very small buffers and track IDs
      */
     @Test
-    public void testTracking()
-        throws IOException, DatabaseException {
+    public void testTracking() throws IOException, DatabaseException {
 
         doTest(50, // num iterations
-               10, // tiny buffer
-               0, // start lsn index
-               true); // track ids
+                10, // tiny buffer
+                0, // start lsn index
+                true); // track ids
     }
 
     /**
      * Start in the middle of the file
      */
     @Test
-    public void testMiddleStart()
-        throws IOException, DatabaseException {
+    public void testMiddleStart() throws IOException, DatabaseException {
 
         doTest(50, 100, 40, true);
     }
 
-    private void doTest(int numIters,
-                        int bufferSize,
-                        int startLsnIndex,
-                        boolean trackIds)
-        throws IOException, DatabaseException {
+    private void doTest(int numIters, int bufferSize, int startLsnIndex, boolean trackIds)
+            throws IOException, DatabaseException {
 
         /* Fill up a fake log file. */
         createLogFile(numIters);
@@ -214,13 +196,10 @@ public class INFileReaderTest extends TestBase {
         }
 
         /* Use an empty utilization map for testing tracking. */
-        RecoveryUtilizationTracker tracker = trackIds ?
-            (new RecoveryUtilizationTracker(envImpl)) : null;
+        RecoveryUtilizationTracker tracker = trackIds ? (new RecoveryUtilizationTracker(envImpl)) : null;
 
-        INFileReader reader =
-            new INFileReader(envImpl, bufferSize, startLsn, DbLsn.NULL_LSN,
-                             trackIds, DbLsn.NULL_LSN,
-                             DbLsn.NULL_LSN, tracker);
+        INFileReader reader = new INFileReader(envImpl, bufferSize, startLsn, DbLsn.NULL_LSN, trackIds, DbLsn.NULL_LSN,
+                DbLsn.NULL_LSN, tracker);
         reader.addTargetType(LogEntryType.LOG_IN);
         reader.addTargetType(LogEntryType.LOG_BIN);
         reader.addTargetType(LogEntryType.LOG_BIN_DELTA);
@@ -233,8 +212,7 @@ public class INFileReaderTest extends TestBase {
     /**
      * Write a logfile of entries, then read the end
      */
-    private void createLogFile(int numIters)
-        throws IOException, DatabaseException {
+    private void createLogFile(int numIters) throws IOException, DatabaseException {
 
         /*
          * Create a log file full of INs, BIN-deltas and Debug Records
@@ -276,54 +254,40 @@ public class INFileReaderTest extends TestBase {
             checkList.add(new CheckInfo(lsn, bin));
 
             /* Add provisional entries, which should get ignored. */
-            bin.log(
-                false /*allowDeltas*/, true /*isProvisional*/,
-                false /*backgroundIO*/, in);
+            bin.log(false /* allowDeltas */, true /* isProvisional */, false /* backgroundIO */, in);
 
             bin.releaseLatch();
 
             /* Add a LN, to stress the node tracking. */
             LN ln = LN.makeLN(envImpl, data);
-            ln.log(
-                envImpl, DbInternal.getDbImpl(db),
-                null /*locker*/, null /*writeLockInfo*/,
-                false /*newEmbeddedLN*/, key,
-                0 /*newExpiration*/, false /*newExpirationInHours*/,
-                false /*currEmbeddedLN*/, DbLsn.NULL_LSN /*currLsn*/,
-                0 /*currSize*/, true /*isInsertion*/,
-                false, ReplicationContext.NO_REPLICATE);
+            ln.log(envImpl, DbInternal.getDbImpl(db), null /* locker */, null /* writeLockInfo */,
+                    false /* newEmbeddedLN */, key, 0 /* newExpiration */, false /* newExpirationInHours */,
+                    false /* currEmbeddedLN */, DbLsn.NULL_LSN /* currLsn */, 0 /* currSize */, true /* isInsertion */,
+                    false, ReplicationContext.NO_REPLICATE);
 
             /*
              * Add an BIN-delta. Generate it by making the first, full version
-             * provisional so the test doesn't pick it up, and then log a
-             * delta.
+             * provisional so the test doesn't pick it up, and then log a delta.
              */
-            BIN binDeltaBin =
-                new BIN(DbInternal.getDbImpl(db), key, 10, 1);
+            BIN binDeltaBin = new BIN(DbInternal.getDbImpl(db), key, 10, 1);
             maxNodeId = binDeltaBin.getNodeId();
             binDeltaBin.latch();
 
             assertTrue(binDeltaBin.insertEntry(null, key, DbLsn.makeLsn(0, 0)));
 
-            binDeltaBin.log(
-                false /*allowDeltas*/, true /*isProvisional*/,
-                false /*backgroundIO*/, in);
+            binDeltaBin.log(false /* allowDeltas */, true /* isProvisional */, false /* backgroundIO */, in);
 
             /* Modify the bin with one entry so there can be a delta. */
 
             byte[] keyBuf2 = new byte[2];
             Arrays.fill(keyBuf2, (byte) (i + 2));
 
-            assertTrue(binDeltaBin.insertEntry(
-                null, keyBuf2, DbLsn.makeLsn(100, 101)));
+            assertTrue(binDeltaBin.insertEntry(null, keyBuf2, DbLsn.makeLsn(100, 101)));
 
-            binDeltaBin.log(
-                true /*allowDeltas*/, false /*isProvisional*/,
-                false /*backgroundIO*/, in);
+            binDeltaBin.log(true /* allowDeltas */, false /* isProvisional */, false /* backgroundIO */, in);
             lsn = binDeltaBin.getLastLoggedLsn();
             if (DEBUG) {
-                System.out.println("delta =" + binDeltaBin.getNodeId() +
-                                   " at LSN " + lsn);
+                System.out.println("delta =" + binDeltaBin.getNodeId() + " at LSN " + lsn);
             }
             checkList.add(new CheckInfo(lsn, binDeltaBin));
 
@@ -337,10 +301,7 @@ public class INFileReaderTest extends TestBase {
         envImpl.getFileManager().clear();
     }
 
-    private void checkLogFile(INFileReader reader,
-                              int checkIndex,
-                              boolean checkMaxNodeId)
-        throws DatabaseException {
+    private void checkLogFile(INFileReader reader, int checkIndex, boolean checkMaxNodeId) throws DatabaseException {
 
         try {
             /* Read all the INs. */
@@ -348,20 +309,15 @@ public class INFileReaderTest extends TestBase {
 
             while (reader.readNextEntry()) {
                 if (DEBUG) {
-                    System.out.println("i = "
-                                       + i
-                                       + " reader.isDeleteInfo="
-                                       + reader.isDeleteInfo()
-                                       + " LSN = "
-                                       + reader.getLastLsn());
+                    System.out.println("i = " + i + " reader.isDeleteInfo=" + reader.isDeleteInfo() + " LSN = "
+                            + reader.getLastLsn());
                 }
 
                 CheckInfo check = checkList.get(i);
 
                 /*
-                 * When comparing the check data against the data from the
-                 * log, make the dirty bits match so that they compare
-                 * equal.
+                 * When comparing the check data against the data from the log,
+                 * make the dirty bits match so that they compare equal.
                  */
                 IN inFromLog = reader.getIN(DbInternal.getDbImpl(db));
 
@@ -370,7 +326,7 @@ public class INFileReaderTest extends TestBase {
                 inFromLog.latch(CacheMode.UNCHANGED);
 
                 if (inFromLog.isBINDelta()) {
-                    inFromLog.mutateToFullBIN(false /*leaveFreeSlot*/);
+                    inFromLog.mutateToFullBIN(false /* leaveFreeSlot */);
                 }
 
                 inFromLog.setDirty(true);
@@ -382,11 +338,10 @@ public class INFileReaderTest extends TestBase {
                 testIN.releaseLatch();
 
                 /*
-                 * Only check the INs we created in the test. (The others
-                 * are from the map db.
+                 * Only check the INs we created in the test. (The others are
+                 * from the map db.
                  */
-                if (reader.getDatabaseId().
-                    equals(DbInternal.getDbImpl(db).getId())) {
+                if (reader.getDatabaseId().equals(DbInternal.getDbImpl(db).getId())) {
                     // The IN should match
                     String inFromLogString = inFromLog.toString();
                     String testINString = testIN.toString();
@@ -395,23 +350,12 @@ public class INFileReaderTest extends TestBase {
                         System.out.println("inFromLog=" + inFromLogString);
                     }
 
-                    assertEquals("IN "
-                                 + inFromLog.getNodeId()
-                                 + " at index "
-                                 + i
-                                 + " should match.\nTestIN=" +
-                                 testIN +
-                                 "\nLogIN=" +
-                                 inFromLog,
-                                 testINString,
-                                 inFromLogString);
+                    assertEquals("IN " + inFromLog.getNodeId() + " at index " + i + " should match.\nTestIN=" + testIN
+                            + "\nLogIN=" + inFromLog, testINString, inFromLogString);
                 }
 
                 /* The LSN should match. */
-                assertEquals
-                    ("LSN " + i + " should match",
-                     check.lsn,
-                     reader.getLastLsn());
+                assertEquals("LSN " + i + " should match", check.lsn, reader.getLastLsn());
 
                 i++;
             }
@@ -426,7 +370,7 @@ public class INFileReaderTest extends TestBase {
 
     private class CheckInfo {
         long lsn;
-        IN in;
+        IN   in;
 
         CheckInfo(long lsn, IN in) {
             this.lsn = lsn;

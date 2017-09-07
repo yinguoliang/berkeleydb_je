@@ -44,89 +44,84 @@ import com.sleepycat.je.util.TestUtils;
 
 /**
  * Tests for multithreading problems when using read-uncommitted with
- * secondaries.  If a primary record is updated while performing a
+ * secondaries. If a primary record is updated while performing a
  * read-uncommitted (in between reading the secondary and the primary), we need
- * to be sure that we don't return inconsistent results to the user.  For
+ * to be sure that we don't return inconsistent results to the user. For
  * example, we should not return a primary data value that no longer contains
- * the secondary key.  We also need to ensure that deleting a primary record in
- * the middle of a secondary read does not appear as a corrupt secondary.  In
- * both of these cases it should appear that the record does not exist, from
- * the viewpoint of an application using a cursor.
- *
- * <p>These tests create two threads, one reading and the other deleting or
- * updating.  The intention is for the reading thread and delete/update thread
- * to race in operating on the same key (nextKey).  If the reading thread reads
- * the secondary, then the other thread deletes the primary, then the reading
- * thread tries to read the primary, we've accomplished our goal.  Prior to
- * when we handled that case in SecondaryCursor, that situation would cause a
- * "secondary corrupt" exception.</p>
+ * the secondary key. We also need to ensure that deleting a primary record in
+ * the middle of a secondary read does not appear as a corrupt secondary. In
+ * both of these cases it should appear that the record does not exist, from the
+ * viewpoint of an application using a cursor.
+ * <p>
+ * These tests create two threads, one reading and the other deleting or
+ * updating. The intention is for the reading thread and delete/update thread to
+ * race in operating on the same key (nextKey). If the reading thread reads the
+ * secondary, then the other thread deletes the primary, then the reading thread
+ * tries to read the primary, we've accomplished our goal. Prior to when we
+ * handled that case in SecondaryCursor, that situation would cause a
+ * "secondary corrupt" exception.
+ * </p>
  */
 @RunWith(Parameterized.class)
 public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
 
-    private static final int MAX_KEY =
-        SharedTestUtils.runLongTests() ? 500000 : 1000;
-    private static final int N_DUPS = 3;
+    private static final int  MAX_KEY = SharedTestUtils.runLongTests() ? 500000 : 1000;
+    private static final int  N_DUPS  = 3;
 
-    private volatile int nextKey;
-    private Database priDb;
+    private volatile int      nextKey;
+    private Database          priDb;
     private SecondaryDatabase secDb;
-    private final LockMode lockMode;
-    private final boolean dups;
+    private final LockMode    lockMode;
+    private final boolean     dups;
 
     @Parameters
     public static List<Object[]> genParams() {
-        
+
         return paramsHelper(false);
     }
-    
+
     protected static List<Object[]> paramsHelper(boolean rep) {
         final String[] txnTypes = getTxnTypes(null, rep);
         final List<Object[]> newParams = new ArrayList<Object[]>();
         for (final String type : txnTypes) {
-            newParams.add(new Object[] {type, true, true, false});
-            newParams.add(new Object[] {type, false, true, false});
-            newParams.add(new Object[] {type, false, false, false});
-            newParams.add(new Object[] {type, true, false, false});
-            newParams.add(new Object[] {type, false, true, true});
-            newParams.add(new Object[] {type, false, false, true});
+            newParams.add(new Object[] { type, true, true, false });
+            newParams.add(new Object[] { type, false, true, false });
+            newParams.add(new Object[] { type, false, false, false });
+            newParams.add(new Object[] { type, true, false, false });
+            newParams.add(new Object[] { type, false, true, true });
+            newParams.add(new Object[] { type, false, false, true });
         }
         return newParams;
     }
-    
-    public SecondaryDirtyReadTest(String type, 
-                                  boolean multiKey, 
-                                  boolean duplicates,
-                                  boolean dirtyReadAll){
+
+    public SecondaryDirtyReadTest(String type, boolean multiKey, boolean duplicates, boolean dirtyReadAll) {
         initEnvConfig();
-        txnType =type;
+        txnType = type;
         useMultiKey = multiKey;
         isTransactional = (txnType != TXN_NULL);
         dups = duplicates;
-        lockMode = dirtyReadAll ?
-            LockMode.READ_UNCOMMITTED_ALL :
-            LockMode.READ_UNCOMMITTED;
-        customName = ((useMultiKey) ? "multiKey" : "") +
-                     "-" + txnType + "-" + dups;
+        lockMode = dirtyReadAll ? LockMode.READ_UNCOMMITTED_ALL : LockMode.READ_UNCOMMITTED;
+        customName = ((useMultiKey) ? "multiKey" : "") + "-" + txnType + "-" + dups;
     }
-    
+
     /**
      * Closes databases, then calls the super.tearDown to close the env.
      */
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         if (secDb != null) {
             try {
                 secDb.close();
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
             secDb = null;
         }
         if (priDb != null) {
             try {
                 priDb.close();
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
             priDb = null;
         }
         super.tearDown();
@@ -137,21 +132,19 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
      * read-uncommitted to throw a "secondary corrupt" exception.
      */
     @Test
-    public void testDeleteWhileReadingByKey()
-        throws Throwable {
+    public void testDeleteWhileReadingByKey() throws Throwable {
 
         doTest("runReadUncommittedByKey", "runPrimaryDelete");
     }
 
     /**
-     * Same as testDeleteWhileReadingByKey but does a scan.  Read-uncommitted
-     * for scan and keyed reads are implemented differently, since scanning
-     * moves to the next record when a deletion is detected while a keyed read
-     * returns NOTFOUND.
+     * Same as testDeleteWhileReadingByKey but does a scan. Read-uncommitted for
+     * scan and keyed reads are implemented differently, since scanning moves to
+     * the next record when a deletion is detected while a keyed read returns
+     * NOTFOUND.
      */
     @Test
-    public void testDeleteWhileScanning()
-        throws Throwable {
+    public void testDeleteWhileScanning() throws Throwable {
 
         doTest("runReadUncommittedScan", "runPrimaryDelete");
     }
@@ -160,8 +153,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
      * Same as testDeleteWhileScanning but additionally does a join.
      */
     @Test
-    public void testDeleteWithJoin()
-        throws Throwable {
+    public void testDeleteWithJoin() throws Throwable {
 
         doTest("runReadUncommittedJoin", "runPrimaryDelete");
     }
@@ -172,8 +164,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
      * inconsistent data (a primary datum without a secondary key value).
      */
     @Test
-    public void testUpdateWhileReadingByKey()
-        throws Throwable {
+    public void testUpdateWhileReadingByKey() throws Throwable {
 
         doTest("runReadUncommittedByKey", "runPrimaryUpdate");
     }
@@ -182,8 +173,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
      * Same as testUpdateWhileReadingByKey but does a scan.
      */
     @Test
-    public void testUpdateWhileScanning()
-        throws Throwable {
+    public void testUpdateWhileScanning() throws Throwable {
 
         doTest("runReadUncommittedScan", "runPrimaryUpdate");
     }
@@ -192,37 +182,30 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
      * Same as testUpdateWhileScanning but additionally does a join.
      */
     @Test
-    public void testUpdateWithJoin()
-        throws Throwable {
+    public void testUpdateWithJoin() throws Throwable {
 
         doTest("runReadUncommittedJoin", "runPrimaryUpdate");
     }
 
     @Test
-    public void testAlternatingInsertDelete()
-        throws Throwable {
+    public void testAlternatingInsertDelete() throws Throwable {
 
-        doTest("runReadFirstRecordByKey", "runAlternatingInsertDelete",
-               false /*doAddRecords*/);
+        doTest("runReadFirstRecordByKey", "runAlternatingInsertDelete", false /* doAddRecords */);
     }
 
-    private void doTest(String method1, String method2)
-        throws Throwable {
+    private void doTest(String method1, String method2) throws Throwable {
 
-        doTest(method1, method2, true /*doAddRecords*/);
+        doTest(method1, method2, true /* doAddRecords */);
     }
 
     /**
      * Runs two threads for the given method names, after populating the
      * database.
      */
-    private void doTest(String method1, String method2, boolean doAddRecords)
-        throws Throwable {
+    private void doTest(String method1, String method2, boolean doAddRecords) throws Throwable {
 
-        JUnitMethodThread tester1 = new JUnitMethodThread(method1 + "-t1",
-                                                          method1, this);
-        JUnitMethodThread tester2 = new JUnitMethodThread(method2 + "-t2",
-                                                          method2, this);
+        JUnitMethodThread tester1 = new JUnitMethodThread(method1 + "-t1", method1, this);
+        JUnitMethodThread tester2 = new JUnitMethodThread(method2 + "-t2", method2, this);
         priDb = openPrimary("testDB");
         secDb = openSecondary(priDb, "testSecDB");
         if (doAddRecords) {
@@ -241,8 +224,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
     /**
      * Deletes the key that is being read by the other thread.
      */
-    public void runPrimaryDelete()
-        throws DatabaseException {
+    public void runPrimaryDelete() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         while (nextKey < MAX_KEY - 1) {
@@ -252,8 +234,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
             OperationStatus status;
             if ((nextKey & 1) == 0) {
                 final Cursor cursor = priDb.openCursor(txn, null);
-                status = cursor.getSearchKey(key, new DatabaseEntry(),
-                                             LockMode.RMW);
+                status = cursor.getSearchKey(key, new DatabaseEntry(), LockMode.RMW);
                 if (status == OperationStatus.SUCCESS) {
                     status = cursor.delete();
                 }
@@ -270,11 +251,10 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
 
     /**
      * Updates the record for the key that is being read by the other thread,
-     * changing the datum to -1 so it will cause the secondary key record to
-     * be deleted.
+     * changing the datum to -1 so it will cause the secondary key record to be
+     * deleted.
      */
-    public void runPrimaryUpdate()
-        throws DatabaseException {
+    public void runPrimaryUpdate() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -290,19 +270,17 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
 
     /**
      * Does a read-uncommitted by key, retrying until it is deleted by the
-     * delete/update thread, then moves to the next key.  We shouldn't get an
+     * delete/update thread, then moves to the next key. We shouldn't get an
      * exception, just a NOTFOUND when it is deleted.
      */
-    public void runReadUncommittedByKey()
-        throws DatabaseException {
+    public void runReadUncommittedByKey() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry pKey = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         while (nextKey < MAX_KEY - 1) {
             key.setData(TestUtils.getTestArray(nextKey));
-            OperationStatus status = secDb.get(null, key, pKey, data,
-                                               lockMode);
+            OperationStatus status = secDb.get(null, key, pKey, data, lockMode);
             if (status != OperationStatus.SUCCESS) {
                 assertEquals(OperationStatus.NOTFOUND, status);
                 nextKey += 1;
@@ -318,33 +296,28 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
 
     /**
      * Does a read-uncommitted scan through the whole key range, but moves
-     * forward only after the key is deleted by the delete/update thread.  We
+     * forward only after the key is deleted by the delete/update thread. We
      * shouldn't get an exception or a NOTFOUND, but we may skip values when a
      * key is deleted.
      */
-    public void runReadUncommittedScan()
-        throws DatabaseException {
+    public void runReadUncommittedScan() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry pKey = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         SecondaryCursor cursor = secDb.openSecondaryCursor(null, null);
         while (nextKey < MAX_KEY - 1) {
-            OperationStatus status = cursor.getNext(key, pKey, data,
-                                                    lockMode);
-            assertEquals("nextKey=" + nextKey,
-                         OperationStatus.SUCCESS, status);
+            OperationStatus status = cursor.getNext(key, pKey, data, lockMode);
+            assertEquals("nextKey=" + nextKey, OperationStatus.SUCCESS, status);
             int keyFound = TestUtils.getTestVal(pKey.getData());
             assertEquals(keyFound, TestUtils.getTestVal(data.getData()));
-            assertEquals(getSecKey(keyFound),
-                         TestUtils.getTestVal(key.getData()));
+            assertEquals(getSecKey(keyFound), TestUtils.getTestVal(key.getData()));
             /* Let the delete/update thread catch up. */
             nextKey = keyFound;
             if (nextKey < MAX_KEY - 1) {
                 while (status != OperationStatus.KEYEMPTY) {
                     assertEquals(OperationStatus.SUCCESS, status);
-                    status = cursor.getCurrent(key, pKey, data,
-                                               lockMode);
+                    status = cursor.getCurrent(key, pKey, data, lockMode);
                 }
                 nextKey = keyFound + 1;
             }
@@ -356,8 +329,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
      * Like runReadUncommittedScan, but also performs a join on each secondary
      * key.
      */
-    public void runReadUncommittedJoin()
-        throws DatabaseException {
+    public void runReadUncommittedJoin() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry pKey = new DatabaseEntry();
@@ -367,28 +339,23 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
         SecondaryCursor cursor = secDb.openSecondaryCursor(null, null);
         while (nextKey < MAX_KEY - 1) {
             OperationStatus status = cursor.getNext(key, pKey, data, lockMode);
-            assertEquals("nextKey=" + nextKey,
-                         OperationStatus.SUCCESS, status);
+            assertEquals("nextKey=" + nextKey, OperationStatus.SUCCESS, status);
             int keyFound = TestUtils.getTestVal(pKey.getData());
             assertEquals(keyFound, TestUtils.getTestVal(data.getData()));
-            assertEquals(getSecKey(keyFound),
-                         TestUtils.getTestVal(key.getData()));
+            assertEquals(getSecKey(keyFound), TestUtils.getTestVal(key.getData()));
 
-            /* Do a join on this value.  Use two cursors for the same DB. */
-            SecondaryCursor cursor2 = cursor.dup(true /*samePosition*/);
-            JoinCursor joinCursor =
-                priDb.join(new Cursor[] { cursor, cursor2 }, null);
+            /* Do a join on this value. Use two cursors for the same DB. */
+            SecondaryCursor cursor2 = cursor.dup(true /* samePosition */);
+            JoinCursor joinCursor = priDb.join(new Cursor[] { cursor, cursor2 }, null);
             int nDups = 0;
-            OperationStatus joinStatus =
-                joinCursor.getNext(joinPKey, joinData, lockMode);
+            OperationStatus joinStatus = joinCursor.getNext(joinPKey, joinData, lockMode);
             while (joinStatus == OperationStatus.SUCCESS) {
                 assertEquals(getSecKey(keyFound), getSecKey(joinPKey));
                 assertEquals(getSecKey(keyFound), getSecKey(joinData));
                 joinStatus = joinCursor.getNext(joinPKey, joinData, lockMode);
             }
             assertTrue("" + nDups, nDups <= N_DUPS);
-            assertEquals("nextKey=" + nextKey,
-                         OperationStatus.NOTFOUND, joinStatus);
+            assertEquals("nextKey=" + nextKey, OperationStatus.NOTFOUND, joinStatus);
             cursor2.close();
             joinCursor.close();
 
@@ -397,8 +364,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
             if (nextKey < MAX_KEY - 1) {
                 while (status != OperationStatus.KEYEMPTY) {
                     assertEquals(OperationStatus.SUCCESS, status);
-                    status = cursor.getCurrent(key, pKey, data,
-                                               lockMode);
+                    status = cursor.getCurrent(key, pKey, data, lockMode);
                 }
                 nextKey = keyFound + 1;
             }
@@ -409,8 +375,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
     /**
      * Alternate insertion and deletion of key 0.
      */
-    public void runAlternatingInsertDelete()
-        throws DatabaseException {
+    public void runAlternatingInsertDelete() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -427,11 +392,10 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
     }
 
     /**
-     * Read key 0 while runAlternatingInsertDelete is executing.  The idea is
-     * to reproduce a bug that caused SecondaryIntegrityException [#22603].
+     * Read key 0 while runAlternatingInsertDelete is executing. The idea is to
+     * reproduce a bug that caused SecondaryIntegrityException [#22603].
      */
-    public void runReadFirstRecordByKey()
-        throws DatabaseException {
+    public void runReadFirstRecordByKey() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry pKey = new DatabaseEntry();
@@ -439,8 +403,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
         key.setData(TestUtils.getTestArray(0));
         int nDeletions = 0;
         while (nDeletions < MAX_KEY * 10) {
-            OperationStatus status = secDb.get(null, key, pKey, data,
-                                               lockMode);
+            OperationStatus status = secDb.get(null, key, pKey, data, lockMode);
             if (status != OperationStatus.SUCCESS) {
                 assertEquals(OperationStatus.NOTFOUND, status);
                 nDeletions += 1;
@@ -456,8 +419,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
     /**
      * Adds records for the entire key range.
      */
-    private void addRecords()
-        throws DatabaseException {
+    private void addRecords() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -475,8 +437,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
     /**
      * Opens the primary database.
      */
-    private Database openPrimary(String name)
-        throws DatabaseException {
+    private Database openPrimary(String name) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(isTransactional);
@@ -495,16 +456,14 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
     /**
      * Opens the secondary database.
      */
-    private SecondaryDatabase openSecondary(Database priDb, String dbName)
-        throws DatabaseException {
+    private SecondaryDatabase openSecondary(Database priDb, String dbName) throws DatabaseException {
 
         SecondaryConfig dbConfig = new SecondaryConfig();
         dbConfig.setTransactional(isTransactional);
         dbConfig.setAllowCreate(true);
         dbConfig.setSortedDuplicates(dups);
         if (useMultiKey) {
-            dbConfig.setMultiKeyCreator
-                (new SimpleMultiKeyCreator(new MyKeyCreator()));
+            dbConfig.setMultiKeyCreator(new SimpleMultiKeyCreator(new MyKeyCreator()));
         } else {
             dbConfig.setKeyCreator(new MyKeyCreator());
         }
@@ -523,9 +482,7 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
      */
     private class MyKeyCreator implements SecondaryKeyCreator {
 
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data,
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                           DatabaseEntry result) {
             int val = getSecKey(data);
             if (val >= 0) {
@@ -543,8 +500,8 @@ public class SecondaryDirtyReadTest extends MultiKeyTxnTestCase {
     }
 
     /**
-     * When dups are configured, the secondary key is truncated to a multiple
-     * of N_DUPS.
+     * When dups are configured, the secondary key is truncated to a multiple of
+     * N_DUPS.
      */
     private int getSecKey(int val) {
         if (val < 0) {

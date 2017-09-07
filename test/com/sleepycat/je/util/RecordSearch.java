@@ -30,8 +30,7 @@ import com.sleepycat.je.utilint.CmdUtil;
 import com.sleepycat.utilint.StringUtils;
 
 /**
- * KeySearch is a debugging aid that searches the database for a given
- * record.
+ * KeySearch is a debugging aid that searches the database for a given record.
  */
 public class RecordSearch {
 
@@ -46,12 +45,9 @@ public class RecordSearch {
             boolean searchKeyRange = false;
 
             /*
-             * Usage: -h  <envHomeDir> (optional
-             *        -db <db name>
-             *        -ks <key to search for, as a string>
-             *        -ksr <key to range search for, as a string>
-             *        -a  <if true, dump the whole db>
-             *        -l  <logging level>
+             * Usage: -h <envHomeDir> (optional -db <db name> -ks <key to search
+             * for, as a string> -ksr <key to range search for, as a string> -a
+             * <if true, dump the whole db> -l <logging level>
              */
             String envHome = "."; // default to current directory
             while (whichArg < argv.length) {
@@ -81,8 +77,7 @@ public class RecordSearch {
                     String dumpVal = CmdUtil.getArg(argv, whichArg);
                     dumpAll = Boolean.valueOf(dumpVal).booleanValue();
                 } else {
-                    throw new IllegalArgumentException
-                        (nextArg + " is not a supported option.");
+                    throw new IllegalArgumentException(nextArg + " is not a supported option.");
                 }
                 whichArg++;
             }
@@ -96,13 +91,11 @@ public class RecordSearch {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
 
             // Don't debug log to the database log.
-            envConfig.setConfigParam
-                (EnvironmentParams.JE_LOGGING_DBLOG.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.JE_LOGGING_DBLOG.getName(), "false");
 
             envConfig.setReadOnly(true);
 
-            Environment envHandle = new Environment(new File(envHome),
-                                                    envConfig);
+            Environment envHandle = new Environment(new File(envHome), envConfig);
 
             /* Open the db. */
             DatabaseConfig dbConfig = new DatabaseConfig();
@@ -115,28 +108,22 @@ public class RecordSearch {
                 Cursor cursor = db.openCursor(null, null);
                 DatabaseEntry foundKey = new DatabaseEntry();
                 int i = 0;
-                while (cursor.getNext(foundKey, foundData, LockMode.DEFAULT) ==
-                       OperationStatus.SUCCESS) {
-                    System.out.println(i + ":key=" +
-                                   StringUtils.fromUTF8(foundKey.getData()));
+                while (cursor.getNext(foundKey, foundData, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
+                    System.out.println(i + ":key=" + StringUtils.fromUTF8(foundKey.getData()));
                     i++;
                 }
                 cursor.close();
             } else if (searchKeyRange) {
                 /* Range Search for the key. */
                 Cursor cursor = db.openCursor(null, null);
-                OperationStatus status = cursor.getSearchKeyRange
-                    (searchKey, foundData, LockMode.DEFAULT);
+                OperationStatus status = cursor.getSearchKeyRange(searchKey, foundData, LockMode.DEFAULT);
                 cursor.close();
-                System.out.println("Range Search for key " + keyVal +
-                                   " status = " + status + " => " +
-                                   StringUtils.fromUTF8(searchKey.getData()));
+                System.out.println("Range Search for key " + keyVal + " status = " + status + " => "
+                        + StringUtils.fromUTF8(searchKey.getData()));
             } else {
                 /* Search for the key. */
-                OperationStatus status = db.get(null, searchKey, foundData,
-                                                LockMode.DEFAULT);
-                System.out.println("Search for key " + keyVal +
-                                   " status = " + status);
+                OperationStatus status = db.get(null, searchKey, foundData, LockMode.DEFAULT);
+                System.out.println("Search for key " + keyVal + " status = " + status);
             }
             db.close();
             envHandle.close();

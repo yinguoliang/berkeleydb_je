@@ -39,30 +39,27 @@ import com.sleepycat.util.test.TestBase;
  */
 public class WriteQueueTest extends TestBase {
 
-    static private int FILE_SIZE = 120;
+    static private int  FILE_SIZE = 120;
 
     private Environment env;
     private FileManager fileManager;
-    private final File envHome;
+    private final File  envHome;
 
     public WriteQueueTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         /* Remove files to start with a clean slate. */
         super.setUp();
-        
+
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 new Integer(FILE_SIZE).toString());
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), new Integer(FILE_SIZE).toString());
         /* Yank the cache size way down. */
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_CACHE_SIZE.getName(), "3");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_CACHE_SIZE.getName(), "3");
         envConfig.setAllowCreate(true);
 
         env = new Environment(envHome, envConfig);
@@ -70,8 +67,7 @@ public class WriteQueueTest extends TestBase {
     }
 
     @After
-    public void tearDown()
-        throws DatabaseException {
+    public void tearDown() throws DatabaseException {
 
         if (env != null) {
             env.close();
@@ -82,8 +78,7 @@ public class WriteQueueTest extends TestBase {
     @Test
     public void testReadFromEmptyWriteQueue() {
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             ByteBuffer bb = ByteBuffer.allocate(100);
             assertFalse(lefd.checkWriteCache(bb, 0, 0));
         }
@@ -92,8 +87,7 @@ public class WriteQueueTest extends TestBase {
     @Test
     public void testReadFromWriteQueueWithDifferentFileNum() {
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(1);
             ByteBuffer bb = ByteBuffer.allocate(100);
             assertFalse(lefd.checkWriteCache(bb, 0, 0));
@@ -101,12 +95,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueExactMatch()
-        throws Exception {
+    public void testReadFromWriteQueueExactMatch() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             ByteBuffer bb = ByteBuffer.allocate(100);
@@ -121,12 +113,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueSubset()
-        throws Exception {
+    public void testReadFromWriteQueueSubset() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             ByteBuffer bb = ByteBuffer.allocate(100);
@@ -141,12 +131,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueSubsetOffset()
-        throws Exception {
+    public void testReadFromWriteQueueSubsetOffset() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             ByteBuffer bb = ByteBuffer.allocate(100);
@@ -161,12 +149,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueSubsetUnderflow()
-        throws Exception {
+    public void testReadFromWriteQueueSubsetUnderflow() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             ByteBuffer bb = ByteBuffer.allocate(100);
@@ -183,12 +169,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueSubsetOverflow()
-        throws Exception {
+    public void testReadFromWriteQueueSubsetOverflow() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             lefd.enqueueWrite(0, new byte[] { 5, 6, 7, 8, 9 }, 5, 0, 5);
@@ -205,12 +189,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueSubsetOverflow2()
-        throws Exception {
+    public void testReadFromWriteQueueSubsetOverflow2() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             lefd.enqueueWrite(0, new byte[] { 5, 6, 7, 8, 9 }, 5, 0, 5);
@@ -227,12 +209,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueMultipleEntries()
-        throws Exception {
+    public void testReadFromWriteQueueMultipleEntries() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             lefd.enqueueWrite(0, new byte[] { 5, 6, 7, 8, 9 }, 5, 0, 5);
@@ -250,12 +230,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueLast2EntriesOnly()
-        throws Exception {
+    public void testReadFromWriteQueueLast2EntriesOnly() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             lefd.enqueueWrite(0, new byte[] { 5, 6, 7, 8, 9 }, 5, 0, 5);
@@ -273,12 +251,10 @@ public class WriteQueueTest extends TestBase {
     }
 
     @Test
-    public void testReadFromWriteQueueLastEntryOnly()
-        throws Exception {
+    public void testReadFromWriteQueueLastEntryOnly() throws Exception {
 
         if (fileManager.getUseWriteQueue()) {
-            LogEndFileDescriptor lefd =
-                fileManager.new LogEndFileDescriptor();
+            LogEndFileDescriptor lefd = fileManager.new LogEndFileDescriptor();
             lefd.setQueueFileNum(0);
             lefd.enqueueWrite(0, new byte[] { 0, 1, 2, 3, 4 }, 0, 0, 5);
             lefd.enqueueWrite(0, new byte[] { 5, 6, 7, 8, 9 }, 5, 0, 5);

@@ -28,20 +28,18 @@ import com.sleepycat.je.config.EnvironmentParams;
 
 /**
  * Creates two small log files with close to 100% utilization for use by
- * FileSelectionTest.testLogVersionMigration.  This main program is with the
- * arguments: -h HOME_DIRECTORY
- *
- * This program was used to create two log files (stored in CVS as
- * migrate_f0.jdb and migrate_f1.jdb) running against JE 3.2.68, which writes
- * log version 5.  Testing with these files in testLogVersionUpgrade checks
- * that these files are migrated when je.cleaner.migrateToLogVersion is set.
+ * FileSelectionTest.testLogVersionMigration. This main program is with the
+ * arguments: -h HOME_DIRECTORY This program was used to create two log files
+ * (stored in CVS as migrate_f0.jdb and migrate_f1.jdb) running against JE
+ * 3.2.68, which writes log version 5. Testing with these files in
+ * testLogVersionUpgrade checks that these files are migrated when
+ * je.cleaner.migrateToLogVersion is set.
  */
 public class MakeMigrationLogFiles {
 
     private static final int FILE_SIZE = 1000000;
 
-    public static void main(String[] args)
-        throws DatabaseException {
+    public static void main(String[] args) throws DatabaseException {
 
         String homeDir = null;
         for (int i = 0; i < args.length; i += 1) {
@@ -55,7 +53,7 @@ public class MakeMigrationLogFiles {
         if (homeDir == null) {
             throw new IllegalArgumentException("Missing -h arg");
         }
-        Environment env = openEnv(new File(homeDir), true /*allowCreate*/);
+        Environment env = openEnv(new File(homeDir), true /* allowCreate */);
         makeMigrationLogFiles(env);
         env.close();
     }
@@ -63,26 +61,20 @@ public class MakeMigrationLogFiles {
     /**
      * Opens an Environment with a small log file size.
      */
-    static Environment openEnv(File homeDir, boolean allowCreate)
-        throws DatabaseException {
+    static Environment openEnv(File homeDir, boolean allowCreate) throws DatabaseException {
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_MAX.getName(),
-             String.valueOf(FILE_SIZE));
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), String.valueOf(FILE_SIZE));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         return new Environment(homeDir, envConfig);
     }
 
     /**
      * Creates two log files.
      */
-    static void makeMigrationLogFiles(Environment env)
-        throws DatabaseException {
+    static void makeMigrationLogFiles(Environment env) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);

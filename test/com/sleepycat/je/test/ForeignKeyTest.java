@@ -55,34 +55,33 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         final String[] txnTypes = getTxnTypes(null, rep);
         final List<Object[]> newParams = new ArrayList<Object[]>();
         for (final String type : txnTypes) {
-            newParams.add(new Object[] {type, true});
-            newParams.add(new Object[] {type, false});
+            newParams.add(new Object[] { type, true });
+            newParams.add(new Object[] { type, false });
         }
-        
+
         return newParams;
     }
-    public ForeignKeyTest(String type, boolean multiKey){
+
+    public ForeignKeyTest(String type, boolean multiKey) {
         initEnvConfig();
         txnType = type;
         useMultiKey = multiKey;
         isTransactional = (txnType != TXN_NULL);
         customName = ((useMultiKey) ? "multiKey" : "") + "-" + txnType;
     }
-    
+
     @Test
-    public void testDupsNotAllowed()
-        throws DatabaseException {
+    public void testDupsNotAllowed() throws DatabaseException {
 
         Database priDb1 = openPrimary("pri1");
-        Database priDb2 = openPrimary("pri2", true /*duplicates*/);
+        Database priDb2 = openPrimary("pri2", true /* duplicates */);
 
         try {
             openSecondary(priDb1, "sec2", priDb2, ForeignKeyDeleteAction.ABORT);
             fail();
         } catch (IllegalArgumentException expected) {
             String msg = expected.getMessage();
-            assertTrue
-                (msg, msg.indexOf("Duplicates must not be allowed") >= 0);
+            assertTrue(msg, msg.indexOf("Duplicates must not be allowed") >= 0);
         }
 
         priDb1.close();
@@ -90,8 +89,7 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
     }
 
     @Test
-    public void testIllegalNullifier()
-        throws DatabaseException {
+    public void testIllegalNullifier() throws DatabaseException {
 
         Database priDb1 = openPrimary("pri1");
         Transaction txn = txnBegin();
@@ -105,7 +103,8 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         try {
             env.openSecondaryDatabase(txn, "sec1", priDb1, config);
             fail();
-        } catch (IllegalArgumentException expected) { }
+        } catch (IllegalArgumentException expected) {
+        }
 
         /* Both nullifiers are not allowed. */
         config = new SecondaryConfig();
@@ -116,7 +115,8 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         try {
             env.openSecondaryDatabase(txn, "sec1", priDb1, config);
             fail();
-        } catch (IllegalArgumentException expected) { }
+        } catch (IllegalArgumentException expected) {
+        }
 
         /* ForeignKeyNullifier is not allowed with MultiKeyCreator. */
         config = new SecondaryConfig();
@@ -126,42 +126,38 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         try {
             env.openSecondaryDatabase(txn, "sec1", priDb1, config);
             fail();
-        } catch (IllegalArgumentException expected) { }
+        } catch (IllegalArgumentException expected) {
+        }
 
         txnCommit(txn);
         priDb1.close();
     }
 
     @Test
-    public void testAbort()
-        throws DatabaseException {
+    public void testAbort() throws DatabaseException {
 
         doTest(ForeignKeyDeleteAction.ABORT);
     }
 
     @Test
-    public void testCascade()
-        throws DatabaseException {
+    public void testCascade() throws DatabaseException {
 
         doTest(ForeignKeyDeleteAction.CASCADE);
     }
 
     @Test
-    public void testNullify()
-        throws DatabaseException {
+    public void testNullify() throws DatabaseException {
 
         doTest(ForeignKeyDeleteAction.NULLIFY);
     }
 
-    private void doTest(ForeignKeyDeleteAction onDelete)
-        throws DatabaseException {
+    private void doTest(ForeignKeyDeleteAction onDelete) throws DatabaseException {
 
         Database priDb1 = openPrimary("pri1");
         Database priDb2 = openPrimary("pri2");
 
         SecondaryDatabase secDb1 = openSecondary(priDb1, "sec1", null, null);
-        SecondaryDatabase secDb2 = openSecondary(priDb2, "sec2", priDb1,
-                                                 onDelete);
+        SecondaryDatabase secDb2 = openSecondary(priDb2, "sec2", priDb1, onDelete);
 
         OperationStatus status;
         DatabaseEntry data = new DatabaseEntry();
@@ -170,11 +166,10 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         Transaction txn = txnBegin();
 
         /*
-         * pri1 has a record with primary key 1 and index key 3.
-         * pri2 has a record with primary key 2 and foreign key 1,
-         * which is the primary key of pri1.
-         * pri2 has another record with primary key 3 and foreign key 1,
-         * to enable testing cascade and nullify for secondary duplicates.
+         * pri1 has a record with primary key 1 and index key 3. pri2 has a
+         * record with primary key 2 and foreign key 1, which is the primary key
+         * of pri1. pri2 has another record with primary key 3 and foreign key
+         * 1, to enable testing cascade and nullify for secondary duplicates.
          */
 
         /* Add three records. */
@@ -238,8 +233,10 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
                 txn = txnBegin();
             }
 
-            /* Test that we can put a record into pri2 with a null foreign key
-             * value. */
+            /*
+             * Test that we can put a record into pri2 with a null foreign key
+             * value.
+             */
 
             status = priDb2.put(txn, entry(2), entry(0));
             assertEquals(OperationStatus.SUCCESS, status);
@@ -247,14 +244,18 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
             status = priDb2.put(txn, entry(3), entry(0));
             assertEquals(OperationStatus.SUCCESS, status);
 
-            /* The sec2 records should not be present since the key was set
-             * to null above. */
+            /*
+             * The sec2 records should not be present since the key was set to
+             * null above.
+             */
 
             status = secDb2.get(txn, entry(1), data, LockMode.DEFAULT);
             assertEquals(OperationStatus.NOTFOUND, status);
 
-            /* Test that now we can delete the record in pri1, since it is no
-             * longer referenced. */
+            /*
+             * Test that now we can delete the record in pri1, since it is no
+             * longer referenced.
+             */
 
             status = priDb1.delete(txn, entry(1));
             assertEquals(OperationStatus.SUCCESS, status);
@@ -278,8 +279,10 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
             status = secDb1.get(txn, entry(3), data, LockMode.DEFAULT);
             assertEquals(OperationStatus.NOTFOUND, status);
 
-            /* The pri2 records should still exist, but should have a zero/null
-             * secondary key since it was nullified. */
+            /*
+             * The pri2 records should still exist, but should have a zero/null
+             * secondary key since it was nullified.
+             */
 
             status = priDb2.get(txn, entry(2), data, LockMode.DEFAULT);
             assertEquals(OperationStatus.SUCCESS, status);
@@ -321,13 +324,14 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         }
 
         /*
-         * Test that a foreign key value may not be used that is not present
-         * in the foreign db. Key 2 is not in pri1 in this case.
+         * Test that a foreign key value may not be used that is not present in
+         * the foreign db. Key 2 is not in pri1 in this case.
          */
         try {
             status = priDb2.put(txn, entry(3), entry(2));
             fail();
-        } catch (ForeignConstraintException expected) { }
+        } catch (ForeignConstraintException expected) {
+        }
 
         txnAbort(txn);
         secDb1.close();
@@ -336,14 +340,12 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         priDb2.close();
     }
 
-    private Database openPrimary(String name)
-        throws DatabaseException {
+    private Database openPrimary(String name) throws DatabaseException {
 
         return openPrimary(name, false);
     }
 
-    private Database openPrimary(String name, boolean duplicates)
-        throws DatabaseException {
+    private Database openPrimary(String name, boolean duplicates) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(isTransactional);
@@ -358,10 +360,9 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         }
     }
 
-    private SecondaryDatabase openSecondary(Database priDb, String dbName,
-                                            Database foreignDb,
+    private SecondaryDatabase openSecondary(Database priDb, String dbName, Database foreignDb,
                                             ForeignKeyDeleteAction onDelete)
-        throws DatabaseException {
+            throws DatabaseException {
 
         SecondaryConfig dbConfig = new SecondaryConfig();
         dbConfig.setTransactional(isTransactional);
@@ -404,14 +405,10 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         return TestUtils.getTestVal(entry.getData());
     }
 
-    private class MyKeyCreator implements SecondaryKeyCreator,
-                                          ForeignMultiKeyNullifier,
-                                          ForeignKeyNullifier {
+    private class MyKeyCreator implements SecondaryKeyCreator, ForeignMultiKeyNullifier, ForeignKeyNullifier {
 
         /* SecondaryKeyCreator */
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data,
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                           DatabaseEntry result) {
             int val = val(data);
             if (val != 0) {
@@ -423,9 +420,7 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         }
 
         /* ForeignMultiKeyNullifier */
-        public boolean nullifyForeignKey(SecondaryDatabase secondary,
-                                         DatabaseEntry key,
-                                         DatabaseEntry data,
+        public boolean nullifyForeignKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                          DatabaseEntry secKey) {
             DatabaseEntry entry = new DatabaseEntry();
             assertTrue(createSecondaryKey(secondary, null, data, entry));
@@ -435,8 +430,7 @@ public class ForeignKeyTest extends MultiKeyTxnTestCase {
         }
 
         /* ForeignKeyNullifier */
-        public boolean nullifyForeignKey(SecondaryDatabase secondary,
-                                         DatabaseEntry data) {
+        public boolean nullifyForeignKey(SecondaryDatabase secondary, DatabaseEntry data) {
             int val = val(data);
             if (val != 0) {
                 data.setData(TestUtils.getTestArray(0));

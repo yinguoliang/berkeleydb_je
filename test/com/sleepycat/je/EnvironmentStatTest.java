@@ -32,19 +32,18 @@ import org.junit.Test;
 
 public class EnvironmentStatTest extends TestBase {
 
-    private final File envHome;
+    private final File          envHome;
     private static final String DB_NAME = "foo";
 
     public EnvironmentStatTest() {
-        envHome =  SharedTestUtils.getTestDir();
+        envHome = SharedTestUtils.getTestDir();
     }
 
     /**
      * Basic cache management stats.
      */
     @Test
-    public void testCacheStats()
-        throws Exception {
+    public void testCacheStats() throws Exception {
 
         /* Init the Environment. */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -67,31 +66,26 @@ public class EnvironmentStatTest extends TestBase {
         dbConfig.setTransactional(true);
         dbConfig.setAllowCreate(true);
         Database db = env.openDatabase(null, DB_NAME, dbConfig);
-        db.put(null, new DatabaseEntry(new byte[0]),
-                     new DatabaseEntry(new byte[0]));
+        db.put(null, new DatabaseEntry(new byte[0]), new DatabaseEntry(new byte[0]));
         Transaction txn = env.beginTransaction(null, null);
-        db.put(txn, new DatabaseEntry(new byte[0]),
-                    new DatabaseEntry(new byte[0]));
+        db.put(txn, new DatabaseEntry(new byte[0]), new DatabaseEntry(new byte[0]));
 
         /* Do the check. */
         stat = env.getStats(TestUtils.FAST_STATS);
-        MemoryBudget mb =
-            DbInternal.getNonNullEnvImpl(env).getMemoryBudget();
+        MemoryBudget mb = DbInternal.getNonNullEnvImpl(env).getMemoryBudget();
 
         assertEquals(mb.getCacheMemoryUsage(), stat.getCacheTotalBytes());
 
         /*
          * The size of each log buffer is calculated by:
          * mb.logBufferBudget/numBuffers, which is rounded down to the nearest
-         * integer. The stats count the precise capacity of the log
-         * buffers. Because of rounding down, the memory budget may be slightly
-         * > than the stats buffer bytes, but the difference shouldn't be
-         * greater than the numBuffers.
+         * integer. The stats count the precise capacity of the log buffers.
+         * Because of rounding down, the memory budget may be slightly > than
+         * the stats buffer bytes, but the difference shouldn't be greater than
+         * the numBuffers.
          */
-        assertTrue((mb.getLogBufferBudget() - stat.getBufferBytes() <=
-                    stat.getNLogBuffers()));
-        assertEquals(mb.getTreeMemoryUsage() + mb.getTreeAdminMemoryUsage(),
-                     stat.getDataBytes());
+        assertTrue((mb.getLogBufferBudget() - stat.getBufferBytes() <= stat.getNLogBuffers()));
+        assertEquals(mb.getTreeMemoryUsage() + mb.getTreeAdminMemoryUsage(), stat.getDataBytes());
         assertEquals(mb.getLockMemoryUsage(), stat.getLockBytes());
         assertEquals(mb.getAdminMemoryUsage(), stat.getAdminBytes());
 
@@ -101,25 +95,20 @@ public class EnvironmentStatTest extends TestBase {
         assertTrue(stat.getAdminBytes() > 0);
 
         /* Account for rounding down when calculating log buffer size. */
-        assertTrue(stat.getCacheTotalBytes() -
-                   (stat.getBufferBytes() +
-                     stat.getDataBytes() +
-                     stat.getLockBytes() +
-                    stat.getAdminBytes()) <= stat.getNLogBuffers());
+        assertTrue(stat.getCacheTotalBytes()
+                - (stat.getBufferBytes() + stat.getDataBytes() + stat.getLockBytes() + stat.getAdminBytes()) <= stat
+                        .getNLogBuffers());
 
         assertTrue(stat.getNCacheMiss() > 10);
         assertTrue(stat.getNNotResident() > 10);
 
         /* Test deprecated getCacheDataBytes method. */
         final EnvironmentStats finalStat = stat;
-        final long expectCacheDataBytes = mb.getCacheMemoryUsage() -
-                                          mb.getLogBufferBudget();
+        final long expectCacheDataBytes = mb.getCacheMemoryUsage() - mb.getLogBufferBudget();
         (new Runnable() {
             @Deprecated
             public void run() {
-                assertTrue((expectCacheDataBytes -
-                           finalStat.getCacheDataBytes()) <=
-                               finalStat.getNLogBuffers());
+                assertTrue((expectCacheDataBytes - finalStat.getCacheDataBytes()) <= finalStat.getNLogBuffers());
             }
         }).run();
 
@@ -134,8 +123,7 @@ public class EnvironmentStatTest extends TestBase {
      * however, will currently cause a cause a repeat-fault-read.
      */
     @Test
-    public void testRepeatFaultReads()
-        throws Exception {
+    public void testRepeatFaultReads() throws Exception {
 
         final EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -144,25 +132,18 @@ public class EnvironmentStatTest extends TestBase {
         /* Do not use the off-heap cache to fetch from disk. */
         envConfig.setOffHeapCacheSize(0);
         /* Disable daemon threads for reliability. */
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
 
         final Environment env = new Environment(envHome, envConfig);
 
         final int smallSize = 100;
         final int bigSize = 100 * 1024;
 
-        final int readSize = Integer.parseInt(
-            env.getConfig().getConfigParam(
-                EnvironmentConfig.LOG_FAULT_READ_SIZE));
+        final int readSize = Integer.parseInt(env.getConfig().getConfigParam(EnvironmentConfig.LOG_FAULT_READ_SIZE));
 
         assertTrue(readSize < bigSize);
         assertTrue(readSize > smallSize);
@@ -236,15 +217,10 @@ public class EnvironmentStatTest extends TestBase {
         assertNotNull(result);
 
         /* Flush BIN to disk, since a dirty BIN cannot be evicted. */
-        env.checkpoint(
-            new CheckpointConfig().
-                setMinimizeRecoveryTime(true).
-                setForce(true));
+        env.checkpoint(new CheckpointConfig().setMinimizeRecoveryTime(true).setForce(true));
 
         /* Use EVICT_BIN to evict the non-dirty BIN. */
-        result = db.get(
-            null, key, data, Get.SEARCH,
-            new ReadOptions().setCacheMode(CacheMode.EVICT_BIN));
+        result = db.get(null, key, data, Get.SEARCH, new ReadOptions().setCacheMode(CacheMode.EVICT_BIN));
         assertNotNull(result);
 
         clearLogBuffers(env);
@@ -264,8 +240,8 @@ public class EnvironmentStatTest extends TestBase {
     }
 
     /**
-     * Use internal APIs to clear the log buffer pool, to ensure that a fetch
-     * is performed from the file system.
+     * Use internal APIs to clear the log buffer pool, to ensure that a fetch is
+     * performed from the file system.
      */
     private void clearLogBuffers(final Environment env) {
         final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
@@ -277,8 +253,7 @@ public class EnvironmentStatTest extends TestBase {
      * log) and nFSyncs(commit fsyncs)
      */
     @Test
-    public void testFSyncStats()
-        throws Exception {
+    public void testFSyncStats() throws Exception {
 
         /* The usual env and db setup */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -334,8 +309,7 @@ public class EnvironmentStatTest extends TestBase {
      * there is no updates on the database.
      */
     @Test
-    public void testDbFSyncs()
-        throws Exception {
+    public void testDbFSyncs() throws Exception {
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
@@ -355,8 +329,7 @@ public class EnvironmentStatTest extends TestBase {
         env.close();
     }
 
-    private void checkCloseFSyncs(Environment env, boolean deferredWrite)
-        throws Exception {
+    private void checkCloseFSyncs(Environment env, boolean deferredWrite) throws Exception {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -406,6 +379,6 @@ public class EnvironmentStatTest extends TestBase {
          * if no changes made before closing it.
          */
         envStats = env.getStats(stConfig);
-        assert(envStats.getNLogFSyncs() == 0);
+        assert (envStats.getNLogFSyncs() == 0);
     }
 }

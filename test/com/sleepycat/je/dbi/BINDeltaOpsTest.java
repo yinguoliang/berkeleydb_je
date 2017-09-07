@@ -43,17 +43,17 @@ import org.junit.Test;
 public class BINDeltaOpsTest extends DualTestCase {
 
     /*
-     * N_RECORDS is set to 110 and NODE_MAX_ENTRIES to 100. This results in
-     * a tree with 2 BIN, the first of which has 50 entries.
+     * N_RECORDS is set to 110 and NODE_MAX_ENTRIES to 100. This results in a
+     * tree with 2 BIN, the first of which has 50 entries.
      */
     private static final int N_RECORDS = 110;
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
-    private boolean dups;
+    private final File       envHome;
+    private Environment      env;
+    private Database         db;
+    private boolean          dups;
 
-    private boolean debug = false;
+    private boolean          debug     = false;
 
     public BINDeltaOpsTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -65,16 +65,11 @@ public class BINDeltaOpsTest extends DualTestCase {
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         envConfig.setDurability(Durability.COMMIT_NO_SYNC);
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR,
-            "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         envConfig.setConfigParam(EnvironmentConfig.NODE_MAX_ENTRIES, "100");
         env = create(envHome, envConfig);
 
@@ -102,9 +97,9 @@ public class BINDeltaOpsTest extends DualTestCase {
 
     /*
      * This is a test to make sure that when a full BIN is mutated to a delta,
-     * the delta is smaller than the full version (there used to be a bug
-     * whare key prefixing was used in the full BIN, but not in the delta, and
-     * as a result, the delta could be larger than the full BIN).
+     * the delta is smaller than the full version (there used to be a bug whare
+     * key prefixing was used in the full BIN, but not in the delta, and as a
+     * result, the delta could be larger than the full BIN).
      */
     @Test
     public void testMemory() {
@@ -112,8 +107,8 @@ public class BINDeltaOpsTest extends DualTestCase {
         open(true);
 
         /*
-         * Create a long key to be used for all the records inserted in the
-         * dups db.
+         * Create a long key to be used for all the records inserted in the dups
+         * db.
          */
         byte[] keyBytes = new byte[50];
         for (int i = 0; i < 50; ++i) {
@@ -121,9 +116,9 @@ public class BINDeltaOpsTest extends DualTestCase {
         }
 
         /*
-         * Do the record insertions. All records have the same, 50-byte-long
-         * key and a 1-byte-long data portion. Key prefixing is done, resulting
-         * in records that take only 3 bytes each.
+         * Do the record insertions. All records have the same, 50-byte-long key
+         * and a 1-byte-long data portion. Key prefixing is done, resulting in
+         * records that take only 3 bytes each.
          */
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry();
@@ -131,7 +126,7 @@ public class BINDeltaOpsTest extends DualTestCase {
         for (int i = 0; i < N_RECORDS; i += 1) {
 
             key.setData(keyBytes);
-            data.setData(new byte[] {(byte)i});
+            data.setData(new byte[] { (byte) i });
 
             assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
         }
@@ -147,16 +142,16 @@ public class BINDeltaOpsTest extends DualTestCase {
          * Update the max number of records in the 1st BIN to make it a delta
          * when it gets selected for eviction.
          */
-       for (int i = 0; i < 12; i += 1) {
+        for (int i = 0; i < 12; i += 1) {
 
             key.setData(keyBytes);
-            data.setData(new byte[] {(byte)i});
+            data.setData(new byte[] { (byte) i });
 
             assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
         }
 
         assertTrue(!bin1.isBINDelta(false));
- 
+
         /*
          * Mutate bin1 to a delta and make sure memory gets released.
          */
@@ -184,42 +179,36 @@ public class BINDeltaOpsTest extends DualTestCase {
         /*
          * The BIN split causes full version of both BINs to be logged. After
          * the split is done, 10 more records are inserted in the 2nd BIN, so
-         * that BIN has 10 entries marked dirty. During the checkpoint below,
-         * a delta will be logged for the 2nd BIN, so although after the
+         * that BIN has 10 entries marked dirty. During the checkpoint below, a
+         * delta will be logged for the 2nd BIN, so although after the
          * checkpoint the BIN will be clean, it will still have 10 dirty
          * entries.
          */
         if (debug) {
-            System.out.println(
-                "1. BIN-1 has " + bin1.getNEntries() + " entries");
-            System.out.println(
-                "1. BIN-1 has " + bin1.getNDeltas() + " dirty entries");
-            System.out.println(
-                "1. BIN-2 has " + bin2.getNEntries() + " entries");
-            System.out.println(
-                "1. BIN-2 has " + bin2.getNDeltas() + " dirty entries");
+            System.out.println("1. BIN-1 has " + bin1.getNEntries() + " entries");
+            System.out.println("1. BIN-1 has " + bin1.getNDeltas() + " dirty entries");
+            System.out.println("1. BIN-2 has " + bin2.getNEntries() + " entries");
+            System.out.println("1. BIN-2 has " + bin2.getNDeltas() + " dirty entries");
         }
 
         /* Flush BINs (checkpoint) */
         env.checkpoint(new CheckpointConfig().setForce(true));
 
         /*
-         * Update only enough records in the 1st BIN to make it a delta
-         * when it gets selected for eviction. Specifically, update records
-         * in slots 5 to 15 (inclusive).
+         * Update only enough records in the 1st BIN to make it a delta when it
+         * gets selected for eviction. Specifically, update records in slots 5
+         * to 15 (inclusive).
          */
         writeData(5, N_RECORDS / 10);
 
         if (debug) {
-            System.out.println(
-                "2. BIN-1 has " + bin1.getNDeltas() + " dirty entries");
-            System.out.println(
-                "2. BIN-2 has " + bin2.getNDeltas() + " dirty entries");
+            System.out.println("2. BIN-1 has " + bin1.getNDeltas() + " dirty entries");
+            System.out.println("2. BIN-2 has " + bin2.getNDeltas() + " dirty entries");
         }
 
         assertTrue(!bin1.isBINDelta(false));
         assertTrue(!bin2.isBINDelta(false));
- 
+
         /*
          * Mutate bin1 to a delta
          */
@@ -228,15 +217,15 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         /*
          * Read 2 existing keys directly from the bin delta, using 2 cursors:
-         * one doing an exact search and the other a range search. Make sure
-         * no mutation back to full bin occurs.
+         * one doing an exact search and the other a range search. Make sure no
+         * mutation back to full bin occurs.
          */
         txn = env.beginTransaction(null, TransactionConfig.DEFAULT);
         cursor1 = db.openCursor(txn, null);
         cursor2 = db.openCursor(txn, null);
 
-        searchKey(cursor1, 12, true/*exact*/, true/*exist*/);
-        searchKey(cursor2, 20, false/*range*/, true/*exists*/);
+        searchKey(cursor1, 12, true/* exact */, true/* exist */);
+        searchKey(cursor2, 20, false/* range */, true/* exists */);
 
         assertTrue(bin1.isBINDelta(false));
         assertTrue(bin1.getInListResident());
@@ -253,18 +242,18 @@ public class BINDeltaOpsTest extends DualTestCase {
         assertTrue(bin1.getInListResident());
 
         /*
-         * Update a record that in is already in the bin1 delta via a put op
-         * and make sure no mutation back to full bin occurs.
+         * Update a record that in is already in the bin1 delta via a put op and
+         * make sure no mutation back to full bin occurs.
          */
         putRecord(cursor1, 14, 40);
         assertTrue(bin1.isBINDelta(false));
 
         /*
-         * Cause mutation to full bin by searching for an existing key that
-         * is not in the delta. Make sure that the 2 cursors are adjusted
+         * Cause mutation to full bin by searching for an existing key that is
+         * not in the delta. Make sure that the 2 cursors are adjusted
          * correctly.
          */
-        searchKey(cursor1, 2, true, true/*exists*/);
+        searchKey(cursor1, 2, true, true/* exists */);
 
         assertTrue(!bin1.isBINDelta(false));
         assertTrue(bin1.getInListResident());
@@ -310,14 +299,14 @@ public class BINDeltaOpsTest extends DualTestCase {
         assertTrue(bin1.getNEntries() == 12);
 
         /*
-         * Do a range search for key 11. This operation will first position
-         * (and register) a CursorImpl on the KD slot, and then getNext() will
-         * be called on that cursor. getNext() will mutate the delta to a full
-         * BIN, and the position of the cursor must be adjusted correctly.
+         * Do a range search for key 11. This operation will first position (and
+         * register) a CursorImpl on the KD slot, and then getNext() will be
+         * called on that cursor. getNext() will mutate the delta to a full BIN,
+         * and the position of the cursor must be adjusted correctly.
          */
         cursor1 = db.openCursor(null, null);
 
-        searchKey(cursor1, 11, false, false/*exists*/);
+        searchKey(cursor1, 11, false, false/* exists */);
 
         assertTrue(!bin1.isBINDelta(false));
         cursor1.close();
@@ -348,11 +337,11 @@ public class BINDeltaOpsTest extends DualTestCase {
         assertTrue(bin2.getInListResident());
 
         /*
-         * 1. Update more records in bin1 so that next logrec will be a full bin.
-         * 2. Do a checkpoint to write the full bin1 to the log. Note that bin1
-         *    has 2 deleted slots that will be compressed away by logging it.
-         * 3. Update 1 record in bin1.
-         * 4. Mutate bin1 to a delta with one slot only.
+         * 1. Update more records in bin1 so that next logrec will be a full
+         * bin. 2. Do a checkpoint to write the full bin1 to the log. Note that
+         * bin1 has 2 deleted slots that will be compressed away by logging it.
+         * 3. Update 1 record in bin1. 4. Mutate bin1 to a delta with one slot
+         * only.
          */
         writeData(15, 10);
         assertTrue(!bin1.isBINDelta(false));
@@ -378,7 +367,7 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         /* Search for a non-existent key in bin1 delta */
         cursor1 = db.openCursor(null, null);
-        searchKey(cursor1, 111, true, false/*exists*/);
+        searchKey(cursor1, 111, true, false/* exists */);
         assertTrue(bin1.isBINDelta(false));
         cursor1.close();
 
@@ -415,15 +404,15 @@ public class BINDeltaOpsTest extends DualTestCase {
         env.checkpoint(new CheckpointConfig().setForce(true));
 
         /*
-         * Update only enough records in the 1st BIN to make it a delta
-         * when it gets selected for eviction. Specifically, update records
-         * in slots 5 to 15 (inclusive).
+         * Update only enough records in the 1st BIN to make it a delta when it
+         * gets selected for eviction. Specifically, update records in slots 5
+         * to 15 (inclusive).
          */
         writeData(5, N_RECORDS / 10);
 
         assertTrue(!bin1.isBINDelta(false));
         assertTrue(!bin2.isBINDelta(false));
- 
+
         /*
          * Mutate bin1 to a delta
          */
@@ -438,8 +427,8 @@ public class BINDeltaOpsTest extends DualTestCase {
         cursor1 = db.openCursor(txn, null);
         cursor2 = db.openCursor(txn, null);
 
-        searchRecord(cursor1, 12, 12, true/*exact*/, true/*exists*/);
-        searchRecord(cursor2, 20, 20, false/*exact*/, true/*exists*/);
+        searchRecord(cursor1, 12, 12, true/* exact */, true/* exists */);
+        searchRecord(cursor2, 20, 20, false/* exact */, true/* exists */);
 
         assertTrue(bin1.isBINDelta(false));
         assertTrue(bin1.getInListResident());
@@ -456,7 +445,7 @@ public class BINDeltaOpsTest extends DualTestCase {
         /*
          * Cause mutation to full bin by searching for a key only.
          */
-        searchKey(cursor1, 14, true/*exact*/, true/*exists*/);
+        searchKey(cursor1, 14, true/* exact */, true/* exists */);
 
         assertTrue(!bin1.isBINDelta(false));
         assertTrue(bin1.getInListResident());
@@ -464,9 +453,8 @@ public class BINDeltaOpsTest extends DualTestCase {
         confirmCurrentKey(cursor2, 20);
 
         /*
-         * Put a duplicate record in bin1. Note: we are inserting record
-         * (20, 10) which compares greater than the existing (20, 20)
-         * record.
+         * Put a duplicate record in bin1. Note: we are inserting record (20,
+         * 10) which compares greater than the existing (20, 20) record.
          */
         putRecord(cursor2, 20, 10);
 
@@ -480,15 +468,15 @@ public class BINDeltaOpsTest extends DualTestCase {
         mutateToDelta(bin1);
 
         /*
-         * Cause mutation to full bin via a getNextNoDup() call (which
-         * passes a non-null comparator to CursorImpl.searchRange()
+         * Cause mutation to full bin via a getNextNoDup() call (which passes a
+         * non-null comparator to CursorImpl.searchRange()
          */
         txn = env.beginTransaction(null, TransactionConfig.DEFAULT);
         cursor1 = db.openCursor(txn, null);
         cursor2 = db.openCursor(txn, null);
 
-        searchRecord(cursor1, 20, 10, false/*exact*/, true/*exists*/);
-        searchRecord(cursor2, 20, 20, false/*exact*/, true/*exists*/);
+        searchRecord(cursor1, 20, 10, false/* exact */, true/* exists */);
+        searchRecord(cursor2, 20, 20, false/* exact */, true/* exists */);
 
         if (debug) {
             cursor1Impl = DbInternal.getCursorImpl(cursor1);
@@ -503,7 +491,7 @@ public class BINDeltaOpsTest extends DualTestCase {
         assertTrue(bin1.isBINDelta(false));
         confirmCurrentKey(cursor1, 20);
 
-        getNext(cursor1, true/*skipDups*/);
+        getNext(cursor1, true/* skipDups */);
 
         assertTrue(!bin1.isBINDelta(false));
         confirmCurrentKey(cursor1, 22);
@@ -518,15 +506,15 @@ public class BINDeltaOpsTest extends DualTestCase {
          */
         mutateToDelta(bin1);
         cursor1 = db.openCursor(null, null);
-        searchRecord(cursor1, 21, 10, true/*exact*/, false/*exists*/);
-        searchRecord(cursor1, 20, 20000, true/*exact*/, false/*exists*/);
+        searchRecord(cursor1, 21, 10, true/* exact */, false/* exists */);
+        searchRecord(cursor1, 20, 20000, true/* exact */, false/* exists */);
         assertTrue(bin1.isBINDelta(false));
 
         /*
          * Mutate bin1 to full bin by searching for record that exists in the
          * full bin, but not in the delta.
          */
-        searchRecord(cursor1, 32, 32, true/*exact*/, true/*exists*/);
+        searchRecord(cursor1, 32, 32, true/* exact */, true/* exists */);
         assertTrue(!bin1.isBINDelta(false));
         cursor1.close();
 
@@ -536,16 +524,16 @@ public class BINDeltaOpsTest extends DualTestCase {
          */
         mutateToDelta(bin1);
         cursor1 = db.openCursor(null, null);
-        searchKey(cursor1, 25, true/*exact*/, false/*exists*/);
+        searchKey(cursor1, 25, true/* exact */, false/* exists */);
         assertTrue(!bin1.isBINDelta(false));
         cursor1.close();
 
         /*
-         * 1. Update more records in bin1 so that next logrec will be a full bin.
-         * 2. Do a checkpoint to write the full bin1 to the log. Note that bin1
-         *    has 2 deleted slots that will be compressed away by logging it.
-         * 3. Update 1 record in bin1.
-         * 4. Mutate bin1 to a delta with one slot only.
+         * 1. Update more records in bin1 so that next logrec will be a full
+         * bin. 2. Do a checkpoint to write the full bin1 to the log. Note that
+         * bin1 has 2 deleted slots that will be compressed away by logging it.
+         * 3. Update 1 record in bin1. 4. Mutate bin1 to a delta with one slot
+         * only.
          */
         writeData(15, 10);
         assertTrue(!bin1.isBINDelta(false));
@@ -602,18 +590,14 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         for (int i = 0; i < nRecs; i += 1) {
 
-            assertEquals(
-                OperationStatus.SUCCESS,
-                cursor.getNext(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, null));
 
             final CursorImpl cursorImpl = DbInternal.getCursorImpl(cursor);
             final BIN bin = cursorImpl.getBIN();
 
             if (bin != prevBin) {
 
-                assertEquals(
-                    OperationStatus.SUCCESS,
-                    cursor.putCurrent(data));
+                assertEquals(OperationStatus.SUCCESS, cursor.putCurrent(data));
 
                 if (prevBin != null) {
                     mutateToDelta(prevBin);
@@ -623,26 +607,20 @@ public class BINDeltaOpsTest extends DualTestCase {
             }
         }
 
-        assertEquals(
-            OperationStatus.NOTFOUND,
-            cursor.getNext(key, data, null));
+        assertEquals(OperationStatus.NOTFOUND, cursor.getNext(key, data, null));
 
         cursor.close();
         txn.commit();
 
         cursor = db.openCursor(null, null);
 
-        assertEquals(
-            OperationStatus.SUCCESS,
-            cursor.getLast(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getLast(key, data, null));
 
-        for (int i = nRecs - 1;  i >= 0; i -= 1) {
+        for (int i = nRecs - 1; i >= 0; i -= 1) {
 
             assertEquals(2 * i, TestUtils.getTestVal(key.getData()));
 
-            assertEquals(
-                (i > 0) ? OperationStatus.SUCCESS : OperationStatus.NOTFOUND,
-                cursor.getPrev(key, data, null));
+            assertEquals((i > 0) ? OperationStatus.SUCCESS : OperationStatus.NOTFOUND, cursor.getPrev(key, data, null));
         }
 
         cursor.close();
@@ -658,8 +636,7 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         byte[] bf = new byte[nbytes];
 
-        BINDeltaBloomFilter.HashContext hc =
-            new BINDeltaBloomFilter.HashContext();
+        BINDeltaBloomFilter.HashContext hc = new BINDeltaBloomFilter.HashContext();
 
         for (int i = 0; i < numKeys; ++i) {
             BINDeltaBloomFilter.add(bf, new byte[i], hc);
@@ -677,8 +654,8 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         for (int i = startRecord; i < nRecords + startRecord; i += 1) {
 
-            key.setData(TestUtils.getTestArray(2*i));
-            data.setData(TestUtils.getTestArray(2*i));
+            key.setData(TestUtils.getTestArray(2 * i));
+            data.setData(TestUtils.getTestArray(2 * i));
 
             assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
         }
@@ -715,17 +692,12 @@ public class BINDeltaOpsTest extends DualTestCase {
         final DatabaseEntry key = new DatabaseEntry();
         data.setData(null);
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getCurrent(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getCurrent(key, data, null));
 
         assertEquals(dataVal, TestUtils.getTestVal(data.getData()));
     }
 
-    private void searchKey(
-        final Cursor cursor,
-        final int keyVal,
-        boolean exactSearch,
-        boolean exists) {
+    private void searchKey(final Cursor cursor, final int keyVal, boolean exactSearch, boolean exists) {
 
         OperationStatus status = OperationStatus.SUCCESS;
         DatabaseEntry key = new DatabaseEntry();
@@ -744,12 +716,7 @@ public class BINDeltaOpsTest extends DualTestCase {
         }
     }
 
-    private void searchRecord(
-        Cursor cursor,
-        int keyVal,
-        int dataVal,
-        boolean exactSearch,
-        boolean exists) {
+    private void searchRecord(Cursor cursor, int keyVal, int dataVal, boolean exactSearch, boolean exists) {
 
         OperationStatus status = OperationStatus.SUCCESS;
         DatabaseEntry key = new DatabaseEntry();
@@ -757,7 +724,7 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         key.setData(TestUtils.getTestArray(keyVal));
         data.setData(TestUtils.getTestArray(dataVal));
- 
+
         if (exactSearch) {
             if (!exists) {
                 status = OperationStatus.NOTFOUND;
@@ -772,13 +739,11 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
- 
+
         if (skipDups) {
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNextNoDup(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNextNoDup(key, data, null));
         } else {
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNext(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, null));
         }
     }
 
@@ -788,8 +753,7 @@ public class BINDeltaOpsTest extends DualTestCase {
         final DatabaseEntry data = new DatabaseEntry();
         data.setPartial(true);
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getCurrent(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getCurrent(key, data, null));
 
         assertEquals(keyVal, TestUtils.getTestVal(key.getData()));
 
@@ -801,8 +765,8 @@ public class BINDeltaOpsTest extends DualTestCase {
     }
 
     /**
-     * Reads all keys, but does not read data to avoid changing the
-     * nNotResident stat.
+     * Reads all keys, but does not read data to avoid changing the nNotResident
+     * stat.
      */
     private void checkData(final Transaction txn, final int nRecords) {
 
@@ -814,21 +778,19 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         for (int i = 0; i < nRecords; i += 1) {
 
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNext(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, null));
 
-            assertEquals(2*i, TestUtils.getTestVal(key.getData()));
+            assertEquals(2 * i, TestUtils.getTestVal(key.getData()));
         }
 
-        assertEquals(OperationStatus.NOTFOUND,
-                     cursor.getNext(key, data, null));
+        assertEquals(OperationStatus.NOTFOUND, cursor.getNext(key, data, null));
 
         cursor.close();
     }
 
     /**
-     * Reads first key and returns its BIN. Does not read data to avoid
-     * changing the nNotResident stat.
+     * Reads first key and returns its BIN. Does not read data to avoid changing
+     * the nNotResident stat.
      */
     private BIN getFirstBIN() {
 
@@ -838,8 +800,7 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         final Cursor cursor = db.openCursor(null, null);
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getFirst(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(key, data, null));
 
         final BIN bin = DbInternal.getCursorImpl(cursor).getBIN();
         cursor.close();
@@ -848,8 +809,8 @@ public class BINDeltaOpsTest extends DualTestCase {
     }
 
     /**
-     * Reads last key and returns its BIN. Does not read data to avoid
-     * changing the nNotResident stat.
+     * Reads last key and returns its BIN. Does not read data to avoid changing
+     * the nNotResident stat.
      */
     private BIN getLastBIN() {
 
@@ -859,8 +820,7 @@ public class BINDeltaOpsTest extends DualTestCase {
 
         final Cursor cursor = db.openCursor(null, null);
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getLast(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getLast(key, data, null));
 
         final BIN bin = DbInternal.getCursorImpl(cursor).getBIN();
         cursor.close();

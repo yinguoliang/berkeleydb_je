@@ -37,20 +37,19 @@ import com.sleepycat.util.test.SharedTestUtils;
 public class DatabaseConfigTest extends DualTestCase {
     private static final boolean DEBUG = false;
 
-    private final File envHome;
-    private Environment env;
+    private final File           envHome;
+    private Environment          env;
 
     public DatabaseConfigTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     /**
-     * Test that we can retrieve a database configuration and that it clones
-     * its configuration appropriately.
+     * Test that we can retrieve a database configuration and that it clones its
+     * configuration appropriately.
      */
     @Test
-    public void testConfig()
-        throws Throwable {
+    public void testConfig() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -88,8 +87,7 @@ public class DatabaseConfigTest extends DualTestCase {
     }
 
     @Test
-    public void testConfigMatching()
-        throws Throwable {
+    public void testConfigMatching() throws Throwable {
 
         try {
             /* DatabaseConfig matching. */
@@ -277,8 +275,7 @@ public class DatabaseConfigTest extends DualTestCase {
      * Make sure we can instantiate a comparator at the time it's set.
      */
     @Test
-    public void testComparator()
-        throws Throwable {
+    public void testComparator() throws Throwable {
 
         try {
             /* Can't be instantiated, a nested class */
@@ -347,8 +344,7 @@ public class DatabaseConfigTest extends DualTestCase {
      * underlying impl object are detected.
      */
     @Test
-    public void testConfigConflict()
-        throws Throwable {
+    public void testConfigConflict() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -363,8 +359,7 @@ public class DatabaseConfigTest extends DualTestCase {
             DatabaseConfig firstConfig = new DatabaseConfig();
             firstConfig.setAllowCreate(true);
             firstConfig.setSortedDuplicates(true);
-            Database firstHandle = env.openDatabase(null, "fooDups",
-                                                    firstConfig);
+            Database firstHandle = env.openDatabase(null, "fooDups", firstConfig);
             /* 1b. Try to open w/no duplicates. */
             DatabaseConfig secondConfig = new DatabaseConfig();
             secondConfig.setSortedDuplicates(false);
@@ -391,15 +386,14 @@ public class DatabaseConfigTest extends DualTestCase {
             firstHandle.close();
 
             /*
-             * Test conflicts of read only. If the environment is read/write
-             * we should be able to open handles in read only or read/write
-             * mode. If the environment is readonly, the database handles
-             * must also be read only.
+             * Test conflicts of read only. If the environment is read/write we
+             * should be able to open handles in read only or read/write mode.
+             * If the environment is readonly, the database handles must also be
+             * read only.
              */
             DatabaseConfig readOnlyConfig = new DatabaseConfig();
             readOnlyConfig.setReadOnly(true);
-            Database roHandle = env.openDatabase(null, "fooDups",
-                                                 readOnlyConfig);
+            Database roHandle = env.openDatabase(null, "fooDups", readOnlyConfig);
             roHandle.close();
 
             /* Open the environment in read only mode. */
@@ -409,8 +403,7 @@ public class DatabaseConfigTest extends DualTestCase {
             env = create(envHome, envConfig);
 
             /* Open a readOnly database handle, should succeed */
-            roHandle = env.openDatabase(null, "fooDups",
-                                        readOnlyConfig);
+            roHandle = env.openDatabase(null, "fooDups", readOnlyConfig);
             roHandle.close();
 
             /* Open a read/write database handle, should not succeed. */
@@ -428,9 +421,7 @@ public class DatabaseConfigTest extends DualTestCase {
             env = create(envHome, null);
             firstConfig = new DatabaseConfig();
             firstConfig.setAllowCreate(true);
-            firstHandle = env.openDatabase(null,
-                                           "fooComparator",
-                                           firstConfig);
+            firstHandle = env.openDatabase(null, "fooComparator", firstConfig);
             DatabaseConfig firstRetrievedConfig = firstHandle.getConfig();
             assertEquals(null, firstRetrievedConfig.getBtreeComparator());
             assertEquals(null, firstRetrievedConfig.getDuplicateComparator());
@@ -442,12 +433,9 @@ public class DatabaseConfigTest extends DualTestCase {
             secondConfig = new DatabaseConfig();
             Comparator btreeComparator = new TestComparator();
             Comparator dupComparator = new TestComparator();
-            secondConfig.setBtreeComparator
-                ((Class<Comparator<byte[]>>)btreeComparator.getClass());
-            secondConfig.setDuplicateComparator
-                ((Class<Comparator<byte[]>>)dupComparator.getClass());
-            Database secondHandle =
-                env.openDatabase(null, "fooComparator", secondConfig);
+            secondConfig.setBtreeComparator((Class<Comparator<byte[]>>) btreeComparator.getClass());
+            secondConfig.setDuplicateComparator((Class<Comparator<byte[]>>) dupComparator.getClass());
+            Database secondHandle = env.openDatabase(null, "fooComparator", secondConfig);
             DatabaseConfig retrievedConfig = secondHandle.getConfig();
             assertEquals(null, retrievedConfig.getBtreeComparator());
             assertEquals(null, retrievedConfig.getDuplicateComparator());
@@ -459,29 +447,24 @@ public class DatabaseConfigTest extends DualTestCase {
             dupComparator = new TestSerialComparator();
             secondConfig.setBtreeComparator(btreeComparator);
             secondConfig.setDuplicateComparator(dupComparator);
-            secondHandle =
-                env.openDatabase(null, "fooComparator", secondConfig);
+            secondHandle = env.openDatabase(null, "fooComparator", secondConfig);
             retrievedConfig = secondHandle.getConfig();
             assertEquals(null, retrievedConfig.getBtreeComparator());
             assertEquals(null, retrievedConfig.getDuplicateComparator());
             secondHandle.close();
 
-            /* 
-             * Test that update DatabaseConfig while there are open handles 
-             * should throw exceptions. 
+            /*
+             * Test that update DatabaseConfig while there are open handles
+             * should throw exceptions.
              */
             secondConfig.setOverrideBtreeComparator(true);
             secondConfig.setOverrideDuplicateComparator(true);
             btreeComparator = new TestComparator();
             dupComparator = new TestComparator();
-            secondConfig.setBtreeComparator
-                ((Class<Comparator<byte[]>>)btreeComparator.getClass());
-            secondConfig.setDuplicateComparator
-                ((Class<Comparator<byte[]>>)dupComparator.getClass());
+            secondConfig.setBtreeComparator((Class<Comparator<byte[]>>) btreeComparator.getClass());
+            secondConfig.setDuplicateComparator((Class<Comparator<byte[]>>) dupComparator.getClass());
             try {
-                secondHandle = env.openDatabase(null,
-                                                "fooComparator",
-                                                 secondConfig);
+                secondHandle = env.openDatabase(null, "fooComparator", secondConfig);
                 fail("Expect exceptions here");
             } catch (IllegalStateException e) {
                 /* Expected exception. */
@@ -490,14 +473,12 @@ public class DatabaseConfigTest extends DualTestCase {
             }
             secondHandle.close();
 
-            /* 
-             * Open a new database handle without DatabaseConfig changes should 
-             * be valid. 
+            /*
+             * Open a new database handle without DatabaseConfig changes should
+             * be valid.
              */
             try {
-                secondHandle = env.openDatabase(null,
-                                                "fooComparator",
-                                                firstConfig);
+                secondHandle = env.openDatabase(null, "fooComparator", firstConfig);
             } catch (Exception e) {
                 fail("Unexpected exception: " + e.getMessage());
             }
@@ -513,11 +494,10 @@ public class DatabaseConfigTest extends DualTestCase {
     }
 
     @Test
-    public void testIsTransactional()
-        throws Throwable {
+    public void testIsTransactional() throws Throwable {
 
         try {
-            /* Open environment in transactional mode.*/
+            /* Open environment in transactional mode. */
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setTransactional(true);
             envConfig.setAllowCreate(true);
@@ -588,8 +568,7 @@ public class DatabaseConfigTest extends DualTestCase {
     }
 
     @Test
-    public void testOpenReadOnly()
-        throws Throwable {
+    public void testOpenReadOnly() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -629,20 +608,17 @@ public class DatabaseConfigTest extends DualTestCase {
             data.setData(TestUtils.getTestArray(0));
             try {
                 myDb.put(txn, key, data);
-                fail("expected UnsupportedOperationException " +
-                     "because open RDONLY");
+                fail("expected UnsupportedOperationException " + "because open RDONLY");
             } catch (UnsupportedOperationException expected) {
             }
 
             key.setData(TestUtils.getTestArray(0));
             data.setData(TestUtils.getTestArray(0));
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb.get(txn, key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, myDb.get(txn, key, data, LockMode.DEFAULT));
 
             Cursor cursor = myDb.openCursor(txn, null);
 
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getFirst(key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, cursor.getFirst(key, data, LockMode.DEFAULT));
 
             try {
                 cursor.delete();
@@ -654,8 +630,7 @@ public class DatabaseConfigTest extends DualTestCase {
             data.setData(TestUtils.getTestArray(1));
             try {
                 myDb.put(txn, key, data);
-                fail
-              ("expected UnsupportedOperationException because open RDONLY");
+                fail("expected UnsupportedOperationException because open RDONLY");
             } catch (UnsupportedOperationException expected) {
             }
 
@@ -674,8 +649,7 @@ public class DatabaseConfigTest extends DualTestCase {
      * Test exclusive creation.
      */
     @Test
-    public void testExclusive()
-        throws Throwable {
+    public void testExclusive() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -711,8 +685,7 @@ public class DatabaseConfigTest extends DualTestCase {
      * Test that changing the Btree comparator really writes it to disk.
      */
     @Test
-    public void testConfigOverrideUpdateSR15743()
-        throws Throwable {
+    public void testConfigOverrideUpdateSR15743() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -732,8 +705,7 @@ public class DatabaseConfigTest extends DualTestCase {
             /* Change the original dbConfig */
             dbConfigA.setBtreeComparator(TestComparator2.class);
             DatabaseConfig getConfig1 = dbA.getConfig();
-            assertEquals(TestComparator.class,
-                         getConfig1.getBtreeComparator().getClass());
+            assertEquals(TestComparator.class, getConfig1.getBtreeComparator().getClass());
 
             /*
              * Change the retrieved config, ought to have no effect on what the
@@ -741,8 +713,7 @@ public class DatabaseConfigTest extends DualTestCase {
              */
             getConfig1.setBtreeComparator(TestComparator2.class);
             DatabaseConfig getConfig2 = dbA.getConfig();
-            assertEquals(TestComparator.class,
-                         getConfig2.getBtreeComparator().getClass());
+            assertEquals(TestComparator.class, getConfig2.getBtreeComparator().getClass());
 
             dbA.close();
             close(env);
@@ -758,8 +729,7 @@ public class DatabaseConfigTest extends DualTestCase {
             dbA = env.openDatabase(null, "foo", dbConfigA);
 
             getConfig2 = dbA.getConfig();
-            assertEquals(TestComparator2.class,
-                         getConfig2.getBtreeComparator().getClass());
+            assertEquals(TestComparator2.class, getConfig2.getBtreeComparator().getClass());
 
             dbA.close();
             close(env);
@@ -771,13 +741,10 @@ public class DatabaseConfigTest extends DualTestCase {
             dbConfigA = new DatabaseConfig();
             dbA = env.openDatabase(null, "foo", dbConfigA);
             getConfig2 = dbA.getConfig();
-            assertEquals(TestComparator2.class,
-                         getConfig2.getBtreeComparator().getClass());
+            assertEquals(TestComparator2.class, getConfig2.getBtreeComparator().getClass());
 
             /* Create a root for the tree. */
-            dbA.put(null,
-                    new DatabaseEntry(new byte[1]),
-                    new DatabaseEntry(new byte[1]));
+            dbA.put(null, new DatabaseEntry(new byte[1]), new DatabaseEntry(new byte[1]));
 
             dbA.close();
             close(env);
@@ -792,8 +759,7 @@ public class DatabaseConfigTest extends DualTestCase {
             dbConfigA.setBtreeComparator(TestComparator3.class);
             dbA = env.openDatabase(null, "foo", dbConfigA);
             getConfig2 = dbA.getConfig();
-            assertEquals(TestComparator3.class,
-                         getConfig2.getBtreeComparator().getClass());
+            assertEquals(TestComparator3.class, getConfig2.getBtreeComparator().getClass());
             dbA.close();
             close(env);
 
@@ -804,8 +770,7 @@ public class DatabaseConfigTest extends DualTestCase {
             dbConfigA = new DatabaseConfig();
             dbA = env.openDatabase(null, "foo", dbConfigA);
             getConfig2 = dbA.getConfig();
-            assertEquals(TestComparator3.class,
-                         getConfig2.getBtreeComparator().getClass());
+            assertEquals(TestComparator3.class, getConfig2.getBtreeComparator().getClass());
             dbA.close();
             close(env);
 
@@ -817,8 +782,7 @@ public class DatabaseConfigTest extends DualTestCase {
 
     /* Test mutable and persistent configurations. */
     @Test
-    public void testPersistentAndMutableConfigs()
-        throws Exception {
+    public void testPersistentAndMutableConfigs() throws Exception {
 
         final String dbName = "foo";
 
@@ -827,12 +791,9 @@ public class DatabaseConfigTest extends DualTestCase {
         envConfig.setTransactional(true);
         env = create(envHome, envConfig);
 
-        DbConfigManager configMgr = 
-            DbInternal.getNonNullEnvImpl(env).getConfigManager();
-        int defaultNodeMaxEntries = 
-            configMgr.getInt(EnvironmentParams.NODE_MAX);
-        int defaultNodeDupTreeMaxEntries =
-            configMgr.getInt(EnvironmentParams.NODE_MAX_DUPTREE);
+        DbConfigManager configMgr = DbInternal.getNonNullEnvImpl(env).getConfigManager();
+        int defaultNodeMaxEntries = configMgr.getInt(EnvironmentParams.NODE_MAX);
+        int defaultNodeDupTreeMaxEntries = configMgr.getInt(EnvironmentParams.NODE_MAX_DUPTREE);
 
         /* Check the default node max entries setting. */
         assertEquals(defaultNodeMaxEntries, 128);
@@ -849,13 +810,12 @@ public class DatabaseConfigTest extends DualTestCase {
         dbConfig.setBtreeComparator(TestComparator.class);
         DatabaseConfig newConfig = setAndGetDbConfig(env, dbConfig, dbName);
         assertTrue(newConfig.getBtreeComparator() instanceof TestComparator);
-        
+
         /* Check whether DuplicateComparator setting is persisted. */
         dbConfig.setOverrideDuplicateComparator(true);
         dbConfig.setDuplicateComparator(new TestSerialComparator());
         newConfig = setAndGetDbConfig(env, dbConfig, dbName);
-        assertTrue(newConfig.getDuplicateComparator() instanceof 
-                   TestSerialComparator);
+        assertTrue(newConfig.getDuplicateComparator() instanceof TestSerialComparator);
 
         /* Check whether KeyPrefixing setting is persisted. */
         dbConfig.setKeyPrefixing(true);
@@ -870,25 +830,20 @@ public class DatabaseConfigTest extends DualTestCase {
         close(env);
     }
 
-    /* 
-     * This method will:
-     * 1. apply the modified DatabaseConfig to the database.
-     * 2. close the database and do a sync to make sure the new configuration
-     *    is written to the log.
-     * 3. open the database with a useExisting config and return the current
-     *    DatabaseConfig.
+    /*
+     * This method will: 1. apply the modified DatabaseConfig to the database.
+     * 2. close the database and do a sync to make sure the new configuration is
+     * written to the log. 3. open the database with a useExisting config and
+     * return the current DatabaseConfig.
      */
-    private DatabaseConfig setAndGetDbConfig(Environment env, 
-                                             DatabaseConfig dbConfig,
-                                             String dbName) 
-        throws Exception {
+    private DatabaseConfig setAndGetDbConfig(Environment env, DatabaseConfig dbConfig, String dbName) throws Exception {
 
         Database db = env.openDatabase(null, "foo", dbConfig);
         db.close();
-        
+
         env.sync();
 
-        /* 
+        /*
          * Open with the useExisting config to see what attributes have been
          * persisted.
          */
@@ -980,12 +935,11 @@ public class DatabaseConfigTest extends DualTestCase {
     }
 
     /*
-     * This Comparator can't be serialized because it contains a reference to
-     * an object that's not serializable.
+     * This Comparator can't be serialized because it contains a reference to an
+     * object that's not serializable.
      */
     @SuppressWarnings("serial")
-    public class BadSerialComparator2 implements Comparator<byte[]>,
-                                                 Serializable {
+    public class BadSerialComparator2 implements Comparator<byte[]>, Serializable {
 
         private final BadSerialComparator1 o = new BadSerialComparator1();
 
@@ -1002,8 +956,7 @@ public class DatabaseConfigTest extends DualTestCase {
      * constructor, and serializable fields are allowed.
      */
     @SuppressWarnings("serial")
-    private static class TestSerialComparator
-        implements Comparator<byte[]>, Serializable {
+    private static class TestSerialComparator implements Comparator<byte[]>, Serializable {
 
         private final String s = "sss";
 
@@ -1025,8 +978,7 @@ public class DatabaseConfigTest extends DualTestCase {
      * OK comparator for setting comparators.
      */
     @SuppressWarnings("serial")
-    public static class TestSerialComparator2
-        implements Comparator<byte[]>, Serializable {
+    public static class TestSerialComparator2 implements Comparator<byte[]>, Serializable {
 
         public int compare(byte[] o1, byte[] o2) {
             return 0;
@@ -1034,15 +986,13 @@ public class DatabaseConfigTest extends DualTestCase {
     }
 
     public static class SecKeyCreator1 implements SecondaryKeyCreator {
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data,
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                           DatabaseEntry result) {
             return true;
         }
 
         @Override
-    public boolean equals(Object o) {
+        public boolean equals(Object o) {
             if (o == null) {
                 return false;
             }
@@ -1051,15 +1001,13 @@ public class DatabaseConfigTest extends DualTestCase {
     }
 
     public static class SecKeyCreator2 implements SecondaryKeyCreator {
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data,
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                           DatabaseEntry result) {
             return true;
         }
 
         @Override
-    public boolean equals(Object o) {
+        public boolean equals(Object o) {
             if (o == null) {
                 return false;
             }
@@ -1067,16 +1015,13 @@ public class DatabaseConfigTest extends DualTestCase {
         }
     }
 
-    public static class SecMultiKeyCreator1
-        implements SecondaryMultiKeyCreator {
-        public void createSecondaryKeys(SecondaryDatabase secondary,
-                                        DatabaseEntry key,
-                                        DatabaseEntry data,
+    public static class SecMultiKeyCreator1 implements SecondaryMultiKeyCreator {
+        public void createSecondaryKeys(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                         Set results) {
         }
 
         @Override
-    public boolean equals(Object o) {
+        public boolean equals(Object o) {
             if (o == null) {
                 return false;
             }
@@ -1085,17 +1030,13 @@ public class DatabaseConfigTest extends DualTestCase {
     }
 
     public static class ForeignKeyNullifier1 implements ForeignKeyNullifier {
-        public boolean nullifyForeignKey(SecondaryDatabase secondary,
-                                         DatabaseEntry data) {
+        public boolean nullifyForeignKey(SecondaryDatabase secondary, DatabaseEntry data) {
             return true;
         }
     }
 
-    public static class ForeignMultiKeyNullifier1
-        implements ForeignMultiKeyNullifier {
-        public boolean nullifyForeignKey(SecondaryDatabase secondary,
-                                         DatabaseEntry key,
-                                         DatabaseEntry data,
+    public static class ForeignMultiKeyNullifier1 implements ForeignMultiKeyNullifier {
+        public boolean nullifyForeignKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                          DatabaseEntry secKey) {
             return true;
         }

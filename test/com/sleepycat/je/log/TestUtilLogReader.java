@@ -26,36 +26,18 @@ import com.sleepycat.je.utilint.DbLsn;
 public class TestUtilLogReader extends FileReader {
 
     private LogEntryType entryType;
-    private LogEntry entry;
+    private LogEntry     entry;
 
-    public TestUtilLogReader(EnvironmentImpl env)
-        throws DatabaseException {
+    public TestUtilLogReader(EnvironmentImpl env) throws DatabaseException {
 
-        super(env,
-              4096,
-              true,
-              DbLsn.NULL_LSN,
-              null,
-              DbLsn.NULL_LSN,
-              DbLsn.NULL_LSN);
+        super(env, 4096, true, DbLsn.NULL_LSN, null, DbLsn.NULL_LSN, DbLsn.NULL_LSN);
     }
 
-    public TestUtilLogReader(EnvironmentImpl env,
-                             int readBufferSize,
-                             boolean forward,
-                             long startLsn,
-                             Long singleFileNumber,
-                             long endOfFileLsn,
-                             long finishLsn)
-        throws DatabaseException {
+    public TestUtilLogReader(EnvironmentImpl env, int readBufferSize, boolean forward, long startLsn,
+                             Long singleFileNumber, long endOfFileLsn, long finishLsn)
+            throws DatabaseException {
 
-        super(env,
-              readBufferSize,
-              forward,
-              startLsn,
-              singleFileNumber,
-              endOfFileLsn,
-              finishLsn);
+        super(env, readBufferSize, forward, startLsn, singleFileNumber, endOfFileLsn, finishLsn);
     }
 
     public LogEntryType getEntryType() {
@@ -74,8 +56,7 @@ public class TestUtilLogReader extends FileReader {
         return true;
     }
 
-    protected boolean processEntry(ByteBuffer entryBuffer)
-        throws DatabaseException {
+    protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
         entryType = LogEntryType.findType(currentEntryHeader.getType());
         entry = entryType.getSharedLogEntry();

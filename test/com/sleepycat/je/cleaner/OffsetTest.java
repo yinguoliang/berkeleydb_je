@@ -31,23 +31,16 @@ public class OffsetTest extends TestBase {
     @Test
     public void testOffsets() {
 
-        doAllTest(new long[] {
-            1,
-            2,
-            0xfffe,
-            0xffff,
-            0xfffff,
-            Integer.MAX_VALUE - 1,
-            Integer.MAX_VALUE,
+        doAllTest(new long[] { 1, 2, 0xfffe, 0xffff, 0xfffff, Integer.MAX_VALUE - 1, Integer.MAX_VALUE,
 
-            /*
-             * The following values don't work, which is probably a bug, but
-             * LSN offsets are not normally this large so the bug currently has
-             * little impact.
-             */
-            //Integer.MAX_VALUE + 1L,
-            //Long.MAX_VALUE - 100L,
-            //Long.MAX_VALUE,
+                /*
+                 * The following values don't work, which is probably a bug, but
+                 * LSN offsets are not normally this large so the bug currently
+                 * has little impact.
+                 */
+                //Integer.MAX_VALUE + 1L,
+                //Long.MAX_VALUE - 100L,
+                //Long.MAX_VALUE,
         });
     }
 
@@ -71,8 +64,7 @@ public class OffsetTest extends TestBase {
             list.add(offsets[i], true);
         }
         long[] array = list.toArray();
-        assertTrue("array=\n" + dump(array) + " offsets=\n" + dump(offsets),
-                   Arrays.equals(offsets, array));
+        assertTrue("array=\n" + dump(array) + " offsets=\n" + dump(offsets), Arrays.equals(offsets, array));
 
         long[] sorted = new long[array.length];
         System.arraycopy(array, 0, sorted, 0, array.length);

@@ -30,8 +30,7 @@ public class Adler32Test extends TestBase {
     public void testRandomAdler32ByteArray() {
         Checksum javaChecksum = new java.util.zip.Adler32();
         Checksum jeChecksum = new com.sleepycat.je.utilint.Adler32();
-        Checksum chunkingChecksum =
-            new com.sleepycat.je.utilint.Adler32.ChunkingAdler32(128);
+        Checksum chunkingChecksum = new com.sleepycat.je.utilint.Adler32.ChunkingAdler32(128);
         Random rnd = new Random();
         for (int i = 0; i < N_ITERS; i++) {
             int nBytes = rnd.nextInt(65535);
@@ -63,28 +62,16 @@ public class Adler32Test extends TestBase {
             totalBytes += nBytes;
             rnd.nextBytes(b);
         }
-        long jeChecksumTime =
-            measureChecksum(baa, lengths, jeChecksum, false);
-        long javaChecksumTime =
-            measureChecksum(baa, lengths, javaChecksum, false);
-        long jeChecksumTimeByteAtATime =
-            measureChecksum(baa, lengths, jeChecksum, true);
-        long javaChecksumTimeByteAtATime =
-            measureChecksum(baa, lengths, javaChecksum, true);
-        System.out.println(N_ITERS + " Iterations, " +
-                           totalBytes + " bytes:\n " +
-                           javaChecksumTime + " millis. for java\n" +
-                           jeChecksumTime + " millis. for je\n" +
-                           javaChecksumTimeByteAtATime +
-                           " millis. for java byte at a time\n" +
-                           jeChecksumTimeByteAtATime +
-                           " millis. for je byte at a time");
+        long jeChecksumTime = measureChecksum(baa, lengths, jeChecksum, false);
+        long javaChecksumTime = measureChecksum(baa, lengths, javaChecksum, false);
+        long jeChecksumTimeByteAtATime = measureChecksum(baa, lengths, jeChecksum, true);
+        long javaChecksumTimeByteAtATime = measureChecksum(baa, lengths, javaChecksum, true);
+        System.out.println(N_ITERS + " Iterations, " + totalBytes + " bytes:\n " + javaChecksumTime
+                + " millis. for java\n" + jeChecksumTime + " millis. for je\n" + javaChecksumTimeByteAtATime
+                + " millis. for java byte at a time\n" + jeChecksumTimeByteAtATime + " millis. for je byte at a time");
     }
 
-    private long measureChecksum(byte[][] baa,
-                                 int[] lengths,
-                                 Checksum cksum,
-                                 boolean byteAtATime) {
+    private long measureChecksum(byte[][] baa, int[] lengths, Checksum cksum, boolean byteAtATime) {
         long startTime = System.currentTimeMillis();
         for (int i = 0; i < N_ITERS; i++) {
             byte[] b = baa[i];

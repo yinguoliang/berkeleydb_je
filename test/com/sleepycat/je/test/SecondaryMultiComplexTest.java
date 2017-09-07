@@ -49,23 +49,28 @@ import com.sleepycat.util.test.TestBase;
  * Test involving secondary indexes with respect to deadlock free access.
  *
  * @author dwchung
- *
  */
 @RunWith(Parameterized.class)
 public class SecondaryMultiComplexTest extends TestBase {
 
-    private enum ReadType {GETSEARCHKEY, GETSEARCHKEY2, GETSEARCHBOTH,
-                           GETSEARCHBOTH2, GETSEARCHKEYRANGE,
-                           GETSEARCHKEYRANGE2};
-    private final ReadType[] readTypes = ReadType.values();
-    private static final String DB_NAME = "foo";
-    private static final String SDB_NAME = "fooSec";
-    private volatile int currentEvent;
-    private volatile int threadid = 0;
-    private final boolean useDuplicate;
-    Environment env = null;
-    Database db = null;
-    SecondaryDatabase sdb = null;
+    private enum ReadType {
+        GETSEARCHKEY,
+        GETSEARCHKEY2,
+        GETSEARCHBOTH,
+        GETSEARCHBOTH2,
+        GETSEARCHKEYRANGE,
+        GETSEARCHKEYRANGE2
+    };
+
+    private final ReadType[]    readTypes = ReadType.values();
+    private static final String DB_NAME   = "foo";
+    private static final String SDB_NAME  = "fooSec";
+    private volatile int        currentEvent;
+    private volatile int        threadid  = 0;
+    private final boolean       useDuplicate;
+    Environment                 env       = null;
+    Database                    db        = null;
+    SecondaryDatabase           sdb       = null;
 
     public SecondaryMultiComplexTest(boolean useDuplicate) {
         this.useDuplicate = useDuplicate;
@@ -73,17 +78,17 @@ public class SecondaryMultiComplexTest extends TestBase {
 
     @Parameters
     public static List<Object[]> genParams() {
-       return paramsHelper(false);
+        return paramsHelper(false);
     }
 
     /*
-     * The parameters for the test is a boolean that
-     * determines if the secondary db supports duplicates.
+     * The parameters for the test is a boolean that determines if the secondary
+     * db supports duplicates.
      */
     private static List<Object[]> paramsHelper(boolean rep) {
         final List<Object[]> newParams = new ArrayList<Object[]>();
-        newParams.add(new Object[] {false});
-        newParams.add(new Object[] {true});
+        newParams.add(new Object[] { false });
+        newParams.add(new Object[] { true });
         return newParams;
     }
 
@@ -131,26 +136,17 @@ public class SecondaryMultiComplexTest extends TestBase {
     }
 
     /*
-     * This test checks the code in the area of secondary read
-     * deadlock avoidance. The initial non-locking scan on the
-     * secondary, followed by the locking primary scan is exercised.
-     * The following is the test:
-     * Primary  Secondary Data Description
-     * A        A        1    Data populated
-     *                        readers started reading secondary key A
-     *                         Writer transaction begin
-     * -        -         -      delete Pk
-     * A        B         0      insert record
-     * B        A         1      insert record
-     *                         Writer commit transaction
-     *
-     * The readers may block on the primary lock after having
-     * retrieved the primary key from the secondary index
-     * without locking. When the primary lock is granted,
-     * the primary/secondary association has changed from
-     * what it was on the initial scan on the secondary to
-     * get the primary key. Initially B -> A, now A -> B.
-     * So this row should be skipped (non-serializable isolation).
+     * This test checks the code in the area of secondary read deadlock
+     * avoidance. The initial non-locking scan on the secondary, followed by the
+     * locking primary scan is exercised. The following is the test: Primary
+     * Secondary Data Description A A 1 Data populated readers started reading
+     * secondary key A Writer transaction begin - - - delete Pk A B 0 insert
+     * record B A 1 insert record Writer commit transaction The readers may
+     * block on the primary lock after having retrieved the primary key from the
+     * secondary index without locking. When the primary lock is granted, the
+     * primary/secondary association has changed from what it was on the initial
+     * scan on the secondary to get the primary key. Initially B -> A, now A ->
+     * B. So this row should be skipped (non-serializable isolation).
      */
     @Test
     public void testMultiReadMoveSecondary() throws Exception {
@@ -169,27 +165,20 @@ public class SecondaryMultiComplexTest extends TestBase {
         /* populate */
         for (int i = 0; i < DATACOUNT; i++) {
             byte[] val = Integer.valueOf(i).toString().getBytes();
-            db.put(null,
-                   new DatabaseEntry(val),
-                   new DatabaseEntry(createData(1, i)));
+            db.put(null, new DatabaseEntry(val), new DatabaseEntry(createData(1, i)));
         }
 
         for (int i = 0; i < readers.length; i++) {
             Database tdb;
             tdb = sdb;
-            ReadType trt = tdb instanceof SecondaryDatabase ?
-                                readTypes[curReadType++ % readTypes.length] :
-                                ReadType.GETSEARCHKEY;
-            readers[i] =
-                    new ReadIt(KEY, env, tdb, 0, 0, 1,
-                               OperationStatus.SUCCESS, trt);
+            ReadType trt = tdb instanceof SecondaryDatabase ? readTypes[curReadType++ % readTypes.length]
+                    : ReadType.GETSEARCHKEY;
+            readers[i] = new ReadIt(KEY, env, tdb, 0, 0, 1, OperationStatus.SUCCESS, trt);
             threads[i] = new Thread(readers[i]);
         }
 
         for (int i = 0; i < writers.length; i++) {
-            writers[i] =
-                new MoveIt(KEY, NEWKEY, env, db,
-                             readers.length / 2, 0, 1);
+            writers[i] = new MoveIt(KEY, NEWKEY, env, db, readers.length / 2, 0, 1);
             threads[i + readers.length] = new Thread(writers[i]);
         }
 
@@ -223,24 +212,19 @@ public class SecondaryMultiComplexTest extends TestBase {
     }
 
     class MoveIt implements Runnable {
-        int oldkey;
-        int newkey;
-        Database db;
-        Environment env;
+        int             oldkey;
+        int             newkey;
+        Database        db;
+        Environment     env;
         OperationStatus retstat = null;
-        int waitEventPre;
-        int waitEventPost;
-        int id;
-        long waittime;
-        Exception failureException;
+        int             waitEventPre;
+        int             waitEventPost;
+        int             id;
+        long            waittime;
+        Exception       failureException;
 
-        MoveIt(int oldkey,
-               int newkey,
-                 Environment env,
-                 Database db,
-                 int waiteventpre,
-                 int waiteventpost,
-                 long waittime) {
+        MoveIt(int oldkey, int newkey, Environment env, Database db, int waiteventpre, int waiteventpost,
+               long waittime) {
             this.oldkey = oldkey;
             this.newkey = newkey;
             this.db = db;
@@ -249,11 +233,12 @@ public class SecondaryMultiComplexTest extends TestBase {
             this.waitEventPost = waiteventpost;
             id = threadid++;
             this.waittime = waittime;
-         }
+        }
 
         public void run() {
             try {
-                while (!doWork());
+                while (!doWork())
+                    ;
             } catch (Exception e) {
                 failureException = e;
             }
@@ -272,14 +257,8 @@ public class SecondaryMultiComplexTest extends TestBase {
                 Transaction xact = env.beginTransaction(null, null);
                 try {
                     retstat = db.delete(xact, createEntry(oldkey));
-                    retstat =
-                        db.put(xact,
-                               createEntry(oldkey),
-                               new DatabaseEntry(createData(0, newkey)));
-                    retstat =
-                        db.put(xact,
-                               createEntry(newkey),
-                               new DatabaseEntry(createData(1, oldkey)));
+                    retstat = db.put(xact, createEntry(oldkey), new DatabaseEntry(createData(0, newkey)));
+                    retstat = db.put(xact, createEntry(newkey), new DatabaseEntry(createData(1, oldkey)));
 
                 } catch (LockConflictException e) {
                     Transaction tx = xact;
@@ -319,36 +298,30 @@ public class SecondaryMultiComplexTest extends TestBase {
     }
 
     class ReadIt implements Runnable {
-        int key;
-        Database db;
-        Environment env;
-        int waitEventPre;
-        int waitEventPost;
-        long waitTime;
+        int             key;
+        Database        db;
+        Environment     env;
+        int             waitEventPre;
+        int             waitEventPost;
+        long            waitTime;
         OperationStatus result;
-        int id;
+        int             id;
         OperationStatus initStatus;
-        ReadType readType;
-        boolean done = false;
-        Exception failureException;
+        ReadType        readType;
+        boolean         done = false;
+        Exception       failureException;
 
-        ReadIt(int key,
-               Environment env,
-               Database db,
-               int waitEventPre,
-               int waitEventPost,
-               long waitTime,
-               OperationStatus initStatus,
-               ReadType readType) {
-           this.key = key;
-           this.db = db;
-           this.env = env;
-           this.waitEventPre = waitEventPre;
-           this.waitEventPost = waitEventPost;
-           this.waitTime = waitTime;
-           id = threadid++;
-           this.initStatus = initStatus;
-           this.readType = readType;
+        ReadIt(int key, Environment env, Database db, int waitEventPre, int waitEventPost, long waitTime,
+               OperationStatus initStatus, ReadType readType) {
+            this.key = key;
+            this.db = db;
+            this.env = env;
+            this.waitEventPre = waitEventPre;
+            this.waitEventPost = waitEventPost;
+            this.waitTime = waitTime;
+            id = threadid++;
+            this.initStatus = initStatus;
+            this.readType = readType;
         }
 
         public void run() {
@@ -391,32 +364,20 @@ public class SecondaryMultiComplexTest extends TestBase {
                 if (readType == ReadType.GETSEARCHKEY) {
                     result = c.getSearchKey(dek, data, null);
                 } else if (readType == ReadType.GETSEARCHKEY2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKey(dek, dek,
-                                                          data, null);
+                    result = ((SecondaryCursor) c).getSearchKey(dek, dek, data, null);
                 } else if (readType == ReadType.GETSEARCHBOTH) {
-                    result =
-                        ((SecondaryCursor)c).getSearchBoth(dek, dek,
-                                                           data, null);
+                    result = ((SecondaryCursor) c).getSearchBoth(dek, dek, data, null);
                 } else if (readType == ReadType.GETSEARCHBOTH2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchBoth(dek, dek,
-                                                           data, null);
+                    result = ((SecondaryCursor) c).getSearchBoth(dek, dek, data, null);
                 } else if (readType == ReadType.GETSEARCHKEYRANGE) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKeyRange(seckey,
-                                                               data, null);
+                    result = ((SecondaryCursor) c).getSearchKeyRange(seckey, data, null);
                     if (result == OperationStatus.SUCCESS) {
                         if (!seckey.equals(dek)) {
                             result = OperationStatus.NOTFOUND;
                         }
                     }
                 } else if (readType == ReadType.GETSEARCHKEYRANGE2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKeyRange(seckey,
-                                                               prikey,
-                                                               data,
-                                                               null);
+                    result = ((SecondaryCursor) c).getSearchKeyRange(seckey, prikey, data, null);
                     if (result == OperationStatus.SUCCESS) {
                         if (!seckey.equals(dek)) {
                             result = OperationStatus.NOTFOUND;
@@ -427,9 +388,7 @@ public class SecondaryMultiComplexTest extends TestBase {
                     int readSKey = byteToInt(data.getData(), 0);
                     int readDVal = byteToInt(data.getData(), 4);
                     if (readDVal != 1) {
-                        throw new Exception(
-                            "read invalid data value expected 1 read " +
-                            readDVal);
+                        throw new Exception("read invalid data value expected 1 read " + readDVal);
                     }
                 }
             } catch (LockConflictException e) {
@@ -445,8 +404,7 @@ public class SecondaryMultiComplexTest extends TestBase {
                 if (!deadlockCanHappen()) {
                     throw new Exception("deadlock occured but not expected.");
                 }
-            }
-            finally {
+            } finally {
                 if (c != null) {
                     c.close();
                 }
@@ -463,9 +421,11 @@ public class SecondaryMultiComplexTest extends TestBase {
         private boolean deadlockCanHappen() {
             return false;
         }
+
         public synchronized void setDone(boolean done) {
             this.done = done;
         }
+
         public Exception getFailure() {
             return failureException;
         }
@@ -475,26 +435,18 @@ public class SecondaryMultiComplexTest extends TestBase {
         return new DatabaseEntry(Integer.valueOf(val).toString().getBytes());
     }
 
-    private SecondaryDatabase
-        openSecondary(Environment env,
-                      Database priDb,
-                      String dbName,
-                      SecondaryConfig dbConfig) {
+    private SecondaryDatabase openSecondary(Environment env, Database priDb, String dbName, SecondaryConfig dbConfig) {
         dbConfig.setAllowPopulate(true);
         dbConfig.setSortedDuplicates(useDuplicate);
         dbConfig.setTransactional(true);
         dbConfig.setAllowCreate(true);
         dbConfig.setKeyCreator(new MyKeyCreator());
-        return env.openSecondaryDatabase(null, dbName,
-                                         priDb, dbConfig);
+        return env.openSecondaryDatabase(null, dbName, priDb, dbConfig);
     }
 
     int byteToInt(byte[] b, int offset) {
-        int i =
-            (b[0 + offset] << 24) & 0xff000000 |
-            (b[1 + offset] << 16) & 0xff0000 |
-            (b[2 + offset] << 8) & 0xff00 |
-            (b[3 + offset] << 0) & 0xff;
+        int i = (b[0 + offset] << 24) & 0xff000000 | (b[1 + offset] << 16) & 0xff0000 | (b[2 + offset] << 8) & 0xff00
+                | (b[3 + offset] << 0) & 0xff;
         return i;
     }
 
@@ -517,12 +469,12 @@ public class SecondaryMultiComplexTest extends TestBase {
 
     class MyKeyCreator implements SecondaryKeyCreator {
         @Override
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                DatabaseEntry key, DatabaseEntry data, DatabaseEntry result) {
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
+                                          DatabaseEntry result) {
             byte[] dbuf = data.getData();
             int skey = byteToInt(dbuf, 0);
 
-            result.setData( Integer.valueOf(skey).toString().getBytes());
+            result.setData(Integer.valueOf(skey).toString().getBytes());
             return true;
         }
     }

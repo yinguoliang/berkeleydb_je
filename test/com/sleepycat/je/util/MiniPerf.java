@@ -28,15 +28,14 @@ import com.sleepycat.utilint.StringUtils;
 
 public class MiniPerf {
 
-    private File envHome;
+    private File        envHome;
     private Environment exampleEnv;
-    private Database exampleDb;
-    private Cursor cursor;
+    private Database    exampleDb;
+    private Cursor      cursor;
 
-    static int nKeys;
+    static int          nKeys;
 
-    static public void main(String argv[])
-        throws DatabaseException, NumberFormatException {
+    static public void main(String argv[]) throws DatabaseException, NumberFormatException {
 
         boolean create = false;
         if (argv.length > 0) {
@@ -48,8 +47,7 @@ public class MiniPerf {
         new MiniPerf().doit(create);
     }
 
-    void doit(boolean create)
-        throws DatabaseException {
+    void doit(boolean create) throws DatabaseException {
 
         envHome = SharedTestUtils.getTestDir();
         setUp(create);
@@ -57,8 +55,7 @@ public class MiniPerf {
         tearDown();
     }
 
-    public void setUp(boolean create)
-        throws DatabaseException {
+    public void setUp(boolean create) throws DatabaseException {
 
         if (create) {
             TestUtils.removeLogFiles("Setup", envHome, false);
@@ -79,8 +76,7 @@ public class MiniPerf {
         cursor = exampleDb.openCursor(null, null);
     }
 
-    public void tearDown()
-        throws DatabaseException {
+    public void tearDown() throws DatabaseException {
 
         exampleEnv.sync();
 
@@ -93,10 +89,10 @@ public class MiniPerf {
                 exampleEnv.close();
             } catch (DatabaseException DE) {
                 /*
-                 * Ignore this exception.  It's caused by us calling
-                 * tearDown() within the test.  Each tearDown() call
-                 * forces the database closed.  So when the call from
-                 * junit comes along, it's already closed.
+                 * Ignore this exception. It's caused by us calling tearDown()
+                 * within the test. Each tearDown() call forces the database
+                 * closed. So when the call from junit comes along, it's already
+                 * closed.
                  */
             }
             exampleEnv = null;
@@ -105,8 +101,7 @@ public class MiniPerf {
         cursor = null;
     }
 
-    public void testIterationPerformance(boolean create)
-        throws DatabaseException {
+    public void testIterationPerformance(boolean create) throws DatabaseException {
 
         final int N_KEY_BYTES = 10;
         final int N_DATA_BYTES = 20;
@@ -124,8 +119,7 @@ public class MiniPerf {
                 byte[] data = new byte[N_DATA_BYTES];
                 TestUtils.generateRandomAlphaBytes(data);
                 String dataString = StringUtils.fromUTF8(data);
-                cursor.put(new StringDbt(keyString),
-                           new StringDbt(dataString));
+                cursor.put(new StringDbt(keyString), new StringDbt(dataString));
             }
             System.out.print("done.");
         } else {
@@ -142,8 +136,7 @@ public class MiniPerf {
 
                 count = 0;
                 while (status == OperationStatus.SUCCESS) {
-                    status =
-                        cursor.getNext(foundKey, foundData, LockMode.DEFAULT);
+                    status = cursor.getNext(foundKey, foundData, LockMode.DEFAULT);
                     count++;
                     if (count == middleEntry) {
                         middleKey = foundKey.getString();
@@ -163,9 +156,7 @@ public class MiniPerf {
             for (int j = 0; j < 3; j++) {
                 long startTime = System.currentTimeMillis();
                 for (int i = 0; i < count; i++) {
-                    if (cursor.getSearchKey(searchKey,
-                                            searchData,
-                                            LockMode.DEFAULT) != OperationStatus.SUCCESS) {
+                    if (cursor.getSearchKey(searchKey, searchData, LockMode.DEFAULT) != OperationStatus.SUCCESS) {
                         System.out.println("non-0 return");
                     }
                 }

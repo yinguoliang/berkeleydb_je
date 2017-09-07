@@ -30,9 +30,9 @@ import com.sleepycat.util.test.SharedTestUtils;
 
 public class DatabaseEntryTest extends DualTestCase {
 
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database db;
+    private Database    db;
 
     public DatabaseEntryTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -72,8 +72,7 @@ public class DatabaseEntryTest extends DualTestCase {
     }
 
     @Test
-    public void testOffset()
-        throws DatabaseException {
+    public void testOffset() throws DatabaseException {
 
         final int N_BYTES = 30;
 
@@ -99,9 +98,7 @@ public class DatabaseEntryTest extends DualTestCase {
         DatabaseEntry foundKey = new DatabaseEntry();
         DatabaseEntry foundData = new DatabaseEntry();
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getFirst(foundKey, foundData,
-                                     LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(foundKey, foundData, LockMode.DEFAULT));
 
         assertEquals(0, foundKey.getOffset());
         assertEquals(0, foundData.getOffset());
@@ -118,8 +115,7 @@ public class DatabaseEntryTest extends DualTestCase {
     }
 
     @Test
-    public void testPartial()
-        throws DatabaseException {
+    public void testPartial() throws DatabaseException {
 
         openDb(false);
 
@@ -142,9 +138,7 @@ public class DatabaseEntryTest extends DualTestCase {
         DatabaseEntry foundKey = new DatabaseEntry();
         DatabaseEntry foundData = new DatabaseEntry();
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getFirst(foundKey, foundData,
-                                     LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(foundKey, foundData, LockMode.DEFAULT));
 
         assertEquals(0, foundKey.getOffset());
         assertEquals(20, foundKey.getSize());
@@ -164,9 +158,7 @@ public class DatabaseEntryTest extends DualTestCase {
         foundKey.setPartial(5, 10, true);
         foundData.setPartial(5, 20, true);
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getFirst(foundKey, foundData,
-                                     LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(foundKey, foundData, LockMode.DEFAULT));
         assertEquals(0, foundKey.getOffset());
         assertEquals(10, foundKey.getSize());
         for (int i = 0; i < 10; i++) {
@@ -191,28 +183,34 @@ public class DatabaseEntryTest extends DualTestCase {
         try {
             db.put(null, originalKey, originalData);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
         try {
             db.putNoOverwrite(null, originalKey, originalData);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
         try {
             db.putNoDupData(null, originalKey, originalData);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
 
         try {
             cursor.put(originalKey, originalData);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
         try {
             cursor.putNoOverwrite(originalKey, originalData);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
         try {
             cursor.putNoDupData(originalKey, originalData);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
 
         cursor.close();
         txn.commit();
@@ -220,8 +218,7 @@ public class DatabaseEntryTest extends DualTestCase {
     }
 
     @Test
-    public void testPartialCursorPuts()
-        throws DatabaseException {
+    public void testPartialCursorPuts() throws DatabaseException {
 
         openDb(false);
 
@@ -235,16 +232,14 @@ public class DatabaseEntryTest extends DualTestCase {
         /* Put 20 bytes of key and data. */
         db.put(null, originalKey, originalData);
 
-    Transaction txn = null;
-    txn = env.beginTransaction(null, null);
+        Transaction txn = null;
+        txn = env.beginTransaction(null, null);
         Cursor cursor = db.openCursor(txn, CursorConfig.DEFAULT);
 
         DatabaseEntry foundKey = new DatabaseEntry();
         DatabaseEntry foundData = new DatabaseEntry();
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getFirst(foundKey, foundData,
-                                     LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(foundKey, foundData, LockMode.DEFAULT));
 
         assertEquals(0, foundKey.getOffset());
         assertEquals(20, foundKey.getSize());
@@ -271,9 +266,7 @@ public class DatabaseEntryTest extends DualTestCase {
 
         foundData = new DatabaseEntry();
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getFirst(foundKey, foundData,
-                                     LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(foundKey, foundData, LockMode.DEFAULT));
         assertEquals(0, foundKey.getOffset());
         assertEquals(20, foundKey.getSize());
         assertEquals(0, foundData.getOffset());
@@ -285,13 +278,13 @@ public class DatabaseEntryTest extends DualTestCase {
         }
 
         cursor.close();
-    txn.commit();
+        txn.commit();
         closeDb();
     }
 
     @Test
     public void testToString() {
-        DatabaseEntry entry = new DatabaseEntry(new byte[] {1, 2, 3}, 1, 2);
+        DatabaseEntry entry = new DatabaseEntry(new byte[] { 1, 2, 3 }, 1, 2);
         String s1 = entry.toString();
         entry.setPartial(3, 4, true);
         String s2 = entry.toString();
@@ -306,19 +299,15 @@ public class DatabaseEntryTest extends DualTestCase {
         }
     }
 
-    private void openDb(boolean dups)
-        throws DatabaseException {
+    private void openDb(boolean dups) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 "1024");
-        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(),
-                                 "true");
-        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                 "6");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), "1024");
+        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), "true");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
         env = create(envHome, envConfig);
 
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -328,8 +317,7 @@ public class DatabaseEntryTest extends DualTestCase {
         db = env.openDatabase(null, "testDB", dbConfig);
     }
 
-    private void closeDb()
-        throws DatabaseException {
+    private void closeDb() throws DatabaseException {
 
         if (db != null) {
             db.close();

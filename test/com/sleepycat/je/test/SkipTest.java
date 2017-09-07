@@ -37,11 +37,10 @@ import com.sleepycat.util.test.TestBase;
 
 public class SkipTest extends TestBase {
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG      = false;
 
-    private static final int[] nDupsArray =
-        {2, 3, 20, 50, 500, 5000, 500, 50, 20, 3, 2};
-    private static final int grandTotal;
+    private static final int[]   nDupsArray = { 2, 3, 20, 50, 500, 5000, 500, 50, 20, 3, 2 };
+    private static final int     grandTotal;
     static {
         int total = 0;
         for (int i = 0; i < nDupsArray.length; i += 1) {
@@ -50,9 +49,9 @@ public class SkipTest extends TestBase {
         grandTotal = total;
     }
 
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database db;
+    private Database    db;
 
     public SkipTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -72,12 +71,9 @@ public class SkipTest extends TestBase {
     private void openEnv() {
         final EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR,
-                                 "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         env = new Environment(envHome, envConfig);
 
         final DatabaseConfig dbConfig = new DatabaseConfig();
@@ -109,8 +105,8 @@ public class SkipTest extends TestBase {
     }
 
     /**
-     * Adds uncompressed deleted slots in between existing data records,
-     * checks it.
+     * Adds uncompressed deleted slots in between existing data records, checks
+     * it.
      */
     @Test
     public void testUncompressedDeletions() {
@@ -123,7 +119,7 @@ public class SkipTest extends TestBase {
 
     /**
      * Passes a larger number for maxCount than the number of records before
-     * (after) the cursor position.  Includes testing a zero return.
+     * (after) the cursor position. Includes testing a zero return.
      */
     @Test
     public void testSkipPastEnd() {
@@ -146,7 +142,7 @@ public class SkipTest extends TestBase {
             total += 1;
 
             /* Skip forward to last record. */
-            Cursor c2 = c.dup(true /*samePosition*/);
+            Cursor c2 = c.dup(true /* samePosition */);
             key.setData(null);
             data.setData(null);
             long count = c2.skipNext(grandTotal, key, data, null);
@@ -161,7 +157,7 @@ public class SkipTest extends TestBase {
             c2.close();
 
             /* Skip backward to first record. */
-            c2 = c.dup(true /*samePosition*/);
+            c2 = c.dup(true /* samePosition */);
             key.setData(null);
             data.setData(null);
             count = c2.skipPrev(grandTotal, key, data, null);
@@ -240,8 +236,8 @@ public class SkipTest extends TestBase {
 
     /**
      * Inserts duplicates according to nDupsArray, where the key is the index
-     * into nDupsArray (0 to nDupsArray.length-1), and the data is 0 to N,
-     * where N is the number of dups for that key (nDupsArray[index]).
+     * into nDupsArray (0 to nDupsArray.length-1), and the data is 0 to N, where
+     * N is the number of dups for that key (nDupsArray[index]).
      */
     private void insertData() {
 
@@ -253,8 +249,7 @@ public class SkipTest extends TestBase {
             IntegerBinding.intToEntry(i, key);
             for (int j = 0; j < nDups; j += 1) {
                 IntegerBinding.intToEntry(j, data);
-                final OperationStatus status = db.putNoDupData(null, key,
-                                                               data);
+                final OperationStatus status = db.putNoDupData(null, key, data);
                 assertSame(OperationStatus.SUCCESS, status);
             }
         }
@@ -262,7 +257,7 @@ public class SkipTest extends TestBase {
 
     /**
      * Inserts records between each two records inserted earlier, and then
-     * deletes the new records.  This leaves uncompressed deleted slots, which
+     * deletes the new records. This leaves uncompressed deleted slots, which
      * should be ignored by the skip methods.
      */
     private void insertAndDelete() {

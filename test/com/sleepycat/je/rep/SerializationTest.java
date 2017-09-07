@@ -45,29 +45,24 @@ public class SerializationTest {
 
     /**
      * Verifies that the clases identified by SerializeUtils.getSerializedSet()
-     * can be serialized and deserialized.
-     *
-     * The test does not currently verify that structural equality is preserved
-     * across serialization/deserialization.
+     * can be serialized and deserialized. The test does not currently verify
+     * that structural equality is preserved across
+     * serialization/deserialization.
      */
     @Test
-    public void test()
-        throws IOException, ClassNotFoundException {
+    public void test() throws IOException, ClassNotFoundException {
 
-        for (Map.Entry<String, Object> entry :
-            SerializeUtils.getSerializedSet().entrySet()) {
+        for (Map.Entry<String, Object> entry : SerializeUtils.getSerializedSet().entrySet()) {
             final String className = entry.getKey();
 
             try {
-                final ByteArrayOutputStream baos =
-                    new ByteArrayOutputStream(1024);
+                final ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
                 final ObjectOutputStream out = new ObjectOutputStream(baos);
                 final Object o1 = entry.getValue();
                 out.writeObject(o1);
                 out.close();
 
-                final ByteArrayInputStream bais =
-                    new ByteArrayInputStream(baos.toByteArray());
+                final ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
                 final ObjectInputStream in = new ObjectInputStream(bais);
                 @SuppressWarnings("unused")
                 Object o2 = in.readObject();

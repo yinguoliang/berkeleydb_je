@@ -37,9 +37,8 @@ import com.sleepycat.je.rep.utilint.RepTestUtils.RepEnvInfo;
 public class LogRewriteWarningTest extends RepTestBase {
 
     @Before
-    public void setUp() 
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         groupSize = 3;
         super.setUp();
     }
@@ -73,13 +72,12 @@ public class LogRewriteWarningTest extends RepTestBase {
         if (hard) {
             leaveGroupAllButMaster();
             left = true;
-            
+
             /*
              * Write a transaction at the master, at a time when the other two
              * nodes are not running, so they won't receive the update.
-             */ 
-            Transaction txn =
-                env.beginTransaction(null, RepTestUtils.SYNC_SYNC_NONE_TC);
+             */
+            Transaction txn = env.beginTransaction(null, RepTestUtils.SYNC_SYNC_NONE_TC);
             db.put(txn, key, data);
             txn.commit();
         } else {
@@ -90,37 +88,35 @@ public class LogRewriteWarningTest extends RepTestBase {
         closeNodes(repEnvInfo[0]);
         if (left) {
             /*
-             * Restart the other two nodes, after shutting down the master.
-             * The other two nodes will elect a new master bewteen them, and
-             * this new master will lack the transaction we created above.
-             */ 
+             * Restart the other two nodes, after shutting down the master. The
+             * other two nodes will elect a new master bewteen them, and this
+             * new master will lack the transaction we created above.
+             */
             restartNodes(repEnvInfo[1], repEnvInfo[2]);
         } else {
             /*
-             * Wait for a new master to be elected, because we want to make
-             * sure the old master doesn't become master again when we restart
-             * it.
+             * Wait for a new master to be elected, because we want to make sure
+             * the old master doesn't become master again when we restart it.
              */
             final RepEnvInfo node2 = repEnvInfo[1];
             final RepEnvInfo node3 = repEnvInfo[2];
             RepTestUtils.awaitCondition(new Callable<Boolean>() {
-                    public Boolean call() {
-                        return node2.isMaster() || node3.isMaster();
-                    }
-                });
+                public Boolean call() {
+                    return node2.isMaster() || node3.isMaster();
+                }
+            });
         }
 
         /*
-         * Restart the former master.  It will sync with the new master, which
+         * Restart the former master. It will sync with the new master, which
          * will result in a rollback of a committed transaction.
          */
         final boolean warned[] = new boolean[1];
-        repEnvInfo[0].getRepConfig().setLogFileRewriteListener
-            (new LogFileRewriteListener() {
-                    public void rewriteLogFiles(Set<File> files) {
-                        warned[0] = true;
-                    }
-                });
+        repEnvInfo[0].getRepConfig().setLogFileRewriteListener(new LogFileRewriteListener() {
+            public void rewriteLogFiles(Set<File> files) {
+                warned[0] = true;
+            }
+        });
         restartNodes(repEnvInfo[0]);
         if (hard) {
             assertTrue(warned[0]);
@@ -128,15 +124,15 @@ public class LogRewriteWarningTest extends RepTestBase {
             /*
              * We haven't done a hard recovery, so the callback should not have
              * been invoked.
-             */ 
+             */
             assertFalse(warned[0]);
         }
     }
 
     /**
      * Verifies that an exception that occurs in the user's callback results in
-     * failure to open the environment, and is preserved as the "cause"
-     * reported back to the caller.
+     * failure to open the environment, and is preserved as the "cause" reported
+     * back to the caller.
      */
     @Test
     public void testException() throws Exception {
@@ -145,12 +141,11 @@ public class LogRewriteWarningTest extends RepTestBase {
         Database db = env.openDatabase(null, TEST_DB_NAME, dbconfig);
 
         /*
-         * Use the same technique as other tests in this class to produce a
-         * hard recovery scenario.
-         */ 
+         * Use the same technique as other tests in this class to produce a hard
+         * recovery scenario.
+         */
         leaveGroupAllButMaster();
-        Transaction txn =
-            env.beginTransaction(null, RepTestUtils.SYNC_SYNC_NONE_TC);
+        Transaction txn = env.beginTransaction(null, RepTestUtils.SYNC_SYNC_NONE_TC);
         db.put(txn, key, data);
         txn.commit();
         db.close();
@@ -158,14 +153,12 @@ public class LogRewriteWarningTest extends RepTestBase {
         closeNodes(repEnvInfo[0]);
         restartNodes(repEnvInfo[1], repEnvInfo[2]);
 
-        final RuntimeException problem =
-            new RuntimeException("application problem in callback");
-        repEnvInfo[0].getRepConfig().setLogFileRewriteListener
-            (new LogFileRewriteListener() {
-                    public void rewriteLogFiles(Set<File> files) {
-                        throw problem;
-                    }
-                });
+        final RuntimeException problem = new RuntimeException("application problem in callback");
+        repEnvInfo[0].getRepConfig().setLogFileRewriteListener(new LogFileRewriteListener() {
+            public void rewriteLogFiles(Set<File> files) {
+                throw problem;
+            }
+        });
         try {
             repEnvInfo[0].openEnv();
         } catch (EnvironmentFailureException e) {

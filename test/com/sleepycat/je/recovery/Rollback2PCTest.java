@@ -50,10 +50,9 @@ public class Rollback2PCTest extends TestBase {
      * Test that getXATransaction does not return a prepared txn.
      */
     @Test
-    public void testSR16375()
-        throws DatabaseException, XAException {
+    public void testSR16375() throws DatabaseException, XAException {
 
-            /* Setup environment. */
+        /* Setup environment. */
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
@@ -70,8 +69,7 @@ public class Rollback2PCTest extends TestBase {
         IntegerBinding.intToEntry(1, key);
 
         /*
-         * Start an XA transaction and add a record.  Then crash the
-         * environment.
+         * Start an XA transaction and add a record. Then crash the environment.
          */
         XidImpl xid = new XidImpl(1, StringUtils.toUTF8("FooTxn"), null);
         Transaction preCrashTxn = xaEnv.beginTransaction(null, null);
@@ -101,29 +99,24 @@ public class Rollback2PCTest extends TestBase {
 
     /**
      * Verifies a bug fix to a problem that occurs when aborting a prepared txn
-     * after recovery.  During recovery, we were counting the old version of an
-     * LN as obsolete when replaying the prepared txn LN.  But if that txn
-     * aborts later, the old version becomes active.  The fix is to use inexact
-     * counting.  [#17022]
+     * after recovery. During recovery, we were counting the old version of an
+     * LN as obsolete when replaying the prepared txn LN. But if that txn aborts
+     * later, the old version becomes active. The fix is to use inexact
+     * counting. [#17022]
      */
     @Test
-    public void testLogCleanAfterRollbackPrepared()
-        throws DatabaseException, XAException {
+    public void testLogCleanAfterRollbackPrepared() throws DatabaseException, XAException {
 
         /*
-         * Setup environment.
-         *
-         * We intentionally do not disable the checkpointer daemon to add
-         * variability to the test.  This variability found a checkpointer bug
-         * in the past.  [#20270]
+         * Setup environment. We intentionally do not disable the checkpointer
+         * daemon to add variability to the test. This variability found a
+         * checkpointer bug in the past. [#20270]
          */
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.CLEANER_MIN_UTILIZATION,
-                                 "90");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_MIN_UTILIZATION, "90");
         XAEnvironment xaEnv = new XAEnvironment(envHome, envConfig);
 
         /* Setup database. */
@@ -142,8 +135,7 @@ public class Rollback2PCTest extends TestBase {
         DbInternal.getNonNullEnvImpl(xaEnv).forceLogFileFlip();
 
         /*
-         * Start an XA transaction and add a record.  Then crash the
-         * environment.
+         * Start an XA transaction and add a record. Then crash the environment.
          */
         XidImpl xid = new XidImpl(1, StringUtils.toUTF8("FooTxn"), null);
         Transaction preCrashTxn = xaEnv.beginTransaction(null, null);
@@ -164,7 +156,7 @@ public class Rollback2PCTest extends TestBase {
 
         /* Rollback. */
         xaEnv.rollback(xid);
-        
+
         /* Force log cleaning. */
         CheckpointConfig force = new CheckpointConfig();
         force.setForce(true);
@@ -190,10 +182,8 @@ public class Rollback2PCTest extends TestBase {
             boolean repEntriesOnly = false;
             boolean forwards = true;
             String customDumpReaderClass = null;
-            new com.sleepycat.je.util.DbPrintLog().dump
-                (envHome, entryTypes, txnIds, startLsn, endLsn,
-                 verbose, stats, repEntriesOnly, csvFormat, forwards, false,
-                 customDumpReaderClass);
+            new com.sleepycat.je.util.DbPrintLog().dump(envHome, entryTypes, txnIds, startLsn, endLsn, verbose, stats,
+                    repEntriesOnly, csvFormat, forwards, false, customDumpReaderClass);
         }
         /* END debugging code. */
         assertEquals(99, IntegerBinding.entryToInt(data));

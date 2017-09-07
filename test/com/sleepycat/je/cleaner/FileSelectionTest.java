@@ -68,33 +68,26 @@ import com.sleepycat.util.test.TestBase;
 @RunWith(Parameterized.class)
 public class FileSelectionTest extends TestBase {
 
-    private static final String DBNAME = "cleanerFileSelection";
-    private static final int DATA_SIZE = 140;
-    private static final int FILE_SIZE = 4096 * 10;
-    private static final int INITIAL_FILES = 5;
-    private static final int INITIAL_FILES_TEMP = 1;
-    private static final int INITIAL_KEYS = 2000;
-    private static final int INITIAL_KEYS_DUPS = 5000;
-    private static final int INITIAL_KEYS_DUPS_TEMP = 10000;
-    private static final byte[] MAIN_KEY_FOR_DUPS = {0, 1, 2, 3, 4, 5};
+    private static final String            DBNAME                      = "cleanerFileSelection";
+    private static final int               DATA_SIZE                   = 140;
+    private static final int               FILE_SIZE                   = 4096 * 10;
+    private static final int               INITIAL_FILES               = 5;
+    private static final int               INITIAL_FILES_TEMP          = 1;
+    private static final int               INITIAL_KEYS                = 2000;
+    private static final int               INITIAL_KEYS_DUPS           = 5000;
+    private static final int               INITIAL_KEYS_DUPS_TEMP      = 10000;
+    private static final byte[]            MAIN_KEY_FOR_DUPS           = { 0, 1, 2, 3, 4, 5 };
 
-    private static final EnvironmentConfig envConfig = initConfig();
-    private static final EnvironmentConfig highUtilizationConfig =
-                                                                initConfig();
-    private static final EnvironmentConfig steadyStateAutoConfig =
-                                                                initConfig();
-    private static final EnvironmentConfig noLogFileDeleteDetectConfig =
-                                                                initConfig();
+    private static final EnvironmentConfig envConfig                   = initConfig();
+    private static final EnvironmentConfig highUtilizationConfig       = initConfig();
+    private static final EnvironmentConfig steadyStateAutoConfig       = initConfig();
+    private static final EnvironmentConfig noLogFileDeleteDetectConfig = initConfig();
     static {
-        highUtilizationConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(),
-             String.valueOf(90));
+        highUtilizationConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), String.valueOf(90));
 
-        steadyStateAutoConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "true");
+        steadyStateAutoConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "true");
 
-        noLogFileDeleteDetectConfig.setConfigParam
-            (EnvironmentParams.LOG_DETECT_FILE_DELETE.getName(), "false");
+        noLogFileDeleteDetectConfig.setConfigParam(EnvironmentParams.LOG_DETECT_FILE_DELETE.getName(), "false");
     }
 
     static EnvironmentConfig initConfig() {
@@ -103,22 +96,14 @@ public class FileSelectionTest extends TestBase {
         config.setTransactional(true);
         config.setAllowCreate(true);
         config.setTxnNoSync(Boolean.getBoolean(TestUtils.NO_SYNC));
-        config.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                              Integer.toString(FILE_SIZE));
-        config.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(),
-                              "false");
-        config.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(),
-                              "false");
-        config.setConfigParam(EnvironmentParams.CLEANER_REMOVE.getName(),
-                              "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        config.setConfigParam
-        (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.CLEANER_LOCK_TIMEOUT.getName(), "1");
-        config.setConfigParam
-            (EnvironmentParams.CLEANER_MAX_BATCH_FILES.getName(), "1");
+        config.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(FILE_SIZE));
+        config.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.CLEANER_REMOVE.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        config.setConfigParam(EnvironmentParams.CLEANER_LOCK_TIMEOUT.getName(), "1");
+        config.setConfigParam(EnvironmentParams.CLEANER_MAX_BATCH_FILES.getName(), "1");
         return config;
     }
 
@@ -127,34 +112,32 @@ public class FileSelectionTest extends TestBase {
         forceConfig.setForce(true);
     }
 
-    private File envHome;
-    private Environment env;
+    private File            envHome;
+    private Environment     env;
     private EnvironmentImpl envImpl;
-    private Database db;
-    private JUnitThread junitThread;
-    private volatile int synchronizer;
-    private boolean dups;
-    private boolean deferredWrite;
-    private boolean temporary;
+    private Database        db;
+    private JUnitThread     junitThread;
+    private volatile int    synchronizer;
+    private boolean         dups;
+    private boolean         deferredWrite;
+    private boolean         temporary;
 
     /* The index is the file number, the value is the first key in the file. */
-    private List<Integer> firstKeysInFiles;
+    private List<Integer>   firstKeysInFiles;
 
     /* Set of keys that should exist. */
-    private Set existingKeys;
+    private Set             existingKeys;
 
     @Parameters
     public static List<Object[]> genParams() {
-        return Arrays.asList(
-            new Object[][] {{false, false}, {true, false}, {false,true}});
+        return Arrays.asList(new Object[][] { { false, false }, { true, false }, { false, true } });
     }
 
     public FileSelectionTest(boolean deferredWrite, boolean temporary) {
         envHome = SharedTestUtils.getTestDir();
         this.deferredWrite = deferredWrite;
         this.temporary = temporary;
-        customName = deferredWrite ? ":deferredWrite" :
-                    (temporary ? ":temporary" : ":txnl");
+        customName = deferredWrite ? ":deferredWrite" : (temporary ? ":temporary" : ":txnl");
     }
 
     @After
@@ -181,14 +164,12 @@ public class FileSelectionTest extends TestBase {
         firstKeysInFiles = null;
     }
 
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         openEnv(envConfig);
     }
 
-    private void openEnv(EnvironmentConfig config)
-        throws DatabaseException {
+    private void openEnv(EnvironmentConfig config) throws DatabaseException {
 
         env = new Environment(envHome, config);
         envImpl = DbInternal.getNonNullEnvImpl(env);
@@ -201,8 +182,7 @@ public class FileSelectionTest extends TestBase {
         db = env.openDatabase(null, DBNAME, dbConfig);
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (temporary) {
             existingKeys.clear();
@@ -221,8 +201,7 @@ public class FileSelectionTest extends TestBase {
      * Tests that the test utilities work.
      */
     @Test
-    public void testBaseline()
-        throws DatabaseException {
+    public void testBaseline() throws DatabaseException {
 
         int nCleaned;
 
@@ -233,11 +212,10 @@ public class FileSelectionTest extends TestBase {
         if (dups) {
             /*
              * For dup DBs, all LNs are immediately obsolete so we can't expect
-             * the same sort of behavior as we do otherwise.  Most files are
+             * the same sort of behavior as we do otherwise. Most files are
              * already obsolete because all LNs are.
              */
-            assertTrue(String.valueOf(nCleaned),
-                nCleaned >= INITIAL_FILES_TEMP / 2);
+            assertTrue(String.valueOf(nCleaned), nCleaned >= INITIAL_FILES_TEMP / 2);
         } else {
             /* One file may be cleaned after writing, if a checkpoint occurs. */
             assertTrue(String.valueOf(nCleaned), nCleaned <= 1);
@@ -253,14 +231,13 @@ public class FileSelectionTest extends TestBase {
         if (dups) {
             /*
              * For non-temporary DBs, one file may be cleaned due to the
-             * checkpoint with no migrated LNs.  For temporary DBs, everything
+             * checkpoint with no migrated LNs. For temporary DBs, everything
              * was cleaned in the first phase above.
              */
             assertTrue(String.valueOf(nCleaned), nCleaned <= 1);
         } else if (temporary) {
             /* Temp DBs are automatically deleted and cleaned. */
-            assertTrue(String.valueOf(nCleaned),
-                       nCleaned >= INITIAL_FILES_TEMP);
+            assertTrue(String.valueOf(nCleaned), nCleaned >= INITIAL_FILES_TEMP);
         } else {
             /* No files should be cleaned when no writing occurs. */
             assertEquals(0, nCleaned);
@@ -269,8 +246,7 @@ public class FileSelectionTest extends TestBase {
     }
 
     @Test
-    public void testBaselineDups()
-        throws DatabaseException {
+    public void testBaselineDups() throws DatabaseException {
 
         dups = true;
         testBaseline();
@@ -280,8 +256,7 @@ public class FileSelectionTest extends TestBase {
      * Tests that the expected files are selected for cleaning.
      */
     @Test
-    public void testBasic()
-        throws DatabaseException {
+    public void testBasic() throws DatabaseException {
 
         /* Test assumes that keys are written in order. */
         if (isDeferredWriteMode()) {
@@ -297,7 +272,7 @@ public class FileSelectionTest extends TestBase {
          * relatively few LNs.
          */
         forceCleanOne();
-        verifyDeletedFiles(new int[] {0});
+        verifyDeletedFiles(new int[] { 0 });
         verifyData();
 
         /*
@@ -311,7 +286,7 @@ public class FileSelectionTest extends TestBase {
         }
 
         /*
-         * Delete most of the LNs in two middle files.  They should be the next
+         * Delete most of the LNs in two middle files. They should be the next
          * two files cleaned.
          */
         int fileNum = INITIAL_FILES / 2;
@@ -328,15 +303,14 @@ public class FileSelectionTest extends TestBase {
 
         forceCleanOne();
         forceCleanOne();
-        verifyDeletedFiles(new int[] {0, fileNum - 1, fileNum});
+        verifyDeletedFiles(new int[] { 0, fileNum - 1, fileNum });
         verifyData();
 
         closeEnv();
     }
 
     @Test
-    public void testBasicDups()
-        throws DatabaseException {
+    public void testBasicDups() throws DatabaseException {
 
         dups = true;
         testBasic();
@@ -353,8 +327,7 @@ public class FileSelectionTest extends TestBase {
      * Tests that routine cleaning does not clean when it should not.
      */
     @Test
-    public void testCleaningMode()
-        throws DatabaseException {
+    public void testCleaningMode() throws DatabaseException {
 
         int nextFile = -1;
         int nCleaned;
@@ -378,8 +351,7 @@ public class FileSelectionTest extends TestBase {
 
         nCleaned = cleanRoutine();
         if (temporary) {
-            assertTrue(String.valueOf(nCleaned),
-                       nCleaned >= INITIAL_FILES_TEMP);
+            assertTrue(String.valueOf(nCleaned), nCleaned >= INITIAL_FILES_TEMP);
         } else {
             assertEquals(0, nCleaned);
             nextFile = getNextDeletedFile(nextFile);
@@ -395,8 +367,7 @@ public class FileSelectionTest extends TestBase {
      * Test retries after cleaning fails because an LN was write-locked.
      */
     @Test
-    public void testRetry()
-        throws DatabaseException {
+    public void testRetry() throws DatabaseException {
 
         /* Test assumes that keys are written in order. */
         if (isDeferredWriteMode()) {
@@ -416,7 +387,7 @@ public class FileSelectionTest extends TestBase {
         verifyData();
 
         /*
-         * The first file is full of LNs.  Delete all but the last record to
+         * The first file is full of LNs. Delete all but the last record to
          * cause it to be selected next for cleaning.
          */
         int firstKey = firstKeysInFiles.get(1);
@@ -466,8 +437,7 @@ public class FileSelectionTest extends TestBase {
      * Tests that the je.cleaner.minFileUtilization property works as expected.
      */
     @Test
-    public void testMinFileUtilization()
-        throws DatabaseException {
+    public void testMinFileUtilization() throws DatabaseException {
 
         /* Test assumes that keys are written in order. */
         if (isDeferredWriteMode()) {
@@ -476,12 +446,8 @@ public class FileSelectionTest extends TestBase {
 
         /* Open with minUtilization=10 and minFileUtilization=0. */
         EnvironmentConfig myConfig = initConfig();
-        myConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(),
-             String.valueOf(10));
-        myConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_FILE_UTILIZATION.getName(),
-             String.valueOf(0));
+        myConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), String.valueOf(10));
+        myConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_FILE_UTILIZATION.getName(), String.valueOf(0));
         openEnv(myConfig);
 
         /* Write data and delete two thirds of the LNs in the middle file. */
@@ -499,15 +465,13 @@ public class FileSelectionTest extends TestBase {
         verifyDeletedFiles(null);
 
         /* Change minFileUtilization=50 */
-        myConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_FILE_UTILIZATION.getName(),
-             String.valueOf(50));
+        myConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_FILE_UTILIZATION.getName(), String.valueOf(50));
         env.setMutableConfig(myConfig);
 
         /* The file should now be deleted. */
         env.cleanLog();
         env.checkpoint(forceConfig);
-        verifyDeletedFiles(new int[] {fileNum});
+        verifyDeletedFiles(new int[] { fileNum });
         verifyData();
 
         closeEnv();
@@ -517,8 +481,7 @@ public class FileSelectionTest extends TestBase {
         System.out.print(msg);
         Long lastNum = envImpl.getFileManager().getLastFileNum();
         for (int i = 0; i <= (int) lastNum.longValue(); i += 1) {
-            String name = envImpl.getFileManager().
-                getFullFileName(i, FileManager.JE_SUFFIX);
+            String name = envImpl.getFileManager().getFullFileName(i, FileManager.JE_SUFFIX);
             if (new File(name).exists()) {
                 System.out.print(" " + i);
             }
@@ -527,27 +490,24 @@ public class FileSelectionTest extends TestBase {
     }
 
     @Test
-    public void testRetryDups()
-        throws DatabaseException {
+    public void testRetryDups() throws DatabaseException {
 
         dups = true;
         testRetry();
     }
 
     /**
-     * Steady state should occur with normal (50% utilization) configuration
-     * and automatic checkpointing and cleaning.
+     * Steady state should occur with normal (50% utilization) configuration and
+     * automatic checkpointing and cleaning.
      */
     @Test
-    public void testSteadyStateAutomatic()
-        throws DatabaseException {
+    public void testSteadyStateAutomatic() throws DatabaseException {
 
         doSteadyState(steadyStateAutoConfig, false, 13);
     }
 
     @Test
-    public void testSteadyStateAutomaticDups()
-        throws DatabaseException {
+    public void testSteadyStateAutomaticDups() throws DatabaseException {
 
         dups = true;
         testSteadyStateAutomatic();
@@ -557,15 +517,13 @@ public class FileSelectionTest extends TestBase {
      * Steady state utilization with manual checkpointing and cleaning.
      */
     @Test
-    public void testSteadyStateManual()
-        throws DatabaseException {
+    public void testSteadyStateManual() throws DatabaseException {
 
         doSteadyState(envConfig, true, 13);
     }
 
     @Test
-    public void testSteadyStateManualDups()
-        throws DatabaseException {
+    public void testSteadyStateManualDups() throws DatabaseException {
 
         dups = true;
         testSteadyStateManual();
@@ -575,38 +533,32 @@ public class FileSelectionTest extends TestBase {
      * Steady state should occur when utilization is at the maximum.
      */
     @Test
-    public void testSteadyStateHighUtilization()
-        throws DatabaseException {
+    public void testSteadyStateHighUtilization() throws DatabaseException {
 
         /*
          * I don't know why a larger log is maintained with deferredWrite and
          * temporary databases.
          */
-        doSteadyState(highUtilizationConfig, true,
-                      (deferredWrite | temporary) ? 12 : 9);
+        doSteadyState(highUtilizationConfig, true, (deferredWrite | temporary) ? 12 : 9);
     }
 
     @Test
-    public void testSteadyStateHighUtilizationDups()
-        throws DatabaseException {
+    public void testSteadyStateHighUtilizationDups() throws DatabaseException {
 
         dups = true;
         testSteadyStateHighUtilization();
     }
 
     /**
-     * Tests that we quickly reach a steady state of disk usage when updates
-     * are made but no net increase in data occurs.
+     * Tests that we quickly reach a steady state of disk usage when updates are
+     * made but no net increase in data occurs.
      *
      * @param manualCleaning is whether to run cleaning manually every
-     * iteration, or to rely on the cleaner thread.
-     *
+     *            iteration, or to rely on the cleaner thread.
      * @param maxFileCount the maximum number of files allowed for this test.
      */
-    private void doSteadyState(EnvironmentConfig config,
-                               boolean manualCleaning,
-                               int maxFileCount)
-        throws DatabaseException {
+    private void doSteadyState(EnvironmentConfig config, boolean manualCleaning, int maxFileCount)
+            throws DatabaseException {
 
         openEnv(config);
         writeData();
@@ -624,39 +576,33 @@ public class FileSelectionTest extends TestBase {
                 /* Need to delay a bit for the cleaner to keep up. */
                 try {
                     Thread.sleep(25);
-                } catch (InterruptedException e) {}
+                } catch (InterruptedException e) {
+                }
             }
 
             /*
-             * Checkpoints need to occur often for the cleaner to keep up.
-             * and to delete files that were cleaned.
-             *
-             * Note that temp DBs are not checkpointed and we rely on eviction
-             * to flush obsolete information and cause cleaning.  [#16928]
+             * Checkpoints need to occur often for the cleaner to keep up. and
+             * to delete files that were cleaned. Note that temp DBs are not
+             * checkpointed and we rely on eviction to flush obsolete
+             * information and cause cleaning. [#16928]
              */
             env.checkpoint(forceConfig);
             verifyData();
-            int fileCount =
-                envImpl.getFileManager().getAllFileNumbers().length;
-            assertTrue("fileCount=" + fileCount +
-                       " maxFileCount=" + maxFileCount +
-                       " iteration=" + i,
-                       fileCount <= maxFileCount);
+            int fileCount = envImpl.getFileManager().getAllFileNumbers().length;
+            assertTrue("fileCount=" + fileCount + " maxFileCount=" + maxFileCount + " iteration=" + i,
+                    fileCount <= maxFileCount);
             if (false) {
-                System.out.println("fileCount=" + fileCount +
-                                   " cleaned=" + cleaned);
+                System.out.println("fileCount=" + fileCount + " cleaned=" + cleaned);
             }
         }
         closeEnv();
     }
 
     /**
-     * Tests addProtectedFileRange and removeProtectedFileRange.
-     * [#16453]
+     * Tests addProtectedFileRange and removeProtectedFileRange. [#16453]
      */
     @Test
-    public void testProtectedFileRange()
-        throws DatabaseException {
+    public void testProtectedFileRange() throws DatabaseException {
 
         /* Test assumes that keys are written in order. */
         if (isDeferredWriteMode()) {
@@ -683,8 +629,7 @@ public class FileSelectionTest extends TestBase {
         forceClean(lastFile);
         verifyDeletedFiles(null);
         verifyData();
-        assertEquals(lastFile,
-                     env.getStats(null).getFileDeletionBacklog());
+        assertEquals(lastFile, env.getStats(null).getFileDeletionBacklog());
 
         /*
          * Removing {1-N} will not cause any deletions, because {0-N} is still
@@ -694,16 +639,14 @@ public class FileSelectionTest extends TestBase {
         forceClean(lastFile);
         verifyDeletedFiles(null);
         verifyData();
-        assertEquals(lastFile,
-                     env.getStats(null).getFileDeletionBacklog());
+        assertEquals(lastFile, env.getStats(null).getFileDeletionBacklog());
 
         /* Removing {0-N} will cause 0 and 1 to be deleted. */
         cleaner.removeProtectedFileRange(0);
         forceClean(lastFile);
-        verifyDeletedFiles(new int[] {0, 1});
+        verifyDeletedFiles(new int[] { 0, 1 });
         verifyData();
-        assertEquals(lastFile - 2,
-                     env.getStats(null).getFileDeletionBacklog());
+        assertEquals(lastFile - 2, env.getStats(null).getFileDeletionBacklog());
 
         /*
          * Removing {2-N} will not cause more deletions because another {2-N}
@@ -711,10 +654,9 @@ public class FileSelectionTest extends TestBase {
          */
         cleaner.removeProtectedFileRange(2);
         forceClean(lastFile);
-        verifyDeletedFiles(new int[] {0, 1});
+        verifyDeletedFiles(new int[] { 0, 1 });
         verifyData();
-        assertEquals(lastFile - 2,
-                     env.getStats(null).getFileDeletionBacklog());
+        assertEquals(lastFile - 2, env.getStats(null).getFileDeletionBacklog());
 
         /* Removing the 2nd {2-N} range causes all files to be deleted. */
         cleaner.removeProtectedFileRange(2);
@@ -725,20 +667,18 @@ public class FileSelectionTest extends TestBase {
         }
         verifyDeletedFiles(allFiles);
         verifyData();
-        assertEquals(0,
-                     env.getStats(null).getFileDeletionBacklog());
+        assertEquals(0, env.getStats(null).getFileDeletionBacklog());
 
         closeEnv();
     }
 
     /**
-     * Checks that the replication barrier prevents file deletion.  Formerly it
+     * Checks that the replication barrier prevents file deletion. Formerly it
      * also protected file selection (cleaning), but currently it does not.
      * [#16643] [#19221]
      */
     @Test
-    public void testRepCleanerBarrier()
-        throws DatabaseException {
+    public void testRepCleanerBarrier() throws DatabaseException {
 
         /* Test assumes that keys are written in order. */
         if (isDeferredWriteMode()) {
@@ -754,15 +694,19 @@ public class FileSelectionTest extends TestBase {
             public void doIOHook() {
                 throw new UnsupportedOperationException();
             }
+
             public void doHook() {
                 throw new UnsupportedOperationException();
             }
+
             public Long getHookValue() {
                 return barrier.get();
             }
+
             public void hookSetup() {
                 throw new UnsupportedOperationException();
             }
+
             public void doHook(Long obj) {
                 throw new UnsupportedOperationException();
             }
@@ -773,7 +717,7 @@ public class FileSelectionTest extends TestBase {
         final int lastKey = firstKeysInFiles.get(lastFile);
         deleteData(0, lastKey);
 
-        /* Protect {0-N}.  All files should be cleaned but none deleted. */
+        /* Protect {0-N}. All files should be cleaned but none deleted. */
         barrier.set(0);
         forceClean(lastFile);
         verifyDeletedFiles(null);
@@ -781,14 +725,13 @@ public class FileSelectionTest extends TestBase {
         assertEquals(0, env.getStats(null).getCleanerBacklog());
         assertTrue(env.getStats(null).getFileDeletionBacklog() >= lastFile);
 
-        /* Protect {2-N}.  File 0 and 1 will be deleted. */
+        /* Protect {2-N}. File 0 and 1 will be deleted. */
         barrier.set(2);
         forceClean(lastFile);
-        verifyDeletedFiles(new int[] {0, 1});
+        verifyDeletedFiles(new int[] { 0, 1 });
         verifyData();
         assertEquals(0, env.getStats(null).getCleanerBacklog());
-        assertTrue(env.getStats(null).getFileDeletionBacklog() >=
-                   lastFile - 2);
+        assertTrue(env.getStats(null).getFileDeletionBacklog() >= lastFile - 2);
 
         /* Setting the barrier to MAX_VALUE causes all files to be cleaned. */
         barrier.set(Long.MAX_VALUE);
@@ -809,8 +752,7 @@ public class FileSelectionTest extends TestBase {
      * Tests that truncate causes cleaning.
      */
     @Test
-    public void testTruncateDatabase()
-        throws DatabaseException {
+    public void testTruncateDatabase() throws DatabaseException {
 
         int nCleaned;
 
@@ -823,8 +765,8 @@ public class FileSelectionTest extends TestBase {
         db = null;
 
         /*
-         * Temporary databases are removed when the database is closed, so
-         * don't call truncate explicitly.
+         * Temporary databases are removed when the database is closed, so don't
+         * call truncate explicitly.
          */
         if (!temporary) {
             env.truncateDatabase(null, DBNAME, false /* returnCount */);
@@ -832,11 +774,9 @@ public class FileSelectionTest extends TestBase {
 
         nCleaned = cleanRoutine();
         if (temporary) {
-            assertTrue(String.valueOf(nCleaned),
-                       nCleaned >= INITIAL_FILES_TEMP - 1);
+            assertTrue(String.valueOf(nCleaned), nCleaned >= INITIAL_FILES_TEMP - 1);
         } else {
-            assertTrue(String.valueOf(nCleaned),
-                       nCleaned >= INITIAL_FILES - 1);
+            assertTrue(String.valueOf(nCleaned), nCleaned >= INITIAL_FILES - 1);
         }
 
         closeEnv();
@@ -846,8 +786,7 @@ public class FileSelectionTest extends TestBase {
      * Tests that remove causes cleaning.
      */
     @Test
-    public void testRemoveDatabase()
-        throws DatabaseException {
+    public void testRemoveDatabase() throws DatabaseException {
 
         int nCleaned;
 
@@ -860,24 +799,21 @@ public class FileSelectionTest extends TestBase {
 
         nCleaned = cleanRoutine();
         if (temporary) {
-            assertTrue(String.valueOf(nCleaned),
-                       nCleaned >= INITIAL_FILES_TEMP - 1);
+            assertTrue(String.valueOf(nCleaned), nCleaned >= INITIAL_FILES_TEMP - 1);
             assertTrue(!env.getDatabaseNames().contains(dbName));
         } else {
             assertEquals(0, nCleaned);
 
             env.removeDatabase(null, dbName);
             nCleaned = cleanRoutine();
-            assertTrue(String.valueOf(nCleaned),
-                       nCleaned >= INITIAL_FILES - 1);
+            assertTrue(String.valueOf(nCleaned), nCleaned >= INITIAL_FILES - 1);
         }
 
         closeEnv();
     }
 
     @Test
-    public void testForceCleanFiles()
-        throws DatabaseException {
+    public void testForceCleanFiles() throws DatabaseException {
 
         /* When the temp DB is closed many files will be cleaned. */
         if (temporary) {
@@ -896,30 +832,27 @@ public class FileSelectionTest extends TestBase {
         EnvironmentMutableConfig mutableConfig = env.getMutableConfig();
 
         /* Force cleaning: 3 */
-        mutableConfig.setConfigParam(
-            EnvironmentConfig.CLEANER_FORCE_CLEAN_FILES, "3");
+        mutableConfig.setConfigParam(EnvironmentConfig.CLEANER_FORCE_CLEAN_FILES, "3");
         env.setMutableConfig(mutableConfig);
         forceCleanOne();
-        verifyDeletedFiles(new int[] {3});
+        verifyDeletedFiles(new int[] { 3 });
 
         /* Force cleaning: 0 - 1 */
-        mutableConfig.setConfigParam(
-            EnvironmentConfig.CLEANER_FORCE_CLEAN_FILES, "0-1");
+        mutableConfig.setConfigParam(EnvironmentConfig.CLEANER_FORCE_CLEAN_FILES, "0-1");
         env.setMutableConfig(mutableConfig);
         forceCleanOne();
         forceCleanOne();
-        verifyDeletedFiles(new int[] {0, 1, 3});
+        verifyDeletedFiles(new int[] { 0, 1, 3 });
         closeEnv();
     }
 
     /**
      * Checks that old version log files are upgraded when
-     * je.cleaner.upgradeToLogVersion is set.  The version 5 log files to be
+     * je.cleaner.upgradeToLogVersion is set. The version 5 log files to be
      * upgraded in this test were created with MakeMigrationLogFiles.
      */
     @Test
-    public void testLogVersionUpgrade()
-        throws DatabaseException, IOException {
+    public void testLogVersionUpgrade() throws DatabaseException, IOException {
 
         if (temporary) {
             /* This test is not applicable. */
@@ -927,17 +860,15 @@ public class FileSelectionTest extends TestBase {
         }
 
         /* Copy pre-created files 0 and 1, which are log verion 5. */
-        TestUtils.loadLog
-            (getClass(), "migrate_f0.jdb", envHome, "00000000.jdb");
-        TestUtils.loadLog
-            (getClass(), "migrate_f1.jdb", envHome, "00000001.jdb");
+        TestUtils.loadLog(getClass(), "migrate_f0.jdb", envHome, "00000000.jdb");
+        TestUtils.loadLog(getClass(), "migrate_f1.jdb", envHome, "00000001.jdb");
 
         /*
-         * Write several more files which are log version 6 or greater.  To
-         * check whether these files are cleaned below we need to write more
-         * than 2 files (2 is the minimum age for cleaning).
+         * Write several more files which are log version 6 or greater. To check
+         * whether these files are cleaned below we need to write more than 2
+         * files (2 is the minimum age for cleaning).
          */
-        env = MakeMigrationLogFiles.openEnv(envHome, false /*allowCreate*/);
+        env = MakeMigrationLogFiles.openEnv(envHome, false /* allowCreate */);
         MakeMigrationLogFiles.makeMigrationLogFiles(env);
         env.checkpoint(forceConfig);
         MakeMigrationLogFiles.makeMigrationLogFiles(env);
@@ -960,8 +891,8 @@ public class FileSelectionTest extends TestBase {
         openEnvWithUpgradeToLogVersion(-1); // -1 means current version
 
         /*
-         * Clean one log file at a time so we can check that the backlog is
-         * not impacted by log file migration.
+         * Clean one log file at a time so we can check that the backlog is not
+         * impacted by log file migration.
          */
         for (int i = 0; i < 2; i += 1) {
             boolean cleaned = env.cleanLogFile();
@@ -970,7 +901,7 @@ public class FileSelectionTest extends TestBase {
             assertEquals(0, stats.getCleanerBacklog());
         }
         env.checkpoint(forceConfig);
-        verifyDeletedFiles(new int[] {0, 1});
+        verifyDeletedFiles(new int[] { 0, 1 });
 
         /* No more files should be cleaned. */
         nFiles = env.cleanLog();
@@ -978,55 +909,47 @@ public class FileSelectionTest extends TestBase {
         closeEnv();
 
         /*
-         * Force clean file 2 to ensure that it was not cleaned above because
-         * of its log version and not some other factor.
+         * Force clean file 2 to ensure that it was not cleaned above because of
+         * its log version and not some other factor.
          */
         EnvironmentConfig myConfig = initConfig();
-        myConfig.setConfigParam
-            (EnvironmentParams.CLEANER_FORCE_CLEAN_FILES.getName(), "2");
+        myConfig.setConfigParam(EnvironmentParams.CLEANER_FORCE_CLEAN_FILES.getName(), "2");
         openEnv(myConfig);
         nFiles = env.cleanLog();
         assertEquals(1, nFiles);
         env.checkpoint(forceConfig);
-        verifyDeletedFiles(new int[] {0, 1, 2});
+        verifyDeletedFiles(new int[] { 0, 1, 2 });
 
         closeEnv();
     }
 
-    private void openEnvWithUpgradeToLogVersion(int upgradeToLogVersion)
-        throws DatabaseException {
+    private void openEnvWithUpgradeToLogVersion(int upgradeToLogVersion) throws DatabaseException {
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_UPGRADE_TO_LOG_VERSION.getName(),
-             String.valueOf(upgradeToLogVersion));
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-        (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_UPGRADE_TO_LOG_VERSION.getName(),
+                String.valueOf(upgradeToLogVersion));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
         env = new Environment(envHome, envConfig);
         envImpl = DbInternal.getNonNullEnvImpl(env);
     }
 
     /**
      * Tests that when cleaned files are deleted during a compression, the
-     * flushing of the local tracker does not transfer tracker information
-     * for the deleted files. [#15528]
-     *
-     * This test also checks that tracker information is not transfered to the
-     * MapLN's per-DB utilization information in DbFileSummaryMap.  This was
-     * occuring in JE 3.3.74 and earlier, under the same circumstances as
-     * tested here (IN compression).  [#16610]
+     * flushing of the local tracker does not transfer tracker information for
+     * the deleted files. [#15528] This test also checks that tracker
+     * information is not transfered to the MapLN's per-DB utilization
+     * information in DbFileSummaryMap. This was occuring in JE 3.3.74 and
+     * earlier, under the same circumstances as tested here (IN compression).
+     * [#16610]
      */
     @Test
-    public void testCompressionBug()
-        throws DatabaseException {
+    public void testCompressionBug() throws DatabaseException {
 
         /*
-         * We need to compress deleted keys and count their utilization under
-         * an explicit compress() call.  With deferred write, no utilization
+         * We need to compress deleted keys and count their utilization under an
+         * explicit compress() call. With deferred write, no utilization
          * counting occurs until eviction/sync, and that would also do
          * compression.
          */
@@ -1036,19 +959,16 @@ public class FileSelectionTest extends TestBase {
 
         EnvironmentConfig envConfig = initConfig();
         /* Disable compressor so we can compress explicitly. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         /* Ensure that we check for resurrected file leaks. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_CHECK_LEAKS.getName(), "true");
+        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), "true");
         openEnv(envConfig);
 
         /* Write and then delete all data. */
         writeData();
         for (Iterator i = existingKeys.iterator(); i.hasNext();) {
             int nextKey = ((Integer) i.next()).intValue();
-            DatabaseEntry key =
-                new DatabaseEntry(TestUtils.getTestArray(nextKey));
+            DatabaseEntry key = new DatabaseEntry(TestUtils.getTestArray(nextKey));
             OperationStatus status = db.delete(null, key);
             assertSame(OperationStatus.SUCCESS, status);
         }
@@ -1080,15 +1000,19 @@ public class FileSelectionTest extends TestBase {
                     Thread.yield();
                 }
             }
+
             public Object getHookValue() {
                 throw new UnsupportedOperationException();
             }
+
             public void doIOHook() {
                 throw new UnsupportedOperationException();
             }
+
             public void hookSetup() {
                 throw new UnsupportedOperationException();
             }
+
             public void doHook(Object obj) {
                 throw new UnsupportedOperationException();
             }
@@ -1097,9 +1021,11 @@ public class FileSelectionTest extends TestBase {
         /* Kick off test in thread above. */
         junitThread.start();
         /* Wait for hook to be called at the end of compression. */
-        while (synchronizer < 1) Thread.yield();
+        while (synchronizer < 1)
+            Thread.yield();
         /* Clean and checkpoint to delete cleaned files. */
-        while (env.cleanLog() > 0) { }
+        while (env.cleanLog() > 0) {
+        }
         env.checkpoint(forceConfig);
         /* Allow test hook to return, so that flushLocalTracker is called. */
         synchronizer = 2;
@@ -1107,8 +1033,8 @@ public class FileSelectionTest extends TestBase {
         /*
          * Before the fix [#15528], an assertion fired in
          * BaseUtilizationTracker.getFileSummary when flushLocalTracker was
-         * called.  This assertion fires if the file being tracked does not
-         * exist.  The fix was to check for valid files in flushLocalTracker.
+         * called. This assertion fires if the file being tracked does not
+         * exist. The fix was to check for valid files in flushLocalTracker.
          */
         try {
             junitThread.finishTest();
@@ -1123,18 +1049,16 @@ public class FileSelectionTest extends TestBase {
 
     /**
      * Checks that DB utilization is repaired when damaged by JE 3.3.74 or
-     * earlier. Go to some trouble to create a DatabaseImpl with the repair
-     * done flag not set, and with a DB file summary for a deleted file.
-     * [#16610]
+     * earlier. Go to some trouble to create a DatabaseImpl with the repair done
+     * flag not set, and with a DB file summary for a deleted file. [#16610]
      */
     @Test
-    public void testDbUtilizationRepair()
-        throws DatabaseException, IOException {
+    public void testDbUtilizationRepair() throws DatabaseException, IOException {
 
         openEnv(noLogFileDeleteDetectConfig);
         writeData();
         forceCleanOne();
-        verifyDeletedFiles(new int[] {0});
+        verifyDeletedFiles(new int[] { 0 });
 
         DatabaseImpl dbImpl = DbInternal.getDbImpl(db);
         DbFileSummaryMap summaries = dbImpl.getDbFileSummaries();
@@ -1143,9 +1067,8 @@ public class FileSelectionTest extends TestBase {
         assertTrue(dbImpl.getUtilizationRepairDone());
 
         /* Deleted file is absent from summary map. */
-        assertNull(summaries.get(0L /*fileNum*/, true /*adjustMemBudget*/,
-                                 true /*checkResurrected*/,
-                                 envImpl.getFileManager()));
+        assertNull(summaries.get(0L /* fileNum */, true /* adjustMemBudget */, true /* checkResurrected */,
+                envImpl.getFileManager()));
 
         /*
          * Force addition of deleted file to summary map by creating a dummy
@@ -1153,15 +1076,13 @@ public class FileSelectionTest extends TestBase {
          */
         File dummyFile = new File(env.getHome(), "00000000.jdb");
         assertTrue(dummyFile.createNewFile());
-        assertNotNull(summaries.get(0L /*fileNum*/, true /*adjustMemBudget*/,
-                                    false /*checkResurrected*/,
-                                    envImpl.getFileManager()));
+        assertNotNull(summaries.get(0L /* fileNum */, true /* adjustMemBudget */, false /* checkResurrected */,
+                envImpl.getFileManager()));
         assertTrue(dummyFile.delete());
 
         /* Now an entry in the summary map is there for a deleted file.. */
-        assertNotNull(summaries.get(0L /*fileNum*/, true /*adjustMemBudget*/,
-                                    true /*checkResurrected*/,
-                                    envImpl.getFileManager()));
+        assertNotNull(summaries.get(0L /* fileNum */, true /* adjustMemBudget */, true /* checkResurrected */,
+                envImpl.getFileManager()));
 
         /* Force the MapLN with the bad entry to be flushed. */
         dbImpl.setDirty();
@@ -1181,9 +1102,8 @@ public class FileSelectionTest extends TestBase {
         dbImpl = DbInternal.getDbImpl(db);
         summaries = dbImpl.getDbFileSummaries();
         assertTrue(dbImpl.getUtilizationRepairDone());
-        assertNotNull(summaries.get(0L /*fileNum*/, true /*adjustMemBudget*/,
-                                    true /*checkResurrected*/,
-                                    envImpl.getFileManager()));
+        assertNotNull(summaries.get(0L /* fileNum */, true /* adjustMemBudget */, true /* checkResurrected */,
+                envImpl.getFileManager()));
 
         /* Clear the repair done flag and force the MapLN to be flushed. */
         dbImpl.clearUtilizationRepairDone();
@@ -1199,21 +1119,19 @@ public class FileSelectionTest extends TestBase {
         dbImpl = DbInternal.getDbImpl(db);
         summaries = dbImpl.getDbFileSummaries();
         assertTrue(dbImpl.getUtilizationRepairDone());
-        assertNull(summaries.get(0L /*fileNum*/, true /*adjustMemBudget*/,
-                                 true /*checkResurrected*/,
-                                 envImpl.getFileManager()));
+        assertNull(summaries.get(0L /* fileNum */, true /* adjustMemBudget */, true /* checkResurrected */,
+                envImpl.getFileManager()));
         closeEnv();
     }
 
     /**
      * Force cleaning of N files.
      */
-    private void forceClean(int nFiles)
-        throws DatabaseException {
+    private void forceClean(int nFiles) throws DatabaseException {
 
         for (int i = 0; i < nFiles; i += 1) {
             envImpl.getCleaner().doClean(false, // cleanMultipleFiles
-                                         true); // forceCleaning
+                    true); // forceCleaning
         }
         /* To force file deletion a checkpoint is necessary. */
         env.checkpoint(forceConfig);
@@ -1222,11 +1140,10 @@ public class FileSelectionTest extends TestBase {
     /**
      * Force cleaning of one file.
      */
-    private void forceCleanOne()
-        throws DatabaseException {
+    private void forceCleanOne() throws DatabaseException {
 
         envImpl.getCleaner().doClean(false, // cleanMultipleFiles
-                                     true); // forceCleaning
+                true); // forceCleaning
         /* To force file deletion a checkpoint is necessary. */
         env.checkpoint(forceConfig);
     }
@@ -1235,8 +1152,7 @@ public class FileSelectionTest extends TestBase {
      * Do routine cleaning just as normally done via the cleaner daemon, and
      * return the number of files cleaned.
      */
-    private int cleanRoutine()
-        throws DatabaseException {
+    private int cleanRoutine() throws DatabaseException {
 
         return env.cleanLog();
     }
@@ -1252,8 +1168,7 @@ public class FileSelectionTest extends TestBase {
      * Forces eviction when a temporary database is used, since otherwise data
      * will not be flushed.
      */
-    private void forceEvictionIfTemporary()
-        throws DatabaseException {
+    private void forceEvictionIfTemporary() throws DatabaseException {
 
         if (temporary) {
             EnvironmentMutableConfig config = env.getMutableConfig();
@@ -1268,15 +1183,13 @@ public class FileSelectionTest extends TestBase {
 
     /**
      * Writes data to create INITIAL_FILES number of files, storing the first
-     * key for each file in the firstKeysInFiles list.  One extra file is
+     * key for each file in the firstKeysInFiles list. One extra file is
      * actually created, to ensure that the firstActiveLSN is not in any of
      * INITIAL_FILES files.
      */
-    private void writeData()
-        throws DatabaseException {
+    private void writeData() throws DatabaseException {
 
-        int firstFile =
-            (int) envImpl.getFileManager().getLastFileNum().longValue();
+        int firstFile = (int) envImpl.getFileManager().getLastFileNum().longValue();
         assertEquals(0, firstFile);
 
         DatabaseEntry key = new DatabaseEntry();
@@ -1288,9 +1201,7 @@ public class FileSelectionTest extends TestBase {
 
             Cursor cursor = db.openCursor(null, null);
 
-            int maxKey = dups ?
-                (temporary ? INITIAL_KEYS_DUPS_TEMP : INITIAL_KEYS_DUPS) :
-                INITIAL_KEYS;
+            int maxKey = dups ? (temporary ? INITIAL_KEYS_DUPS_TEMP : INITIAL_KEYS_DUPS) : INITIAL_KEYS;
             for (int nextKey = 0; nextKey < maxKey; nextKey += 1) {
 
                 OperationStatus status;
@@ -1349,14 +1260,11 @@ public class FileSelectionTest extends TestBase {
         forceEvictionIfTemporary();
         env.checkpoint(forceConfig);
 
-        int lastFile =
-            (int) envImpl.getFileManager().getLastFileNum().longValue();
+        int lastFile = (int) envImpl.getFileManager().getLastFileNum().longValue();
         if (temporary) {
-            assertTrue(String.valueOf(lastFile),
-                       lastFile >= INITIAL_FILES_TEMP);
+            assertTrue(String.valueOf(lastFile), lastFile >= INITIAL_FILES_TEMP);
         } else {
-            assertTrue(String.valueOf(lastFile),
-                       lastFile >= INITIAL_FILES);
+            assertTrue(String.valueOf(lastFile), lastFile >= INITIAL_FILES);
         }
         //System.out.println("last file " + lastFile);
     }
@@ -1364,14 +1272,12 @@ public class FileSelectionTest extends TestBase {
     /**
      * Deletes the specified keys.
      */
-    private void deleteData(int firstKey, int keyCount)
-        throws DatabaseException {
+    private void deleteData(int firstKey, int keyCount) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
-        Transaction txn = !isDeferredWriteMode() ?
-            env.beginTransaction(null, null) : null;
+        Transaction txn = !isDeferredWriteMode() ? env.beginTransaction(null, null) : null;
         Cursor cursor = db.openCursor(txn, null);
 
         for (int i = 0; i < keyCount; i += 1) {
@@ -1401,14 +1307,12 @@ public class FileSelectionTest extends TestBase {
     /**
      * Updates the specified keys.
      */
-    private void updateData(int firstKey, int keyCount)
-        throws DatabaseException {
+    private void updateData(int firstKey, int keyCount) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
-        Transaction txn = !isDeferredWriteMode() ?
-            env.beginTransaction(null, null) : null;
+        Transaction txn = !isDeferredWriteMode() ? env.beginTransaction(null, null) : null;
         Cursor cursor = db.openCursor(txn, null);
 
         for (int i = 0; i < keyCount; i += 1) {
@@ -1450,14 +1354,12 @@ public class FileSelectionTest extends TestBase {
     /**
      * Verifies that the data written by writeData can be read.
      */
-    private void verifyData()
-        throws DatabaseException {
+    private void verifyData() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
-        Transaction txn = !isDeferredWriteMode() ?
-            env.beginTransaction(null, null) : null;
+        Transaction txn = !isDeferredWriteMode() ? env.beginTransaction(null, null) : null;
         Cursor cursor = db.openCursor(txn, null);
 
         for (Iterator i = existingKeys.iterator(); i.hasNext();) {
@@ -1500,14 +1402,11 @@ public class FileSelectionTest extends TestBase {
                     }
                 }
             }
-            String name = envImpl.getFileManager().
-                getFullFileName(i, FileManager.JE_SUFFIX);
+            String name = envImpl.getFileManager().getFullFileName(i, FileManager.JE_SUFFIX);
             if (shouldExist != new File(name).exists()) {
-                fail("file=" + i + " shouldExist=" + shouldExist +
-                    " filesThatShouldNotExist=" +
-                    Arrays.toString(shouldNotExist) +
-                    " filesThatDoExist=" + Arrays.toString(
-                    envImpl.getFileManager().getAllFileNumbers()));
+                fail("file=" + i + " shouldExist=" + shouldExist + " filesThatShouldNotExist="
+                        + Arrays.toString(shouldNotExist) + " filesThatDoExist="
+                        + Arrays.toString(envImpl.getFileManager().getAllFileNumbers()));
             }
         }
     }
@@ -1518,8 +1417,7 @@ public class FileSelectionTest extends TestBase {
     private int getNextDeletedFile(int afterFile) {
         Long lastNum = envImpl.getFileManager().getLastFileNum();
         for (int i = afterFile + 1; i <= (int) lastNum.longValue(); i += 1) {
-            String name = envImpl.getFileManager().
-                getFullFileName(i, FileManager.JE_SUFFIX);
+            String name = envImpl.getFileManager().getFullFileName(i, FileManager.JE_SUFFIX);
             if (!(new File(name).exists())) {
                 return i;
             }

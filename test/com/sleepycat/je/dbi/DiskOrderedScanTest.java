@@ -58,7 +58,7 @@ import org.junit.Test;
 public class DiskOrderedScanTest extends TestBase {
 
     class DOSTestHook implements TestHook<Integer> {
-        
+
         int counter = 0;
 
         @Override
@@ -74,11 +74,11 @@ public class DiskOrderedScanTest extends TestBase {
         public void doHook() {
             ++counter;
         }
-        
+
         @Override
         public void doHook(Integer obj) {
         }
-        
+
         @Override
         public Integer getHookValue() {
             return counter;
@@ -86,7 +86,7 @@ public class DiskOrderedScanTest extends TestBase {
     };
 
     class EvictionHook implements TestHook<Integer> {
-        
+
         DiskOrderedScanner dos;
 
         EvictionHook(DiskOrderedScanner dos) {
@@ -105,29 +105,29 @@ public class DiskOrderedScanTest extends TestBase {
         public void doHook() {
             dos.evictBinRefs();
         }
-        
+
         @Override
         public void doHook(Integer obj) {
         }
-        
+
         @Override
         public Integer getHookValue() {
             return 0;
         }
     };
- 
+
     private static final int N_RECS = 10000;
     private static final int ONE_MB = 1 << 20;
 
-    private final File envHome;
-    private Environment env;
-    private EnvironmentImpl envImpl;
+    private final File       envHome;
+    private Environment      env;
+    private EnvironmentImpl  envImpl;
 
-    boolean embeddedLNs;
+    boolean                  embeddedLNs;
 
-    private Database[] dbs;
+    private Database[]       dbs;
 
-    private int numDBs = 5;
+    private int              numDBs = 5;
 
     public DiskOrderedScanTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -136,14 +136,13 @@ public class DiskOrderedScanTest extends TestBase {
     }
 
     @Test
-    public void testScanArgChecks()
-        throws Throwable {
+    public void testScanArgChecks() throws Throwable {
 
         System.out.println("Running test testScanArgChecks");
 
         open(false, CacheMode.DEFAULT, 0);
 
-        writeData(1/*nDBs*/, false, N_RECS);
+        writeData(1/* nDBs */, false, N_RECS);
 
         ForwardCursor dos = dbs[0].openCursor(new DiskOrderedCursorConfig());
 
@@ -168,8 +167,7 @@ public class DiskOrderedScanTest extends TestBase {
     }
 
     @Test
-    public void testScanPermutations()
-        throws Throwable {
+    public void testScanPermutations() throws Throwable {
 
         System.out.println("Running test testScanPermutations");
 
@@ -179,57 +177,43 @@ public class DiskOrderedScanTest extends TestBase {
 
                 for (final int nRecs : new int[] { 0, N_RECS }) {
 
-                    for (final CacheMode cacheMode :
-                         new CacheMode[] { CacheMode.DEFAULT,
-                                           CacheMode.EVICT_LN,
-                                           CacheMode.EVICT_BIN }) {
+                    for (final CacheMode cacheMode : new CacheMode[] { CacheMode.DEFAULT, CacheMode.EVICT_LN,
+                            CacheMode.EVICT_BIN }) {
 
                         for (int i = 0; i < 3; i += 1) {
                             final boolean keysOnly;
                             final boolean countOnly;
                             switch (i) {
-                            case 0:
-                                keysOnly = false;
-                                countOnly = false;
-                                break;
-                            case 1:
-                                keysOnly = true;
-                                countOnly = false;
-                                break;
-                            case 2:
-                                keysOnly = true;
-                                countOnly = true;
-                                break;
-                            default:
-                                throw new IllegalStateException();
+                                case 0:
+                                    keysOnly = false;
+                                    countOnly = false;
+                                    break;
+                                case 1:
+                                    keysOnly = true;
+                                    countOnly = false;
+                                    break;
+                                case 2:
+                                    keysOnly = true;
+                                    countOnly = true;
+                                    break;
+                                default:
+                                    throw new IllegalStateException();
                             }
 
-                            for (final long memoryLimit :
-                                 new long[] { Long.MAX_VALUE, ONE_MB}) {
+                            for (final long memoryLimit : new long[] { Long.MAX_VALUE, ONE_MB }) {
 
-                                for (final long lsnBatchSize :
-                                     new long[] { Long.MAX_VALUE, 100 }) {
+                                for (final long lsnBatchSize : new long[] { Long.MAX_VALUE, 100 }) {
 
-                                    TestUtils.removeFiles(
-                                        "Setup", envHome,
-                                        FileManager.JE_SUFFIX);
+                                    TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
 
                                     try {
-                                        doScan(nDBs, dups, nRecs, cacheMode,
-                                            keysOnly, countOnly,
-                                            memoryLimit, lsnBatchSize);
-                                    } catch (AssertionError |
-                                             RuntimeException e) {
+                                        doScan(nDBs, dups, nRecs, cacheMode, keysOnly, countOnly, memoryLimit,
+                                                lsnBatchSize);
+                                    } catch (AssertionError | RuntimeException e) {
                                         /* Wrap with context info. */
-                                        throw new RuntimeException(
-                                            "scan failed with" +
-                                            " dups=" + dups +
-                                            " nRecs=" + nRecs +
-                                            " cacheMode=" + cacheMode +
-                                            " keysOnly=" + keysOnly +
-                                            " memoryLimit=" + memoryLimit +
-                                            " lsnBatchSize=" + lsnBatchSize,
-                                            e);
+                                        throw new RuntimeException("scan failed with" + " dups=" + dups + " nRecs="
+                                                + nRecs + " cacheMode=" + cacheMode + " keysOnly=" + keysOnly
+                                                + " memoryLimit=" + memoryLimit + " lsnBatchSize=" + lsnBatchSize, e);
                                     }
                                 }
                             }
@@ -244,36 +228,27 @@ public class DiskOrderedScanTest extends TestBase {
      * Checks that a 3 level (or larger) Btree can be scanned.
      */
     @Test
-    public void testLargeScan()
-        throws Throwable {
+    public void testLargeScan() throws Throwable {
 
         System.out.println("Running test testLargeScan");
 
-        doScan(1/*nDBs*/, false /*dups*/, 5 * 1000 * 1000, CacheMode.DEFAULT,
-            false /*keysOnly*/, false /*countOnly*/, 10L * ONE_MB,
-            Long.MAX_VALUE);
+        doScan(1/* nDBs */, false /* dups */, 5 * 1000 * 1000, CacheMode.DEFAULT, false /* keysOnly */,
+                false /* countOnly */, 10L * ONE_MB, Long.MAX_VALUE);
     }
 
     @Test
-    public void testLowMemoryLargeCount()
-        throws Throwable {
+    public void testLowMemoryLargeCount() throws Throwable {
 
         System.out.println("Running test testLowMemoryLargeCount");
 
-        doScan(1/*nDBs*/, false /*dups*/, 100 * 1000, CacheMode.EVICT_BIN,
-            true /*keysOnly*/, true /*countOnly*/, ONE_MB, 50);
+        doScan(1/* nDBs */, false /* dups */, 100 * 1000, CacheMode.EVICT_BIN, true /* keysOnly */,
+                true /* countOnly */, ONE_MB, 50);
     }
 
-    private void doScan(
-        final int nDBs,
-        final boolean dups,
-        final int nRecs,
-        final CacheMode cacheMode,
-        final boolean keysOnly,
-        final boolean countOnly,
-        final long memoryLimit,
-        final long lsnBatchSize)
-        throws Throwable {
+    private void doScan(final int nDBs, final boolean dups, final int nRecs, final CacheMode cacheMode,
+                        final boolean keysOnly, final boolean countOnly, final long memoryLimit,
+                        final long lsnBatchSize)
+            throws Throwable {
 
         open(dups, cacheMode, 0);
 
@@ -349,16 +324,14 @@ public class DiskOrderedScanTest extends TestBase {
         close();
 
         /*
-        System.out.println("iters " +
-                           DbInternal.getDiskOrderedCursorImpl(dos).
-                                      getNScannerIterations() + ' ' +
-                           getName());
-        */
+         * System.out.println("iters " +
+         * DbInternal.getDiskOrderedCursorImpl(dos). getNScannerIterations() + '
+         * ' + getName());
+         */
     }
 
     @Test
-    public void testInterruptedDiskOrderedScan()
-        throws Throwable {
+    public void testInterruptedDiskOrderedScan() throws Throwable {
 
         System.out.println("Running test testInterruptedDiskOrderedScan");
 
@@ -383,8 +356,7 @@ public class DiskOrderedScanTest extends TestBase {
         DatabaseEntry key2 = new DatabaseEntry();
         DatabaseEntry data2 = new DatabaseEntry();
 
-        assertTrue(dos.getCurrent(key2, data2, null) ==
-                   OperationStatus.SUCCESS);
+        assertTrue(dos.getCurrent(key2, data2, null) == OperationStatus.SUCCESS);
 
         int k2 = entryToInt(key2);
         int d2 = entryToInt(data2);
@@ -414,8 +386,7 @@ public class DiskOrderedScanTest extends TestBase {
      * to doesn't affect the DOS.
      */
     @Test
-    public void testDeleteOneDuringScan()
-        throws Throwable {
+    public void testDeleteOneDuringScan() throws Throwable {
 
         System.out.println("Running test testDeleteOneDuringScan");
 
@@ -438,19 +409,16 @@ public class DiskOrderedScanTest extends TestBase {
 
         assertTrue(k1 == (d1 * -1));
 
-        assertTrue(dos.getCurrent(key2, data2, null) ==
-            OperationStatus.SUCCESS);
+        assertTrue(dos.getCurrent(key2, data2, null) == OperationStatus.SUCCESS);
 
         int k2 = entryToInt(key2);
         int d2 = entryToInt(data2);
         assertTrue(k1 == k2 && d1 == d2);
 
-        assertTrue(cursor.getSearchKey(key, data, null) ==
-                   OperationStatus.SUCCESS);
+        assertTrue(cursor.getSearchKey(key, data, null) == OperationStatus.SUCCESS);
 
         cursor.delete();
-        assertTrue(dos.getCurrent(key2, data2, null) ==
-                   OperationStatus.SUCCESS);
+        assertTrue(dos.getCurrent(key2, data2, null) == OperationStatus.SUCCESS);
 
         k2 = entryToInt(key2);
         d2 = entryToInt(data2);
@@ -462,11 +430,10 @@ public class DiskOrderedScanTest extends TestBase {
 
     /**
      * Checks that a consumer thread performing deletions does not cause a
-     * deadlock.  This failed prior to the use of DiskOrderedScanner. [#21667]
+     * deadlock. This failed prior to the use of DiskOrderedScanner. [#21667]
      */
     @Test
-    public void testDeleteAllDuringScan()
-        throws Throwable {
+    public void testDeleteAllDuringScan() throws Throwable {
 
         System.out.println("Running test testDeleteAllDuringScan");
 
@@ -478,8 +445,7 @@ public class DiskOrderedScanTest extends TestBase {
         config.setQueueSize(10).setLSNBatchSize(10);
 
         DiskOrderedCursor dos = dbs[0].openCursor(config);
-        DiskOrderedCursorImpl dosImpl =
-            DbInternal.getDiskOrderedCursorImpl(dos);
+        DiskOrderedCursorImpl dosImpl = DbInternal.getDiskOrderedCursorImpl(dos);
 
         Cursor cursor = dbs[0].openCursor(null, null);
 
@@ -487,7 +453,8 @@ public class DiskOrderedScanTest extends TestBase {
         DatabaseEntry data = new DatabaseEntry();
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > 0) { }
+        while (dosImpl.freeQueueSlots() > 0) {
+        }
 
         for (int cnt = 0; cnt < N_RECS; cnt += 1) {
 
@@ -497,8 +464,7 @@ public class DiskOrderedScanTest extends TestBase {
             int d1 = entryToInt(data);
             assertEquals(k1, d1 * -1);
 
-            assertSame(OperationStatus.SUCCESS,
-                       cursor.getSearchKey(key, data, LockMode.RMW));
+            assertSame(OperationStatus.SUCCESS, cursor.getSearchKey(key, data, LockMode.RMW));
 
             assertEquals(k1, entryToInt(key));
             assertEquals(d1, entryToInt(data));
@@ -524,21 +490,17 @@ public class DiskOrderedScanTest extends TestBase {
         testBlockedProducer(false, 100, 10);
     }
 
-    public void testBlockedProducer(
-        boolean keysonly,
-        int lsnBatchSize,
-        int queueSize) throws Throwable {
+    public void testBlockedProducer(boolean keysonly, int lsnBatchSize, int queueSize) throws Throwable {
 
         /* Cache size sensitivity makes Zing support very difficult. */
         Assume.assumeTrue(!JVMSystemUtils.ZING_JVM);
 
         /*
-         * Use a small cache so that not all the full bins fit in it.
-         *
-         * This test is sensitive to cache sizes and isn't important to run
-         * with an off-heap cache.
+         * Use a small cache so that not all the full bins fit in it. This test
+         * is sensitive to cache sizes and isn't important to run with an
+         * off-heap cache.
          */
-        open(false, CacheMode.DEFAULT, ONE_MB/5, false /*allowOffHeapCache*/);
+        open(false, CacheMode.DEFAULT, ONE_MB / 5, false /* allowOffHeapCache */);
 
         /* Load the initial set of 10,000 records */
         writeData(1, false, N_RECS);
@@ -551,8 +513,7 @@ public class DiskOrderedScanTest extends TestBase {
 
         DiskOrderedCursor dos = dbs[0].openCursor(config);
 
-        DiskOrderedCursorImpl dosImpl =
-            DbInternal.getDiskOrderedCursorImpl(dos);
+        DiskOrderedCursorImpl dosImpl = DbInternal.getDiskOrderedCursorImpl(dos);
 
         DOSTestHook hook = new DOSTestHook();
         dosImpl.getScanner().setTestHook1(hook);
@@ -569,7 +530,8 @@ public class DiskOrderedScanTest extends TestBase {
          */
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -582,8 +544,7 @@ public class DiskOrderedScanTest extends TestBase {
         //    "freeSlots = " + freeSlots + " numLsns = " + numLsns);
 
         /* Delete all the records */
-        while (cursor.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             assertSame(OperationStatus.SUCCESS, cursor.delete());
         }
@@ -594,10 +555,10 @@ public class DiskOrderedScanTest extends TestBase {
         env.compress();
 
         /*
-         * The dos cursor should return the records that were already in
-         * the queue, plus the records from any lsns accumulated before
-         * the records were deleted. These lsns correspond to bins not
-         * found in the cache during phase 1.
+         * The dos cursor should return the records that were already in the
+         * queue, plus the records from any lsns accumulated before the records
+         * were deleted. These lsns correspond to bins not found in the cache
+         * during phase 1.
          */
         int cnt = 0;
 
@@ -617,7 +578,7 @@ public class DiskOrderedScanTest extends TestBase {
             assertEquals(2, hook.getHookValue().intValue());
         } else {
             assertEquals(0, hook.getHookValue().intValue());
-            assertEquals((keysonly ? 1461: 191), cnt);
+            assertEquals((keysonly ? 1461 : 191), cnt);
         }
 
         dos.close();
@@ -639,7 +600,8 @@ public class DiskOrderedScanTest extends TestBase {
         dosImpl.getScanner().setTestHook1(hook);
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -650,8 +612,7 @@ public class DiskOrderedScanTest extends TestBase {
         /* Delete all the records except from the last 300 ones */
         cnt = 0;
 
-        while (cursor.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             assertSame(OperationStatus.SUCCESS, cursor.delete());
 
@@ -665,8 +626,8 @@ public class DiskOrderedScanTest extends TestBase {
         env.compress();
 
         /*
-         * The dos cursor should return the records that were already in
-         * the queue plus the last 300 records.
+         * The dos cursor should return the records that were already in the
+         * queue plus the last 300 records.
          */
         cnt = 0;
 
@@ -703,7 +664,8 @@ public class DiskOrderedScanTest extends TestBase {
         dosImpl.getScanner().setTestHook1(hook);
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -750,7 +712,8 @@ public class DiskOrderedScanTest extends TestBase {
         dosImpl.getScanner().setTestHook1(hook);
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -797,7 +760,8 @@ public class DiskOrderedScanTest extends TestBase {
         //dosImpl.getScanner().debug = true;
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -838,22 +802,18 @@ public class DiskOrderedScanTest extends TestBase {
         testBlockedProducerMultiDBInternal(true, true);
     }
 
-    public void testBlockedProducerMultiDBInternal(
-        boolean serialScan,
-        boolean keysonly)
-        throws Throwable {
+    public void testBlockedProducerMultiDBInternal(boolean serialScan, boolean keysonly) throws Throwable {
 
         /*
-         * This test is sensitive to cache sizes and isn't important to run
-         * with an off-heap cache.
+         * This test is sensitive to cache sizes and isn't important to run with
+         * an off-heap cache.
          */
-        open(false, CacheMode.DEFAULT, 5*ONE_MB, false /*allowOffHeapCache*/);
+        open(false, CacheMode.DEFAULT, 5 * ONE_MB, false /* allowOffHeapCache */);
 
         /*
-         * Load the initial data:
-         * DB0: record keys      0 to  9,999 (10,000 records)
-         * DB1: record keys 10,000 to 29,999 (20,000 records)
-         * DB2: record keys 30,000 to 59,999 (30,000 records)
+         * Load the initial data: DB0: record keys 0 to 9,999 (10,000 records)
+         * DB1: record keys 10,000 to 29,999 (20,000 records) DB2: record keys
+         * 30,000 to 59,999 (30,000 records)
          */
         writeData(dbs[0], false, N_RECS, 0);
         writeData(dbs[1], false, 2 * N_RECS, N_RECS);
@@ -869,8 +829,7 @@ public class DiskOrderedScanTest extends TestBase {
 
         DiskOrderedCursor dos = env.openDiskOrderedCursor(dbs, config);
 
-        DiskOrderedCursorImpl dosImpl =
-            DbInternal.getDiskOrderedCursorImpl(dos);
+        DiskOrderedCursorImpl dosImpl = DbInternal.getDiskOrderedCursorImpl(dos);
 
         DOSTestHook hook = new DOSTestHook();
         dosImpl.getScanner().setTestHook1(hook);
@@ -889,7 +848,8 @@ public class DiskOrderedScanTest extends TestBase {
          */
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -898,20 +858,17 @@ public class DiskOrderedScanTest extends TestBase {
         int freeSlots = dosImpl.freeQueueSlots();
 
         /* Delete all the records from all DBs */
-        while (cursor0.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor0.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             assertSame(OperationStatus.SUCCESS, cursor0.delete());
         }
 
-        while (cursor1.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor1.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             assertSame(OperationStatus.SUCCESS, cursor1.delete());
         }
 
-        while (cursor2.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor2.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             assertSame(OperationStatus.SUCCESS, cursor2.delete());
         }
@@ -926,8 +883,8 @@ public class DiskOrderedScanTest extends TestBase {
         env.compress();
 
         /*
-         * Thee dos cursor should return the records that were already in
-         * the queue.
+         * Thee dos cursor should return the records that were already in the
+         * queue.
          */
         int cnt = 0;
 
@@ -966,7 +923,8 @@ public class DiskOrderedScanTest extends TestBase {
         dosImpl = DbInternal.getDiskOrderedCursorImpl(dos);
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -975,13 +933,12 @@ public class DiskOrderedScanTest extends TestBase {
         freeSlots = dosImpl.freeQueueSlots();
 
         /*
-         * Delete all the records except from the last 100 ones in DB0,
-         * the last 200 ones in DB1, and the last 300 ones in DB2.
+         * Delete all the records except from the last 100 ones in DB0, the last
+         * 200 ones in DB1, and the last 300 ones in DB2.
          */
         cnt = 0;
 
-        while (cursor0.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor0.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             assertSame(OperationStatus.SUCCESS, cursor0.delete());
 
@@ -993,26 +950,24 @@ public class DiskOrderedScanTest extends TestBase {
 
         cnt = 0;
 
-        while (cursor1.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor1.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             assertSame(OperationStatus.SUCCESS, cursor1.delete());
 
             ++cnt;
-            if (cnt >= (2*N_RECS - 200)) {
+            if (cnt >= (2 * N_RECS - 200)) {
                 break;
             }
         }
 
         cnt = 0;
 
-        while (cursor2.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor2.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             assertSame(OperationStatus.SUCCESS, cursor2.delete());
 
             ++cnt;
-            if (cnt >= (3*N_RECS - 300)) {
+            if (cnt >= (3 * N_RECS - 300)) {
                 break;
             }
         }
@@ -1023,8 +978,8 @@ public class DiskOrderedScanTest extends TestBase {
         env.compress();
 
         /*
-         * The dos cursor should return the records that were already in
-         * the queue plus the last 600 records.
+         * The dos cursor should return the records that were already in the
+         * queue plus the last 600 records.
          */
         cnt = 0;
 
@@ -1041,10 +996,9 @@ public class DiskOrderedScanTest extends TestBase {
          */
 
         /*
-         * At this point, the 3 DBs contain 600 records as follows:
-         * DB0: record keys  9,899 to  9,999 (100 records)
-         * DB1: record keys 29,799 to 29,999 (200 records)
-         * DB2: record keys 59,699 to 59,999 (300 records)
+         * At this point, the 3 DBs contain 600 records as follows: DB0: record
+         * keys 9,899 to 9,999 (100 records) DB1: record keys 29,799 to 29,999
+         * (200 records) DB2: record keys 59,699 to 59,999 (300 records)
          */
 
         queueSize = 400;
@@ -1054,7 +1008,8 @@ public class DiskOrderedScanTest extends TestBase {
         dosImpl = DbInternal.getDiskOrderedCursorImpl(dos);
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -1063,8 +1018,8 @@ public class DiskOrderedScanTest extends TestBase {
         freeSlots = dosImpl.freeQueueSlots();
 
         /*
-         * Relaod 1000 records in each DB. The records are inserted "behind"
-         * the current position of the DOS and should not be returned by DOS.
+         * Relaod 1000 records in each DB. The records are inserted "behind" the
+         * current position of the DOS and should not be returned by DOS.
          */
         writeData(dbs[0], false, 1000, 1000);
         writeData(dbs[1], false, 1000, 11000);
@@ -1095,17 +1050,18 @@ public class DiskOrderedScanTest extends TestBase {
          */
 
         /*
-         * At this point, the 3 DBs contain 3600 records as follows:
-         * DB0: record keys  1,000 to 1,999  and  9,899 to  9,999 (1100 recs)
-         * DB1: record keys 11,000 to 11,999 and 29,799 to 29,999 (1200 recs)
-         * DB2: record keys 31,000 to 31,999 and 59,699 to 59,999 (1300 recs)
+         * At this point, the 3 DBs contain 3600 records as follows: DB0: record
+         * keys 1,000 to 1,999 and 9,899 to 9,999 (1100 recs) DB1: record keys
+         * 11,000 to 11,999 and 29,799 to 29,999 (1200 recs) DB2: record keys
+         * 31,000 to 31,999 and 59,699 to 59,999 (1300 recs)
          */
 
         dos = env.openDiskOrderedCursor(dbs, config);
         dosImpl = DbInternal.getDiskOrderedCursorImpl(dos);
 
         /* Loop until queue is full. */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -1114,10 +1070,9 @@ public class DiskOrderedScanTest extends TestBase {
         freeSlots = dosImpl.freeQueueSlots();
 
         /*
-         * Reload the first 1000 records in each DB. Note that with
-         * a linear scan, the queue is full with 400 records from DB0
-         * only, so the DOS will pickup the 2000 records inserted in
-         * DB1 and DB2.
+         * Reload the first 1000 records in each DB. Note that with a linear
+         * scan, the queue is full with 400 records from DB0 only, so the DOS
+         * will pickup the 2000 records inserted in DB1 and DB2.
          */
         writeData(dbs[0], false, 1000, 0);
         writeData(dbs[1], false, 1000, 10000);
@@ -1180,11 +1135,7 @@ public class DiskOrderedScanTest extends TestBase {
         doTestDeltas(10000, 128 * 2, false, true);
     }
 
-    public void doTestDeltas(
-        int memoryLimit,
-        int queueSize,
-        boolean doCkpt,
-        boolean allowEviction) throws Throwable {
+    public void doTestDeltas(int memoryLimit, int queueSize, boolean doCkpt, boolean allowEviction) throws Throwable {
 
         boolean debug = false;
 
@@ -1205,9 +1156,7 @@ public class DiskOrderedScanTest extends TestBase {
         if (useOffHeapCache) {
             int halfSize = cacheSize / 2;
 
-            envConfig = envConfig.
-                setCacheSize(halfSize).
-                setOffHeapCacheSize(halfSize);
+            envConfig = envConfig.setCacheSize(halfSize).setOffHeapCacheSize(halfSize);
 
             env.setMutableConfig(envConfig);
         }
@@ -1236,7 +1185,7 @@ public class DiskOrderedScanTest extends TestBase {
         long nBins = stats.getNCachedBINs();
         long nOhDeltas = stats.getOffHeapCachedBINDeltas();
         long nOhBins = stats.getOffHeapCachedBINs();
-        assert(nDeltas == 0);
+        assert (nDeltas == 0);
 
         if (debug) {
             System.out.println("Found " + nBins + " bins in main cache");
@@ -1257,8 +1206,8 @@ public class DiskOrderedScanTest extends TestBase {
         DiskOrderedScanner scanner = dosImpl.getScanner();
 
         /*
-         * Create a non-sticky cursor so that we can have a stable CursorImpl
-         * to use below.
+         * Create a non-sticky cursor so that we can have a stable CursorImpl to
+         * use below.
          */
         CursorConfig config = new CursorConfig();
         config.setNonSticky(true);
@@ -1273,10 +1222,11 @@ public class DiskOrderedScanTest extends TestBase {
          */
 
         /*
-         * Loop until queue is full. The dos producer fills the queue and
-         * blocks during phase 1 (after processing 2 full bins).
+         * Loop until queue is full. The dos producer fills the queue and blocks
+         * during phase 1 (after processing 2 full bins).
          */
-        while (dosImpl.freeQueueSlots() > minFreeSlots) { }
+        while (dosImpl.freeQueueSlots() > minFreeSlots) {
+        }
 
         synchronized (this) {
             wait(1000);
@@ -1289,8 +1239,7 @@ public class DiskOrderedScanTest extends TestBase {
         List<BIN> bins = new ArrayList<BIN>();
         BIN bin = null;
 
-        while (cursor.getNext(key, data, LockMode.RMW) ==
-               OperationStatus.SUCCESS) {
+        while (cursor.getNext(key, data, LockMode.RMW) == OperationStatus.SUCCESS) {
 
             if (bin == null) {
                 bin = cursorImpl.getBIN();
@@ -1317,8 +1266,7 @@ public class DiskOrderedScanTest extends TestBase {
 
         for (IN in : envImpl.getInMemoryINs()) {
 
-            if (in.getNormalizedLevel() != 2 ||
-                in.getDatabase() != dbImpl) {
+            if (in.getNormalizedLevel() != 2 || in.getDatabase() != dbImpl) {
                 continue;
             }
 
@@ -1351,13 +1299,13 @@ public class DiskOrderedScanTest extends TestBase {
 
         /*
          * Create a test hook and register it with the DOS producer. The hook
-         * will be executed after phase 1 and before phase 2. For each bin
-         * delta on which a WeakBinRef was created during phase 1, the hook
-         * will evict the bin and clear the WeakReference on it. So, during
-         * phase 2, all of these bins will have to be deferred. The total
-         * (approximate) memory that will be needed to store these delta is
-         * greater than the DOS budget, and as a result, more than one
-         * subsequent iteration will be needed to process the deferred bins.
+         * will be executed after phase 1 and before phase 2. For each bin delta
+         * on which a WeakBinRef was created during phase 1, the hook will evict
+         * the bin and clear the WeakReference on it. So, during phase 2, all of
+         * these bins will have to be deferred. The total (approximate) memory
+         * that will be needed to store these delta is greater than the DOS
+         * budget, and as a result, more than one subsequent iteration will be
+         * needed to process the deferred bins.
          */
         EvictionHook hook = new EvictionHook(scanner);
         scanner.setEvictionHook(hook);
@@ -1375,7 +1323,7 @@ public class DiskOrderedScanTest extends TestBase {
             }
         }
 
-        assertEquals(3*N_RECS, cnt);
+        assertEquals(3 * N_RECS, cnt);
 
         int nIter = scanner.getNIterations();
 
@@ -1420,8 +1368,8 @@ public class DiskOrderedScanTest extends TestBase {
 
         for (int i = startRecord; i < nRecords + startRecord; i += 1) {
 
-            key.setData(TestUtils.getTestArray(2*i));
-            data.setData(TestUtils.getTestArray(2*i));
+            key.setData(TestUtils.getTestArray(2 * i));
+            data.setData(TestUtils.getTestArray(2 * i));
 
             assertEquals(OperationStatus.SUCCESS, cursor.put(key, data));
         }
@@ -1429,21 +1377,14 @@ public class DiskOrderedScanTest extends TestBase {
         cursor.close();
     }
 
-    private void open(
-        final boolean allowDuplicates,
-        final CacheMode cacheMode,
-        final long cacheSize)
-        throws Exception {
+    private void open(final boolean allowDuplicates, final CacheMode cacheMode, final long cacheSize) throws Exception {
 
-        open(allowDuplicates, cacheMode, cacheSize, true /*allowOffHeapCache*/);
+        open(allowDuplicates, cacheMode, cacheSize, true /* allowOffHeapCache */);
     }
 
-    private void open(
-        final boolean allowDuplicates,
-        final CacheMode cacheMode,
-        final long cacheSize,
-        final boolean allowOffHeapCache)
-        throws Exception {
+    private void open(final boolean allowDuplicates, final CacheMode cacheMode, final long cacheSize,
+                      final boolean allowOffHeapCache)
+            throws Exception {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
 
@@ -1456,23 +1397,17 @@ public class DiskOrderedScanTest extends TestBase {
             envConfig.setOffHeapCacheSize(0);
         }
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.DOS_PRODUCER_QUEUE_TIMEOUT, "2 seconds");
+        envConfig.setConfigParam(EnvironmentConfig.DOS_PRODUCER_QUEUE_TIMEOUT, "2 seconds");
 
         envConfig.setTransactional(false);
         envConfig.setAllowCreate(true);
@@ -1495,10 +1430,7 @@ public class DiskOrderedScanTest extends TestBase {
         }
     }
 
-    private void writeData(
-        int nDBs,
-        boolean dups,
-        int nRecs) {
+    private void writeData(int nDBs, boolean dups, int nRecs) {
 
         for (int i = 0; i < nDBs; ++i) {
             writeData(dbs[i], dups, nRecs, nRecs * i);
@@ -1509,11 +1441,7 @@ public class DiskOrderedScanTest extends TestBase {
         writeData(db, dups, nRecs, 0);
     }
 
-    private void writeData(
-        Database db,
-        boolean dups,
-        int nRecs,
-        int start) {
+    private void writeData(Database db, boolean dups, int nRecs, int start) {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -1522,23 +1450,21 @@ public class DiskOrderedScanTest extends TestBase {
             IntegerBinding.intToEntry(i, key);
             IntegerBinding.intToEntry(i * -1, data);
 
-            assertEquals(OperationStatus.SUCCESS,
-                         db.putNoOverwrite(null, key, data));
+            assertEquals(OperationStatus.SUCCESS, db.putNoOverwrite(null, key, data));
 
             if (dups) {
                 IntegerBinding.intToEntry(-1 * (i + nRecs + nRecs), data);
 
-                assertEquals(OperationStatus.SUCCESS,
-                             db.putNoDupData(null, key, data));
+                assertEquals(OperationStatus.SUCCESS, db.putNoDupData(null, key, data));
             }
         }
 
         /*
          * If the scanned data set is large enough, a checkpoint may be needed
-         * to ensure all expected records are scanned.  It seems that a
+         * to ensure all expected records are scanned. It seems that a
          * checkpoint is needed on some machines but not others, probably
-         * because the checkpointer thread gets more or less time.  Therefore,
-         * to make the test more reliable we always do a checkpoint here.
+         * because the checkpointer thread gets more or less time. Therefore, to
+         * make the test more reliable we always do a checkpoint here.
          */
         env.checkpoint(new CheckpointConfig().setForce(true));
     }
@@ -1548,8 +1474,7 @@ public class DiskOrderedScanTest extends TestBase {
         return IntegerBinding.entryToInt(entry);
     }
 
-    private void close()
-        throws Exception {
+    private void close() throws Exception {
 
         for (int i = 0; i < numDBs; ++i) {
             if (dbs[i] != null) {

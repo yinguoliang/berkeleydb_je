@@ -35,9 +35,9 @@ import com.sleepycat.util.test.TestBase;
 public class PerDbReplicationTest extends TestBase {
 
     private static final String TEST_DB = "testdb";
-    private final File envRoot;
-    private Environment env;
-    private Database db;
+    private final File          envRoot;
+    private Environment         env;
+    private Database            db;
 
     public PerDbReplicationTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -48,62 +48,60 @@ public class PerDbReplicationTest extends TestBase {
      */
     @Test
     public void testDefault() {
-//        Replicator[] replicators = RepTestUtils.startGroup(envRoot,
-//                                                           1,
-//                                                           false /* verbose */);
-//        try {
-//            env = replicators[0].getEnvironment();
-//            DatabaseConfig config = new DatabaseConfig();
-//            config.setAllowCreate(true);
-//            config.setTransactional(true);
-//
-//            validate(config, true /* replicated */);
-//        } finally {
-//            if (db != null) {
-//                db.close();
-//            }
-//
-//            for (Replicator rep: replicators) {
-//                rep.close();
-//            }
-//        }
+        //        Replicator[] replicators = RepTestUtils.startGroup(envRoot,
+        //                                                           1,
+        //                                                           false /* verbose */);
+        //        try {
+        //            env = replicators[0].getEnvironment();
+        //            DatabaseConfig config = new DatabaseConfig();
+        //            config.setAllowCreate(true);
+        //            config.setTransactional(true);
+        //
+        //            validate(config, true /* replicated */);
+        //        } finally {
+        //            if (db != null) {
+        //                db.close();
+        //            }
+        //
+        //            for (Replicator rep: replicators) {
+        //                rep.close();
+        //            }
+        //        }
     }
 
     /**
      * Check that a database in a replicated environment which is configured to
-     * not replicate is properly saved.
-     * (Not a public feature yet).
+     * not replicate is properly saved. (Not a public feature yet).
      */
     @Test
     public void testNotReplicated() {
-//        Replicator[] replicators = RepTestUtils.startGroup(envRoot,
-//                                                           1,
-//                                                           false /* verbose*/);
-//        try {
-//            env = replicators[0].getEnvironment();
-//            DatabaseConfig config = new DatabaseConfig();
-//            config.setAllowCreate(true);
-//            config.setTransactional(true);
-//            config.setReplicated(false);
-//
-//            validate(config, false /* replicated */);
-//        } finally {
-//            if (db != null) {
-//                db.close();
-//            }
-//
-//            for (Replicator rep: replicators) {
-//                rep.close();
-//            }
-//        }
+        //        Replicator[] replicators = RepTestUtils.startGroup(envRoot,
+        //                                                           1,
+        //                                                           false /* verbose*/);
+        //        try {
+        //            env = replicators[0].getEnvironment();
+        //            DatabaseConfig config = new DatabaseConfig();
+        //            config.setAllowCreate(true);
+        //            config.setTransactional(true);
+        //            config.setReplicated(false);
+        //
+        //            validate(config, false /* replicated */);
+        //        } finally {
+        //            if (db != null) {
+        //                db.close();
+        //            }
+        //
+        //            for (Replicator rep: replicators) {
+        //                rep.close();
+        //            }
+        //        }
     }
 
     /**
      * A database in a standalone environment should not be replicated.
      */
     @Test
-    public void testStandalone()
-        throws DatabaseException {
+    public void testStandalone() throws DatabaseException {
 
         try {
             EnvironmentConfig envConfig = new EnvironmentConfig();
@@ -128,9 +126,7 @@ public class PerDbReplicationTest extends TestBase {
      * Check that the notReplicate attribute is properly immutable and
      * persistent.
      */
-    private void validate(DatabaseConfig config,
-                          boolean replicated)
-            throws DatabaseException {
+    private void validate(DatabaseConfig config, boolean replicated) throws DatabaseException {
 
         /* Create the database -- is its config what we expect? */
         db = env.openDatabase(null, TEST_DB, config);

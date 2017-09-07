@@ -45,32 +45,29 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * This tests exercises the act of eviction and determines whether the
- * expected nodes have been evicted properly.
+ * This tests exercises the act of eviction and determines whether the expected
+ * nodes have been evicted properly.
  */
 public class EvictNNodesStatsTest extends TestBase {
 
-    private static final boolean DEBUG = false;
-    private static final int BIG_CACHE_SIZE = 500000;
-    private static final int SMALL_CACHE_SIZE = (int)
-    MemoryBudget.MIN_MAX_MEMORY_SIZE;
-    private final StatGroup placeholderMBStats = 
-        new StatGroup("placeholder", "");
+    private static final boolean DEBUG              = false;
+    private static final int     BIG_CACHE_SIZE     = 500000;
+    private static final int     SMALL_CACHE_SIZE   = (int) MemoryBudget.MIN_MAX_MEMORY_SIZE;
+    private final StatGroup      placeholderMBStats = new StatGroup("placeholder", "");
 
-    private File envHome = null;
-    private Environment env = null;
-    private Database db = null;
-    private int actualLNs = 0;
-    private int actualINs = 0;
+    private File                 envHome            = null;
+    private Environment          env                = null;
+    private Database             db                 = null;
+    private int                  actualLNs          = 0;
+    private int                  actualINs          = 0;
 
     public EvictNNodesStatsTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @Before
-    public void setUp() 
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         super.setUp();
         IN.ACCUMULATED_LIMIT = 0;
         Txn.ACCUMULATED_LIMIT = 0;
@@ -78,7 +75,7 @@ public class EvictNNodesStatsTest extends TestBase {
 
     @After
     public void tearDown() {
-        
+
         if (env != null) {
             try {
                 env.close();
@@ -92,12 +89,11 @@ public class EvictNNodesStatsTest extends TestBase {
     }
 
     /**
-     * Check that the counters of evicted MapLNs in the DB mapping tree and
-     * the counter of evicted BINs in a regular DB eviction works.  [#13415]
+     * Check that the counters of evicted MapLNs in the DB mapping tree and the
+     * counter of evicted BINs in a regular DB eviction works. [#13415]
      */
     @Test
-    public void testRegularDB()
-        throws DatabaseException {
+    public void testRegularDB() throws DatabaseException {
 
         /* Initialize an environment and open a test DB. */
         openEnv(80, SMALL_CACHE_SIZE);
@@ -118,8 +114,8 @@ public class EvictNNodesStatsTest extends TestBase {
         checkMappingTree(baseLNs, baseINs);
 
         /*
-         * Create enough DBs to fill up a BIN in the mapping DB.  NODE_MAX is
-         * configured to be 4 in this test.  There are already 2 DBs open.
+         * Create enough DBs to fill up a BIN in the mapping DB. NODE_MAX is
+         * configured to be 4 in this test. There are already 2 DBs open.
          */
         final int nDbs = 4;
         Database[] dbs = new Database[nDbs];
@@ -129,8 +125,8 @@ public class EvictNNodesStatsTest extends TestBase {
             assertSame(OperationStatus.SUCCESS, status);
             assertTrue(isRootResident(dbs[i]));
         }
-        checkMappingTree(baseLNs + nDbs /*Add 1 MapLN per open DB*/,
-                         baseINs + 1 /*Add 1 BIN in the mapping tree*/);
+        checkMappingTree(baseLNs + nDbs /* Add 1 MapLN per open DB */,
+                baseINs + 1 /* Add 1 BIN in the mapping tree */);
 
         /* Close DBs and force eviction. */
         for (int i = 0; i < nDbs; i += 1) {
@@ -141,21 +137,19 @@ public class EvictNNodesStatsTest extends TestBase {
         /* Load Stats. */
         stats = env.getStats(statsConfig);
 
-        assertEquals("Evicted MapLNs",
-                     nDbs + 1, // nDbs and Utilization DB
-                     stats.getNRootNodesEvicted());
-        assertEquals("Evicted BINs",
-                     nDbs + 4, // 2 BINs for Name DB, 1 for Mapping DB,
-                               // 1 for Utilization DB and 1 per each nDb
-                     stats.getNNodesEvicted() - stats.getNRootNodesEvicted());
+        assertEquals("Evicted MapLNs", nDbs + 1, // nDbs and Utilization DB
+                stats.getNRootNodesEvicted());
+        assertEquals("Evicted BINs", nDbs + 4, // 2 BINs for Name DB, 1 for Mapping DB,
+                // 1 for Utilization DB and 1 per each nDb
+                stats.getNNodesEvicted() - stats.getNRootNodesEvicted());
         checkMappingTree(baseLNs, baseINs);
 
-        /* 
-         * Sneak in some testing of the stat getter calls. The actual
-         * value we're comparing to is not that important, just updated them
-         * if the test changes by printing System.out.println(stats) and
-         * setting appropriate comparison vals. This is a way to make
-         * sure the getter works.
+        /*
+         * Sneak in some testing of the stat getter calls. The actual value
+         * we're comparing to is not that important, just updated them if the
+         * test changes by printing System.out.println(stats) and setting
+         * appropriate comparison vals. This is a way to make sure the getter
+         * works.
          */
         assertEquals(0, stats.getNBytesEvictedCacheMode());
         assertEquals(0, stats.getNBytesEvictedEvictorThread());
@@ -173,18 +167,16 @@ public class EvictNNodesStatsTest extends TestBase {
         assertEquals(0, stats.getNLNsFetchMiss());
         assertTrue(stats.getNCachedBINs() > 0);
         assertTrue(stats.getNCachedUpperINs() > 0);
-        
+
         closeEnv();
     }
 
     /**
-     * Check that the counters of evicted MapLNs in the DB mapping tree and
-     * the counter of evicted BINs in a deferred write DB eviction works.
-     * [#13415]
+     * Check that the counters of evicted MapLNs in the DB mapping tree and the
+     * counter of evicted BINs in a deferred write DB eviction works. [#13415]
      */
     @Test
-    public void testDeferredWriteDB()
-        throws DatabaseException {
+    public void testDeferredWriteDB() throws DatabaseException {
 
         /* Initialize an environment and open a test DB. */
         openEnv(80, SMALL_CACHE_SIZE);
@@ -217,13 +209,11 @@ public class EvictNNodesStatsTest extends TestBase {
         forceEviction();
         /* Load Stats. */
         stats = env.getStats(statsConfig);
-        assertEquals("Evicted MapLNs",
-                     2, // Utilization DB and test DB.
-                     stats.getNRootNodesEvicted());
-        assertEquals("Evicted BINs",
-                     3, // 1 BIN for Name DB, 1 for Utilization DB,
-                        // and 1 for Deferred Write DB.
-                     stats.getNNodesEvicted() - stats.getNRootNodesEvicted());
+        assertEquals("Evicted MapLNs", 2, // Utilization DB and test DB.
+                stats.getNRootNodesEvicted());
+        assertEquals("Evicted BINs", 3, // 1 BIN for Name DB, 1 for Utilization DB,
+                // and 1 for Deferred Write DB.
+                stats.getNNodesEvicted() - stats.getNRootNodesEvicted());
         assertTrue(!isRootResident(db2));
         checkMappingTree(baseLNs + 1, baseINs); // Deferred Write DB.
 
@@ -231,12 +221,9 @@ public class EvictNNodesStatsTest extends TestBase {
         forceEviction();
         /* Load Stats. */
         stats = env.getStats(statsConfig);
-        assertEquals("Evicted MapLNs",
-                     1, // Root eviction.
-                     stats.getNRootNodesEvicted());
-        assertEquals("Evicted BINs",
-                     0,
-                     stats.getNNodesEvicted() - stats.getNRootNodesEvicted());
+        assertEquals("Evicted MapLNs", 1, // Root eviction.
+                stats.getNRootNodesEvicted());
+        assertEquals("Evicted BINs", 0, stats.getNNodesEvicted() - stats.getNRootNodesEvicted());
         assertTrue(!isRootResident(db2));
         checkMappingTree(baseLNs + 1, baseINs); // Deferred Write DB.
 
@@ -244,31 +231,26 @@ public class EvictNNodesStatsTest extends TestBase {
         forceEviction();
         /* Load Stats. */
         stats = env.getStats(statsConfig);
-        assertEquals("Evicted MapLNs",
-                     1, // Root eviction.
-                     stats.getNRootNodesEvicted());
-        assertEquals("Evicted BINs",
-                     0,
-                     stats.getNNodesEvicted() - stats.getNRootNodesEvicted());
+        assertEquals("Evicted MapLNs", 1, // Root eviction.
+                stats.getNRootNodesEvicted());
+        assertEquals("Evicted BINs", 0, stats.getNNodesEvicted() - stats.getNRootNodesEvicted());
 
         checkMappingTree(baseLNs, baseINs);
 
         closeEnv();
     }
 
-    private void forceEviction()
-        throws DatabaseException {
+    private void forceEviction() throws DatabaseException {
 
         OperationStatus status;
 
         /*
-         * Repeat twice to cause a 2nd pass over the INList.  The second pass
+         * Repeat twice to cause a 2nd pass over the INList. The second pass
          * evicts BINs that were only stripped of LNs in the first pass.
          */
         for (int i = 0; i < 2; i += 1) {
             /* Fill up cache so as to call eviction. */
-            status = db.put(null, new DatabaseEntry(new byte[1]),
-                                  new DatabaseEntry(new byte[BIG_CACHE_SIZE]));
+            status = db.put(null, new DatabaseEntry(new byte[1]), new DatabaseEntry(new byte[BIG_CACHE_SIZE]));
             assertSame(OperationStatus.SUCCESS, status);
 
             /* Do a manual call eviction. */
@@ -282,12 +264,10 @@ public class EvictNNodesStatsTest extends TestBase {
     /**
      * Check for the expected number of nodes in the mapping DB.
      */
-    private void checkMappingTree(int expectLNs, int expectINs)
-        throws DatabaseException {
+    private void checkMappingTree(int expectLNs, int expectINs) throws DatabaseException {
 
-        IN root = DbInternal.getNonNullEnvImpl(env).
-            getDbTree().getDb(DbTree.ID_DB_ID).getTree().
-            getRootIN(CacheMode.UNCHANGED);
+        IN root = DbInternal.getNonNullEnvImpl(env).getDbTree().getDb(DbTree.ID_DB_ID).getTree()
+                .getRootIN(CacheMode.UNCHANGED);
         actualLNs = 0;
         actualINs = 0;
         countMappingTree(root);
@@ -313,17 +293,13 @@ public class EvictNNodesStatsTest extends TestBase {
      * Returns whether the root IN is currently resident for the given DB.
      */
     private boolean isRootResident(Database dbParam) {
-        return DbInternal.getDbImpl(dbParam).
-                          getTree().
-                          isRootResident();
+        return DbInternal.getDbImpl(dbParam).getTree().isRootResident();
     }
 
     /**
      * Open an environment and database.
      */
-    private void openEnv(int floor,
-                         int maxMem)
-        throws DatabaseException {
+    private void openEnv(int floor, int maxMem) throws DatabaseException {
 
         /* Convert floor percentage into bytes. */
         long evictBytes = maxMem - ((maxMem * floor) / 100);
@@ -332,32 +308,21 @@ public class EvictNNodesStatsTest extends TestBase {
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
         envConfig.setTxnNoSync(Boolean.getBoolean(TestUtils.NO_SYNC));
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 EVICTOR_EVICT_BYTES.getName(),
-                                 (new Long(evictBytes)).toString());
-        envConfig.setConfigParam(EnvironmentParams.
-                                 MAX_MEMORY.getName(),
-                                 new Integer(maxMem).toString());
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.EVICTOR_EVICT_BYTES.getName(), (new Long(evictBytes)).toString());
+        envConfig.setConfigParam(EnvironmentParams.MAX_MEMORY.getName(), new Integer(maxMem).toString());
         /* Enable DB (MapLN) eviction for eviction tests. */
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_DB_EVICTION.getName(), "true");
+        envConfig.setConfigParam(EnvironmentParams.ENV_DB_EVICTION.getName(), "true");
         /* Can't use expiration DB in this sensitive test. */
         DbInternal.setCreateEP(envConfig, false);
 
         /* Make small nodes */
-        envConfig.setConfigParam(EnvironmentParams.
-                                 NODE_MAX.getName(), "4");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 NODE_MAX_DUPTREE.getName(), "4");
-    
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "4");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX_DUPTREE.getName(), "4");
+
         env = new Environment(envHome, envConfig);
 
         /* Open a database. */
@@ -366,8 +331,7 @@ public class EvictNNodesStatsTest extends TestBase {
         db = env.openDatabase(null, "foo", dbConfig);
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (db != null) {
             db.close();

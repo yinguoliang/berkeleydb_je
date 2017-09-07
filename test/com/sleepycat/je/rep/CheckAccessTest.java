@@ -33,12 +33,11 @@ import com.sleepycat.util.test.TestBase;
  */
 public class CheckAccessTest extends TestBase {
 
-    private File envRoot;
+    private File   envRoot;
     private File[] envHomes;
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         envRoot = SharedTestUtils.getTestDir();
         envHomes = RepTestUtils.makeRepEnvDirs(envRoot, 2);
@@ -49,8 +48,7 @@ public class CheckAccessTest extends TestBase {
      * Sanity check that no SSL works.
      */
     @Test
-    public void testBasicConfig()
-        throws Exception {
+    public void testBasicConfig() throws Exception {
 
         checkAccess(null);
     }
@@ -59,8 +57,7 @@ public class CheckAccessTest extends TestBase {
      * Test that SSL works.
      */
     @Test
-    public void testSSLOnlyConfig()
-        throws Exception {
+    public void testSSLOnlyConfig() throws Exception {
 
         Properties props = new Properties();
         setBasicSSLProperties(props);
@@ -69,11 +66,10 @@ public class CheckAccessTest extends TestBase {
     }
 
     /**
-     * Set the basic SSL properties.  These rely on the build.xml configuration
+     * Set the basic SSL properties. These rely on the build.xml configuration
      * that copies keystore and truststore files to the test environment.
      */
-    public void setBasicSSLProperties(Properties props)
-        throws Exception {
+    public void setBasicSSLProperties(Properties props) throws Exception {
 
         RepTestUtils.setUnitTestSSLProperties(props);
     }
@@ -82,16 +78,14 @@ public class CheckAccessTest extends TestBase {
      * Check whether a particular access configuration works
      *
      * @param extraProperties Properties to be appended to the standard property
-     *        file
+     *            file
      * @param servicePassword A service password to be used for authentication
      */
-    private void checkAccess(Properties extraProperties)
-        throws Exception {
+    private void checkAccess(Properties extraProperties) throws Exception {
 
         String propString = "\n";
         if (extraProperties != null) {
-            Iterator<String> piter =
-                extraProperties.stringPropertyNames().iterator();
+            Iterator<String> piter = extraProperties.stringPropertyNames().iterator();
             while (piter.hasNext()) {
                 String key = piter.next();
                 String value = extraProperties.getProperty(key);
@@ -127,19 +121,17 @@ public class CheckAccessTest extends TestBase {
         /*
          * Attempt to create the master with the specified EnvironmentConfig.
          */
-        master = new ReplicatedEnvironment(
-            envHomes[0], masterConfig, envConfig);
+        master = new ReplicatedEnvironment(envHomes[0], masterConfig, envConfig);
 
         /* Check the specified EnvironmentConfig on the replica. */
-        replica = new ReplicatedEnvironment(
-            envHomes[1], replicaConfig, envConfig);
+        replica = new ReplicatedEnvironment(envHomes[1], replicaConfig, envConfig);
 
         assertTrue(master != null);
         assertTrue(replica != null);
 
         /*
-         * If the specified EnvironmentConfig is correct, wait for
-         * replication initialization to finish.
+         * If the specified EnvironmentConfig is correct, wait for replication
+         * initialization to finish.
          */
         while (replica.getState() != ReplicatedEnvironment.State.REPLICA) {
             Thread.sleep(1000);

@@ -36,47 +36,42 @@ import com.sleepycat.je.rep.ReplicatedEnvironment.State;
 //import com.sleepycat.je.util.DbPreUpgrade_4_1;
 
 /**
- * This program is used to generate the old data used for test dup convert on
- * JE 5.0. Before running this program, you have to uncomment those commented
+ * This program is used to generate the old data used for test dup convert on JE
+ * 5.0. Before running this program, you have to uncomment those commented
  * codes, since there are some classes only exist in JE 4.1. Besure to run this
- * program on JE 4.1.
- *
- * Please ask Eric and Tao if you have more questions.
+ * program on JE 4.1. Please ask Eric and Tao if you have more questions.
  */
 public class CreateOldVersionLogs {
-    private static File envHome = new File("data");
-    private File[] envHomes;
-    File logFile = new File(envHome, "00000000.jdb");
-    Environment env;
-    Database db;
+    private static File          envHome                  = new File("data");
+    private File[]               envHomes;
+    File                         logFile                  = new File(envHome, "00000000.jdb");
+    Environment                  env;
+    Database                     db;
 
-    private static DatabaseEntry theKey = new DatabaseEntry();
-    private static DatabaseEntry theData = new DatabaseEntry();
-    private static int N_ENTRIES = 4;
-    private static int repNodes = 3;
-    ReplicatedEnvironment[] repEnvs = new ReplicatedEnvironment[repNodes];
+    private static DatabaseEntry theKey                   = new DatabaseEntry();
+    private static DatabaseEntry theData                  = new DatabaseEntry();
+    private static int           N_ENTRIES                = 4;
+    private static int           repNodes                 = 3;
+    ReplicatedEnvironment[]      repEnvs                  = new ReplicatedEnvironment[repNodes];
 
-    private String singletonLN_jdb = "je-4.1.7_logWithSingletonLN.jdb";
-    private String DIN_jdb = "je-4.1.7_logWithDIN.jdb";
-    private String DeletedLNCommit_jdb = "je-4.1.7_logWithDeletedLNCommit.jdb";
-    private String DeletedLNNoCommit_jdb =
-        "je-4.1.7_logWithDeletedLNNoCommit.jdb";
-    private String MixIN_jdb = "je-4.1.7_logWithMixIN.jdb";
+    private String               singletonLN_jdb          = "je-4.1.7_logWithSingletonLN.jdb";
+    private String               DIN_jdb                  = "je-4.1.7_logWithDIN.jdb";
+    private String               DeletedLNCommit_jdb      = "je-4.1.7_logWithDeletedLNCommit.jdb";
+    private String               DeletedLNNoCommit_jdb    = "je-4.1.7_logWithDeletedLNNoCommit.jdb";
+    private String               MixIN_jdb                = "je-4.1.7_logWithMixIN.jdb";
 
-    private String singletonLNRep_jdb = "je-4.1.7_singletonLN";
-    private String DINRep_jdb = "je-4.1.7_din";
-    private String DeletedLNCommitRep_jdb =
-        "je-4.1.7_deletedLNCommit";
-    private String DeletedLNNoCommitRep_jdb =
-        "je-4.1.7_deletedLNNoCommit";
-    private String MixINRep_jdb = "je-4.1.7_mixIN";
+    private String               singletonLNRep_jdb       = "je-4.1.7_singletonLN";
+    private String               DINRep_jdb               = "je-4.1.7_din";
+    private String               DeletedLNCommitRep_jdb   = "je-4.1.7_deletedLNCommit";
+    private String               DeletedLNNoCommitRep_jdb = "je-4.1.7_deletedLNNoCommit";
+    private String               MixINRep_jdb             = "je-4.1.7_mixIN";
 
     /*
      * Logs where the preupgrade utility has not been run, and an exception
      * should be thrown by recovery.
      */
-    private String NoPreUpgrade_Dups_jdb = "je-4.1.7_noPreUpgrade_dups";
-    private String NoPreUpgrade_Deltas_jdb = "je-4.1.7_noPreUpgrade_deltas";
+    private String               NoPreUpgrade_Dups_jdb    = "je-4.1.7_noPreUpgrade_dups";
+    private String               NoPreUpgrade_Deltas_jdb  = "je-4.1.7_noPreUpgrade_deltas";
 
     public static void main(String args[]) throws Exception {
         CreateOldVersionLogs covl = new CreateOldVersionLogs();
@@ -115,7 +110,7 @@ public class CreateOldVersionLogs {
     }
 
     EnvironmentConfig makeEnvConfig() {
-        return makeEnvConfig(true /*smallNodeMax*/);
+        return makeEnvConfig(true /* smallNodeMax */);
     }
 
     EnvironmentConfig makeEnvConfig(boolean smallNodeMax) {
@@ -125,22 +120,15 @@ public class CreateOldVersionLogs {
         envConfig.setTransactional(true);
 
         /* Disable all daemon threads. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
 
         /* Use a 100 MB log file size to ensure only one file is written. */
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 Integer.toString(100 * (1 << 20)));
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(100 * (1 << 20)));
         if (smallNodeMax) {
-            envConfig.setConfigParam
-                (EnvironmentParams.NODE_MAX.getName(),
-                 Integer.toString(N_ENTRIES));
+            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), Integer.toString(N_ENTRIES));
         }
         return envConfig;
     }
@@ -166,8 +154,7 @@ public class CreateOldVersionLogs {
         repConfig.setNodeName("Node " + (i + 1));
         repConfig.setNodeHostPort("localhost:" + (5001 + i));
         repConfig.setHelperHosts("localhost:5001");
-        repEnvs[i] = new ReplicatedEnvironment(envHomes[i], repConfig,
-                                               makeEnvConfig());
+        repEnvs[i] = new ReplicatedEnvironment(envHomes[i], repConfig, makeEnvConfig());
         ReplicatedEnvironment.State joinState = repEnvs[i].getState();
         if (joinState.equals(State.MASTER)) {
             env = repEnvs[i];
@@ -197,9 +184,7 @@ public class CreateOldVersionLogs {
         if (rep) {
             for (int i = repNodes - 1; i >= 0; i--) {
                 if (repEnvs[i] != null) {
-                    RepInternal.
-                        getNonNullRepImpl((ReplicatedEnvironment) repEnvs[i]).
-                        abnormalClose();
+                    RepInternal.getNonNullRepImpl((ReplicatedEnvironment) repEnvs[i]).abnormalClose();
                     repEnvs[i] = null;
                 }
             }
@@ -224,8 +209,7 @@ public class CreateOldVersionLogs {
         writeSingletonLNData(0, 100);
         upgradeAllRepJDB(false);
         for (int i = 0; i < repNodes; i++) {
-            File renamedLogFile =
-                new File(envHomes[i], singletonLNRep_jdb + "_" + i + ".jdb");
+            File renamedLogFile = new File(envHomes[i], singletonLNRep_jdb + "_" + i + ".jdb");
             logFile = new File(envHomes[i], "00000000.jdb");
             renameJDB(renamedLogFile);
         }
@@ -255,8 +239,7 @@ public class CreateOldVersionLogs {
         writeDINData(0, 100, 10);
         upgradeAllRepJDB(false);
         for (int i = 0; i < repNodes; i++) {
-            File renamedLogFile =
-                new File(envHomes[i], DINRep_jdb + "_" + i + ".jdb");
+            File renamedLogFile = new File(envHomes[i], DINRep_jdb + "_" + i + ".jdb");
             logFile = new File(envHomes[i], "00000000.jdb");
             renameJDB(renamedLogFile);
         }
@@ -264,7 +247,7 @@ public class CreateOldVersionLogs {
     }
 
     void writeDINData(int start, int end, int keys) {
-        for(int i = start; i < end; i++) {
+        for (int i = start; i < end; i++) {
             /* Insert ten records for a given key. */
             theKey = makeEntry(i % keys);
             theData = makeEntry(i);
@@ -272,25 +255,19 @@ public class CreateOldVersionLogs {
         }
     }
 
-    void createLogWithDeletedLN(boolean ifCommit)
-        throws Exception {
+    void createLogWithDeletedLN(boolean ifCommit) throws Exception {
 
         openStandaloneEnv();
         writeDINData(0, 100, 10);
         deleteDIN(10, 10, 5, ifCommit);
         abnormalClose(false);
         upgradeJDB(envHome);
-        File renamedLogFile = new File(envHome, ifCommit ?
-                                                DeletedLNCommit_jdb :
-                                                DeletedLNNoCommit_jdb);
+        File renamedLogFile = new File(envHome, ifCommit ? DeletedLNCommit_jdb : DeletedLNNoCommit_jdb);
         renameJDB(renamedLogFile);
-        System.out.println("Finish creation: " + (ifCommit ?
-                                                  DeletedLNCommit_jdb :
-                                                  DeletedLNNoCommit_jdb));
+        System.out.println("Finish creation: " + (ifCommit ? DeletedLNCommit_jdb : DeletedLNNoCommit_jdb));
     }
 
-    void createRepLogWithDeletedLN(boolean ifCommit)
-        throws Exception {
+    void createRepLogWithDeletedLN(boolean ifCommit) throws Exception {
 
         openRepEnv();
         writeDINData(0, 100, 10);
@@ -299,17 +276,11 @@ public class CreateOldVersionLogs {
         upgradeAllRepJDB(true);
         for (int i = 0; i < repNodes; i++) {
             File renamedLogFile = new File(envHomes[i],
-                                           (ifCommit ?
-                                           DeletedLNCommitRep_jdb :
-                                           DeletedLNNoCommitRep_jdb) + "_" +
-                                           i + ".jdb");
+                    (ifCommit ? DeletedLNCommitRep_jdb : DeletedLNNoCommitRep_jdb) + "_" + i + ".jdb");
             logFile = new File(envHomes[i], "00000000.jdb");
             renameJDB(renamedLogFile);
         }
-        System.out.println("Finish creation: " +
-                           (ifCommit ?
-                            DeletedLNCommitRep_jdb :
-                            DeletedLNNoCommitRep_jdb));
+        System.out.println("Finish creation: " + (ifCommit ? DeletedLNCommitRep_jdb : DeletedLNNoCommitRep_jdb));
     }
 
     void deleteDIN(int keys, int dups, int deleteDups, boolean ifCommit) {
@@ -318,7 +289,7 @@ public class CreateOldVersionLogs {
         Transaction txn = env.beginTransaction(null, txnConfig);
         Cursor cur = db.openCursor(txn, null);
         try {
-            for(int i = 0; i < keys; i++) {
+            for (int i = 0; i < keys; i++) {
                 for (int j = 0; j < dups; j++) {
                     cur.getNext(theKey, theData, null);
                     /* Delete half of dup records. */
@@ -361,8 +332,7 @@ public class CreateOldVersionLogs {
         deleteDIN(10, 7, 3, false);
         upgradeAllRepJDB(true);
         for (int i = 0; i < repNodes; i++) {
-            File renamedLogFile =
-                new File(envHomes[i], MixINRep_jdb + "_" + i + ".jdb");
+            File renamedLogFile = new File(envHomes[i], MixINRep_jdb + "_" + i + ".jdb");
             logFile = new File(envHomes[i], "00000000.jdb");
             renameJDB(renamedLogFile);
         }
@@ -370,8 +340,8 @@ public class CreateOldVersionLogs {
     }
 
     /**
-     * Create a log with DBINs/DINs in the last checkpoint.  Do not run the
-     * preupgrade utility.  An exception should be thrown when opening this
+     * Create a log with DBINs/DINs in the last checkpoint. Do not run the
+     * preupgrade utility. An exception should be thrown when opening this
      * environment with JE 5.
      */
     void createNoPreUpgradeDups() throws Exception {
@@ -390,12 +360,12 @@ public class CreateOldVersionLogs {
     }
 
     /**
-     * Create a log with regular deltas (no dups) in the last checkpoint.  Do
-     * not run the preupgrade utility.  An exception should be thrown when
-     * opening this environment with JE 5.
+     * Create a log with regular deltas (no dups) in the last checkpoint. Do not
+     * run the preupgrade utility. An exception should be thrown when opening
+     * this environment with JE 5.
      */
     void createNoPreUpgradeDeltas() throws Exception {
-        env = new Environment(envHome, makeEnvConfig(false /*smallNodeMax*/));
+        env = new Environment(envHome, makeEnvConfig(false /* smallNodeMax */));
 
         final DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -443,20 +413,16 @@ public class CreateOldVersionLogs {
 
     void renameJDB(File newFile) throws Exception {
         if (!logFile.renameTo(newFile)) {
-            throw new Exception
-                ("Could not rename: " + logFile + " to " + newFile);
+            throw new Exception("Could not rename: " + logFile + " to " + newFile);
         }
     }
 
-    void upgradeRepJDB(File envHome,
-                       String groupName,
-                       String nodeName,
-                       String nodeHostPort,
-                       String helperHosts) {
-        /*DbRepPreUpgrade_4_1 upgrade =
-            new DbRepPreUpgrade_4_1(envHome, groupName, nodeName, nodeHostPort,
-                                    helperHosts);
-        upgrade.preUpgrade();*/
+    void upgradeRepJDB(File envHome, String groupName, String nodeName, String nodeHostPort, String helperHosts) {
+        /*
+         * DbRepPreUpgrade_4_1 upgrade = new DbRepPreUpgrade_4_1(envHome,
+         * groupName, nodeName, nodeHostPort, helperHosts);
+         * upgrade.preUpgrade();
+         */
     }
 
     /* Upgrade all the rep jdbs. */
@@ -464,23 +430,23 @@ public class CreateOldVersionLogs {
         for (int i = repNodes - 1; i >= 0; i--) {
             if (repEnvs[i] != null) {
                 if (abnormalClose) {
-                    RepInternal.
-                        getNonNullRepImpl((ReplicatedEnvironment) repEnvs[i]).
-                        abnormalClose();
+                    RepInternal.getNonNullRepImpl((ReplicatedEnvironment) repEnvs[i]).abnormalClose();
                 } else {
                     if (i == 0) {
                         db.close();
                     }
                     repEnvs[i].close();
                 }
-                upgradeRepJDB(envHomes[i], "UnitTestGroup", "Node " + (i + 1),
-                              "localhost:" + (5001 + i), "localhost:5001");
+                upgradeRepJDB(envHomes[i], "UnitTestGroup", "Node " + (i + 1), "localhost:" + (5001 + i),
+                        "localhost:5001");
             }
         }
     }
 
     void upgradeJDB(File envHome) {
-        /*DbPreUpgrade_4_1 upgrade = new DbPreUpgrade_4_1(envHome);
-        upgrade.preUpgrade();*/
+        /*
+         * DbPreUpgrade_4_1 upgrade = new DbPreUpgrade_4_1(envHome);
+         * upgrade.preUpgrade();
+         */
     }
 }

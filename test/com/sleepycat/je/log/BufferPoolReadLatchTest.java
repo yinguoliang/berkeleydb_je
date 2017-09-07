@@ -35,12 +35,12 @@ import com.sleepycat.je.utilint.StatGroup;
 import com.sleepycat.util.test.SharedTestUtils;
 
 /**
- * Checks that we don't have to latch the buffer pool to check for LSNs that
- * are outside the pool's range. This is important to avoid read contention.
+ * Checks that we don't have to latch the buffer pool to check for LSNs that are
+ * outside the pool's range. This is important to avoid read contention.
  * [#19642]
  */
 public class BufferPoolReadLatchTest extends DualTestCase {
-    private File envHome;
+    private File        envHome;
     private Environment env;
 
     public BufferPoolReadLatchTest() {
@@ -48,22 +48,17 @@ public class BufferPoolReadLatchTest extends DualTestCase {
     }
 
     @Test
-    public void testBufferPoolReadLatch()
-        throws Throwable {
+    public void testBufferPoolReadLatch() throws Throwable {
 
         /* Open env with tiny cache to cause cache misses. */
         final EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
         envConfig.setCacheSize(1 << 20);
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR,
-                                 "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         env = create(envHome, envConfig);
 
         /* Open db. */
@@ -84,9 +79,7 @@ public class BufferPoolReadLatchTest extends DualTestCase {
         }
 
         /* Get and clear buffer pool latch stats. */
-        final StatGroup latchStats = DbInternal.getNonNullEnvImpl(env).
-                                                getLogManager().
-                                                getBufferPoolLatchStats();
+        final StatGroup latchStats = DbInternal.getNonNullEnvImpl(env).getLogManager().getBufferPoolLatchStats();
         latchStats.clear();
 
         /* Read first half of records, which should not be in log buffers. */
@@ -97,9 +90,9 @@ public class BufferPoolReadLatchTest extends DualTestCase {
         }
 
         /*
-         * Check for a small number of latches.  Check release count because it
-         * is simple (there are many acquire counts).  Before the enhancement
-         * [#19642], there were around 3,000 latches.  After the enhancement
+         * Check for a small number of latches. Check release count because it
+         * is simple (there are many acquire counts). Before the enhancement
+         * [#19642], there were around 3,000 latches. After the enhancement
          * there were only 2 latches, but this number could be variable.
          */
         final int nLatches = latchStats.getInt(LATCH_RELEASES);

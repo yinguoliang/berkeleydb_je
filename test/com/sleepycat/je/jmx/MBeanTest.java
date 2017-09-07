@@ -23,15 +23,13 @@ import com.sleepycat.je.Environment;
 import com.sleepycat.je.util.TestUtils;
 
 /**
- * @excludeDualMode
- *
- * Instantiate and exercise the JEMBeanHelper.
+ * @excludeDualMode Instantiate and exercise the JEMBeanHelper.
  */
 public class MBeanTest extends TestCase {
 
     private static final boolean DEBUG = false;
-    private File envHome;
-    private String environmentDir;
+    private File                 envHome;
+    private String               environmentDir;
 
     public MBeanTest() {
         environmentDir = System.getProperty(TestUtils.DEST_DIR);
@@ -43,8 +41,7 @@ public class MBeanTest extends TestCase {
         TestUtils.removeLogFiles("Setup", envHome, false);
     }
 
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         TestUtils.removeLogFiles("tearDown", envHome, true);
     }
@@ -52,8 +49,7 @@ public class MBeanTest extends TestCase {
     /**
      * MBean which can configure and open an environment.
      */
-    public void testOpenableBean()
-        throws Throwable {
+    public void testOpenableBean() throws Throwable {
 
         Environment env = null;
         try {
@@ -63,23 +59,20 @@ public class MBeanTest extends TestCase {
 
             DynamicMBean mbean = new JEApplicationMBean(environmentDir);
             MBeanTestUtils.validateGetters(mbean, 5, DEBUG);
-            MBeanTestUtils.validateMBeanOperations
-                (mbean, 1, false, null, null, DEBUG);
+            MBeanTestUtils.validateMBeanOperations(mbean, 1, false, null, null, DEBUG);
 
             /* Open the environment. */
             mbean.invoke(JEApplicationMBean.OP_OPEN, null, null);
 
             MBeanTestUtils.validateGetters(mbean, 7, DEBUG);
-            MBeanTestUtils.validateMBeanOperations
-                (mbean, 7, true, null, null, DEBUG);
+            MBeanTestUtils.validateMBeanOperations(mbean, 7, true, null, null, DEBUG);
 
             /*
              * The last call to validateOperations ended up closing the
              * environment.
              */
             MBeanTestUtils.validateGetters(mbean, 5, DEBUG);
-            MBeanTestUtils.validateMBeanOperations
-                (mbean, 1, false, null, null, DEBUG);
+            MBeanTestUtils.validateMBeanOperations(mbean, 1, false, null, null, DEBUG);
 
             /* Should be no open handles. */
             MBeanTestUtils.checkForNoOpenHandles(environmentDir);
@@ -94,11 +87,10 @@ public class MBeanTest extends TestCase {
     }
 
     /**
-     * Checks that all parameters and return values are Serializable to
-     * support JMX over RMI.
+     * Checks that all parameters and return values are Serializable to support
+     * JMX over RMI.
      */
-    public void testSerializable()
-        throws Exception {
+    public void testSerializable() throws Exception {
 
         /* Create and close the environment. */
         Environment env = MBeanTestUtils.openTxnalEnv(false, envHome);

@@ -32,13 +32,11 @@ import com.sleepycat.je.utilint.LoggerUtils;
 /** Test {@link FileStoreInfo}. */
 public class FileStoreInfoTest {
 
-    private final Logger logger =
-        LoggerUtils.getLoggerFixedPrefix(getClass(), "Test");
+    private final Logger logger = LoggerUtils.getLoggerFixedPrefix(getClass(), "Test");
 
     /** Test when running on Java 6. */
     @Test
-    public void testJava6()
-        throws Exception {
+    public void testJava6() throws Exception {
 
         try {
             Class.forName(FileStoreInfo.FILE_STORE_CLASS);
@@ -63,8 +61,7 @@ public class FileStoreInfoTest {
 
     /** Test when running on Java 7 or later. */
     @Test
-    public void testJava7()
-        throws Exception {
+    public void testJava7() throws Exception {
 
         try {
             Class.forName(FileStoreInfo.FILE_STORE_CLASS);
@@ -83,17 +80,14 @@ public class FileStoreInfoTest {
         assertEquals(info1, info1);
         assertEquals(info1, FileStoreInfo.getInfo(file1.getPath()));
 
-        assertTrue("Total space greater than zero",
-                   info1.getTotalSpace() > 0);
-        assertTrue("Usable space greater than zero",
-                   info1.getUsableSpace() > 0);
+        assertTrue("Total space greater than zero", info1.getTotalSpace() > 0);
+        assertTrue("Usable space greater than zero", info1.getUsableSpace() > 0);
 
         final File file2 = File.createTempFile("file2", null);
         file2.deleteOnExit();
         final FileStoreInfo info2 = FileStoreInfo.getInfo(file2.getPath());
 
-        assertEquals("Equal file store info for files in same directory",
-                     info1, info2);
+        assertEquals("Equal file store info for files in same directory", info1, info2);
 
         file2.delete();
         try {
@@ -102,5 +96,5 @@ public class FileStoreInfoTest {
         } catch (IOException e) {
             logger.info("Got expected exception for deleted file: " + e);
         }
-   }
+    }
 }

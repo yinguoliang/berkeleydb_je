@@ -87,50 +87,43 @@ import com.sleepycat.util.test.TxnTestCase;
 @RunWith(Parameterized.class)
 public class TTLTest extends TxnTestCase {
 
-    private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+    private static final TimeZone         UTC             = TimeZone.getTimeZone("UTC");
 
-    private static final SimpleDateFormat TIME_FORMAT =
-        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.zzz");
+    private static final SimpleDateFormat TIME_FORMAT     = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.zzz");
 
-    private static final Calendar BASE_CAL = Calendar.getInstance(UTC);
+    private static final Calendar         BASE_CAL        = Calendar.getInstance(UTC);
 
-    public static volatile long fixedSystemTime = 0;
+    public static volatile long           fixedSystemTime = 0;
 
     static {
         TIME_FORMAT.setTimeZone(UTC);
 
-        BASE_CAL.set(2016, Calendar.FEBRUARY,
-            3 /*day*/, 4 /*hour*/, 5 /*min*/, 6 /*sec*/);
+        BASE_CAL.set(2016, Calendar.FEBRUARY, 3 /* day */, 4 /* hour */, 5 /* min */, 6 /* sec */);
     }
 
     private static final long BASE_MS = BASE_CAL.getTimeInMillis();
 
-    private Database db;
+    private Database          db;
 
     @Parameters
     public static List<Object[]> genParams() {
 
-        return getTxnParams(null, false /*rep*/);
+        return getTxnParams(null, false /* rep */);
 
-//        return getTxnParams(
-//        new String[] {TxnTestCase.TXN_USER},
-//        false /*rep*/);
+        //        return getTxnParams(
+        //        new String[] {TxnTestCase.TXN_USER},
+        //        false /*rep*/);
     }
 
     public TTLTest(String type) {
 
         initEnvConfig();
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
 
         txnType = type;
         isTransactional = !txnType.equals(TXN_NULL);
@@ -166,9 +159,7 @@ public class TTLTest extends TxnTestCase {
             calDays += 1;
         }
 
-        assertEquals(
-            calDays,
-            (BASE_MS + TTL.MILLIS_PER_DAY - 1) / TTL.MILLIS_PER_DAY);
+        assertEquals(calDays, (BASE_MS + TTL.MILLIS_PER_DAY - 1) / TTL.MILLIS_PER_DAY);
 
         cal = cloneCalendar(BASE_CAL);
         int calHours = 0;
@@ -178,33 +169,26 @@ public class TTLTest extends TxnTestCase {
             calHours += 1;
         }
 
-        assertEquals(
-            calHours,
-            (BASE_MS + TTL.MILLIS_PER_HOUR - 1) / TTL.MILLIS_PER_HOUR);
+        assertEquals(calHours, (BASE_MS + TTL.MILLIS_PER_HOUR - 1) / TTL.MILLIS_PER_HOUR);
 
         /* Test with legal non-zero values. */
 
-        for (final boolean hours : new boolean[]{false, true}) {
+        for (final boolean hours : new boolean[] { false, true }) {
 
-            for (final int ttl :
-                new int[]{1, 2, 23, 24, 25, 364, 365, 366, 500, 10000}) {
+            for (final int ttl : new int[] { 1, 2, 23, 24, 25, 364, 365, 366, 500, 10000 }) {
 
-                final TimeUnit ttlUnit =
-                    hours ? TimeUnit.HOURS : TimeUnit.DAYS;
+                final TimeUnit ttlUnit = hours ? TimeUnit.HOURS : TimeUnit.DAYS;
 
                 setFixedTimeHook(BASE_MS);
 
                 cal = cloneCalendar(BASE_CAL);
 
-                cal.add(
-                    hours ? Calendar.HOUR_OF_DAY : Calendar.DAY_OF_MONTH,
-                    ttl);
+                cal.add(hours ? Calendar.HOUR_OF_DAY : Calendar.DAY_OF_MONTH, ttl);
 
                 final long calMsBeforeRoundingUp = cal.getTimeInMillis();
 
-                cal.add(
-                    hours ? Calendar.HOUR_OF_DAY : Calendar.DAY_OF_MONTH,
-                    1 /* round up */);
+                cal.add(hours ? Calendar.HOUR_OF_DAY : Calendar.DAY_OF_MONTH,
+                        1 /* round up */);
 
                 if (hours) {
                     truncateToHours(cal);
@@ -216,32 +200,20 @@ public class TTLTest extends TxnTestCase {
 
                 final int expiration = TTL.ttlToExpiration(ttl, ttlUnit);
 
-                final long expireSystemMs =
-                    TTL.expirationToSystemTime(expiration, hours);
+                final long expireSystemMs = TTL.expirationToSystemTime(expiration, hours);
 
-                final String label =
-                    "ttl = " + ttl + " hours = " + hours +
-                        " baseMs = " + BASE_MS +
-                        " expect = " + TIME_FORMAT.format(calMs) +
-                        " got = " + TIME_FORMAT.format(expireSystemMs);
+                final String label = "ttl = " + ttl + " hours = " + hours + " baseMs = " + BASE_MS + " expect = "
+                        + TIME_FORMAT.format(calMs) + " got = " + TIME_FORMAT.format(expireSystemMs);
 
                 assertEquals(label, calMs, expireSystemMs);
 
                 assertEquals(label, hours, TTL.isSystemTimeInHours(calMs));
 
-                assertEquals(
-                    label,
-                    expiration, TTL.systemTimeToExpiration(calMs, hours));
+                assertEquals(label, expiration, TTL.systemTimeToExpiration(calMs, hours));
 
-                assertEquals(
-                    ttl,
-                    new WriteOptions().setExpirationTime(
-                        calMsBeforeRoundingUp, ttlUnit).getTTL());
+                assertEquals(ttl, new WriteOptions().setExpirationTime(calMsBeforeRoundingUp, ttlUnit).getTTL());
 
-                assertSame(
-                    ttlUnit,
-                    new WriteOptions().setExpirationTime(
-                        expireSystemMs, null).getTTLUnit());
+                assertSame(ttlUnit, new WriteOptions().setExpirationTime(expireSystemMs, null).getTTLUnit());
 
                 assertFalse(label, TTL.isExpired(expiration, hours));
                 fixedSystemTime = expireSystemMs;
@@ -266,8 +238,7 @@ public class TTLTest extends TxnTestCase {
             assertTrue(e.getMessage().contains("Illegal ttl value"));
         }
 
-        final Set<TimeUnit> badUnits =
-            new HashSet<>(EnumSet.allOf(TimeUnit.class));
+        final Set<TimeUnit> badUnits = new HashSet<>(EnumSet.allOf(TimeUnit.class));
 
         badUnits.remove(TimeUnit.DAYS);
         badUnits.remove(TimeUnit.HOURS);
@@ -306,8 +277,7 @@ public class TTLTest extends TxnTestCase {
      * Tests storage and retrieval of expiration time.
      */
     @Test
-    public void testExpirationTimeStorage()
-        throws FileNotFoundException {
+    public void testExpirationTimeStorage() throws FileNotFoundException {
 
         db = openDb("foo");
 
@@ -329,10 +299,10 @@ public class TTLTest extends TxnTestCase {
         read(4, 0, TimeUnit.DAYS);
 
         /*
-         * Updating with and without changing the TTL. When false is passed
-         * for updateTtl we add 10 to the ttl and check that it doesn't change.
+         * Updating with and without changing the TTL. When false is passed for
+         * updateTtl we add 10 to the ttl and check that it doesn't change.
          */
-        write(3, 20, TimeUnit.DAYS, TimeUnit.DAYS, false /*updateTtl*/);
+        write(3, 20, TimeUnit.DAYS, TimeUnit.DAYS, false /* updateTtl */);
         write(3, 0, TimeUnit.DAYS);
         write(3, 25, TimeUnit.DAYS);
 
@@ -391,8 +361,7 @@ public class TTLTest extends TxnTestCase {
      * not rollback.
      */
     @Test
-    public void testUndoAndRedo()
-        throws FileNotFoundException {
+    public void testUndoAndRedo() throws FileNotFoundException {
 
         if (!isTransactional) {
             return;
@@ -403,15 +372,15 @@ public class TTLTest extends TxnTestCase {
         setFixedTimeHook(BASE_MS);
 
         /*
-         * Insert a single record with 2 DAYS, then update it and change its
-         * ttl to 30 HOURS, but abort the update. The previous ttl is restored
-         * by the abort, including the BIN units because it is the only record
-         * in the BIN.
+         * Insert a single record with 2 DAYS, then update it and change its ttl
+         * to 30 HOURS, but abort the update. The previous ttl is restored by
+         * the abort, including the BIN units because it is the only record in
+         * the BIN.
          */
         write(1, 2, TimeUnit.DAYS);
 
         Transaction txn = txnBeginCursor();
-        write(txn, 1, 30, TimeUnit.HOURS, TimeUnit.HOURS, true /*updateTtl*/);
+        write(txn, 1, 30, TimeUnit.HOURS, TimeUnit.HOURS, true /* updateTtl */);
         txnAbort(txn);
 
         read(1, 2, TimeUnit.DAYS);
@@ -424,7 +393,7 @@ public class TTLTest extends TxnTestCase {
         write(2, 3, TimeUnit.DAYS);
 
         txn = txnBeginCursor();
-        write(txn, 1, 20, TimeUnit.HOURS, TimeUnit.HOURS, true /*updateTtl*/);
+        write(txn, 1, 20, TimeUnit.HOURS, TimeUnit.HOURS, true /* updateTtl */);
         txnAbort(txn);
 
         read(1, 2, TimeUnit.DAYS, TimeUnit.HOURS);
@@ -443,13 +412,13 @@ public class TTLTest extends TxnTestCase {
         read(2, 3, TimeUnit.DAYS);
 
         /*
-         * Insert one committed record, and do an update that is a aborted.
-         * Then "crash" and recover, causing one redo and one undo.
+         * Insert one committed record, and do an update that is a aborted. Then
+         * "crash" and recover, causing one redo and one undo.
          */
         write(3, 10, TimeUnit.DAYS);
 
         txn = txnBeginCursor();
-        write(txn, 2, 6, TimeUnit.HOURS, TimeUnit.HOURS, true /*updateTtl*/);
+        write(txn, 2, 6, TimeUnit.HOURS, TimeUnit.HOURS, true /* updateTtl */);
         txnAbort(txn);
 
         read(1, 2, TimeUnit.DAYS, TimeUnit.HOURS);
@@ -474,8 +443,7 @@ public class TTLTest extends TxnTestCase {
      * not test that lazyCompress is called at appropriate times.
      */
     @Test
-    public void testCompression()
-        throws FileNotFoundException {
+    public void testCompression() throws FileNotFoundException {
 
         final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
@@ -499,7 +467,7 @@ public class TTLTest extends TxnTestCase {
         try {
             for (int i = 0; i <= 100; i += 1) {
                 fixedSystemTime += TTL.MILLIS_PER_DAY;
-                envImpl.lazyCompress(bin, true /*compressDirtySlots*/);
+                envImpl.lazyCompress(bin, true /* compressDirtySlots */);
                 assertEquals(100 - i, bin.getNEntries());
             }
         } finally {
@@ -507,9 +475,9 @@ public class TTLTest extends TxnTestCase {
         }
 
         /*
-         * Insert 100 records with a 1 day ttl, then sync to flush the full
-         * BIN and clear the slot dirty flags, then insert 10 more records
-         * that will be dirty and would cause logging as a BIN-delta.
+         * Insert 100 records with a 1 day ttl, then sync to flush the full BIN
+         * and clear the slot dirty flags, then insert 10 more records that will
+         * be dirty and would cause logging as a BIN-delta.
          */
         fixedSystemTime = BASE_MS;
 
@@ -524,16 +492,16 @@ public class TTLTest extends TxnTestCase {
         }
 
         /*
-         * lazyCompress with no second param will not purge dirty slots,
-         * since a BIN-delta should be logged. Calling again to compress all
-         * slots will purge the rest.
+         * lazyCompress with no second param will not purge dirty slots, since a
+         * BIN-delta should be logged. Calling again to compress all slots will
+         * purge the rest.
          */
         bin.latch();
         try {
             fixedSystemTime += 2 * TTL.MILLIS_PER_DAY;
             envImpl.lazyCompress(bin);
             assertEquals(10, bin.getNEntries());
-            envImpl.lazyCompress(bin, true /*compressDirtySlots*/);
+            envImpl.lazyCompress(bin, true /* compressDirtySlots */);
             assertEquals(0, bin.getNEntries());
         } finally {
             bin.releaseLatch();
@@ -546,8 +514,7 @@ public class TTLTest extends TxnTestCase {
      * Tests that the expiration time is preserved by BIN-deltas.
      */
     @Test
-    public void testBINDelta()
-        throws FileNotFoundException {
+    public void testBINDelta() throws FileNotFoundException {
 
         db = openDb("foo");
         setFixedTimeHook(BASE_MS);
@@ -594,7 +561,7 @@ public class TTLTest extends TxnTestCase {
          * Check that reconstituted BIN has all slots with correct expiration.
          */
         bin.latch();
-        bin.mutateToFullBIN(false /*leaveSlotFree*/);
+        bin.mutateToFullBIN(false /* leaveSlotFree */);
         bin.releaseLatch();
 
         for (int i = 1; i <= 110; i += 1) {
@@ -608,14 +575,12 @@ public class TTLTest extends TxnTestCase {
      * Tests that expired records are filtered out of queries.
      */
     @Test
-    public void testFiltering()
-        throws FileNotFoundException {
+    public void testFiltering() throws FileNotFoundException {
 
         db = openDb("foo");
 
         /*
-         * Insert 11 records with a ttl equal to their key.
-         * Record 0 has no TTL.
+         * Insert 11 records with a ttl equal to their key. Record 0 has no TTL.
          */
         setFixedTimeHook(BASE_MS);
 
@@ -651,11 +616,9 @@ public class TTLTest extends TxnTestCase {
 
             diskOrderedScan(expected);
 
-            final PreloadStats stats =
-                db.preload(new PreloadConfig().setLoadLNs(true));
+            final PreloadStats stats = db.preload(new PreloadConfig().setLoadLNs(true));
 
-            assertEquals(
-                11 - i, stats.getNLNsLoaded() + stats.getNEmbeddedLNs());
+            assertEquals(11 - i, stats.getNLNsLoaded() + stats.getNEmbeddedLNs());
 
             /* Make sure compression did not occur. */
             assertEquals(11, bin.getNEntries());
@@ -664,18 +627,14 @@ public class TTLTest extends TxnTestCase {
         db.close();
     }
 
-    private long write(final int key, final int ttl, final TimeUnit ttlUnits)
-        throws FileNotFoundException {
+    private long write(final int key, final int ttl, final TimeUnit ttlUnits) throws FileNotFoundException {
 
-        return write(key, ttl, ttlUnits, ttlUnits, true /*updateTtl*/);
+        return write(key, ttl, ttlUnits, ttlUnits, true /* updateTtl */);
     }
 
-    private long write(final int key,
-                       final int ttl,
-                       final TimeUnit ttlUnits,
-                       final TimeUnit binUnits,
+    private long write(final int key, final int ttl, final TimeUnit ttlUnits, final TimeUnit binUnits,
                        final boolean updateTtl)
-        throws FileNotFoundException {
+            throws FileNotFoundException {
 
         final Transaction txn = txnBeginCursor();
         write(txn, key, ttl, ttlUnits, binUnits, updateTtl);
@@ -684,13 +643,9 @@ public class TTLTest extends TxnTestCase {
         return read(key, ttl, ttlUnits, binUnits);
     }
 
-    private void write(final Transaction txn,
-                       final int key,
-                       final int ttl,
-                       final TimeUnit ttlUnits,
-                       final TimeUnit binUnits,
-                       final boolean updateTtl)
-        throws FileNotFoundException {
+    private void write(final Transaction txn, final int key, final int ttl, final TimeUnit ttlUnits,
+                       final TimeUnit binUnits, final boolean updateTtl)
+            throws FileNotFoundException {
 
         final DatabaseEntry keyEntry = new DatabaseEntry();
         final DatabaseEntry dataEntry = new DatabaseEntry();
@@ -712,27 +667,20 @@ public class TTLTest extends TxnTestCase {
 
         IntegerBinding.intToEntry(ttl, dataEntry);
 
-        final OperationResult result = db.put(
-            txn, keyEntry, dataEntry, Put.OVERWRITE, options);
+        final OperationResult result = db.put(txn, keyEntry, dataEntry, Put.OVERWRITE, options);
 
         assertNotNull(result);
 
         checkedStoredTtl(txn, keyEntry, ttl, ttlUnits, binUnits);
     }
 
-    private long read(final int key,
-                      final int ttl,
-                      final TimeUnit ttlUnits)
-        throws FileNotFoundException {
+    private long read(final int key, final int ttl, final TimeUnit ttlUnits) throws FileNotFoundException {
 
         return read(key, ttl, ttlUnits, ttlUnits);
     }
 
-    private long read(final int key,
-                      final int ttl,
-                      final TimeUnit ttlUnits,
-                      final TimeUnit binUnits)
-        throws FileNotFoundException {
+    private long read(final int key, final int ttl, final TimeUnit ttlUnits, final TimeUnit binUnits)
+            throws FileNotFoundException {
 
         final Transaction txn = txnBeginCursor();
         final Cursor cursor = db.openCursor(txn, null);
@@ -742,8 +690,7 @@ public class TTLTest extends TxnTestCase {
 
         IntegerBinding.intToEntry(key, keyEntry);
 
-        final OperationResult result =
-            cursor.get(keyEntry, dataEntry, Get.SEARCH, null);
+        final OperationResult result = cursor.get(keyEntry, dataEntry, Get.SEARCH, null);
 
         assertNotNull(result);
         assertEquals(ttl, IntegerBinding.entryToInt(dataEntry));
@@ -756,12 +703,9 @@ public class TTLTest extends TxnTestCase {
         return result.getExpirationTime();
     }
 
-    private void checkedStoredTtl(final Transaction txn,
-                                  final DatabaseEntry keyEntry,
-                                  final int ttl,
-                                  final TimeUnit ttlUnits,
-                                  final TimeUnit binUnits)
-        throws FileNotFoundException {
+    private void checkedStoredTtl(final Transaction txn, final DatabaseEntry keyEntry, final int ttl,
+                                  final TimeUnit ttlUnits, final TimeUnit binUnits)
+            throws FileNotFoundException {
 
         final boolean ttlHours = (ttlUnits == TimeUnit.HOURS);
         final boolean binHours = (binUnits == TimeUnit.HOURS);
@@ -773,16 +717,14 @@ public class TTLTest extends TxnTestCase {
          */
         final int ttlExpiration = TTL.ttlToExpiration(ttl, ttlUnits);
 
-        final long expireTime =
-            TTL.expirationToSystemTime(ttlExpiration, ttlHours);
+        final long expireTime = TTL.expirationToSystemTime(ttlExpiration, ttlHours);
 
         OperationResult result = db.get(txn, keyEntry, null, Get.SEARCH, null);
         assertNotNull(result);
 
         assertEquals(expireTime, result.getExpirationTime());
 
-        final int expiration =
-            TTL.systemTimeToExpiration(expireTime, binHours);
+        final int expiration = TTL.systemTimeToExpiration(expireTime, binHours);
 
         final Cursor cursor = db.openCursor(txn, null);
         result = cursor.get(keyEntry, null, Get.SEARCH, null);
@@ -795,10 +737,8 @@ public class TTLTest extends TxnTestCase {
         assertEquals(binHours, bin.isExpirationInHours());
         assertEquals(expiration, bin.getExpiration(index));
 
-        final LNLogEntry logEntry = (LNLogEntry)
-            DbInternal.getNonNullEnvImpl(env).
-                getLogManager().
-                getLogEntry(bin.getLsn(index));
+        final LNLogEntry logEntry = (LNLogEntry) DbInternal.getNonNullEnvImpl(env).getLogManager()
+                .getLogEntry(bin.getLsn(index));
 
         assertEquals(ttlExpiration, logEntry.getExpiration());
         assertEquals(ttlHours, logEntry.isExpirationInHours());
@@ -825,9 +765,7 @@ public class TTLTest extends TxnTestCase {
 
         final Cursor cursor = db.openCursor(null, null);
 
-        assertSame(
-            OperationStatus.SUCCESS,
-            cursor.getFirst(keyEntry, dataEntry, null));
+        assertSame(OperationStatus.SUCCESS, cursor.getFirst(keyEntry, dataEntry, null));
 
         final BIN bin = DbInternal.getCursorImpl(cursor).getBIN();
 
@@ -844,8 +782,7 @@ public class TTLTest extends TxnTestCase {
         readExpectStatus(key, OperationStatus.NOTFOUND);
     }
 
-    private void readExpectStatus(final int key,
-                                  final OperationStatus expectStatus) {
+    private void readExpectStatus(final int key, final OperationStatus expectStatus) {
 
         final Transaction txn = txnBegin();
 
@@ -854,8 +791,7 @@ public class TTLTest extends TxnTestCase {
 
         IntegerBinding.intToEntry(key, keyEntry);
 
-        final OperationStatus status =
-            db.get(null, keyEntry, dataEntry, null);
+        final OperationStatus status = db.get(null, keyEntry, dataEntry, null);
 
         assertSame("key = " + key, expectStatus, status);
 
@@ -870,11 +806,8 @@ public class TTLTest extends TxnTestCase {
 
         try (final DiskOrderedCursor cursor = db.openCursor(null)) {
             OperationResult result;
-            while ((result = cursor.get(
-                    keyEntry, dataEntry, Get.NEXT, null)) != null) {
-                found.put(
-                    IntegerBinding.entryToInt(keyEntry),
-                    result.getExpirationTime());
+            while ((result = cursor.get(keyEntry, dataEntry, Get.NEXT, null)) != null) {
+                found.put(IntegerBinding.entryToInt(keyEntry), result.getExpirationTime());
             }
         }
 
@@ -886,47 +819,41 @@ public class TTLTest extends TxnTestCase {
      * primary DB.
      */
     @Test
-    public void testSecondaryExpirationTimeStorage()
-        throws FileNotFoundException {
+    public void testSecondaryExpirationTimeStorage() throws FileNotFoundException {
 
         /*
-         * First byte of primary data is secondary key.
-         * Byte value 100 means null or no key.
+         * First byte of primary data is secondary key. Byte value 100 means
+         * null or no key.
          */
         final SecondaryKeyCreator keyCreator = new SecondaryKeyCreator() {
             @Override
-            public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                              DatabaseEntry key,
-                                              DatabaseEntry data,
+            public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                               DatabaseEntry result) {
                 final byte val = data.getData()[0];
                 if (val == 100) {
                     return false;
                 }
-                result.setData(new byte[]{val});
+                result.setData(new byte[] { val });
                 return true;
             }
         };
 
         /*
-         * Each byte of primary data is secondary key.
-         * Byte value 100 means null or no key.
+         * Each byte of primary data is secondary key. Byte value 100 means null
+         * or no key.
          */
-        final SecondaryMultiKeyCreator multiKeyCreator =
-            new SecondaryMultiKeyCreator() {
-                @Override
-                public void createSecondaryKeys(SecondaryDatabase secondary,
-                                                DatabaseEntry key,
-                                                DatabaseEntry data,
-                                                Set<DatabaseEntry> results) {
-                    for (byte val : data.getData()) {
-                        if (val == 100) {
-                            continue;
-                        }
-                        results.add(new DatabaseEntry(new byte[]{val}));
+        final SecondaryMultiKeyCreator multiKeyCreator = new SecondaryMultiKeyCreator() {
+            @Override
+            public void createSecondaryKeys(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
+                                            Set<DatabaseEntry> results) {
+                for (byte val : data.getData()) {
+                    if (val == 100) {
+                        continue;
                     }
+                    results.add(new DatabaseEntry(new byte[] { val }));
                 }
-            };
+            }
+        };
 
         db = openDb("primary");
         final SecondaryDatabase secDb1;
@@ -988,19 +915,13 @@ public class TTLTest extends TxnTestCase {
         db.close();
     }
 
-    private void checkSecondary(final Database priDb,
-                                final SecondaryDatabase secDb1,
-                                final SecondaryDatabase secDb2,
-                                final int priKey,
-                                final byte[] data,
-                                final int ttl) {
+    private void checkSecondary(final Database priDb, final SecondaryDatabase secDb1, final SecondaryDatabase secDb2,
+                                final int priKey, final byte[] data, final int ttl) {
 
-        final long baseExpirationTime =
-            truncateToHours(cloneCalendar(BASE_CAL)).getTimeInMillis() +
-                TTL.MILLIS_PER_HOUR;
+        final long baseExpirationTime = truncateToHours(cloneCalendar(BASE_CAL)).getTimeInMillis()
+                + TTL.MILLIS_PER_HOUR;
 
-        final long expireTime =
-            baseExpirationTime + (ttl * TTL.MILLIS_PER_HOUR);
+        final long expireTime = baseExpirationTime + (ttl * TTL.MILLIS_PER_HOUR);
 
         final WriteOptions options = new WriteOptions();
         options.setTTL(ttl, TimeUnit.HOURS);
@@ -1014,32 +935,28 @@ public class TTLTest extends TxnTestCase {
 
         final Transaction txn = txnBegin();
 
-        final OperationResult result = priDb.put(
-            txn, keyEntry, dataEntry, Put.OVERWRITE, options);
+        final OperationResult result = priDb.put(txn, keyEntry, dataEntry, Put.OVERWRITE, options);
 
         assertNotNull(result);
 
         checkExpirationTime(priDb, txn, keyEntry, expireTime);
 
-        keyEntry.setData(new byte[]{data[0]});
+        keyEntry.setData(new byte[] { data[0] });
 
         checkExpirationTime(secDb1, txn, keyEntry, expireTime);
 
         for (final byte val : data) {
-            keyEntry.setData(new byte[]{val});
+            keyEntry.setData(new byte[] { val });
             checkExpirationTime(secDb2, txn, keyEntry, expireTime);
         }
 
         txnCommit(txn);
     }
 
-    private void checkExpirationTime(final Database db,
-                                     final Transaction txn,
-                                     final DatabaseEntry keyEntry,
+    private void checkExpirationTime(final Database db, final Transaction txn, final DatabaseEntry keyEntry,
                                      final long expireTime) {
 
-        final OperationResult result =
-            db.get(txn, keyEntry, null, Get.SEARCH, null);
+        final OperationResult result = db.get(txn, keyEntry, null, Get.SEARCH, null);
 
         if (keyEntry.getData()[0] == 100) {
             assertNull(result);
@@ -1048,10 +965,8 @@ public class TTLTest extends TxnTestCase {
 
         assertNotNull(result);
 
-        assertEquals(
-            "Expect = " + TTL.formatExpirationTime(expireTime) +
-            " Got = " + TTL.formatExpirationTime(result.getExpirationTime()),
-            expireTime, result.getExpirationTime());
+        assertEquals("Expect = " + TTL.formatExpirationTime(expireTime) + " Got = "
+                + TTL.formatExpirationTime(result.getExpirationTime()), expireTime, result.getExpirationTime());
     }
 
     /**
@@ -1077,11 +992,9 @@ public class TTLTest extends TxnTestCase {
         /*
          * Write a record that will expire in one hour.
          */
-        final WriteOptions options =
-            new WriteOptions().setTTL(1, TimeUnit.HOURS);
+        final WriteOptions options = new WriteOptions().setTTL(1, TimeUnit.HOURS);
 
-        OperationResult result = cursor.put(
-            keyEntry, dataEntry, Put.NO_OVERWRITE, options);
+        OperationResult result = cursor.put(keyEntry, dataEntry, Put.NO_OVERWRITE, options);
         assertNotNull(result);
 
         result = cursor.get(keyEntry, dataEntry, Get.SEARCH, null);
@@ -1116,8 +1029,7 @@ public class TTLTest extends TxnTestCase {
          */
         final CountDownLatch latch1 = new CountDownLatch(1);
 
-        final AtomicReference<Throwable> thread1Ex =
-            new AtomicReference<>(null);
+        final AtomicReference<Throwable> thread1Ex = new AtomicReference<>(null);
 
         final Thread thread1 = new Thread() {
             @Override
@@ -1127,9 +1039,8 @@ public class TTLTest extends TxnTestCase {
                     final Cursor cursor1 = db.openCursor(txn1, null);
 
                     /* First insert record with a one hour TTL. */
-                    OperationResult result = cursor1.put(
-                        keyEntry, dataEntry, Put.NO_OVERWRITE,
-                        new WriteOptions().setTTL(1).setUpdateTTL(true));
+                    OperationResult result = cursor1.put(keyEntry, dataEntry, Put.NO_OVERWRITE,
+                            new WriteOptions().setTTL(1).setUpdateTTL(true));
 
                     assertNotNull(result);
 
@@ -1143,12 +1054,10 @@ public class TTLTest extends TxnTestCase {
                     Thread.sleep(100);
 
                     /*
-                     * While main thread is waiting for the lock, change the
-                     * TTL to zero.
+                     * While main thread is waiting for the lock, change the TTL
+                     * to zero.
                      */
-                    result = cursor1.put(
-                        null, dataEntry, Put.CURRENT,
-                        new WriteOptions().setTTL(0).setUpdateTTL(true));
+                    result = cursor1.put(null, dataEntry, Put.CURRENT, new WriteOptions().setTTL(0).setUpdateTTL(true));
 
                     assertNotNull(result);
 
@@ -1173,16 +1082,16 @@ public class TTLTest extends TxnTestCase {
 
             /*
              * While thread1 is sleeping, try to read, which will block.
-             * CursorImpl.lockLN will initially see the record as expired,
-             * which is the special case we're exercising.
+             * CursorImpl.lockLN will initially see the record as expired, which
+             * is the special case we're exercising.
              */
             txn = txnBegin();
             result = db.get(txn, keyEntry, dataEntry, Get.SEARCH, null);
             txnCommit(txn);
 
             /*
-             * Thread1 has updated the record and given it a TTL of 1.
-             * When thread1 commits, the record will not be expired.
+             * Thread1 has updated the record and given it a TTL of 1. When
+             * thread1 commits, the record will not be expired.
              */
             assertNotNull(result);
 
@@ -1204,8 +1113,8 @@ public class TTLTest extends TxnTestCase {
 
     /**
      * An extra lock on the secondary is needed to support repeatable-read. The
-     * lock should only be taken when the record will expire within {@link
-     * EnvironmentParams#ENV_TTL_MAX_TXN_TIME}.
+     * lock should only be taken when the record will expire within
+     * {@link EnvironmentParams#ENV_TTL_MAX_TXN_TIME}.
      */
     @Test
     public void testSecondaryRepeatableRead() {
@@ -1213,11 +1122,9 @@ public class TTLTest extends TxnTestCase {
         /* First byte of primary data is secondary key. */
         final SecondaryKeyCreator keyCreator = new SecondaryKeyCreator() {
             @Override
-            public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                              DatabaseEntry key,
-                                              DatabaseEntry data,
+            public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                               DatabaseEntry result) {
-                result.setData(new byte[]{data.getData()[0]});
+                result.setData(new byte[] { data.getData()[0] });
                 return true;
             }
         };
@@ -1234,8 +1141,7 @@ public class TTLTest extends TxnTestCase {
 
         Transaction txn = txnBegin();
 
-        final SecondaryDatabase secDb = env.openSecondaryDatabase(
-            txn, "sec", db, config);
+        final SecondaryDatabase secDb = env.openSecondaryDatabase(txn, "sec", db, config);
 
         txnCommit(txn);
 
@@ -1246,8 +1152,8 @@ public class TTLTest extends TxnTestCase {
         final DatabaseEntry secKeyEntry = new DatabaseEntry();
 
         IntegerBinding.intToEntry(123, keyEntry);
-        dataEntry.setData(new byte[]{4});
-        secKeyEntry.setData(new byte[]{4});
+        dataEntry.setData(new byte[] { 4 });
+        secKeyEntry.setData(new byte[] { 4 });
 
         /*
          * Write a record that will expire in one hour.
@@ -1256,8 +1162,7 @@ public class TTLTest extends TxnTestCase {
 
         txn = txnBeginCursor();
 
-        OperationResult result = db.put(
-            txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
+        OperationResult result = db.put(txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
         assertNotNull(result);
 
         txnCommit(txn);
@@ -1266,8 +1171,7 @@ public class TTLTest extends TxnTestCase {
 
         Cursor cursor = db.openCursor(txn, CursorConfig.READ_COMMITTED);
 
-        SecondaryCursor secCursor = secDb.openCursor(
-            txn, CursorConfig.READ_COMMITTED);
+        SecondaryCursor secCursor = secDb.openCursor(txn, CursorConfig.READ_COMMITTED);
 
         int nOrigLocks = env.getStats(null).getNTotalLocks();
 
@@ -1276,8 +1180,7 @@ public class TTLTest extends TxnTestCase {
 
         assertEquals(1 + nOrigLocks, env.getStats(null).getNTotalLocks());
 
-        result = secCursor.get(
-            secKeyEntry, null, dataEntry, Get.SEARCH, null);
+        result = secCursor.get(secKeyEntry, null, dataEntry, Get.SEARCH, null);
 
         assertNotNull(result);
 
@@ -1290,8 +1193,7 @@ public class TTLTest extends TxnTestCase {
          */
         fixedSystemTime = result.getExpirationTime() + 1;
 
-        result = secCursor.get(
-            secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
+        result = secCursor.get(secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
 
         assertNotNull(result);
 
@@ -1305,16 +1207,15 @@ public class TTLTest extends TxnTestCase {
          */
         txn = txnBegin();
 
-        result = secDb.get(
-            txn, secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
+        result = secDb.get(txn, secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
 
         assertNull(result);
 
         txnCommit(txn);
 
         /*
-         * When the record does not expire within 24 hours, an extra lock is
-         * not needed.
+         * When the record does not expire within 24 hours, an extra lock is not
+         * needed.
          */
         options = new WriteOptions().setTTL(3, TimeUnit.DAYS);
 
@@ -1329,8 +1230,7 @@ public class TTLTest extends TxnTestCase {
 
         cursor = db.openCursor(txn, CursorConfig.READ_COMMITTED);
 
-        secCursor = secDb.openCursor(
-            txn, CursorConfig.READ_COMMITTED);
+        secCursor = secDb.openCursor(txn, CursorConfig.READ_COMMITTED);
 
         nOrigLocks = env.getStats(null).getNTotalLocks();
 
@@ -1339,8 +1239,7 @@ public class TTLTest extends TxnTestCase {
 
         assertEquals(1 + nOrigLocks, env.getStats(null).getNTotalLocks());
 
-        result = secCursor.get(
-            secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
+        result = secCursor.get(secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
 
         assertNotNull(result);
 
@@ -1357,8 +1256,8 @@ public class TTLTest extends TxnTestCase {
 
     /**
      * In the set of records consisting of a primary record and its associated
-     * secondary records, if only some records are locked, the other records
-     * may expire. We test locking only the primary and only the secondary.
+     * secondary records, if only some records are locked, the other records may
+     * expire. We test locking only the primary and only the secondary.
      */
     @Test
     public void testSecondaryLimitations() {
@@ -1366,11 +1265,9 @@ public class TTLTest extends TxnTestCase {
         /* First byte of primary data is secondary key. */
         final SecondaryKeyCreator keyCreator = new SecondaryKeyCreator() {
             @Override
-            public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                              DatabaseEntry key,
-                                              DatabaseEntry data,
+            public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                               DatabaseEntry result) {
-                result.setData(new byte[]{data.getData()[0]});
+                result.setData(new byte[] { data.getData()[0] });
                 return true;
             }
         };
@@ -1387,8 +1284,7 @@ public class TTLTest extends TxnTestCase {
 
         Transaction txn = txnBegin();
 
-        final SecondaryDatabase secDb = env.openSecondaryDatabase(
-            txn, "sec", db, config);
+        final SecondaryDatabase secDb = env.openSecondaryDatabase(txn, "sec", db, config);
 
         txnCommit(txn);
 
@@ -1399,8 +1295,8 @@ public class TTLTest extends TxnTestCase {
         final DatabaseEntry secKeyEntry = new DatabaseEntry();
 
         IntegerBinding.intToEntry(123, keyEntry);
-        dataEntry.setData(new byte[]{4});
-        secKeyEntry.setData(new byte[]{4});
+        dataEntry.setData(new byte[] { 4 });
+        secKeyEntry.setData(new byte[] { 4 });
 
         /*
          * Write a record that will expire in one hour.
@@ -1409,8 +1305,7 @@ public class TTLTest extends TxnTestCase {
 
         txn = txnBeginCursor();
 
-        OperationResult result = db.put(
-            txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
+        OperationResult result = db.put(txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
         assertNotNull(result);
 
         txnCommit(txn);
@@ -1422,8 +1317,7 @@ public class TTLTest extends TxnTestCase {
          */
         Cursor cursor = db.openCursor(txn, CursorConfig.READ_COMMITTED);
 
-        SecondaryCursor secCursor = secDb.openCursor(
-            txn, CursorConfig.READ_COMMITTED);
+        SecondaryCursor secCursor = secDb.openCursor(txn, CursorConfig.READ_COMMITTED);
 
         result = cursor.get(keyEntry, dataEntry, Get.SEARCH, null);
         assertNotNull(result);
@@ -1437,8 +1331,7 @@ public class TTLTest extends TxnTestCase {
         result = cursor.get(keyEntry, dataEntry, Get.SEARCH, null);
         assertNotNull(result);
 
-        result = secCursor.get(
-            secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
+        result = secCursor.get(secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
 
         assertNull(result);
 
@@ -1453,8 +1346,7 @@ public class TTLTest extends TxnTestCase {
 
         txn = txnBeginCursor();
 
-        result = db.put(
-            txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
+        result = db.put(txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
         assertNotNull(result);
 
         txnCommit(txn);
@@ -1468,8 +1360,7 @@ public class TTLTest extends TxnTestCase {
         cursor = db.openCursor(txn, CursorConfig.READ_COMMITTED);
         secCursor = secDb.openCursor(txn, CursorConfig.READ_COMMITTED);
 
-        result = secCursor.get(
-            secKeyEntry, keyEntry, null, Get.SEARCH, null);
+        result = secCursor.get(secKeyEntry, keyEntry, null, Get.SEARCH, null);
 
         assertNotNull(result);
 
@@ -1479,16 +1370,14 @@ public class TTLTest extends TxnTestCase {
          */
         fixedSystemTime = result.getExpirationTime() + 1;
 
-        result = secCursor.get(
-            secKeyEntry, keyEntry, null, Get.SEARCH, null);
+        result = secCursor.get(secKeyEntry, keyEntry, null, Get.SEARCH, null);
 
         assertNotNull(result);
 
         result = cursor.get(keyEntry, dataEntry, Get.SEARCH, null);
         assertNull(result);
 
-        result = secCursor.get(
-            secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
+        result = secCursor.get(secKeyEntry, keyEntry, dataEntry, Get.SEARCH, null);
 
         assertNull(result);
 
@@ -1502,8 +1391,8 @@ public class TTLTest extends TxnTestCase {
 
     /**
      * Tests that disk space for purged LNs is reclaimed by the cleaner, and
-     * that special cases of repeatable-read (when the LN is purged) are
-     * handled properly.
+     * that special cases of repeatable-read (when the LN is purged) are handled
+     * properly.
      */
     @Test
     public void testPurgedLNs() throws Throwable {
@@ -1513,29 +1402,26 @@ public class TTLTest extends TxnTestCase {
         final DatabaseEntry keyEntry = new DatabaseEntry();
 
         /* Each record with 1MB of data will fill a .jdb file. */
-        final DatabaseEntry dataEntry =
-            new DatabaseEntry(new byte[1024 * 1024 * 10]);
+        final DatabaseEntry dataEntry = new DatabaseEntry(new byte[1024 * 1024 * 10]);
 
         db = openDb("foo");
 
         setFixedTimeHook(BASE_MS);
 
         /*
-         * Write five records that will expire one each hour, each in a
-         * separate .jdb file.
+         * Write five records that will expire one each hour, each in a separate
+         * .jdb file.
          */
         Transaction txn = txnBegin();
         OperationResult result;
 
         for (int i = 0; i < 5; i += 1) {
 
-            final WriteOptions options =
-                new WriteOptions().setTTL(i + 1, TimeUnit.HOURS);
+            final WriteOptions options = new WriteOptions().setTTL(i + 1, TimeUnit.HOURS);
 
-            keyEntry.setData(new byte[]{(byte) i});
+            keyEntry.setData(new byte[] { (byte) i });
 
-            result = db.put(
-                txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
+            result = db.put(txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
 
             assertNotNull(result);
         }
@@ -1557,24 +1443,18 @@ public class TTLTest extends TxnTestCase {
          */
         final Cursor holderCursor = db.openCursor(null, null);
 
-        result = holderCursor.get(
-            null, null, Get.FIRST,
-            new ReadOptions().setLockMode(LockMode.READ_UNCOMMITTED));
+        result = holderCursor.get(null, null, Get.FIRST, new ReadOptions().setLockMode(LockMode.READ_UNCOMMITTED));
 
         assertNotNull(result);
 
         /*
          * Advance time in one hour increments, and expect one record to expire
-         * at each increments.
-         *
-         * Use EVICT_LN for reading to detect when an LN has been purged.
-         *
-         * No purging will have taken place (cleaning and compression are
-         * disabled), so this is just confirming that filtering is happening as
-         * expected.
+         * at each increments. Use EVICT_LN for reading to detect when an LN has
+         * been purged. No purging will have taken place (cleaning and
+         * compression are disabled), so this is just confirming that filtering
+         * is happening as expected.
          */
-        final ReadOptions options =
-            new ReadOptions().setCacheMode(CacheMode.EVICT_LN);
+        final ReadOptions options = new ReadOptions().setCacheMode(CacheMode.EVICT_LN);
 
         fixedSystemTime += TTL.MILLIS_PER_HOUR;
 
@@ -1585,7 +1465,7 @@ public class TTLTest extends TxnTestCase {
             for (int i = 0; i < 5; i += 1) {
                 txn = txnBegin();
 
-                keyEntry.setData(new byte[]{(byte) i});
+                keyEntry.setData(new byte[] { (byte) i });
                 result = db.get(txn, keyEntry, dataEntry, Get.SEARCH, options);
 
                 final String msg = "i=" + i + " j=" + j;
@@ -1609,7 +1489,7 @@ public class TTLTest extends TxnTestCase {
         txn = txnBegin();
 
         for (int i = 0; i < 5; i += 1) {
-            keyEntry.setData(new byte[]{(byte) i});
+            keyEntry.setData(new byte[] { (byte) i });
             result = db.get(txn, keyEntry, dataEntry, Get.SEARCH, options);
             assertNotNull(result);
         }
@@ -1617,16 +1497,15 @@ public class TTLTest extends TxnTestCase {
         txnCommit(txn);
 
         /*
-         * Advance time so that all records expire and clean all eligible
-         * files. The first checkpoint is needed to advance the FirstActiveLSN,
-         * and the second to delete the cleaned files.
+         * Advance time so that all records expire and clean all eligible files.
+         * The first checkpoint is needed to advance the FirstActiveLSN, and the
+         * second to delete the cleaned files.
          */
         env.checkpoint(new CheckpointConfig().setForce(true));
 
         fixedSystemTime += 6 * TTL.MILLIS_PER_HOUR;
 
-        envImpl.getCleaner().doClean(
-            true /*cleanMultipleFiles*/, true /*forceCleaning*/);
+        envImpl.getCleaner().doClean(true /* cleanMultipleFiles */, true /* forceCleaning */);
 
         assertEquals(5, env.getStats(null).getNLNsExpired());
 
@@ -1638,7 +1517,7 @@ public class TTLTest extends TxnTestCase {
         txn = txnBegin();
 
         for (int i = 0; i < 5; i += 1) {
-            keyEntry.setData(new byte[]{(byte) i});
+            keyEntry.setData(new byte[] { (byte) i });
             result = db.get(txn, keyEntry, dataEntry, Get.SEARCH, options);
             assertNull(result);
         }
@@ -1660,10 +1539,10 @@ public class TTLTest extends TxnTestCase {
         for (int i = 0; i < 5; i += 1) {
 
             /*
-             * When reading with a null 'data' param, the slot is not expired
-             * so the result is non-null, even though the LN was purged.
+             * When reading with a null 'data' param, the slot is not expired so
+             * the result is non-null, even though the LN was purged.
              */
-            keyEntry.setData(new byte[]{(byte) i});
+            keyEntry.setData(new byte[] { (byte) i });
 
             result = cursor.get(keyEntry, null, Get.SEARCH, options);
             assertNotNull(result);
@@ -1695,13 +1574,11 @@ public class TTLTest extends TxnTestCase {
             assertNull(result);
 
             /*
-             * An update of an expired record should work, however, when
-             * reading the old LN is not required.
+             * An update of an expired record should work, however, when reading
+             * the old LN is not required.
              */
             newData.setPartial(false);
-            result = cursor.put(
-                null, newData, Put.CURRENT,
-                new WriteOptions().setUpdateTTL(true));
+            result = cursor.put(null, newData, Put.CURRENT, new WriteOptions().setUpdateTTL(true));
             assertNotNull(result);
         }
 
@@ -1714,7 +1591,7 @@ public class TTLTest extends TxnTestCase {
         txn = txnBegin();
 
         for (int i = 0; i < 5; i += 1) {
-            keyEntry.setData(new byte[]{(byte) i});
+            keyEntry.setData(new byte[] { (byte) i });
             result = db.get(txn, keyEntry, dataEntry, Get.SEARCH, options);
             assertNotNull(result);
             assertEquals(1, dataEntry.getSize());
@@ -1727,9 +1604,9 @@ public class TTLTest extends TxnTestCase {
     }
 
     /**
-     * Tests that disk space for purged slots is reclaimed by the cleaner.
-     * All records in the test are small and should be embedded, so that LN
-     * purging is factored out.
+     * Tests that disk space for purged slots is reclaimed by the cleaner. All
+     * records in the test are small and should be embedded, so that LN purging
+     * is factored out.
      */
     @Test
     public void testPurgedSlots() {
@@ -1737,12 +1614,10 @@ public class TTLTest extends TxnTestCase {
         final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         final FileManager fileManager = envImpl.getFileManager();
 
-        final String embedMaxSize = env.getConfig().getConfigParam(
-            EnvironmentConfig.TREE_MAX_EMBEDDED_LN);
+        final String embedMaxSize = env.getConfig().getConfigParam(EnvironmentConfig.TREE_MAX_EMBEDDED_LN);
 
         if (Integer.parseInt(embedMaxSize) < 5) {
-            System.out.println(
-                "testPurgedSlots not run, embedded LN max size is too small");
+            System.out.println("testPurgedSlots not run, embedded LN max size is too small");
             return;
         }
 
@@ -1769,8 +1644,7 @@ public class TTLTest extends TxnTestCase {
 
         for (int i = 0;; i += 1) {
 
-            final long filesAdded =
-                fileManager.getCurrentFileNum() - startFile;
+            final long filesAdded = fileManager.getCurrentFileNum() - startFile;
 
             if (filesAdded >= 10) {
                 break;
@@ -1780,14 +1654,11 @@ public class TTLTest extends TxnTestCase {
 
             IntegerBinding.intToEntry(i, tempEntry);
 
-            System.arraycopy(
-                tempEntry.getData(), 0, keyEntry.getData(), 0,
-                tempEntry.getSize());
+            System.arraycopy(tempEntry.getData(), 0, keyEntry.getData(), 0, tempEntry.getSize());
 
             final Transaction txn = txnBegin();
 
-            result = db.put(
-                txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
+            result = db.put(txn, keyEntry, dataEntry, Put.NO_OVERWRITE, options);
 
             assertNotNull(result);
             txnCommit(txn);
@@ -1797,41 +1668,33 @@ public class TTLTest extends TxnTestCase {
 
         /*
          * Clean 3 times, advancing the clock an hour each time. To begin with
-         * we have over 100GB of data. After each hour passes:
-         *
-         * 1. Nothing expires but we clean to below 50MB because LNs are all
-         *    embedded and immediately obsolete.
-         *
-         * 2. Half the data expires and we clean to below 25MB.
-         *
-         * 3. The rest of the data expires and we clean to below 5MB.
+         * we have over 100GB of data. After each hour passes: 1. Nothing
+         * expires but we clean to below 50MB because LNs are all embedded and
+         * immediately obsolete. 2. Half the data expires and we clean to below
+         * 25MB. 3. The rest of the data expires and we clean to below 5MB.
          */
-        final int[] expectMB = new int[] {50, 25, 5};
+        final int[] expectMB = new int[] { 50, 25, 5 };
         for (int i = 0; i < 3; i += 1) {
 
             fixedSystemTime += TTL.MILLIS_PER_HOUR;
 
             /*
-             * Add a couple more .jdb files so that the preceding .jdb files
-             * are eligible for cleaning. The first checkpoint is needed to
-             * advance the FirstActiveLSN, and the second to delete the cleaned
-             * files.
+             * Add a couple more .jdb files so that the preceding .jdb files are
+             * eligible for cleaning. The first checkpoint is needed to advance
+             * the FirstActiveLSN, and the second to delete the cleaned files.
              */
             envImpl.forceLogFileFlip();
             envImpl.forceLogFileFlip();
 
-            envImpl.getCleaner().doClean(
-                true /*cleanMultipleFiles*/, true /*forceCleaning*/);
+            envImpl.getCleaner().doClean(true /* cleanMultipleFiles */, true /* forceCleaning */);
 
             env.checkpoint(new CheckpointConfig().setForce(true));
 
             final long maxSize = expectMB[i] * 1024 * 1024L;
 
-            final long actualSize =
-                envImpl.getUtilizationProfile().getTotalLogSize();
+            final long actualSize = envImpl.getUtilizationProfile().getTotalLogSize();
 
-            final String msg = String.format(
-                "actualSize=%,d maxSize=%,d", actualSize, maxSize);
+            final String msg = String.format("actualSize=%,d maxSize=%,d", actualSize, maxSize);
 
             assertTrue(msg, actualSize < maxSize);
         }
@@ -1849,11 +1712,9 @@ public class TTLTest extends TxnTestCase {
     /**
      * Sets a TTL.timeTestHook that provides a fixed time of initTime, meaning
      * that JE TTL processing will behave as if the system time is initTime.
-     * Thereafter, changing fixedSystemTime will change the test time.
-     *
-     * In unit tests calling this method, add the following to tearDown:
-     *  TTL.setTimeTestHook(null);
-     *  fixedSystemTime = 0;
+     * Thereafter, changing fixedSystemTime will change the test time. In unit
+     * tests calling this method, add the following to tearDown:
+     * TTL.setTimeTestHook(null); fixedSystemTime = 0;
      */
     public static void setFixedTimeHook(final long initTime) {
 
@@ -1870,14 +1731,17 @@ public class TTLTest extends TxnTestCase {
             public void hookSetup() {
                 throw new UnsupportedOperationException();
             }
+
             @Override
             public void doIOHook() throws IOException {
                 throw new UnsupportedOperationException();
             }
+
             @Override
             public void doHook() {
                 throw new UnsupportedOperationException();
             }
+
             @Override
             public void doHook(Long obj) {
                 throw new UnsupportedOperationException();
@@ -1900,22 +1764,14 @@ public class TTLTest extends TxnTestCase {
 
             /* Allow put if no TTL is specified. */
             try {
-                db.put(
-                    null,
-                    new DatabaseEntry(new byte[1]),
-                    new DatabaseEntry(new byte[1]),
-                    Put.OVERWRITE, null);
+                db.put(null, new DatabaseEntry(new byte[1]), new DatabaseEntry(new byte[1]), Put.OVERWRITE, null);
             } catch (IllegalStateException e) {
                 fail();
             }
 
             /* Disallow put if a non-zero TTL is specified. */
-            db.put(
-                null,
-                new DatabaseEntry(new byte[1]),
-                new DatabaseEntry(new byte[1]),
-                Put.OVERWRITE,
-                new WriteOptions().setTTL(1));
+            db.put(null, new DatabaseEntry(new byte[1]), new DatabaseEntry(new byte[1]), Put.OVERWRITE,
+                    new WriteOptions().setTTL(1));
 
             assertFalse(isRep);
 

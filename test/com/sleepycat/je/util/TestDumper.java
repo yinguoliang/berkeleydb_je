@@ -28,38 +28,26 @@ import com.sleepycat.je.utilint.DbLsn;
 
 /**
  * TestDumper is a sample custom dumper, of the kind that can be specified by
- * DbPrintLog -c <custom dumper>.
- * 
- * To try the custom dumper:
- * java -cp "build/test/classes;build/classes" com.sleepycat.je.util.DbPrintLog
- *            -h <env> -c com.sleepycat.je.util.TestDumper
- * TestDumper will list a count of log entries, the log entry type, and the lsn.
+ * DbPrintLog -c <custom dumper>. To try the custom dumper: java -cp
+ * "build/test/classes;build/classes" com.sleepycat.je.util.DbPrintLog -h
+ * <env> -c com.sleepycat.je.util.TestDumper TestDumper will list a count of log
+ * entries, the log entry type, and the lsn.
  */
 public class TestDumper extends DumpFileReader {
     public static final String SAVE_INFO_FILE = "dumpLog";
 
-    private int counter = 0;
+    private int                counter        = 0;
 
-    public TestDumper(EnvironmentImpl env,
-                      Integer readBufferSize,
-                      Long startLsn,
-                      Long finishLsn,
-                      Long endOfFileLsn,
-                      String entryTypes,
-                      String txnIds,
-                      Boolean verbose,
-                      Boolean repEntriesOnly,
-                      Boolean forwards) 
-        throws DatabaseException {
+    public TestDumper(EnvironmentImpl env, Integer readBufferSize, Long startLsn, Long finishLsn, Long endOfFileLsn,
+                      String entryTypes, String txnIds, Boolean verbose, Boolean repEntriesOnly, Boolean forwards)
+            throws DatabaseException {
 
-        super(env, readBufferSize, startLsn, finishLsn, endOfFileLsn, 
-            entryTypes, null /*dbIds*/, txnIds, verbose,  repEntriesOnly,
-            forwards);
+        super(env, readBufferSize, startLsn, finishLsn, endOfFileLsn, entryTypes, null /* dbIds */, txnIds, verbose,
+                repEntriesOnly, forwards);
     }
 
     @Override
-    protected boolean processEntry(ByteBuffer entryBuffer)
-        throws DatabaseException {
+    protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
         /* Figure out what kind of log entry this is */
         byte curType = currentEntryHeader.getType();
@@ -67,10 +55,9 @@ public class TestDumper extends DumpFileReader {
 
         /* Read the entry and dump it into a string buffer. */
         LogEntry entry = lastEntryType.getSharedLogEntry();
-        entry.readEntry(envImpl, currentEntryHeader, entryBuffer); 
+        entry.readEntry(envImpl, currentEntryHeader, entryBuffer);
 
-        writePrintInfo((lastEntryType + " lsn=" +
-                       DbLsn.getNoFormatString(getLastLsn())));
+        writePrintInfo((lastEntryType + " lsn=" + DbLsn.getNoFormatString(getLastLsn())));
 
         return true;
     }
@@ -78,23 +65,19 @@ public class TestDumper extends DumpFileReader {
     private void writePrintInfo(String message) {
         PrintWriter out = null;
         try {
-            File savedFile = 
-                new File(envImpl.getEnvironmentHome(), SAVE_INFO_FILE);
-            out = new PrintWriter
-                (new BufferedWriter(new FileWriter(savedFile, true)));
+            File savedFile = new File(envImpl.getEnvironmentHome(), SAVE_INFO_FILE);
+            out = new PrintWriter(new BufferedWriter(new FileWriter(savedFile, true)));
             out.println(message);
         } catch (Exception e) {
-            throw new IllegalStateException("Exception happens while " +
-                                            "writing information into the " + 
-                                            "info file " + e.getMessage());
+            throw new IllegalStateException(
+                    "Exception happens while " + "writing information into the " + "info file " + e.getMessage());
         } finally {
             if (out != null) {
                 try {
                     out.close();
                 } catch (Exception e) {
-                    throw new IllegalStateException("Run into exception " +
-                            "while closing the BufferedWriter: " + 
-                            e.getMessage());
+                    throw new IllegalStateException(
+                            "Run into exception " + "while closing the BufferedWriter: " + e.getMessage());
                 }
             }
         }

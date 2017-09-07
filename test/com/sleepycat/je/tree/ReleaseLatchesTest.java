@@ -45,148 +45,181 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * @excludeDualMode
- * Check that latches are release properly even if we run into read errors.
+ * @excludeDualMode Check that latches are release properly even if we run into
+ *                  read errors.
  */
 @RunWith(Parameterized.class)
 public class ReleaseLatchesTest extends TestBase {
-    private static final boolean DEBUG = false;
+    private static final boolean   DEBUG      = false;
 
-    private Environment env;
-    private final File envHome;
-    private Database db;
-    private TestDescriptor testActivity;
+    private Environment            env;
+    private final File             envHome;
+    private Database               db;
+    private TestDescriptor         testActivity;
 
     /*
-     * The OPERATIONS declared here define the test cases for this test.  Each
+     * The OPERATIONS declared here define the test cases for this test. Each
      * TestDescriptor describes a particular JE activity. The
      * testCheckLatchLeaks method generates read i/o exceptions during the test
      * descriptor's action, and will check that we come up clean.
      */
     public static TestDescriptor[] OPERATIONS = {
 
-        /*
-         * TestDescriptor params:
-         *  - operation name: for debugging
-         *  - number of times to generate an exception. For example if N,
-         *   the test action will be executed in a loop N times, with an
-         *   read/io on read 1, read 2, read 3 ... read n-1
-         *  - number of records in the database.
-         */
-        new TestDescriptor("database put", 6, 30, false) {
-            @Override
-            void doAction(ReleaseLatchesTest test, int exceptionCount)
-                throws DatabaseException {
+                                                                                                     /*
+                                                                                                      * TestDescriptor
+                                                                                                      * params:
+                                                                                                      * -
+                                                                                                      * operation
+                                                                                                      * name:
+                                                                                                      * for
+                                                                                                      * debugging
+                                                                                                      * -
+                                                                                                      * number
+                                                                                                      * of
+                                                                                                      * times
+                                                                                                      * to
+                                                                                                      * generate
+                                                                                                      * an
+                                                                                                      * exception.
+                                                                                                      * For
+                                                                                                      * example
+                                                                                                      * if
+                                                                                                      * N,
+                                                                                                      * the
+                                                                                                      * test
+                                                                                                      * action
+                                                                                                      * will
+                                                                                                      * be
+                                                                                                      * executed
+                                                                                                      * in
+                                                                                                      * a
+                                                                                                      * loop
+                                                                                                      * N
+                                                                                                      * times,
+                                                                                                      * with
+                                                                                                      * an
+                                                                                                      * read
+                                                                                                      * /
+                                                                                                      * io
+                                                                                                      * on
+                                                                                                      * read
+                                                                                                      * 1,
+                                                                                                      * read
+                                                                                                      * 2,
+                                                                                                      * read
+                                                                                                      * 3
+                                                                                                      * .
+                                                                                                      * .
+                                                                                                      * .
+                                                                                                      * read
+                                                                                                      * n
+                                                                                                      * -
+                                                                                                      * 1
+                                                                                                      * -
+                                                                                                      * number
+                                                                                                      * of
+                                                                                                      * records
+                                                                                                      * in
+                                                                                                      * the
+                                                                                                      * database.
+                                                                                                      */
+            new TestDescriptor("database put", 6, 30, false) {
+                @Override
+                void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException {
 
-                test.populate(false);
-            }
+                    test.populate(false);
+                }
 
-            @Override
-            void reinit(ReleaseLatchesTest test)
-                throws DatabaseException{
+                @Override
+                void reinit(ReleaseLatchesTest test) throws DatabaseException {
 
-                test.closeDb();
+                    test.closeDb();
                     test.getEnv().truncateDatabase(null, "foo", false);
-            }
-        },
-        new TestDescriptor("cursor scan", 31, 20, false) {
-            @Override
-            void doAction(ReleaseLatchesTest test, int exceptionCount)
-                throws DatabaseException {
-
-                test.scan();
-            }
-        },
-        new TestDescriptor("cursor scan duplicates", 23, 3, true) {
-            @Override
-            void doAction(ReleaseLatchesTest test, int exceptionCount)
-                throws DatabaseException {
-
-                test.scan();
-            }
-        },
-//*
-        new TestDescriptor("database get", 31, 20, false) {
-            @Override
-            void doAction(ReleaseLatchesTest test, int exceptionCount)
-                throws DatabaseException {
-
-                test.get();
-            }
-        },
-//*/
-        new TestDescriptor("database delete", 40, 30, false) {
-            @Override
-            void doAction(ReleaseLatchesTest test, int exceptionCount)
-                throws DatabaseException {
-
-                test.delete();
-            }
-
-            @Override
-            void reinit(ReleaseLatchesTest test)
-                throws DatabaseException{
-
-                test.populate(false);
-            }
-        },
-        new TestDescriptor("checkpoint", 40, 10, false) {
-            @Override
-            void doAction(ReleaseLatchesTest test, int exceptionCount)
-                throws DatabaseException {
-
-                test.modify(exceptionCount);
-                CheckpointConfig config = new CheckpointConfig();
-                config.setForce(true);
-                if (DEBUG) {
-                    System.out.println("Got to checkpoint");
                 }
-                test.getEnv().checkpoint(config);
-            }
-        },
-        new TestDescriptor("clean", 100, 5, false) {
-            @Override
-            void doAction(ReleaseLatchesTest test, int exceptionCount)
-                throws DatabaseException {
+            }, new TestDescriptor("cursor scan", 31, 20, false) {
+                @Override
+                void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException {
 
-                test.modify(exceptionCount);
-                CheckpointConfig config = new CheckpointConfig();
-                config.setForce(true);
-                if (DEBUG) {
-                    System.out.println("Got to cleaning");
+                    test.scan();
                 }
-                test.getEnv().cleanLog();
-            }
-        },
-        new TestDescriptor("compress", 20, 10, false) {
-            @Override
-            void doAction(ReleaseLatchesTest test, int exceptionCount)
-                throws DatabaseException {
+            }, new TestDescriptor("cursor scan duplicates", 23, 3, true) {
+                @Override
+                void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException {
 
-                     test.delete();
-                     if (DEBUG) {
-                         System.out.println("Got to compress");
-                     }
-                     test.getEnv().compress();
-            }
+                    test.scan();
+                }
+            },
+            //*
+            new TestDescriptor("database get", 31, 20, false) {
+                @Override
+                void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException {
 
-            @Override
-            void reinit(ReleaseLatchesTest test)
-                throws DatabaseException{
+                    test.get();
+                }
+            },
+            //*/
+            new TestDescriptor("database delete", 40, 30, false) {
+                @Override
+                void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException {
 
-                test.populate(false);
-            }
-        }
-    };
+                    test.delete();
+                }
+
+                @Override
+                void reinit(ReleaseLatchesTest test) throws DatabaseException {
+
+                    test.populate(false);
+                }
+            }, new TestDescriptor("checkpoint", 40, 10, false) {
+                @Override
+                void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException {
+
+                    test.modify(exceptionCount);
+                    CheckpointConfig config = new CheckpointConfig();
+                    config.setForce(true);
+                    if (DEBUG) {
+                        System.out.println("Got to checkpoint");
+                    }
+                    test.getEnv().checkpoint(config);
+                }
+            }, new TestDescriptor("clean", 100, 5, false) {
+                @Override
+                void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException {
+
+                    test.modify(exceptionCount);
+                    CheckpointConfig config = new CheckpointConfig();
+                    config.setForce(true);
+                    if (DEBUG) {
+                        System.out.println("Got to cleaning");
+                    }
+                    test.getEnv().cleanLog();
+                }
+            }, new TestDescriptor("compress", 20, 10, false) {
+                @Override
+                void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException {
+
+                    test.delete();
+                    if (DEBUG) {
+                        System.out.println("Got to compress");
+                    }
+                    test.getEnv().compress();
+                }
+
+                @Override
+                void reinit(ReleaseLatchesTest test) throws DatabaseException {
+
+                    test.populate(false);
+                }
+            } };
 
     @Parameters
     public static List<Object[]> genParams() {
         List<Object[]> list = new ArrayList<Object[]>();
         for (TestDescriptor action : OPERATIONS)
-            list.add(new Object[]{action});
-        
+            list.add(new Object[] { action });
+
         return list;
-     }
+    }
 
     public ReleaseLatchesTest(TestDescriptor action) {
 
@@ -195,8 +228,7 @@ public class ReleaseLatchesTest extends TestBase {
         customName = action.getName();
     }
 
-    private void init(boolean duplicates)
-        throws DatabaseException {
+    private void init(boolean duplicates) throws DatabaseException {
 
         openEnvAndDb();
 
@@ -208,8 +240,7 @@ public class ReleaseLatchesTest extends TestBase {
         env = null;
     }
 
-    private void openEnvAndDb()
-        throws DatabaseException {
+    private void openEnvAndDb() throws DatabaseException {
 
         /*
          * Make an environment with small nodes and no daemons.
@@ -222,10 +253,8 @@ public class ReleaseLatchesTest extends TestBase {
         envConfig.setConfigParam("je.env.runCheckpointer", "false");
         envConfig.setConfigParam("je.env.runCleaner", "false");
         envConfig.setConfigParam("je.env.runINCompressor", "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "90");
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                  Integer.toString(20000));
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "90");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(20000));
 
         env = new Environment(envHome, envConfig);
 
@@ -236,8 +265,7 @@ public class ReleaseLatchesTest extends TestBase {
     }
 
     /* Calling close under -ea will check for leaked latches. */
-    private void doCloseAndCheckLeaks()
-        throws Throwable {
+    private void doCloseAndCheckLeaks() throws Throwable {
 
         try {
             if (db != null) {
@@ -256,8 +284,7 @@ public class ReleaseLatchesTest extends TestBase {
         }
     }
 
-    private void closeDb()
-        throws DatabaseException {
+    private void closeDb() throws DatabaseException {
 
         if (db != null) {
             db.close();
@@ -272,12 +299,10 @@ public class ReleaseLatchesTest extends TestBase {
     /*
      * This is the heart of the unit test. Given a TestDescriptor, run the
      * operation's activity in a loop, generating read i/o exceptions at
-     * different points. Check for latch leaks after the i/o exception
-     * happens.
+     * different points. Check for latch leaks after the i/o exception happens.
      */
     @Test
-    public void testCheckLatchLeaks()
-        throws Throwable {
+    public void testCheckLatchLeaks() throws Throwable {
 
         int maxExceptionCount = testActivity.getNumExceptions();
         if (DEBUG) {
@@ -298,8 +323,7 @@ public class ReleaseLatchesTest extends TestBase {
                  * fault in objects and will trigger read i/o exceptions.
                  */
                 openEnvAndDb();
-                EnvironmentImpl envImpl =
-                    DbInternal.getNonNullEnvImpl(env);
+                EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
                 boolean exceptionOccurred = false;
 
                 try {
@@ -312,9 +336,9 @@ public class ReleaseLatchesTest extends TestBase {
                         /*
                          * It's possible for a read error to induce a
                          * RunRecoveryException if the read error happens when
-                         * we are opening a new write file channel. (We read
-                         * and validate the file header). In that case, check
-                         * for latches, and re-open the database.
+                         * we are opening a new write file channel. (We read and
+                         * validate the file header). In that case, check for
+                         * latches, and re-open the database.
                          */
                         checkLatchCount((DatabaseException) e, i);
                         env.close();
@@ -330,9 +354,7 @@ public class ReleaseLatchesTest extends TestBase {
                 }
 
                 if (DEBUG && !exceptionOccurred) {
-                    System.out.println("Don't need ex count " + i +
-                                       " for test activity " +
-                                       testActivity.getName());
+                    System.out.println("Don't need ex count " + i + " for test activity " + testActivity.getName());
                 }
 
                 envImpl.getLogManager().setReadHook(null);
@@ -345,17 +367,13 @@ public class ReleaseLatchesTest extends TestBase {
         }
     }
 
-    private void checkLatchCount(DatabaseException e,
-                                 int exceptionCount)
-        throws DatabaseException {
+    private void checkLatchCount(DatabaseException e, int exceptionCount) throws DatabaseException {
 
         /* Only rethrow the exception if we didn't clean up latches. */
         if (LatchSupport.nBtreeLatchesHeld() > 0) {
             LatchSupport.dumpBtreeLatchesHeld();
-            System.out.println("Operation = " + testActivity.getName() +
-                               " exception count=" + exceptionCount +
-                               " Held latches = " +
-                               LatchSupport.nBtreeLatchesHeld());
+            System.out.println("Operation = " + testActivity.getName() + " exception count=" + exceptionCount
+                    + " Held latches = " + LatchSupport.nBtreeLatchesHeld());
             /* Show stacktrace where the latch was lost. */
             e.printStackTrace();
             throw e;
@@ -363,8 +381,7 @@ public class ReleaseLatchesTest extends TestBase {
     }
 
     /* Insert records into a database. */
-    private void populate(boolean duplicates)
-        throws DatabaseException {
+    private void populate(boolean duplicates) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -380,23 +397,18 @@ public class ReleaseLatchesTest extends TestBase {
 
         for (int i = 0; i < testActivity.getNumRecords(); i++) {
             IntegerBinding.intToEntry(i, key);
-            assertEquals(OperationStatus.SUCCESS,  db.put(null, key, data));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
             if (duplicates) {
-                assertEquals(OperationStatus.SUCCESS,
-                             db.put(null, key, data1));
-                assertEquals(OperationStatus.SUCCESS,
-                             db.put(null, key, data2));
-                assertEquals(OperationStatus.SUCCESS,
-                             db.put(null, key, data3));
-                assertEquals(OperationStatus.SUCCESS,
-                             db.put(null, key, data4));
+                assertEquals(OperationStatus.SUCCESS, db.put(null, key, data1));
+                assertEquals(OperationStatus.SUCCESS, db.put(null, key, data2));
+                assertEquals(OperationStatus.SUCCESS, db.put(null, key, data3));
+                assertEquals(OperationStatus.SUCCESS, db.put(null, key, data4));
             }
         }
     }
 
     /* Modify the database. */
-    private void modify(int dataVal)
-        throws DatabaseException {
+    private void modify(int dataVal) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -404,13 +416,12 @@ public class ReleaseLatchesTest extends TestBase {
 
         for (int i = 0; i < testActivity.getNumRecords(); i++) {
             IntegerBinding.intToEntry(i, key);
-            assertEquals(OperationStatus.SUCCESS,  db.put(null, key, data));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
         }
     }
 
     /* Cursor scan the data. */
-    private void scan()
-        throws DatabaseException {
+    private void scan() throws DatabaseException {
 
         Cursor cursor = null;
         try {
@@ -418,8 +429,7 @@ public class ReleaseLatchesTest extends TestBase {
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
 
-            while (cursor.getNext(key, data, LockMode.DEFAULT) ==
-                   OperationStatus.SUCCESS) {
+            while (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
             }
         } finally {
             if (cursor != null) {
@@ -429,27 +439,23 @@ public class ReleaseLatchesTest extends TestBase {
     }
 
     /* Database.get() for all records. */
-    private void get()
-        throws DatabaseException {
+    private void get() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         for (int i = 0; i < testActivity.getNumRecords(); i++) {
             IntegerBinding.intToEntry(i, key);
-            assertEquals(OperationStatus.SUCCESS,
-                         db.get(null, key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, db.get(null, key, data, LockMode.DEFAULT));
         }
     }
 
     /* Delete all records. */
-    private void delete()
-        throws DatabaseException {
+    private void delete() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         for (int i = 0; i < testActivity.getNumRecords(); i++) {
             IntegerBinding.intToEntry(i, key);
-            assertEquals("key = " + IntegerBinding.entryToInt(key),
-                         OperationStatus.SUCCESS, db.delete(null, key));
+            assertEquals("key = " + IntegerBinding.entryToInt(key), OperationStatus.SUCCESS, db.delete(null, key));
         }
     }
 
@@ -457,47 +463,47 @@ public class ReleaseLatchesTest extends TestBase {
      * This TestHook implementation generates io exceptions during reads.
      */
     static class ReadIOExceptionHook implements TestHook {
-        private int counter = 0;
+        private int       counter = 0;
         private final int throwCount;
 
         ReadIOExceptionHook(int throwCount) {
             this.throwCount = throwCount;
         }
-        public void doIOHook()
-            throws IOException {
+
+        public void doIOHook() throws IOException {
 
             if (throwCount == counter) {
                 counter++;
-                throw new IOException("Generated exception: " +
-                                      this.getClass().getName());
+                throw new IOException("Generated exception: " + this.getClass().getName());
             } else {
                 counter++;
             }
         }
+
         public Object getHookValue() {
             throw new UnsupportedOperationException();
         }
+
         public void doHook() {
             throw new UnsupportedOperationException();
         }
+
         public void hookSetup() {
             throw new UnsupportedOperationException();
         }
+
         public void doHook(Object obj) {
             throw new UnsupportedOperationException();
         }
     }
 
     static abstract class TestDescriptor {
-        private final String name;
-        private final int numExceptions;
-        private final int numRecords;
+        private final String  name;
+        private final int     numExceptions;
+        private final int     numRecords;
         private final boolean duplicates;
 
-        TestDescriptor(String name,
-                       int numExceptions,
-                       int numRecords,
-                       boolean duplicates) {
+        TestDescriptor(String name, int numExceptions, int numRecords, boolean duplicates) {
             this.name = name;
             this.numExceptions = numExceptions;
             this.numRecords = numRecords;
@@ -521,16 +527,14 @@ public class ReleaseLatchesTest extends TestBase {
         }
 
         /* Do a series of operations. */
-        abstract void doAction(ReleaseLatchesTest test,
-                               int exceptionCount)
-            throws DatabaseException;
+        abstract void doAction(ReleaseLatchesTest test, int exceptionCount) throws DatabaseException;
 
         /**
          * Reinitialize the database if doAction modified it.
+         * 
          * @throws DatabaseException from subclasses.
          */
-        void reinit(ReleaseLatchesTest test)
-            throws DatabaseException {
+        void reinit(ReleaseLatchesTest test) throws DatabaseException {
 
         }
     }

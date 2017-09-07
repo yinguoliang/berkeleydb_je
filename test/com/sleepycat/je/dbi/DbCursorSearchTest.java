@@ -40,25 +40,23 @@ public class DbCursorSearchTest extends DbCursorTestBase {
     }
 
     /**
-     * Put a small number of data items into the database
-     * then make sure we can retrieve them with getSearchKey.
+     * Put a small number of data items into the database then make sure we can
+     * retrieve them with getSearchKey.
      */
     @Test
-    public void testSimpleSearchKey()
-        throws DatabaseException {
+    public void testSimpleSearchKey() throws DatabaseException {
         initEnv(false);
         doSimpleCursorPuts();
         verify(simpleDataMap, false);
     }
 
     /**
-     * Put a small number of data items into the database
-     * then make sure we can retrieve them with getSearchKey.
-     * Delete them, and make sure we can't search for them anymore.
+     * Put a small number of data items into the database then make sure we can
+     * retrieve them with getSearchKey. Delete them, and make sure we can't
+     * search for them anymore.
      */
     @Test
-    public void testSimpleDeleteAndSearchKey()
-        throws DatabaseException {
+    public void testSimpleDeleteAndSearchKey() throws DatabaseException {
 
         initEnv(false);
         doSimpleCursorPuts();
@@ -66,12 +64,11 @@ public class DbCursorSearchTest extends DbCursorTestBase {
     }
 
     /**
-     * Put a large number of data items into the database,
-     * then make sure we can retrieve them with getSearchKey.
+     * Put a large number of data items into the database, then make sure we can
+     * retrieve them with getSearchKey.
      */
     @Test
-    public void testLargeSearchKey()
-        throws DatabaseException {
+    public void testLargeSearchKey() throws DatabaseException {
 
         initEnv(false);
         Hashtable expectedData = new Hashtable();
@@ -80,12 +77,11 @@ public class DbCursorSearchTest extends DbCursorTestBase {
     }
 
     /**
-     * Put a large number of data items into the database,
-     * then make sure we can retrieve them with getSearchKey.
+     * Put a large number of data items into the database, then make sure we can
+     * retrieve them with getSearchKey.
      */
     @Test
-    public void testLargeDeleteAndSearchKey()
-        throws DatabaseException {
+    public void testLargeDeleteAndSearchKey() throws DatabaseException {
 
         initEnv(false);
         Hashtable expectedData = new Hashtable();
@@ -94,8 +90,7 @@ public class DbCursorSearchTest extends DbCursorTestBase {
     }
 
     @Test
-    public void testLargeSearchKeyDuplicates()
-        throws DatabaseException {
+    public void testLargeSearchKeyDuplicates() throws DatabaseException {
 
         initEnv(true);
         Hashtable expectedData = new Hashtable();
@@ -105,13 +100,11 @@ public class DbCursorSearchTest extends DbCursorTestBase {
     }
 
     /**
-     * Put a small number of data items into the database
-     * then make sure we can retrieve them with getSearchKey.
-     * See [#9337].
+     * Put a small number of data items into the database then make sure we can
+     * retrieve them with getSearchKey. See [#9337].
      */
     @Test
-    public void testSimpleSearchBothWithPartialDbt()
-        throws DatabaseException {
+    public void testSimpleSearchBothWithPartialDbt() throws DatabaseException {
 
         initEnv(false);
         doSimpleCursorPuts();
@@ -119,29 +112,25 @@ public class DbCursorSearchTest extends DbCursorTestBase {
         DatabaseEntry data = new DatabaseEntry(new byte[100]);
         data.setSize(3);
         System.arraycopy(StringUtils.toUTF8("two"), 0, data.getData(), 0, 3);
-        OperationStatus status =
-            cursor2.getSearchBoth(key, data, LockMode.DEFAULT);
+        OperationStatus status = cursor2.getSearchBoth(key, data, LockMode.DEFAULT);
         assertEquals(OperationStatus.SUCCESS, status);
     }
 
     @Test
-    public void testGetSearchBothNoDuplicatesAllowedSR9522()
-        throws DatabaseException {
+    public void testGetSearchBothNoDuplicatesAllowedSR9522() throws DatabaseException {
 
         initEnv(false);
         doSimpleCursorPuts();
         DatabaseEntry key = new DatabaseEntry(StringUtils.toUTF8("bar"));
         DatabaseEntry data = new DatabaseEntry(StringUtils.toUTF8("two"));
-        OperationStatus status =
-            cursor2.getSearchBoth(key, data, LockMode.DEFAULT);
+        OperationStatus status = cursor2.getSearchBoth(key, data, LockMode.DEFAULT);
         assertEquals(OperationStatus.SUCCESS, status);
     }
 
     /**
      * Make sure the database contains the set of data we put in.
      */
-    private void verify(Hashtable expectedData, boolean doDelete)
-        throws DatabaseException {
+    private void verify(Hashtable expectedData, boolean doDelete) throws DatabaseException {
 
         Iterator iter = expectedData.entrySet().iterator();
         StringDbt testKey = new StringDbt();
@@ -153,8 +142,7 @@ public class DbCursorSearchTest extends DbCursorTestBase {
             testKey.setString((String) entry.getKey());
 
             // search for the expected values using SET.
-            OperationStatus status = cursor2.getSearchKey(testKey, testData,
-                                                          LockMode.DEFAULT);
+            OperationStatus status = cursor2.getSearchKey(testKey, testData, LockMode.DEFAULT);
             assertEquals(OperationStatus.SUCCESS, status);
             assertEquals((String) entry.getValue(), testData.getString());
             assertEquals((String) entry.getKey(), testKey.getString());
@@ -172,13 +160,11 @@ public class DbCursorSearchTest extends DbCursorTestBase {
                 assertEquals(OperationStatus.SUCCESS, status);
 
                 // search for the expected values using SET.
-                status =
-                    cursor2.getSearchKey(testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getSearchKey(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.NOTFOUND, status);
 
                 // search for the expected values using SET_BOTH.
-                status =
-                    cursor2.getSearchBoth(testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getSearchBoth(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.NOTFOUND, status);
 
                 // search for the expected values using SET_RANGE - should
@@ -187,28 +173,23 @@ public class DbCursorSearchTest extends DbCursorTestBase {
                 // It would be nice to be definite about the expected
                 // status, but to do that we have to know whether this is the
                 // highest key in the set, which we don't currently track.
-                status = cursor2.getSearchKeyRange
-                    (testKey, testData, LockMode.DEFAULT);
-                assertTrue(status == OperationStatus.SUCCESS ||
-                           status == OperationStatus.NOTFOUND);
+                status = cursor2.getSearchKeyRange(testKey, testData, LockMode.DEFAULT);
+                assertTrue(status == OperationStatus.SUCCESS || status == OperationStatus.NOTFOUND);
             } else {
                 // search for the expected values using SET_BOTH.
-                status =
-                    cursor2.getSearchBoth(testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getSearchBoth(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals((String) entry.getValue(), testData.getString());
                 assertEquals((String) entry.getKey(), testKey.getString());
 
                 // check that getCurrent returns the same thing.
-                status =
-                    cursor2.getCurrent(testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getCurrent(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals((String) entry.getValue(), testData.getString());
                 assertEquals((String) entry.getKey(), testKey.getString());
 
                 // check that SET_RANGE works as expected for exact keys
-                status = cursor2.getSearchKeyRange
-                    (testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getSearchKeyRange(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals((String) entry.getValue(), testData.getString());
                 assertEquals((String) entry.getKey(), testKey.getString());
@@ -216,15 +197,13 @@ public class DbCursorSearchTest extends DbCursorTestBase {
                 // search for the expected values using SET_RANGE.
                 byte[] keyBytes = testKey.getData();
                 keyBytes[keyBytes.length - 1]--;
-                status = cursor2.getSearchKeyRange
-                    (testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getSearchKeyRange(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals((String) entry.getValue(), testData.getString());
                 assertEquals((String) entry.getKey(), testKey.getString());
 
                 // check that getCurrent returns the same thing.
-                status =
-                    cursor2.getCurrent(testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getCurrent(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals((String) entry.getValue(), testData.getString());
                 assertEquals((String) entry.getKey(), testKey.getString());
@@ -232,8 +211,7 @@ public class DbCursorSearchTest extends DbCursorTestBase {
         }
     }
 
-    private void verifyDuplicates(Hashtable expectedData)
-        throws DatabaseException {
+    private void verifyDuplicates(Hashtable expectedData) throws DatabaseException {
 
         Enumeration iter = expectedData.keys();
         StringDbt testKey = new StringDbt();
@@ -245,8 +223,7 @@ public class DbCursorSearchTest extends DbCursorTestBase {
             testKey.setString(key);
 
             // search for the expected values using SET.
-            OperationStatus status = cursor2.getSearchKey(testKey, testData,
-                                                          LockMode.DEFAULT);
+            OperationStatus status = cursor2.getSearchKey(testKey, testData, LockMode.DEFAULT);
             assertEquals(OperationStatus.SUCCESS, status);
             assertEquals(key, testKey.getString());
             String dataString = testData.getString();
@@ -260,8 +237,7 @@ public class DbCursorSearchTest extends DbCursorTestBase {
             // search for the expected values using SET_RANGE.
             byte[] keyBytes = testKey.getData();
             keyBytes[keyBytes.length - 1]--;
-            status =
-                cursor2.getSearchKeyRange(testKey, testData, LockMode.DEFAULT);
+            status = cursor2.getSearchKeyRange(testKey, testData, LockMode.DEFAULT);
             assertEquals(OperationStatus.SUCCESS, status);
             assertEquals(dataString, testData.getString());
             assertEquals(key, testKey.getString());
@@ -280,15 +256,13 @@ public class DbCursorSearchTest extends DbCursorTestBase {
                 testData.setString(expectedDataString);
 
                 // search for the expected values using SET_BOTH.
-                status =
-                    cursor2.getSearchBoth(testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getSearchBoth(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals(expectedDataString, testData.getString());
                 assertEquals(key, testKey.getString());
 
                 // check that getCurrent returns the same thing.
-                status =
-                    cursor2.getCurrent(testKey, testData, LockMode.DEFAULT);
+                status = cursor2.getCurrent(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals(expectedDataString, testData.getString());
                 assertEquals(key, testKey.getString());
@@ -296,15 +270,13 @@ public class DbCursorSearchTest extends DbCursorTestBase {
                 // search for the expected values using SET_RANGE_BOTH.
                 byte[] dataBytes = testData.getData();
                 dataBytes[dataBytes.length - 1]--;
-                status = cursor2.getSearchBothRange(testKey, testData,
-                                                    LockMode.DEFAULT);
+                status = cursor2.getSearchBothRange(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals(key, testKey.getString());
                 assertEquals(expectedDataString, testData.getString());
 
                 // check that getCurrent returns the same thing.
-                status = cursor2.getCurrent(testKey, testData,
-                                            LockMode.DEFAULT);
+                status = cursor2.getCurrent(testKey, testData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals(expectedDataString, testData.getString());
                 assertEquals(key, testKey.getString());

@@ -37,21 +37,20 @@ import com.sleepycat.util.test.TestBase;
  */
 public class FileManagerMultiDataDirTest extends TestBase {
 
-    private static int FILE_SIZE = 120;
+    private static int  FILE_SIZE   = 120;
 
-    private static int N_DATA_DIRS = 3;
+    private static int  N_DATA_DIRS = 3;
 
     private Environment env;
     private FileManager fileManager;
-    private final File envHome;
+    private final File  envHome;
 
     public FileManagerMultiDataDirTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @After
-    public void tearDown()
-        throws IOException, DatabaseException {
+    public void tearDown() throws IOException, DatabaseException {
 
         if (fileManager != null) {
             fileManager.clear();
@@ -59,21 +58,16 @@ public class FileManagerMultiDataDirTest extends TestBase {
         }
     }
 
-    private void createEnvAndFileManager()
-        throws DatabaseException {
+    private void createEnvAndFileManager() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 new Integer(FILE_SIZE).toString());
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), new Integer(FILE_SIZE).toString());
         /* Yank the cache size way down. */
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_CACHE_SIZE.getName(), "3");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_CACHE_SIZE.getName(), "3");
         envConfig.setAllowCreate(true);
 
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(),
-             N_DATA_DIRS + "");
+        envConfig.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), N_DATA_DIRS + "");
         for (int i = 1; i <= N_DATA_DIRS; i += 1) {
             new File(envHome, "data00" + i).mkdir();
         }
@@ -87,24 +81,21 @@ public class FileManagerMultiDataDirTest extends TestBase {
         fileManager = new FileManager(envImpl, envHome, false);
 
         /*
-         * Remove any files after the environment is created again!  We want to
-         * remove the files made by recovery, so we can test the file manager
-         * in controlled cases.
+         * Remove any files after the environment is created again! We want to
+         * remove the files made by recovery, so we can test the file manager in
+         * controlled cases.
          */
         TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
     }
 
     @Test
-    public void testMultipleDataDirs1()
-        throws Throwable {
+    public void testMultipleDataDirs1() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
 
         /* Create 000, 001, 002, 003, expect failure because of 000 */
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(),
-             N_DATA_DIRS + "");
+        envConfig.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), N_DATA_DIRS + "");
         for (int i = 1; i <= N_DATA_DIRS; i += 1) {
             new File(envHome, "data00" + i).mkdir();
         }
@@ -117,29 +108,25 @@ public class FileManagerMultiDataDirTest extends TestBase {
         }
 
         File dataDir = new File(envHome, "data000");
-        TestUtils.removeFiles
-            ("TearDown", dataDir, FileManager.JE_SUFFIX);
+        TestUtils.removeFiles("TearDown", dataDir, FileManager.JE_SUFFIX);
         dataDir.delete();
 
         /*
-         * Remove any files after the environment is created again!  We want to
-         * remove the files made by recovery, so we can test the file manager
-         * in controlled cases.
+         * Remove any files after the environment is created again! We want to
+         * remove the files made by recovery, so we can test the file manager in
+         * controlled cases.
          */
         TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
     }
 
     @Test
-    public void testMultipleDataDirs2()
-        throws Throwable {
+    public void testMultipleDataDirs2() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
 
         /* Create 001, 002, 004, expect failure because 003 doesn't exist */
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(),
-             N_DATA_DIRS + "");
+        envConfig.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), N_DATA_DIRS + "");
         new File(envHome, "data001").mkdir();
         new File(envHome, "data002").mkdir();
         new File(envHome, "data004").mkdir();
@@ -151,29 +138,25 @@ public class FileManagerMultiDataDirTest extends TestBase {
         }
 
         File dataDir = new File(envHome, "data004");
-        TestUtils.removeFiles
-            ("TearDown", dataDir, FileManager.JE_SUFFIX);
+        TestUtils.removeFiles("TearDown", dataDir, FileManager.JE_SUFFIX);
         dataDir.delete();
 
         /*
-         * Remove any files after the environment is created again!  We want to
-         * remove the files made by recovery, so we can test the file manager
-         * in controlled cases.
+         * Remove any files after the environment is created again! We want to
+         * remove the files made by recovery, so we can test the file manager in
+         * controlled cases.
          */
         TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
     }
 
     @Test
-    public void testMultipleDataDirs3()
-        throws Throwable {
+    public void testMultipleDataDirs3() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
 
         /* Create 001, 002, expect failure because 003 doesn't exist */
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(),
-             N_DATA_DIRS + "");
+        envConfig.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), N_DATA_DIRS + "");
         new File(envHome, "data001").mkdir();
         new File(envHome, "data002").mkdir();
 
@@ -184,24 +167,21 @@ public class FileManagerMultiDataDirTest extends TestBase {
         }
 
         /*
-         * Remove any files after the environment is created again!  We want to
-         * remove the files made by recovery, so we can test the file manager
-         * in controlled cases.
+         * Remove any files after the environment is created again! We want to
+         * remove the files made by recovery, so we can test the file manager in
+         * controlled cases.
          */
         TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
     }
 
     @Test
-    public void testMultipleDataDirs4()
-        throws Throwable {
+    public void testMultipleDataDirs4() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
 
         /* Create 001, 002, 003, expect failure because 003 is a file */
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(),
-             N_DATA_DIRS + "");
+        envConfig.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), N_DATA_DIRS + "");
         new File(envHome, "data001").mkdir();
         new File(envHome, "data002").mkdir();
         new File(envHome, "data003").createNewFile();
@@ -213,24 +193,21 @@ public class FileManagerMultiDataDirTest extends TestBase {
         }
 
         /*
-         * Remove any files after the environment is created again!  We want to
-         * remove the files made by recovery, so we can test the file manager
-         * in controlled cases.
+         * Remove any files after the environment is created again! We want to
+         * remove the files made by recovery, so we can test the file manager in
+         * controlled cases.
          */
         TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
     }
 
     @Test
-    public void testMultipleDataDirs5()
-        throws Throwable {
+    public void testMultipleDataDirs5() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
 
         /* Create 001, 002, xxx, expect failure because xxx is not NNN */
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(),
-             N_DATA_DIRS + "");
+        envConfig.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), N_DATA_DIRS + "");
         new File(envHome, "data001").mkdir();
         new File(envHome, "data002").mkdir();
         new File(envHome, "dataxxx").mkdir();
@@ -242,28 +219,25 @@ public class FileManagerMultiDataDirTest extends TestBase {
         }
 
         File dataDir = new File(envHome, "dataxxx");
-        TestUtils.removeFiles
-            ("TearDown", dataDir, FileManager.JE_SUFFIX);
+        TestUtils.removeFiles("TearDown", dataDir, FileManager.JE_SUFFIX);
         dataDir.delete();
 
         /*
-         * Remove any files after the environment is created again!  We want to
-         * remove the files made by recovery, so we can test the file manager
-         * in controlled cases.
+         * Remove any files after the environment is created again! We want to
+         * remove the files made by recovery, so we can test the file manager in
+         * controlled cases.
          */
         TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
     }
 
     @Test
-    public void testMultipleDataDirs6()
-        throws Throwable {
+    public void testMultipleDataDirs6() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
 
         /* Create 001, 002, xxx, expect failure because xxx is not NNN */
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), "0");
+        envConfig.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), "0");
         new File(envHome, "data001").mkdir();
         new File(envHome, "data002").mkdir();
         new File(envHome, "data003").mkdir();
@@ -275,14 +249,13 @@ public class FileManagerMultiDataDirTest extends TestBase {
         }
 
         File dataDir = new File(envHome, "dataxxx");
-        TestUtils.removeFiles
-            ("TearDown", dataDir, FileManager.JE_SUFFIX);
+        TestUtils.removeFiles("TearDown", dataDir, FileManager.JE_SUFFIX);
         dataDir.delete();
 
         /*
-         * Remove any files after the environment is created again!  We want to
-         * remove the files made by recovery, so we can test the file manager
-         * in controlled cases.
+         * Remove any files after the environment is created again! We want to
+         * remove the files made by recovery, so we can test the file manager in
+         * controlled cases.
          */
         TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
     }

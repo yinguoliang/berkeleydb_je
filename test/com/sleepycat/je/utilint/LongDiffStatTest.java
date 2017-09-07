@@ -25,16 +25,14 @@ import com.sleepycat.util.test.TestBase;
 /** Test the LongDiffStat class. */
 public class LongDiffStatTest extends TestBase {
 
-    private static final StatGroup statGroup =
-        new StatGroup("TestGroup", "Test group");
-    private static int statDefCount;
+    private static final StatGroup statGroup = new StatGroup("TestGroup", "Test group");
+    private static int             statDefCount;
 
-    private AtomicLongStat base;
-    private LongDiffStat stat;
+    private AtomicLongStat         base;
+    private LongDiffStat           stat;
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         base = new AtomicLongStat(statGroup, getStatDef());

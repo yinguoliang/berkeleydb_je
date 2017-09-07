@@ -28,16 +28,15 @@ public class ReadOnlyProcess {
     public static void main(String[] args) {
 
         /*
-         * Don't write to System.out in this process because the parent
-         * process only reads System.err.
+         * Don't write to System.out in this process because the parent process
+         * only reads System.err.
          */
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setTransactional(true);
             envConfig.setReadOnly(true);
             if (args[0].equals("true")) {
-                envConfig.setConfigParam
-                    (EnvironmentConfig.LOG_N_DATA_DIRECTORIES, args[1]);
+                envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, args[1]);
             }
 
             File envHome = SharedTestUtils.getTestDir();

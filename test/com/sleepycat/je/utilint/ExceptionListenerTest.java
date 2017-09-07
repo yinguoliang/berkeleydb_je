@@ -33,19 +33,18 @@ import com.sleepycat.util.test.TestBase;
 
 public class ExceptionListenerTest extends TestBase {
 
-    private final File envHome;
+    private final File       envHome;
 
     private volatile boolean exceptionThrownCalled = false;
 
-    private DaemonThread dt = null;
+    private DaemonThread     dt                    = null;
 
     public ExceptionListenerTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @Test
-    public void testExceptionListener()
-        throws Exception {
+    public void testExceptionListener() throws Exception {
 
         /* Open with a listener. */
         EnvironmentConfig envConfig = new EnvironmentConfig();
@@ -54,19 +53,16 @@ public class ExceptionListenerTest extends TestBase {
         Environment env = new Environment(envHome, envConfig);
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
-        assertSame(envConfig.getExceptionListener(),
-                   envImpl.getExceptionListener());
+        assertSame(envConfig.getExceptionListener(), envImpl.getExceptionListener());
 
         dt = new MyDaemonThread(0, Environment.CLEANER_NAME, envImpl);
         DaemonThread.stifleExceptionChatter = true;
         dt.runOrPause(true);
         long startTime = System.currentTimeMillis();
-        while (!dt.isShutdownRequested() &&
-               System.currentTimeMillis() - startTime < 10 * 10000) {
+        while (!dt.isShutdownRequested() && System.currentTimeMillis() - startTime < 10 * 10000) {
             Thread.yield();
         }
-        assertTrue("ExceptionListener apparently not called",
-                   exceptionThrownCalled);
+        assertTrue("ExceptionListener apparently not called", exceptionThrownCalled);
 
         env.close();
 
@@ -83,19 +79,16 @@ public class ExceptionListenerTest extends TestBase {
         envConfig.setExceptionListener(new MyExceptionListener());
         env.setMutableConfig(envConfig);
 
-        assertSame(envConfig.getExceptionListener(),
-                   envImpl.getExceptionListener());
+        assertSame(envConfig.getExceptionListener(), envImpl.getExceptionListener());
 
         dt = new MyDaemonThread(0, Environment.CLEANER_NAME, envImpl);
         dt.stifleExceptionChatter = true;
         dt.runOrPause(true);
         startTime = System.currentTimeMillis();
-        while (!dt.isShutdownRequested() &&
-               System.currentTimeMillis() - startTime < 10 * 10000) {
+        while (!dt.isShutdownRequested() && System.currentTimeMillis() - startTime < 10 * 10000) {
             Thread.yield();
         }
-        assertTrue("ExceptionListener apparently not called",
-                   exceptionThrownCalled);
+        assertTrue("ExceptionListener apparently not called", exceptionThrownCalled);
     }
 
     private class MyDaemonThread extends DaemonThread {
@@ -111,17 +104,14 @@ public class ExceptionListenerTest extends TestBase {
 
     private class MyExceptionListener implements ExceptionListener {
         public void exceptionThrown(ExceptionEvent event) {
-            assertEquals("daemonName should be CLEANER_NAME",
-                         Environment.CLEANER_NAME,
-                         event.getThreadName());
+            assertEquals("daemonName should be CLEANER_NAME", Environment.CLEANER_NAME, event.getThreadName());
 
-	    /*
-	     * Be sure to set the exceptionThrownFlag before calling
-	     * shutdown, so the main test thread will see the right
-	     * value of the flag when it comes out of the loop in
-	     * testExceptionList that waits for the daemon thread to
-	     * finish.
-	     */
+            /*
+             * Be sure to set the exceptionThrownFlag before calling shutdown,
+             * so the main test thread will see the right value of the flag when
+             * it comes out of the loop in testExceptionList that waits for the
+             * daemon thread to finish.
+             */
             exceptionThrownCalled = true;
             dt.requestShutdown();
         }

@@ -53,10 +53,10 @@ import com.sleepycat.util.test.TestBase;
  * Check the rollback past a commit or abort.
  */
 public class HardRecoveryTest extends TestBase {
-    private final boolean verbose = Boolean.getBoolean("verbose");
+    private final boolean       verbose = Boolean.getBoolean("verbose");
     private static final String DB_NAME = "testDb";
-    private final File envRoot;
-    private final Logger logger;
+    private final File          envRoot;
+    private final Logger        logger;
 
     public HardRecoveryTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -64,23 +64,21 @@ public class HardRecoveryTest extends TestBase {
     }
 
     /**
-     * HardRecovery as invoked via the ReplicatedEnvironment constructor.
-     * Mimics the case where A was the master, has a commit in its log but that
-     * commit has not been propagated.  A goes down, new master = B. When A
-     * comes up, it has to roll back its commit and do a hard recovery. This
-     * flavor of hard recovery is executed silently within the
-     * ReplicatedEnvironment constructor.
+     * HardRecovery as invoked via the ReplicatedEnvironment constructor. Mimics
+     * the case where A was the master, has a commit in its log but that commit
+     * has not been propagated. A goes down, new master = B. When A comes up, it
+     * has to roll back its commit and do a hard recovery. This flavor of hard
+     * recovery is executed silently within the ReplicatedEnvironment
+     * constructor.
      */
     @Test
-    public void testHardRecoveryWithConstructorNoLimit()
-        throws Exception {
+    public void testHardRecoveryWithConstructorNoLimit() throws Exception {
 
         doHardRecoveryWithConstructor(false, false);
     }
 
     @Test
-    public void testHardRecoveryWithConstructorLimit()
-        throws Exception {
+    public void testHardRecoveryWithConstructorLimit() throws Exception {
 
         doHardRecoveryWithConstructor(true, false);
     }
@@ -88,13 +86,11 @@ public class HardRecoveryTest extends TestBase {
     /*
      * Test that a hard recovery which requires truncation in the penultimate
      * log file works, and that hard recovery processing does not mistakenly
-     * cause a gap in the log file.
-     *
-     * This bug results in a recovery hang. [#19463]
+     * cause a gap in the log file. This bug results in a recovery hang.
+     * [#19463]
      */
     @Test
-    public void testMultipleLogFilesHardRecovery()
-        throws Exception {
+    public void testMultipleLogFilesHardRecovery() throws Exception {
 
         doHardRecoveryWithConstructor(false, true);
     }
@@ -104,16 +100,13 @@ public class HardRecoveryTest extends TestBase {
      * RollbackProhibitedException and to have to manually truncate the
      * environment.
      */
-    public void doHardRecoveryWithConstructor(boolean setRollbackLimit,
-                                              boolean txnMultipleLogFiles)
-        throws Exception {
+    public void doHardRecoveryWithConstructor(boolean setRollbackLimit, boolean txnMultipleLogFiles) throws Exception {
 
         RepEnvInfo[] repEnvInfo = null;
         Database db = null;
         int numNodes = 3;
         try {
-            EnvironmentConfig envConfig = RepTestUtils.createEnvConfig
-               (RepTestUtils.SYNC_SYNC_NONE_DURABILITY);
+            EnvironmentConfig envConfig = RepTestUtils.createEnvConfig(RepTestUtils.SYNC_SYNC_NONE_DURABILITY);
 
             /*
              * Set a small log file size to make sure the rolled back
@@ -121,19 +114,16 @@ public class HardRecoveryTest extends TestBase {
              */
             if (txnMultipleLogFiles) {
                 DbInternal.disableParameterValidation(envConfig);
-                envConfig.setConfigParam
-                    (EnvironmentConfig.LOG_FILE_MAX, "2000");
+                envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, "2000");
             }
 
             ReplicationConfig repConfig = null;
             if (setRollbackLimit) {
                 repConfig = new ReplicationConfig();
-                repConfig.setConfigParam(ReplicationConfig.TXN_ROLLBACK_LIMIT,
-                                         "0");
+                repConfig.setConfigParam(ReplicationConfig.TXN_ROLLBACK_LIMIT, "0");
             }
 
-            repEnvInfo = RepTestUtils.setupEnvInfos
-                (envRoot, numNodes, envConfig, repConfig);
+            repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, numNodes, envConfig, repConfig);
 
             ReplicatedEnvironment master = repEnvInfo[0].openEnv();
             assert master != null;
@@ -142,9 +132,7 @@ public class HardRecoveryTest extends TestBase {
 
             logger.info("Created db on master");
             CommitToken commitToken = doInsert(master, db, 1, 1);
-            CommitPointConsistencyPolicy cp =
-                new CommitPointConsistencyPolicy(commitToken, 1000,
-                                                 TimeUnit.SECONDS);
+            CommitPointConsistencyPolicy cp = new CommitPointConsistencyPolicy(commitToken, 1000, TimeUnit.SECONDS);
             for (int i = 1; i < numNodes; i++) {
                 repEnvInfo[i].openEnv(cp);
             }
@@ -153,12 +141,10 @@ public class HardRecoveryTest extends TestBase {
             RepTestUtils.syncGroupToLastCommit(repEnvInfo, repEnvInfo.length);
 
             /*
-             * Shut down all replicas so that they don't see the next
-             * commit.
+             * Shut down all replicas so that they don't see the next commit.
              */
             for (int i = 1; i < numNodes; i++) {
-                logger.info("shut down replica " +
-                              repEnvInfo[i].getEnv().getNodeName());
+                logger.info("shut down replica " + repEnvInfo[i].getEnv().getNodeName());
                 repEnvInfo[i].closeEnv();
             }
 
@@ -172,8 +158,7 @@ public class HardRecoveryTest extends TestBase {
             if (txnMultipleLogFiles) {
 
                 /*
-                 * A large transaction writes log entries in mulitple log
-                 * files.
+                 * A large transaction writes log entries in mulitple log files.
                  */
                 DbInternal.getNonNullEnvImpl(master).forceLogFileFlip();
                 final DatabaseEntry key = new DatabaseEntry();
@@ -210,8 +195,7 @@ public class HardRecoveryTest extends TestBase {
                          * Wait for the Null transaction to ensure that the
                          * DTVLSN has been made persistent
                          */
-                        return masterRepNode.getCurrentTxnEndVLSN().getSequence() >
-                               commitTokenVLSN;
+                        return masterRepNode.getCurrentTxnEndVLSN().getSequence() > commitTokenVLSN;
                     };
                 }.await();
             }
@@ -224,15 +208,15 @@ public class HardRecoveryTest extends TestBase {
             }
 
             /*
-             * Restart the group, make it do some other work which the
-             * original master, which is down, won't see.
+             * Restart the group, make it do some other work which the original
+             * master, which is down, won't see.
              */
             logger.info("restart group");
             master = RepTestUtils.restartGroup(repEnvInfo[1], repEnvInfo[2]);
 
-            logger.info("group came up, new master = " +  master.getNodeName());
+            logger.info("group came up, new master = " + master.getNodeName());
             db = openDb(master);
-            commitToken = doInsert(master, db, 10,15);
+            commitToken = doInsert(master, db, 10, 15);
             checkNotThere(master, db, 2, 3, 4, 5);
             checkExists(master, db, 1, 10, 11, 12, 13, 14, 15);
 
@@ -243,24 +227,19 @@ public class HardRecoveryTest extends TestBase {
             logger.info("restart old master");
             ReplicatedEnvironment oldMaster = null;
             try {
-                repEnvInfo[0].openEnv
-                    (new CommitPointConsistencyPolicy(commitToken, 1000,
-                                                      TimeUnit.SECONDS));
+                repEnvInfo[0].openEnv(new CommitPointConsistencyPolicy(commitToken, 1000, TimeUnit.SECONDS));
                 assertFalse(setRollbackLimit);
                 oldMaster = repEnvInfo[0].getEnv();
-                assertTrue(RepInternal.getNonNullRepImpl(oldMaster).
-                           getNodeStats().
-                           getBoolean(RepImplStatDefinition.HARD_RECOVERY));
-                logger.info
-                    (RepInternal.getNonNullRepImpl(oldMaster).getNodeStats().
-                     getString(RepImplStatDefinition.HARD_RECOVERY_INFO));
+                assertTrue(RepInternal.getNonNullRepImpl(oldMaster).getNodeStats()
+                        .getBoolean(RepImplStatDefinition.HARD_RECOVERY));
+                logger.info(RepInternal.getNonNullRepImpl(oldMaster).getNodeStats()
+                        .getString(RepImplStatDefinition.HARD_RECOVERY_INFO));
             } catch (RollbackProhibitedException e) {
 
                 /*
                  * If setRollback limit is set, we should get this exception
-                 * with directions on how to truncate the log. If the
-                 * limit was not set, the truncation should have been done
-                 * by JE already.
+                 * with directions on how to truncate the log. If the limit was
+                 * not set, the truncation should have been done by JE already.
                  */
                 assertTrue(setRollbackLimit);
                 assertEquals(0, e.getTruncationFileNumber());
@@ -269,19 +248,16 @@ public class HardRecoveryTest extends TestBase {
 
                 /*
                  * Very test dependent, it should be 2657 at least, but should
-                 * be larger if some internal replicated transaction commits.
-                 * A change in log entry sizes could change this value. This
+                 * be larger if some internal replicated transaction commits. A
+                 * change in log entry sizes could change this value. This
                  * should be set to the value in of the matchpoint.
                  */
                 assertTrue(e.getTruncationFileOffset() >= 2657);
 
                 DbTruncateLog truncator = new DbTruncateLog();
-                truncator.truncateLog(repEnvInfo[0].getEnvHome(),
-                                      e.getTruncationFileNumber(),
-                                      e.getTruncationFileOffset());
-                repEnvInfo[0].openEnv
-                    (new CommitPointConsistencyPolicy(commitToken, 1000,
-                                                      TimeUnit.SECONDS));
+                truncator.truncateLog(repEnvInfo[0].getEnvHome(), e.getTruncationFileNumber(),
+                        e.getTruncationFileOffset());
+                repEnvInfo[0].openEnv(new CommitPointConsistencyPolicy(commitToken, 1000, TimeUnit.SECONDS));
                 oldMaster = repEnvInfo[0].getEnv();
             }
 
@@ -289,8 +265,7 @@ public class HardRecoveryTest extends TestBase {
             checkNotThere(oldMaster, replicaDb, 2, 3, 4, 5);
             replicaDb.close();
 
-            VLSN commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo,
-                                                                 numNodes);
+            VLSN commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo, numNodes);
             RepTestUtils.checkNodeEquality(commitVLSN, verbose, repEnvInfo);
         } catch (Exception e) {
             e.printStackTrace();
@@ -314,7 +289,7 @@ public class HardRecoveryTest extends TestBase {
 
     private Database openDb(ReplicatedEnvironment master, boolean allowCreate) {
 
-        Transaction txn = master.beginTransaction(null,null);
+        Transaction txn = master.beginTransaction(null, null);
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(allowCreate);
         dbConfig.setTransactional(true);
@@ -326,10 +301,7 @@ public class HardRecoveryTest extends TestBase {
     /**
      * @return the commit token for the last txn used in the insert
      */
-    private CommitToken doInsert(ReplicatedEnvironment master,
-                                 Database db,
-                                 int startVal,
-                                 int endVal) {
+    private CommitToken doInsert(ReplicatedEnvironment master, Database db, int startVal, int endVal) {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -346,32 +318,27 @@ public class HardRecoveryTest extends TestBase {
             txn.commit();
         }
 
-        return (txn == null) ? null: txn.getCommitToken();
+        return (txn == null) ? null : txn.getCommitToken();
     }
 
     /**
      * Assert that these values are IN the database.
      */
-    private void checkExists(ReplicatedEnvironment node,
-                             Database db,
-                             int ... values) {
+    private void checkExists(ReplicatedEnvironment node, Database db, int... values) {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
         if (verbose) {
-            System.err.println("Entering checkThere: node=" +
-                               node.getNodeName());
+            System.err.println("Entering checkThere: node=" + node.getNodeName());
         }
 
         for (int i : values) {
             IntegerBinding.intToEntry(i, key);
             if (verbose) {
-                System.err.println("checkThere: node=" + node.getNodeName() +
-                                   " " + i);
+                System.err.println("checkThere: node=" + node.getNodeName() + " " + i);
             }
-            assertEquals(OperationStatus.SUCCESS,
-                         db.get(null, key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, db.get(null, key, data, LockMode.DEFAULT));
             assertEquals(i, IntegerBinding.entryToInt(data));
         }
     }
@@ -379,9 +346,7 @@ public class HardRecoveryTest extends TestBase {
     /**
      * Assert that these values are NOT IN the database.
      */
-    private void checkNotThere(ReplicatedEnvironment node,
-                               Database db,
-                               int ... values) {
+    private void checkNotThere(ReplicatedEnvironment node, Database db, int... values) {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -389,34 +354,28 @@ public class HardRecoveryTest extends TestBase {
         for (int i : values) {
             IntegerBinding.intToEntry(i, key);
             if (verbose) {
-                System.out.println("checkNotThere: node=" + node.getNodeName()
-                                   + " " + i);
+                System.out.println("checkNotThere: node=" + node.getNodeName() + " " + i);
             }
-            assertEquals("for key " + i, OperationStatus.NOTFOUND,
-                         db.get(null, key, data, LockMode.DEFAULT));
+            assertEquals("for key " + i, OperationStatus.NOTFOUND, db.get(null, key, data, LockMode.DEFAULT));
         }
     }
 
     /**
      * HardRecovery as invoked on a live replica. Can only occur with network
-     * partitioning.
-     *
-     * Suppose we have nodes A,B,C. A is the master. C is partioned, and
-     * therefore misses part of the replication stream. Then, through a series
-     * of timing accidents, C wins mastership over A and B. A and B then have
-     * to discover the problem during a syncup, and throw hard recovery
-     * exceptions.
+     * partitioning. Suppose we have nodes A,B,C. A is the master. C is
+     * partioned, and therefore misses part of the replication stream. Then,
+     * through a series of timing accidents, C wins mastership over A and B. A
+     * and B then have to discover the problem during a syncup, and throw hard
+     * recovery exceptions.
      */
     @Test
-    public void testHardRecoveryDeadHandle()
-        throws Throwable {
+    public void testHardRecoveryDeadHandle() throws Throwable {
 
         RepEnvInfo[] repEnvInfo = null;
         Database db = null;
         int numNodes = 3;
         try {
-            repEnvInfo = RepTestUtils.setupEnvInfos
-                (envRoot, numNodes, RepTestUtils.SYNC_SYNC_NONE_DURABILITY);
+            repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, numNodes, RepTestUtils.SYNC_SYNC_NONE_DURABILITY);
 
             /*
              * Start the master first, to ensure that it is the master, and then
@@ -427,9 +386,7 @@ public class HardRecoveryTest extends TestBase {
 
             db = createDb(master);
             CommitToken commitToken = doInsert(master, db, 1, 1);
-            CommitPointConsistencyPolicy cp =
-                new CommitPointConsistencyPolicy(commitToken, 1000,
-                                                 TimeUnit.SECONDS);
+            CommitPointConsistencyPolicy cp = new CommitPointConsistencyPolicy(commitToken, 1000, TimeUnit.SECONDS);
 
             for (int i = 1; i < numNodes; i++) {
                 repEnvInfo[i].openEnv(cp);
@@ -439,35 +396,31 @@ public class HardRecoveryTest extends TestBase {
              * After node1 and node2 join, make sure that their presence in the
              * rep group db is propagated before we do a forceMaster. When a
              * node calls for an election, it must have its own id available to
-             * itself from the rep group db on disk. If it doesn't, it will
-             * send an election request with an illegal node id. In real life,
-             * this can never happen, because a node that does not have its own
-             * id won't win mastership, since others will be ahead of it.
+             * itself from the rep group db on disk. If it doesn't, it will send
+             * an election request with an illegal node id. In real life, this
+             * can never happen, because a node that does not have its own id
+             * won't win mastership, since others will be ahead of it.
              */
             commitToken = doInsert(master, db, 2, 2);
             TransactionConfig txnConfig = new TransactionConfig();
-            txnConfig.setConsistencyPolicy
-                (new CommitPointConsistencyPolicy(commitToken, 1000,
-                                                  TimeUnit.SECONDS));
+            txnConfig.setConsistencyPolicy(new CommitPointConsistencyPolicy(commitToken, 1000, TimeUnit.SECONDS));
 
             for (int i = 1; i < numNodes; i++) {
-                Transaction txn =
-                    repEnvInfo[i].getEnv().beginTransaction(null, txnConfig);
+                Transaction txn = repEnvInfo[i].getEnv().beginTransaction(null, txnConfig);
                 txn.commit();
             }
 
             /*
              * Mimic a network partition by forcing one replica to not see the
              * incoming LNs. Do some work, which that last replica doesn't see
-             * and then force the laggard to become the master. This will
-             * create a case where the current master has to do a hard
-             * recovery.
+             * and then force the laggard to become the master. This will create
+             * a case where the current master has to do a hard recovery.
              */
             int lastIndex = numNodes - 1;
             WaitForMasterListener masterWaiter = new WaitForMasterListener();
             ReplicatedEnvironment forcedMaster = repEnvInfo[lastIndex].getEnv();
             forcedMaster.setStateChangeListener(masterWaiter);
-            RepNode lastRepNode =  repEnvInfo[lastIndex].getRepNode();
+            RepNode lastRepNode = repEnvInfo[lastIndex].getRepNode();
             lastRepNode.replica().setDontProcessStream();
 
             commitToken = doInsert(master, db, 3, 4);
@@ -479,17 +432,15 @@ public class HardRecoveryTest extends TestBase {
              * WaitForNodeX are latches that will help us know when node 1 and 2
              * have finished syncing up with node 3, after forcing node 3 to
              * become a master. There will be two syncup attempts, because after
-             * the first syncup attempt, we do an election to make sure that
-             * we are running with the most optimal master.
+             * the first syncup attempt, we do an election to make sure that we
+             * are running with the most optimal master.
              */
-            CountDownLatch waitForNode1 =
-                setupWaitForSyncup(repEnvInfo[0].getEnv(), 2);
-            CountDownLatch waitForNode2 =
-                setupWaitForSyncup(repEnvInfo[1].getEnv(), 2);
+            CountDownLatch waitForNode1 = setupWaitForSyncup(repEnvInfo[0].getEnv(), 2);
+            CountDownLatch waitForNode2 = setupWaitForSyncup(repEnvInfo[1].getEnv(), 2);
 
             /*
-             * Make node3 the master. Make sure that it did not see the
-             * work done while it was in its fake network partitioned state.
+             * Make node3 the master. Make sure that it did not see the work
+             * done while it was in its fake network partitioned state.
              */
             lastRepNode.forceMaster(true);
             logger.info("After force");
@@ -508,15 +459,14 @@ public class HardRecoveryTest extends TestBase {
             checkForHardRecovery(waitForNode2, repEnvInfo[1]);
 
             /*
-             * Restart the group, make it do some other work and check
-             * that the group has identical contents.
+             * Restart the group, make it do some other work and check that the
+             * group has identical contents.
              */
             logger.info("restarting nodes which did hard recovery");
             RepTestUtils.restartReplicas(repEnvInfo[0]);
             RepTestUtils.restartReplicas(repEnvInfo[1]);
             logger.info("sync group");
-            VLSN commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo,
-                                                                 numNodes);
+            VLSN commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo, numNodes);
 
             logger.info("run check");
             RepTestUtils.checkNodeEquality(commitVLSN, verbose, repEnvInfo);
@@ -536,38 +486,32 @@ public class HardRecoveryTest extends TestBase {
      * Wait until a replica/feeder syncup has been tried numSyncupAttempt times
      * on this node.
      */
-    private CountDownLatch setupWaitForSyncup
-        (final ReplicatedEnvironment master, int numSyncupAttempts) {
-        final CountDownLatch  waiter = new CountDownLatch(numSyncupAttempts);
+    private CountDownLatch setupWaitForSyncup(final ReplicatedEnvironment master, int numSyncupAttempts) {
+        final CountDownLatch waiter = new CountDownLatch(numSyncupAttempts);
 
         TestHook<Object> syncupFinished = new TestHook<Object>() {
             @Override
             public void doHook() throws InterruptedException {
-                logger.info("----syncup countdown for " +
-                               master.getNodeName() + " latch=" + waiter);
+                logger.info("----syncup countdown for " + master.getNodeName() + " latch=" + waiter);
                 waiter.countDown();
             }
         };
 
-        RepInternal.getNonNullRepImpl(master).getRepNode().
-            replica().setReplicaFeederSyncupHook(syncupFinished);
+        RepInternal.getNonNullRepImpl(master).getRepNode().replica().setReplicaFeederSyncupHook(syncupFinished);
         return waiter;
     }
 
     /**
      * Make sure that this node has thrown a RollbackException.
      */
-    private void checkForHardRecovery(CountDownLatch syncupFinished,
-                                      RepEnvInfo envInfo)
-        throws Throwable {
+    private void checkForHardRecovery(CountDownLatch syncupFinished, RepEnvInfo envInfo) throws Throwable {
 
         syncupFinished.await();
         logger.info(envInfo.getEnv().getNodeName() + " becomes replica");
 
         try {
             ReplicatedEnvironment.State state = envInfo.getEnv().getState();
-            fail("Should have seen rollback exception, got state of " +
-                 state);
+            fail("Should have seen rollback exception, got state of " + state);
         } catch (RollbackException expected) {
             assertTrue(expected.getEarliestTransactionId() != 0);
             assertTrue(expected.getEarliestTransactionCommitTime() != null);

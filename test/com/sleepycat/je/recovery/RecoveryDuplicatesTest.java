@@ -24,8 +24,7 @@ import com.sleepycat.je.Transaction;
 public class RecoveryDuplicatesTest extends RecoveryTestBase {
 
     @Test
-    public void testDuplicates()
-        throws Throwable {
+    public void testDuplicates() throws Throwable {
 
         createEnvAndDbs(1 << 20, true, NUM_DBS);
         int numRecs = 10;
@@ -33,13 +32,11 @@ public class RecoveryDuplicatesTest extends RecoveryTestBase {
 
         try {
             /* Set up an repository of expected data. */
-            Map<TestData, Set<TestData>> expectedData = 
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             /* Insert all the data. */
             Transaction txn = env.beginTransaction(null, null);
-            insertData(txn, 0, numRecs - 1, expectedData,
-                       numDups, true, NUM_DBS);
+            insertData(txn, 0, numRecs - 1, expectedData, numDups, true, NUM_DBS);
             txn.commit();
             closeEnv();
             recoverAndVerify(expectedData, NUM_DBS);
@@ -50,8 +47,7 @@ public class RecoveryDuplicatesTest extends RecoveryTestBase {
     }
 
     @Test
-    public void testDuplicatesWithDeletion()
-        throws Throwable {
+    public void testDuplicatesWithDeletion() throws Throwable {
 
         createEnvAndDbs(1 << 20, true, NUM_DBS);
         int numRecs = 10;
@@ -59,12 +55,11 @@ public class RecoveryDuplicatesTest extends RecoveryTestBase {
 
         try {
             /* Set up an repository of expected data. */
-            Map<TestData, Set<TestData>> expectedData = 
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             /* Insert all the data. */
             Transaction txn = env.beginTransaction(null, null);
-            insertData(txn, 0, numRecs -1, expectedData, nDups, true, NUM_DBS);
+            insertData(txn, 0, numRecs - 1, expectedData, nDups, true, NUM_DBS);
 
             /* Delete all the even records. */
             deleteData(txn, expectedData, false, true, NUM_DBS);
@@ -83,8 +78,7 @@ public class RecoveryDuplicatesTest extends RecoveryTestBase {
     }
 
     @Test
-    public void testDuplicatesWithAllDeleted()
-        throws Throwable {
+    public void testDuplicatesWithAllDeleted() throws Throwable {
 
         createEnvAndDbs(1 << 20, true, NUM_DBS);
         int numRecs = 10;
@@ -92,13 +86,11 @@ public class RecoveryDuplicatesTest extends RecoveryTestBase {
 
         try {
             /* Set up an repository of expected data. */
-            Map<TestData, Set<TestData>> expectedData = 
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             /* Insert all the data. */
             Transaction txn = env.beginTransaction(null, null);
-            insertData(txn, 0, numRecs - 1, expectedData, nDups,
-                       true, NUM_DBS);
+            insertData(txn, 0, numRecs - 1, expectedData, nDups, true, NUM_DBS);
 
             /* Delete all data. */
             deleteData(txn, expectedData, true, true, NUM_DBS);

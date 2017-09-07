@@ -47,35 +47,31 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
     }
 
     /**
-     * Create some simple duplicate data.  Delete it all.  Try to create
-     * it again.
+     * Create some simple duplicate data. Delete it all. Try to create it again.
      */
     @Test
-    public void testSimpleDeleteInsert()
-        throws Exception {
+    public void testSimpleDeleteInsert() throws Exception {
 
         try {
             initEnv(true);
             doSimpleDuplicatePuts();
             DataWalker dw = new DataWalker(null) {
-                    @Override
-                    void perData(String foundKey, String foundData)
-                        throws DatabaseException {
+                @Override
+                void perData(String foundKey, String foundData) throws DatabaseException {
 
-                        if (prevKey.equals("")) {
-                            prevKey = foundKey;
-                        }
-                        if (!prevKey.equals(foundKey)) {
-                            deletedEntries = 0;
-                        }
+                    if (prevKey.equals("")) {
                         prevKey = foundKey;
-                        if (cursor.delete() == OperationStatus.SUCCESS) {
-                            deletedEntries++;
-                        }
-                        assertEquals(simpleKeyStrings.length - deletedEntries,
-                                     cursor.count());
                     }
-                };
+                    if (!prevKey.equals(foundKey)) {
+                        deletedEntries = 0;
+                    }
+                    prevKey = foundKey;
+                    if (cursor.delete() == OperationStatus.SUCCESS) {
+                        deletedEntries++;
+                    }
+                    assertEquals(simpleKeyStrings.length - deletedEntries, cursor.count());
+                }
+            };
             dw.setIgnoreDataMap(true);
             dw.walkData();
             doSimpleDuplicatePuts();
@@ -83,8 +79,7 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
             dw = new DataWalker(null);
             dw.setIgnoreDataMap(true);
             dw.walkData();
-            assertEquals(simpleKeyStrings.length * simpleKeyStrings.length,
-                         dw.nEntries);
+            assertEquals(simpleKeyStrings.length * simpleKeyStrings.length, dw.nEntries);
             closeEnv();
         } catch (Exception e) {
             e.printStackTrace();
@@ -93,20 +88,12 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
     }
 
     @Test
-    public void testCountAfterDelete()
-        throws Throwable {
+    public void testCountAfterDelete() throws Throwable {
         initEnv(true);
-        DatabaseEntry key =
-            new DatabaseEntry(new byte[] {(byte) 'n',
-                                          (byte) 'o', (byte) 0 });
-        DatabaseEntry val1 =
-            new DatabaseEntry(new byte[] {(byte) 'k',
-                                          (byte) '1', (byte) 0 });
-        DatabaseEntry val2 =
-            new DatabaseEntry(new byte[] {(byte) 'k',
-                                          (byte) '2', (byte) 0 });
-        OperationStatus status =
-            exampleDb.putNoDupData(null, key, val1);
+        DatabaseEntry key = new DatabaseEntry(new byte[] { (byte) 'n', (byte) 'o', (byte) 0 });
+        DatabaseEntry val1 = new DatabaseEntry(new byte[] { (byte) 'k', (byte) '1', (byte) 0 });
+        DatabaseEntry val2 = new DatabaseEntry(new byte[] { (byte) 'k', (byte) '2', (byte) 0 });
+        OperationStatus status = exampleDb.putNoDupData(null, key, val1);
         if (status != OperationStatus.SUCCESS)
             throw new Exception("status on put 1=" + status);
         status = exampleDb.putNoDupData(null, key, val2);
@@ -115,8 +102,7 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
 
         Cursor c = exampleDb.openCursor(null, null);
         try {
-            status = c.getSearchKey(key, new DatabaseEntry(),
-                                    LockMode.DEFAULT);
+            status = c.getSearchKey(key, new DatabaseEntry(), LockMode.DEFAULT);
             if (status != OperationStatus.SUCCESS)
                 throw new Exception("status on search=" + status);
             assertEquals(2, c.count());
@@ -140,8 +126,7 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
 
         c = exampleDb.openCursor(null, null);
         try {
-            status =
-                c.getSearchKey(key, new DatabaseEntry(), LockMode.DEFAULT);
+            status = c.getSearchKey(key, new DatabaseEntry(), LockMode.DEFAULT);
             if (status != OperationStatus.SUCCESS)
                 throw new Exception("err on search=" + status);
             assertEquals(1, c.count());
@@ -151,8 +136,7 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
     }
 
     @Test
-    public void testDuplicateDeletionAll()
-        throws Throwable {
+    public void testDuplicateDeletionAll() throws Throwable {
 
         try {
             initEnv(true);
@@ -160,61 +144,56 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
             createRandomDuplicateData(10, 1000, dataMap, false, false);
 
             DataWalker dw = new DataWalker(dataMap) {
-                    @Override
-                    void perData(String foundKey, String foundData)
-                        throws DatabaseException {
+                @Override
+                void perData(String foundKey, String foundData) throws DatabaseException {
 
-                        Hashtable ht = (Hashtable) dataMap.get(foundKey);
-                        if (ht == null) {
-                            fail("didn't find ht " +
-                                 foundKey + "/" + foundData);
-                        }
-
-                        if (ht.get(foundData) != null) {
-                            ht.remove(foundData);
-                            if (ht.size() == 0) {
-                                dataMap.remove(foundKey);
-                            }
-                        } else {
-                            fail("didn't find " + foundKey + "/" + foundData);
-                        }
-
-                        /* Make sure keys are ascending/descending. */
-                        assertTrue(foundKey.compareTo(prevKey) >= 0);
-
-                        /*
-                         * Make sure duplicate items within key are asc/desc.
-                         */
-                        if (prevKey.equals(foundKey)) {
-                            if (duplicateComparisonFunction == null) {
-                                assertTrue(foundData.compareTo(prevData) >= 0);
-                            } else {
-                                assertTrue
-                                    (duplicateComparisonFunction.compare
-                                     (StringUtils.toUTF8(foundData),
-                                      StringUtils.toUTF8(prevData)) >= 0);
-                            }
-                            prevData = foundData;
-                        } else {
-                            prevData = "";
-                        }
-
-                        prevKey = foundKey;
-                        assertTrue(cursor.delete() == OperationStatus.SUCCESS);
-                        assertEquals(ht.size(), cursor.count());
+                    Hashtable ht = (Hashtable) dataMap.get(foundKey);
+                    if (ht == null) {
+                        fail("didn't find ht " + foundKey + "/" + foundData);
                     }
-                };
+
+                    if (ht.get(foundData) != null) {
+                        ht.remove(foundData);
+                        if (ht.size() == 0) {
+                            dataMap.remove(foundKey);
+                        }
+                    } else {
+                        fail("didn't find " + foundKey + "/" + foundData);
+                    }
+
+                    /* Make sure keys are ascending/descending. */
+                    assertTrue(foundKey.compareTo(prevKey) >= 0);
+
+                    /*
+                     * Make sure duplicate items within key are asc/desc.
+                     */
+                    if (prevKey.equals(foundKey)) {
+                        if (duplicateComparisonFunction == null) {
+                            assertTrue(foundData.compareTo(prevData) >= 0);
+                        } else {
+                            assertTrue(duplicateComparisonFunction.compare(StringUtils.toUTF8(foundData),
+                                    StringUtils.toUTF8(prevData)) >= 0);
+                        }
+                        prevData = foundData;
+                    } else {
+                        prevData = "";
+                    }
+
+                    prevKey = foundKey;
+                    assertTrue(cursor.delete() == OperationStatus.SUCCESS);
+                    assertEquals(ht.size(), cursor.count());
+                }
+            };
             dw.setIgnoreDataMap(true);
             dw.walkData();
             assertTrue(dataMap.size() == 0);
 
             dw = new DataWalker(dataMap) {
-                    @Override
-                    void perData(String foundKey, String foundData) {
-                        fail("data found after deletion: " +
-                             foundKey + "/" + foundData);
-                    }
-                };
+                @Override
+                void perData(String foundKey, String foundData) {
+                    fail("data found after deletion: " + foundKey + "/" + foundData);
+                }
+            };
             dw.setIgnoreDataMap(true);
             dw.walkData();
         } catch (Throwable t) {
@@ -224,8 +203,7 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
     }
 
     @Test
-    public void testDuplicateDeletionAssorted()
-        throws Throwable {
+    public void testDuplicateDeletionAssorted() throws Throwable {
 
         try {
             initEnv(true);
@@ -235,88 +213,77 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
 
             /* Use the DataWalker.addedData field for a deleted Data Map. */
             DataWalker dw = new DataWalker(dataMap, deletedDataMap) {
-                    @Override
-                    void perData(String foundKey, String foundData)
-                        throws DatabaseException {
+                @Override
+                void perData(String foundKey, String foundData) throws DatabaseException {
 
-                        Hashtable ht = (Hashtable) dataMap.get(foundKey);
-                        if (ht == null) {
-                            fail("didn't find ht " +
-                                 foundKey + "/" + foundData);
-                        }
-
-                        /* Make sure keys are ascending/descending. */
-                        assertTrue(foundKey.compareTo(prevKey) >= 0);
-
-                        /*
-                         * Make sure duplicate items within key are asc/desc.
-                         */
-                        if (prevKey.equals(foundKey)) {
-                            if (duplicateComparisonFunction == null) {
-                                assertTrue(foundData.compareTo(prevData) >= 0);
-                            } else {
-                                assertTrue
-                                    (duplicateComparisonFunction.compare
-                                     (StringUtils.toUTF8(foundData),
-                                      StringUtils.toUTF8(prevData)) >= 0);
-                            }
-                            prevData = foundData;
-                        } else {
-                            prevData = "";
-                        }
-
-                        prevKey = foundKey;
-                        if (rnd.nextInt(10) < 8) {
-                            Hashtable delht =
-                                (Hashtable) addedDataMap.get(foundKey);
-                            if (delht == null) {
-                                delht = new Hashtable();
-                                addedDataMap.put(foundKey, delht);
-                            }
-                            delht.put(foundData, foundData);
-                            assertTrue(cursor.delete() ==
-                                       OperationStatus.SUCCESS);
-
-                            if (ht.get(foundData) == null) {
-                                fail("didn't find " +
-                                     foundKey + "/" + foundData);
-                            }
-                            ht.remove(foundData);
-                            assertEquals(ht.size(), cursor.count());
-                            if (ht.size() == 0) {
-                                dataMap.remove(foundKey);
-                            }
-                        }
+                    Hashtable ht = (Hashtable) dataMap.get(foundKey);
+                    if (ht == null) {
+                        fail("didn't find ht " + foundKey + "/" + foundData);
                     }
-                };
-            dw.setIgnoreDataMap(true);
-            dw.walkData();
 
-            dw = new DataWalker(dataMap, deletedDataMap) {
-                    @Override
-                    void perData(String foundKey, String foundData) {
-                        Hashtable delht =
-                            (Hashtable) addedDataMap.get(foundKey);
-                        if (delht != null &&
-                            delht.get(foundData) != null) {
-                            fail("found deleted entry for " +
-                                 foundKey + "/" + foundData);
-                        }
+                    /* Make sure keys are ascending/descending. */
+                    assertTrue(foundKey.compareTo(prevKey) >= 0);
 
-                        Hashtable ht = (Hashtable) dataMap.get(foundKey);
-                        if (ht == null) {
-                            fail("couldn't find hashtable for " + foundKey);
+                    /*
+                     * Make sure duplicate items within key are asc/desc.
+                     */
+                    if (prevKey.equals(foundKey)) {
+                        if (duplicateComparisonFunction == null) {
+                            assertTrue(foundData.compareTo(prevData) >= 0);
+                        } else {
+                            assertTrue(duplicateComparisonFunction.compare(StringUtils.toUTF8(foundData),
+                                    StringUtils.toUTF8(prevData)) >= 0);
                         }
+                        prevData = foundData;
+                    } else {
+                        prevData = "";
+                    }
+
+                    prevKey = foundKey;
+                    if (rnd.nextInt(10) < 8) {
+                        Hashtable delht = (Hashtable) addedDataMap.get(foundKey);
+                        if (delht == null) {
+                            delht = new Hashtable();
+                            addedDataMap.put(foundKey, delht);
+                        }
+                        delht.put(foundData, foundData);
+                        assertTrue(cursor.delete() == OperationStatus.SUCCESS);
+
                         if (ht.get(foundData) == null) {
-                            fail("couldn't find entry for " +
-                                 foundKey + "/" + foundData);
+                            fail("didn't find " + foundKey + "/" + foundData);
                         }
                         ht.remove(foundData);
+                        assertEquals(ht.size(), cursor.count());
                         if (ht.size() == 0) {
                             dataMap.remove(foundKey);
                         }
                     }
-                };
+                }
+            };
+            dw.setIgnoreDataMap(true);
+            dw.walkData();
+
+            dw = new DataWalker(dataMap, deletedDataMap) {
+                @Override
+                void perData(String foundKey, String foundData) {
+                    Hashtable delht = (Hashtable) addedDataMap.get(foundKey);
+                    if (delht != null && delht.get(foundData) != null) {
+                        fail("found deleted entry for " + foundKey + "/" + foundData);
+                    }
+
+                    Hashtable ht = (Hashtable) dataMap.get(foundKey);
+                    if (ht == null) {
+                        fail("couldn't find hashtable for " + foundKey);
+                    }
+                    if (ht.get(foundData) == null) {
+                        fail("couldn't find entry for " + foundKey + "/" + foundData);
+                    }
+                    ht.remove(foundData);
+                    if (ht.size() == 0) {
+                        dataMap.remove(foundKey);
+                    }
+                }
+            };
             dw.setIgnoreDataMap(true);
             dw.walkData();
             assertTrue(dataMap.size() == 0);
@@ -327,8 +294,7 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
     }
 
     @Test
-    public void testDuplicateDeletionAssortedSR15375()
-        throws Throwable {
+    public void testDuplicateDeletionAssortedSR15375() throws Throwable {
 
         try {
             initEnv(true);
@@ -338,102 +304,86 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
 
             /* Use the DataWalker.addedData field for a deleted Data Map. */
             DataWalker dw = new DataWalker(dataMap, deletedDataMap) {
-                    @Override
-                    void perData(String foundKey, String foundData)
-                        throws DatabaseException {
+                @Override
+                void perData(String foundKey, String foundData) throws DatabaseException {
 
-                        Hashtable ht = (Hashtable) dataMap.get(foundKey);
-                        if (ht == null) {
-                            fail("didn't find ht " +
-                                 foundKey + "/" + foundData);
+                    Hashtable ht = (Hashtable) dataMap.get(foundKey);
+                    if (ht == null) {
+                        fail("didn't find ht " + foundKey + "/" + foundData);
+                    }
+
+                    /* Make sure keys are ascending/descending. */
+                    assertTrue(foundKey.compareTo(prevKey) >= 0);
+
+                    /*
+                     * Make sure duplicate items within key are asc/desc.
+                     */
+                    if (prevKey.equals(foundKey)) {
+                        if (duplicateComparisonFunction == null) {
+                            assertTrue(foundData.compareTo(prevData) >= 0);
+                        } else {
+                            assertTrue(duplicateComparisonFunction.compare(StringUtils.toUTF8(foundData),
+                                    StringUtils.toUTF8(prevData)) >= 0);
                         }
+                        prevData = foundData;
+                    } else {
+                        prevData = "";
+                    }
 
-                        /* Make sure keys are ascending/descending. */
-                        assertTrue(foundKey.compareTo(prevKey) >= 0);
+                    prevKey = foundKey;
+                    if (rnd.nextInt(10) < 8) {
+                        Hashtable delht = (Hashtable) addedDataMap.get(foundKey);
+                        if (delht == null) {
+                            delht = new Hashtable();
+                            addedDataMap.put(foundKey, delht);
+                        }
+                        delht.put(foundData, foundData);
+                        assertTrue(cursor.delete() == OperationStatus.SUCCESS);
+
+                        if (ht.get(foundData) == null) {
+                            fail("didn't find " + foundKey + "/" + foundData);
+                        }
+                        ht.remove(foundData);
+                        assertEquals(ht.size(), cursor.count());
+                        if (ht.size() == 0) {
+                            dataMap.remove(foundKey);
+                        }
 
                         /*
-                         * Make sure duplicate items within key are asc/desc.
+                         * Add back in a duplicate for each one deleted.
                          */
-                        if (prevKey.equals(foundKey)) {
-                            if (duplicateComparisonFunction == null) {
-                                assertTrue(foundData.compareTo(prevData) >= 0);
-                            } else {
-                                assertTrue
-                                    (duplicateComparisonFunction.compare
-                                     (StringUtils.toUTF8(foundData),
-                                      StringUtils.toUTF8(prevData)) >= 0);
-                            }
-                            prevData = foundData;
-                        } else {
-                            prevData = "";
-                        }
-
-                        prevKey = foundKey;
-                        if (rnd.nextInt(10) < 8) {
-                            Hashtable delht =
-                                (Hashtable) addedDataMap.get(foundKey);
-                            if (delht == null) {
-                                delht = new Hashtable();
-                                addedDataMap.put(foundKey, delht);
-                            }
-                            delht.put(foundData, foundData);
-                            assertTrue(cursor.delete() ==
-                                       OperationStatus.SUCCESS);
-
-                            if (ht.get(foundData) == null) {
-                                fail("didn't find " +
-                                     foundKey + "/" + foundData);
-                            }
-                            ht.remove(foundData);
-                            assertEquals(ht.size(), cursor.count());
-                            if (ht.size() == 0) {
-                                dataMap.remove(foundKey);
-                            }
-
-                            /*
-                             * Add back in a duplicate for each one deleted.
-                             */
-                            String newDupData = foundData + "x";
-                            StringDbt newDupDBT =
-                                new StringDbt(newDupData);
-                            assertTrue
-                                (putAndVerifyCursor
-                                 (cursor,
-                                  new StringDbt(foundKey),
-                                  newDupDBT, true) ==
-                                 OperationStatus.SUCCESS);
-                            ht.put(newDupData, newDupData);
-                        }
+                        String newDupData = foundData + "x";
+                        StringDbt newDupDBT = new StringDbt(newDupData);
+                        assertTrue(putAndVerifyCursor(cursor, new StringDbt(foundKey), newDupDBT,
+                                true) == OperationStatus.SUCCESS);
+                        ht.put(newDupData, newDupData);
                     }
-                };
+                }
+            };
             dw.setIgnoreDataMap(true);
             dw.walkData();
 
             dw = new DataWalker(dataMap, deletedDataMap) {
-                    @Override
-                    void perData(String foundKey, String foundData) {
-                        Hashtable delht =
-                            (Hashtable) addedDataMap.get(foundKey);
-                        if (delht != null &&
-                            delht.get(foundData) != null) {
-                            fail("found deleted entry for " +
-                                 foundKey + "/" + foundData);
-                        }
-
-                        Hashtable ht = (Hashtable) dataMap.get(foundKey);
-                        if (ht == null) {
-                            fail("couldn't find hashtable for " + foundKey);
-                        }
-                        if (ht.get(foundData) == null) {
-                            fail("couldn't find entry for " +
-                                 foundKey + "/" + foundData);
-                        }
-                        ht.remove(foundData);
-                        if (ht.size() == 0) {
-                            dataMap.remove(foundKey);
-                        }
+                @Override
+                void perData(String foundKey, String foundData) {
+                    Hashtable delht = (Hashtable) addedDataMap.get(foundKey);
+                    if (delht != null && delht.get(foundData) != null) {
+                        fail("found deleted entry for " + foundKey + "/" + foundData);
                     }
-                };
+
+                    Hashtable ht = (Hashtable) dataMap.get(foundKey);
+                    if (ht == null) {
+                        fail("couldn't find hashtable for " + foundKey);
+                    }
+                    if (ht.get(foundData) == null) {
+                        fail("couldn't find entry for " + foundKey + "/" + foundData);
+                    }
+                    ht.remove(foundData);
+                    if (ht.size() == 0) {
+                        dataMap.remove(foundKey);
+                    }
+                }
+            };
             dw.setIgnoreDataMap(true);
             dw.walkData();
             assertTrue(dataMap.size() == 0);
@@ -444,8 +394,7 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
     }
 
     @Test
-    public void testDuplicateDeleteFirst()
-        throws Throwable {
+    public void testDuplicateDeleteFirst() throws Throwable {
 
         try {
             initEnv(true);
@@ -455,88 +404,77 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
 
             /* Use the DataWalker.addedData field for a deleted Data Map. */
             DataWalker dw = new DataWalker(dataMap, deletedDataMap) {
-                    @Override
-                    void perData(String foundKey, String foundData)
-                        throws DatabaseException {
+                @Override
+                void perData(String foundKey, String foundData) throws DatabaseException {
 
-                        Hashtable ht = (Hashtable) dataMap.get(foundKey);
-                        if (ht == null) {
-                            fail("didn't find ht " +
-                                 foundKey + "/" + foundData);
-                        }
-
-                        /* Make sure keys are ascending/descending. */
-                        assertTrue(foundKey.compareTo(prevKey) >= 0);
-
-                        /*
-                         * Make sure duplicate items within key are asc/desc.
-                         */
-                        if (prevKey.equals(foundKey)) {
-                            if (duplicateComparisonFunction == null) {
-                                assertTrue(foundData.compareTo(prevData) >= 0);
-                            } else {
-                                assertTrue
-                                    (duplicateComparisonFunction.compare
-                                     (StringUtils.toUTF8(foundData),
-                                      StringUtils.toUTF8(prevData)) >= 0);
-                            }
-                            prevData = foundData;
-                        } else {
-                            prevData = "";
-                            if (cursor.count() > 1) {
-                                Hashtable delht =
-                                    (Hashtable) addedDataMap.get(foundKey);
-                                if (delht == null) {
-                                    delht = new Hashtable();
-                                    addedDataMap.put(foundKey, delht);
-                                }
-                                delht.put(foundData, foundData);
-                                assertTrue(cursor.delete() ==
-                                           OperationStatus.SUCCESS);
-
-                                if (ht.get(foundData) == null) {
-                                    fail("didn't find " +
-                                         foundKey + "/" + foundData);
-                                }
-                                ht.remove(foundData);
-                                assertEquals(ht.size(), cursor.count());
-                                if (ht.size() == 0) {
-                                    dataMap.remove(foundKey);
-                                }
-                            }
-                        }
-
-                        prevKey = foundKey;
+                    Hashtable ht = (Hashtable) dataMap.get(foundKey);
+                    if (ht == null) {
+                        fail("didn't find ht " + foundKey + "/" + foundData);
                     }
-                };
+
+                    /* Make sure keys are ascending/descending. */
+                    assertTrue(foundKey.compareTo(prevKey) >= 0);
+
+                    /*
+                     * Make sure duplicate items within key are asc/desc.
+                     */
+                    if (prevKey.equals(foundKey)) {
+                        if (duplicateComparisonFunction == null) {
+                            assertTrue(foundData.compareTo(prevData) >= 0);
+                        } else {
+                            assertTrue(duplicateComparisonFunction.compare(StringUtils.toUTF8(foundData),
+                                    StringUtils.toUTF8(prevData)) >= 0);
+                        }
+                        prevData = foundData;
+                    } else {
+                        prevData = "";
+                        if (cursor.count() > 1) {
+                            Hashtable delht = (Hashtable) addedDataMap.get(foundKey);
+                            if (delht == null) {
+                                delht = new Hashtable();
+                                addedDataMap.put(foundKey, delht);
+                            }
+                            delht.put(foundData, foundData);
+                            assertTrue(cursor.delete() == OperationStatus.SUCCESS);
+
+                            if (ht.get(foundData) == null) {
+                                fail("didn't find " + foundKey + "/" + foundData);
+                            }
+                            ht.remove(foundData);
+                            assertEquals(ht.size(), cursor.count());
+                            if (ht.size() == 0) {
+                                dataMap.remove(foundKey);
+                            }
+                        }
+                    }
+
+                    prevKey = foundKey;
+                }
+            };
             dw.setIgnoreDataMap(true);
             dw.walkData();
 
             dw = new DataWalker(dataMap, deletedDataMap) {
-                    @Override
-                    void perData(String foundKey, String foundData) {
-                        Hashtable delht =
-                            (Hashtable) addedDataMap.get(foundKey);
-                        if (delht != null &&
-                            delht.get(foundData) != null) {
-                            fail("found deleted entry for " +
-                                 foundKey + "/" + foundData);
-                        }
-
-                        Hashtable ht = (Hashtable) dataMap.get(foundKey);
-                        if (ht == null) {
-                            fail("couldn't find hashtable for " + foundKey);
-                        }
-                        if (ht.get(foundData) == null) {
-                            fail("couldn't find entry for " +
-                                 foundKey + "/" + foundData);
-                        }
-                        ht.remove(foundData);
-                        if (ht.size() == 0) {
-                            dataMap.remove(foundKey);
-                        }
+                @Override
+                void perData(String foundKey, String foundData) {
+                    Hashtable delht = (Hashtable) addedDataMap.get(foundKey);
+                    if (delht != null && delht.get(foundData) != null) {
+                        fail("found deleted entry for " + foundKey + "/" + foundData);
                     }
-                };
+
+                    Hashtable ht = (Hashtable) dataMap.get(foundKey);
+                    if (ht == null) {
+                        fail("couldn't find hashtable for " + foundKey);
+                    }
+                    if (ht.get(foundData) == null) {
+                        fail("couldn't find entry for " + foundKey + "/" + foundData);
+                    }
+                    ht.remove(foundData);
+                    if (ht.size() == 0) {
+                        dataMap.remove(foundKey);
+                    }
+                }
+            };
             dw.setIgnoreDataMap(true);
             dw.walkData();
             assertTrue(dataMap.size() == 0);
@@ -547,46 +485,41 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
     }
 
     /**
-     * Similar to above test, but there was some question about whether
-     * this tests new functionality or not.  Insert k1/d1 and d1/k1.
-     * Iterate through the data and delete k1/d1.  Reinsert k1/d1 and
-     * make sure it inserts ok.
+     * Similar to above test, but there was some question about whether this
+     * tests new functionality or not. Insert k1/d1 and d1/k1. Iterate through
+     * the data and delete k1/d1. Reinsert k1/d1 and make sure it inserts ok.
      */
     @Test
-    public void testSimpleSingleElementDupTree()
-        throws DatabaseException {
+    public void testSimpleSingleElementDupTree() throws DatabaseException {
 
         initEnv(true);
         StringDbt key = new StringDbt("k1");
         StringDbt data1 = new StringDbt("d1");
         StringDbt data2 = new StringDbt("d2");
 
-        assertEquals(OperationStatus.SUCCESS,
-                     putAndVerifyCursor(cursor, key, data1, true));
-        assertEquals(OperationStatus.SUCCESS,
-                     putAndVerifyCursor(cursor, key, data2, true));
+        assertEquals(OperationStatus.SUCCESS, putAndVerifyCursor(cursor, key, data1, true));
+        assertEquals(OperationStatus.SUCCESS, putAndVerifyCursor(cursor, key, data2, true));
 
         DataWalker dw = new DataWalker(null) {
-                @Override
-        void perData(String foundKey, String foundData)
-                    throws DatabaseException {
+            @Override
+            void perData(String foundKey, String foundData) throws DatabaseException {
 
-                    if (foundKey.equals("k1") && deletedEntries == 0) {
-                        if (cursor.delete() == OperationStatus.SUCCESS) {
-                            deletedEntries++;
-                        }
+                if (foundKey.equals("k1") && deletedEntries == 0) {
+                    if (cursor.delete() == OperationStatus.SUCCESS) {
+                        deletedEntries++;
                     }
                 }
-            };
+            }
+        };
         dw.setIgnoreDataMap(true);
         dw.walkData();
 
         dw = new DataWalker(null) {
-                @Override
-        void perData(String foundKey, String foundData) {
-                    deletedEntries++;
-                }
-            };
+            @Override
+            void perData(String foundKey, String foundData) {
+                deletedEntries++;
+            }
+        };
         dw.setIgnoreDataMap(true);
         dw.walkData();
 
@@ -594,12 +527,10 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
     }
 
     @Test
-    public void testEmptyNodes()
-        throws Throwable {
+    public void testEmptyNodes() throws Throwable {
 
         initEnv(true);
-        synchronized (DbInternal.getNonNullEnvImpl(exampleEnv).
-                      getINCompressor()) {
+        synchronized (DbInternal.getNonNullEnvImpl(exampleEnv).getINCompressor()) {
             writeEmptyNodeData();
 
             exampleEnv.compress();
@@ -607,16 +538,14 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
             Cursor cursor = exampleDb.openCursor(null, null);
             DatabaseEntry foundKey = new DatabaseEntry();
             DatabaseEntry foundData = new DatabaseEntry();
-            OperationStatus status = cursor.getFirst(foundKey, foundData,
-                                                     LockMode.DEFAULT);
+            OperationStatus status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
             cursor.close();
             assertEquals(OperationStatus.SUCCESS, status);
         }
     }
 
     @Test
-    public void testDeletedReplaySR8984()
-        throws DatabaseException {
+    public void testDeletedReplaySR8984() throws DatabaseException {
 
         initEnvTransactional(true);
         Transaction txn = exampleEnv.beginTransaction(null, null);
@@ -630,17 +559,13 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
         txn.abort();
         txn = exampleEnv.beginTransaction(null, null);
         c = exampleDb.openCursor(txn, null);
-        assertEquals(OperationStatus.NOTFOUND,
-                     c.getFirst(new DatabaseEntry(),
-                                new DatabaseEntry(),
-                                LockMode.DEFAULT));
+        assertEquals(OperationStatus.NOTFOUND, c.getFirst(new DatabaseEntry(), new DatabaseEntry(), LockMode.DEFAULT));
         c.close();
         txn.commit();
     }
 
     @Test
-    public void testDuplicateDeadlockSR9885()
-        throws DatabaseException {
+    public void testDuplicateDeadlockSR9885() throws DatabaseException {
 
         initEnvTransactional(true);
         Transaction txn = exampleEnv.beginTransaction(null, null);
@@ -652,69 +577,65 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
         txn.commit();
         sequence = new AtomicInteger(0);
 
-        JUnitThread tester1 =
-            new JUnitThread("testDuplicateDeadlock1") {
-                @Override
-                public void testBody()
-                    throws DatabaseException {
+        JUnitThread tester1 = new JUnitThread("testDuplicateDeadlock1") {
+            @Override
+            public void testBody() throws DatabaseException {
 
-                    DatabaseEntry key = new DatabaseEntry();
-                    DatabaseEntry data = new DatabaseEntry();
-                    Transaction txn1 = exampleEnv.beginTransaction(null, null);
-                    Cursor cursor1 = exampleDb.openCursor(txn1, null);
-                    try {
-                        cursor1.getFirst(key, data, LockMode.DEFAULT);
-                        sequence.incrementAndGet();
-                        while (sequence.get() < 2) {
-                            Thread.yield();
-                        }
-                        cursor1.delete();
-                        sequence.incrementAndGet();
-                        while (sequence.get() < 4) {
-                            Thread.yield();
-                        }
-
-                    } catch (LockConflictException e) {
-                    } finally {
-                        cursor1.close();
-                        txn1.abort();
-                        sequence.set(4);
+                DatabaseEntry key = new DatabaseEntry();
+                DatabaseEntry data = new DatabaseEntry();
+                Transaction txn1 = exampleEnv.beginTransaction(null, null);
+                Cursor cursor1 = exampleDb.openCursor(txn1, null);
+                try {
+                    cursor1.getFirst(key, data, LockMode.DEFAULT);
+                    sequence.incrementAndGet();
+                    while (sequence.get() < 2) {
+                        Thread.yield();
                     }
-                }
-            };
-
-        JUnitThread tester2 =
-            new JUnitThread("testDuplicateDeadlock2") {
-                @Override
-                public void testBody()
-                    throws DatabaseException {
-
-                    DatabaseEntry key = new DatabaseEntry();
-                    DatabaseEntry data = new DatabaseEntry();
-                    Transaction txn2 = exampleEnv.beginTransaction(null, null);
-                    Cursor cursor2 = exampleDb.openCursor(txn2, null);
-                    try {
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        cursor2.getLast(key, data, LockMode.DEFAULT);
-                        sequence.incrementAndGet();
-                        //cursor2.put(key,
-                        //new DatabaseEntry(StringUtils.toUTF8("d1d1d1")));
-                        cursor2.delete();
-                        sequence.incrementAndGet();
-                        while (sequence.get() < 4) {
-                            Thread.yield();
-                        }
-
-                    } catch (LockConflictException e) {
-                    } finally {
-                        cursor2.close();
-                        txn2.abort();
-                        sequence.set(4);
+                    cursor1.delete();
+                    sequence.incrementAndGet();
+                    while (sequence.get() < 4) {
+                        Thread.yield();
                     }
+
+                } catch (LockConflictException e) {
+                } finally {
+                    cursor1.close();
+                    txn1.abort();
+                    sequence.set(4);
                 }
-            };
+            }
+        };
+
+        JUnitThread tester2 = new JUnitThread("testDuplicateDeadlock2") {
+            @Override
+            public void testBody() throws DatabaseException {
+
+                DatabaseEntry key = new DatabaseEntry();
+                DatabaseEntry data = new DatabaseEntry();
+                Transaction txn2 = exampleEnv.beginTransaction(null, null);
+                Cursor cursor2 = exampleDb.openCursor(txn2, null);
+                try {
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    cursor2.getLast(key, data, LockMode.DEFAULT);
+                    sequence.incrementAndGet();
+                    //cursor2.put(key,
+                    //new DatabaseEntry(StringUtils.toUTF8("d1d1d1")));
+                    cursor2.delete();
+                    sequence.incrementAndGet();
+                    while (sequence.get() < 4) {
+                        Thread.yield();
+                    }
+
+                } catch (LockConflictException e) {
+                } finally {
+                    cursor2.close();
+                    txn2.abort();
+                    sequence.set(4);
+                }
+            }
+        };
 
         try {
             tester1.start();
@@ -722,16 +643,14 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
             tester1.finishTest();
             tester2.finishTest();
             DatabaseImpl dbImpl = DbInternal.getDbImpl(exampleDb);
-            assertTrue
-                (dbImpl.verify(new VerifyConfig(), dbImpl.getEmptyStats()));
+            assertTrue(dbImpl.verify(new VerifyConfig(), dbImpl.getEmptyStats()));
         } catch (Throwable T) {
             fail("testDuplicateDeadlock caught: " + T);
         }
     }
 
     @Test
-    public void testSR9992()
-        throws DatabaseException {
+    public void testSR9992() throws DatabaseException {
 
         initEnvTransactional(true);
         Transaction txn = exampleEnv.beginTransaction(null, null);
@@ -743,16 +662,13 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
         DatabaseEntry data = new DatabaseEntry();
         c.getCurrent(key, data, LockMode.DEFAULT);
         c.delete();
-        assertEquals(OperationStatus.KEYEMPTY,
-                     c.putCurrent
-                     (new DatabaseEntry(StringUtils.toUTF8("aaaa"))));
+        assertEquals(OperationStatus.KEYEMPTY, c.putCurrent(new DatabaseEntry(StringUtils.toUTF8("aaaa"))));
         c.close();
         txn.commit();
     }
 
     @Test
-    public void testSR9900()
-        throws DatabaseException {
+    public void testSR9900() throws DatabaseException {
 
         initEnvTransactional(true);
         Transaction txn = exampleEnv.beginTransaction(null, null);
@@ -762,15 +678,12 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
         DatabaseEntry data = new DatabaseEntry();
         c.getCurrent(key, data, LockMode.DEFAULT);
         c.delete();
-        assertEquals(OperationStatus.KEYEMPTY,
-                     c.putCurrent
-                     (new DatabaseEntry(StringUtils.toUTF8("aaaa"))));
+        assertEquals(OperationStatus.KEYEMPTY, c.putCurrent(new DatabaseEntry(StringUtils.toUTF8("aaaa"))));
         c.close();
         txn.commit();
     }
 
-    private void put(int data, int key)
-        throws DatabaseException {
+    private void put(int data, int key) throws DatabaseException {
 
         byte[] keyBytes = new byte[1];
         keyBytes[0] = (byte) (key & 0xff);
@@ -786,13 +699,11 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
 
         OperationStatus status = exampleDb.put(null, keyDbt, dataDbt);
         if (status != OperationStatus.SUCCESS) {
-            System.out.println("db.put returned " + status +
-                               " for key " + key + "/" + data);
+            System.out.println("db.put returned " + status + " for key " + key + "/" + data);
         }
     }
 
-    private void del(int key)
-        throws DatabaseException {
+    private void del(int key) throws DatabaseException {
 
         byte[] keyBytes = new byte[1];
         keyBytes[0] = (byte) (key & 0xff);
@@ -800,13 +711,11 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
 
         OperationStatus status = exampleDb.delete(null, keyDbt);
         if (status != OperationStatus.SUCCESS) {
-            System.out.println("db.del returned " + status +
-                               " for key " + key);
+            System.out.println("db.del returned " + status + " for key " + key);
         }
     }
 
-    private void delBoth(int key, int data)
-        throws DatabaseException {
+    private void delBoth(int key, int data) throws DatabaseException {
 
         byte[] keyBytes = new byte[1];
         keyBytes[0] = (byte) (key & 0xff);
@@ -817,23 +726,19 @@ public class DbCursorDuplicateDeleteTest extends DbCursorTestBase {
         DatabaseEntry dataDbt = new DatabaseEntry(dataBytes);
 
         Cursor cursor = exampleDb.openCursor(null, null);
-        OperationStatus status =
-            cursor.getSearchBoth(keyDbt, dataDbt, LockMode.DEFAULT);
+        OperationStatus status = cursor.getSearchBoth(keyDbt, dataDbt, LockMode.DEFAULT);
         if (status != OperationStatus.SUCCESS) {
-            System.out.println("getSearchBoth returned " + status +
-                               " for key " + key + "/" + data);
+            System.out.println("getSearchBoth returned " + status + " for key " + key + "/" + data);
         }
 
         status = cursor.delete();
         if (status != OperationStatus.SUCCESS) {
-            System.out.println("Dbc.delete returned " + status +
-                               " for key " + key + "/" + data);
+            System.out.println("Dbc.delete returned " + status + " for key " + key + "/" + data);
         }
         cursor.close();
     }
 
-    private void writeEmptyNodeData()
-        throws DatabaseException {
+    private void writeEmptyNodeData() throws DatabaseException {
 
         put(101, 1);
         put(102, 2);

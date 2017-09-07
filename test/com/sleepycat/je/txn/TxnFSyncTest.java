@@ -49,7 +49,7 @@ import com.sleepycat.utilint.StringUtils;
 @RunWith(Parameterized.class)
 public class TxnFSyncTest extends TxnTestCase {
 
-    private static final int NUM_RECS = 5;
+    private static final int         NUM_RECS  = 5;
 
     private static EnvironmentConfig envConfig = TestUtils.initEnvConfig();
     static {
@@ -59,27 +59,23 @@ public class TxnFSyncTest extends TxnTestCase {
 
     private static void setupEnvConfig(EnvironmentConfig envConfig) {
         envConfig.setTransactional(true);
-        envConfig.setConfigParam(
-            EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
     }
 
     @Parameters
     public static List<Object[]> genParams() {
-        return getTxnParams(
-            new String[] {TxnTestCase.TXN_USER, TxnTestCase.TXN_AUTO}, false);
+        return getTxnParams(new String[] { TxnTestCase.TXN_USER, TxnTestCase.TXN_AUTO }, false);
     }
-    
-    public TxnFSyncTest(String type){
+
+    public TxnFSyncTest(String type) {
         super.envConfig = envConfig;
         txnType = type;
         isTransactional = (txnType != TXN_NULL);
         customName = txnType;
     }
-    
 
     @Test
-    public void testFSyncButNoClose()
-        throws Exception {
+    public void testFSyncButNoClose() throws Exception {
 
         try {
             /* Create a database. */
@@ -97,21 +93,20 @@ public class TxnFSyncTest extends TxnTestCase {
                 key.setData(StringUtils.toUTF8(val.toString()));
                 data.setData(StringUtils.toUTF8(val.toString()));
 
-                assertEquals(OperationStatus.SUCCESS,
-                             db.putNoOverwrite(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, db.putNoOverwrite(txn, key, data));
             }
             txnCommit(txn);
 
             /*
-             * Now throw away this environment WITHOUT flushing the log
-             * manager. We do need to release the environment file lock
-             * and all file handles so we can recover in this test and
-             * run repeated test cases within this one test program.
+             * Now throw away this environment WITHOUT flushing the log manager.
+             * We do need to release the environment file lock and all file
+             * handles so we can recover in this test and run repeated test
+             * cases within this one test program.
              */
             EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
             envImpl.getFileManager().clear(); // release file handles
             envImpl.getFileManager().close(); // release file lock
-            envImpl.closeHandlers();  // release logging files
+            envImpl.closeHandlers(); // release logging files
             env = null;
             DbEnvPool.getInstance().clear();
 
@@ -130,8 +125,7 @@ public class TxnFSyncTest extends TxnTestCase {
                 Integer val = new Integer(i);
                 key.setData(StringUtils.toUTF8(val.toString()));
 
-                assertEquals(OperationStatus.SUCCESS,
-                             db.get(null, key, data, LockMode.DEFAULT));
+                assertEquals(OperationStatus.SUCCESS, db.get(null, key, data, LockMode.DEFAULT));
                 /* add test of data. */
             }
             db.close();

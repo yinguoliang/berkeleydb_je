@@ -45,7 +45,9 @@ import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * Test that BIN compression occurs in the various ways it is supposed to.
- * <p>These are:</p>
+ * <p>
+ * These are:
+ * </p>
  * <ul>
  * <li>transactional and non-transactional delete,</li>
  * <li>delete duplicates and non-duplicates,</li>
@@ -55,9 +57,10 @@ import com.sleepycat.util.test.SharedTestUtils;
  * <li>undo causes compression of inserted LN during abort and recovery,</li>
  * <li>redo causes compression of deleted LN during recovery,</li>
  * </ul>
- *
- * <p>Also test that compression retries occur after we attempt to compress but
- * cannot because:</p>
+ * <p>
+ * Also test that compression retries occur after we attempt to compress but
+ * cannot because:
+ * </p>
  * <ul>
  * <li>cursors are open on the BIN when the compressor dequeues them,</li>
  * <li>cursors are open when attempting to delete a sub-tree (dup and non-dup
@@ -65,39 +68,42 @@ import com.sleepycat.util.test.SharedTestUtils;
  * <li>a deleted key is locked during compression (NOT TESTED - this is very
  * difficult to reproduce),</li>
  * </ul>
- *
- * <p>Possible problem:  When we attempt to delete a subtree because the BIN is
+ * <p>
+ * Possible problem: When we attempt to delete a subtree because the BIN is
  * empty, we give up when NodeNotEmptyException is thrown by the search.
  * However, this is thrown not only when entries have been added but also when
  * there are cursors on the BIN; it seems like we should retry in the latter
- * case.  Or is it impossible to have a cursor on an empty BIN?</p>
- *
- * <p>We do not test here the last ditch effort to compress to make room in
- * IN.insertEntry1; that should never happen in theory, so I don't think it
- * is worthwhile to try to reproduce it.</p>
- *
- * <p>Note that when this test is run in replicated mode, for some reason
- * there are deleted FileSummaryDB LNs, causing BINs in the compressor queue,
- * and this throws off the test assertions. The brute force workaround here is
- * to call env.compress() one extra time in replicated mode.</p>
+ * case. Or is it impossible to have a cursor on an empty BIN?
+ * </p>
+ * <p>
+ * We do not test here the last ditch effort to compress to make room in
+ * IN.insertEntry1; that should never happen in theory, so I don't think it is
+ * worthwhile to try to reproduce it.
+ * </p>
+ * <p>
+ * Note that when this test is run in replicated mode, for some reason there are
+ * deleted FileSummaryDB LNs, causing BINs in the compressor queue, and this
+ * throws off the test assertions. The brute force workaround here is to call
+ * env.compress() one extra time in replicated mode.
+ * </p>
  */
 public class INCompressorTest extends DualTestCase {
-    
+
     private static final CheckpointConfig forceConfig;
     static {
         forceConfig = new CheckpointConfig();
         forceConfig.setForce(true);
     }
-    private final File envHome;
-    private Environment env;
-    private Database db;
-    private IN in;
-    private BIN bin;
+    private final File    envHome;
+    private Environment   env;
+    private Database      db;
+    private IN            in;
+    private BIN           bin;
     /* Use high keys since we fill the first BIN with low keys. */
-    private DatabaseEntry entry0 = new DatabaseEntry(new byte[] {0});
-    private DatabaseEntry entry1 = new DatabaseEntry(new byte[] {1});
-    private DatabaseEntry entry2 = new DatabaseEntry(new byte[] {2});
-    private DatabaseEntry keyFound = new DatabaseEntry();
+    private DatabaseEntry entry0    = new DatabaseEntry(new byte[] { 0 });
+    private DatabaseEntry entry1    = new DatabaseEntry(new byte[] { 1 });
+    private DatabaseEntry entry2    = new DatabaseEntry(new byte[] { 2 });
+    private DatabaseEntry keyFound  = new DatabaseEntry();
     private DatabaseEntry dataFound = new DatabaseEntry();
 
     public INCompressorTest() {
@@ -105,8 +111,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         super.tearDown();
 
@@ -116,8 +121,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testDeleteTransactional()
-        throws DatabaseException {
+    public void testDeleteTransactional() throws DatabaseException {
 
         /* Transactional no-dups, 2 keys. */
         openAndInit(true, false);
@@ -156,8 +160,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testDeleteTransactionalWithBinDeltas()
-        throws DatabaseException {
+    public void testDeleteTransactionalWithBinDeltas() throws DatabaseException {
 
         /* Transactional no-dups, 2 keys, binDeltas. */
         openAndInit(true, false, true);
@@ -212,11 +215,10 @@ public class INCompressorTest extends DualTestCase {
 
     /**
      * Ensures that deleted slots are re-inserted into a BIN when applying a
-     * delta.  [#20737]
+     * delta. [#20737]
      */
     @Test
-    public void testDeleteEvictFetchWithBinDeltas()
-        throws DatabaseException {
+    public void testDeleteEvictFetchWithBinDeltas() throws DatabaseException {
 
         /* Transactional no-dups, 2 keys, binDeltas. */
         openAndInit(true, false, true);
@@ -243,8 +245,7 @@ public class INCompressorTest extends DualTestCase {
 
         /* Evict BIN which should log delta. */
         bin.latch(CacheMode.UNCHANGED);
-        DbInternal.getNonNullEnvImpl(env).getEvictor().doTestEvict
-            (bin, EvictionSource.CACHEMODE);
+        DbInternal.getNonNullEnvImpl(env).getEvictor().doTestEvict(bin, EvictionSource.CACHEMODE);
 
         /* Fetch BIN which should not delete slot when applying delta. */
         cursor = db.openCursor(txn, null);
@@ -261,8 +262,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testDeleteNonTransactional()
-        throws DatabaseException {
+    public void testDeleteNonTransactional() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys. */
         openAndInit(false, false);
@@ -295,8 +295,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testDeleteNonTransactionalWithBinDeltas()
-        throws DatabaseException {
+    public void testDeleteNonTransactionalWithBinDeltas() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys, binDeltas. */
         openAndInit(false, false, true);
@@ -343,8 +342,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testDeleteDuplicate()
-        throws DatabaseException {
+    public void testDeleteDuplicate() throws DatabaseException {
 
         /* Non-transactional dups, 3 two-part keys. */
         openAndInit(false, true);
@@ -378,8 +376,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testRemoveEmptyBIN()
-        throws DatabaseException {
+    public void testRemoveEmptyBIN() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys. */
         openAndInit(false, false);
@@ -416,8 +413,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testRemoveEmptyBINWithBinDeltas()
-        throws DatabaseException {
+    public void testRemoveEmptyBINWithBinDeltas() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys, binDeltas. */
         openAndInit(false, false, true);
@@ -451,7 +447,7 @@ public class INCompressorTest extends DualTestCase {
         /*
          * A second deletion will be queued, since we should not log a delta.
          * But it is not queued until cursor moves/closes, i.e., releases its
-         * locks.  The same thing would apply to a txn commit.
+         * locks. The same thing would apply to a txn commit.
          */
         status = cursor.delete();
         assertEquals(OperationStatus.SUCCESS, status);
@@ -480,8 +476,7 @@ public class INCompressorTest extends DualTestCase {
      * DBINs are no longer used, but this test is retained for good measure.
      */
     @Test
-    public void testRemoveEmptyDBIN()
-        throws DatabaseException {
+    public void testRemoveEmptyDBIN() throws DatabaseException {
 
         /* Non-transactional dups, 3 two-part keys. */
         openAndInit(false, true);
@@ -519,8 +514,7 @@ public class INCompressorTest extends DualTestCase {
      * DBINs are no longer used, but this test is retained for good measure.
      */
     @Test
-    public void testRemoveEmptyDBINandBIN()
-        throws DatabaseException {
+    public void testRemoveEmptyDBINandBIN() throws DatabaseException {
 
         /* Non-transactional dups, 3 two-part keys. */
         openAndInit(false, true);
@@ -568,8 +562,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testAbortInsert()
-        throws DatabaseException {
+    public void testAbortInsert() throws DatabaseException {
 
         /* Transactional no-dups, 2 keys. */
         openAndInit(true, false);
@@ -600,8 +593,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testAbortInsertWithBinDeltas()
-        throws DatabaseException {
+    public void testAbortInsertWithBinDeltas() throws DatabaseException {
 
         /* Transactional no-dups, 2 keys, binDeltas. */
         openAndInit(true, false, true);
@@ -655,8 +647,7 @@ public class INCompressorTest extends DualTestCase {
      * DBINs are no longer used, but this test is retained for good measure.
      */
     @Test
-    public void testAbortInsertDuplicate()
-        throws DatabaseException {
+    public void testAbortInsertDuplicate() throws DatabaseException {
 
         /* Transactional dups, 3 two-part keys. */
         openAndInit(true, true);
@@ -687,8 +678,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testRollBackInsert()
-        throws DatabaseException {
+    public void testRollBackInsert() throws DatabaseException {
 
         /* Transactional no-dups, 2 keys. */
         openAndInit(true, false);
@@ -721,8 +711,8 @@ public class INCompressorTest extends DualTestCase {
         initInternalNodes();
 
         /*
-         * In replicated tests, we expect 64 BINs. In non-replicated tests, 
-         * there should be 2. 
+         * In replicated tests, we expect 64 BINs. In non-replicated tests,
+         * there should be 2.
          */
         if (isReplicatedTest(getClass())) {
             checkBinEntriesAndCursors(bin, 64, 0);
@@ -741,8 +731,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testRollBackInsertWithBinDeltas()
-        throws DatabaseException {
+    public void testRollBackInsertWithBinDeltas() throws DatabaseException {
 
         /* Transactional no-dups, 2 keys, binDeltas. */
         openAndInit(true, false, true);
@@ -784,8 +773,8 @@ public class INCompressorTest extends DualTestCase {
         checkINCompQueueSize(0);
 
         /*
-         * Shutdown and reopen to run recovery. The checkpoint will not
-         * compress because deltas are logged.
+         * Shutdown and reopen to run recovery. The checkpoint will not compress
+         * because deltas are logged.
          */
         db.close();
         closeNoCheckpoint(env);
@@ -819,8 +808,7 @@ public class INCompressorTest extends DualTestCase {
      * DBINs are no longer used, but this test is retained for good measure.
      */
     @Test
-    public void testRollBackInsertDuplicate()
-        throws DatabaseException {
+    public void testRollBackInsertDuplicate() throws DatabaseException {
 
         /* Transactional dups, 3 two-keys. */
         openAndInit(true, true);
@@ -844,8 +832,8 @@ public class INCompressorTest extends DualTestCase {
         checkBinEntriesAndCursors(bin, 4, 0);
 
         /*
-         * Shutdown and reopen to run recovery. The checkpoint will not
-         * compress because deltas are logged.
+         * Shutdown and reopen to run recovery. The checkpoint will not compress
+         * because deltas are logged.
          */
         db.close();
         closeNoCheckpoint(env);
@@ -853,8 +841,8 @@ public class INCompressorTest extends DualTestCase {
         openEnv(true, true);
         initInternalNodes();
 
-        /* 
-         * In replicated tests, we expect 64 BINs. In non-replicated tests, 
+        /*
+         * In replicated tests, we expect 64 BINs. In non-replicated tests,
          * there should be 2.
          */
         if (isReplicatedTest(getClass())) {
@@ -876,8 +864,7 @@ public class INCompressorTest extends DualTestCase {
     }
 
     @Test
-    public void testRollForwardDelete()
-        throws DatabaseException {
+    public void testRollForwardDelete() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys. */
         openAndInit(false, false);
@@ -925,8 +912,7 @@ public class INCompressorTest extends DualTestCase {
      * DBINs are no longer used, but this test is retained for good measure.
      */
     @Test
-    public void testRollForwardDeleteDuplicate()
-        throws DatabaseException {
+    public void testRollForwardDeleteDuplicate() throws DatabaseException {
 
         /* Non-transactional dups, 3 two-part keys. */
         openAndInit(false, true);
@@ -973,11 +959,10 @@ public class INCompressorTest extends DualTestCase {
 
     /**
      * Test that we can handle cases where lazy compression runs first, but the
-     * daemon handles pruning.  Testing against BINs.
+     * daemon handles pruning. Testing against BINs.
      */
     @Test
-    public void testLazyPruning()
-        throws DatabaseException {
+    public void testLazyPruning() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys. */
         openAndInit(false, false);
@@ -994,12 +979,11 @@ public class INCompressorTest extends DualTestCase {
 
     /**
      * Test that we can handle cases where lazy compression runs first, but the
-     * daemon handles pruning.  Testing against DBINs.  [#11778]
-     * DBINs are no longer used, but this test is retained for good measure.
+     * daemon handles pruning. Testing against DBINs. [#11778] DBINs are no
+     * longer used, but this test is retained for good measure.
      */
     @Test
-    public void testLazyPruningDups()
-        throws DatabaseException {
+    public void testLazyPruningDups() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys. */
         openAndInit(false, true);
@@ -1017,14 +1001,12 @@ public class INCompressorTest extends DualTestCase {
     }
 
     /**
-     * Scan over an empty DBIN.  [#11778]
-     *
-     * WARNING: This test no longer tests the situation it originally intended,
-     * since DBINs and DBINs are obsolete, but it is left intact for posterity.
+     * Scan over an empty DBIN. [#11778] WARNING: This test no longer tests the
+     * situation it originally intended, since DBINs and DBINs are obsolete, but
+     * it is left intact for posterity.
      */
     @Test
-    public void testEmptyInitialDBINScan()
-        throws DatabaseException {
+    public void testEmptyInitialDBINScan() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys. */
         openAndInit(false, true);
@@ -1032,10 +1014,10 @@ public class INCompressorTest extends DualTestCase {
         deleteAndLazyCompress(true);
 
         /*
-         * Have IN with two entries, first entry is BIN with 1 entry.  That
-         * entry is DIN with 1 entry.  That entry is a DBIN with 0 entries.
-         * Position the cursor at the first entry so that we move over that
-         * zero-entry DBIN.
+         * Have IN with two entries, first entry is BIN with 1 entry. That entry
+         * is DIN with 1 entry. That entry is a DBIN with 0 entries. Position
+         * the cursor at the first entry so that we move over that zero-entry
+         * DBIN.
          */
         Cursor cursor = db.openCursor(null, null);
         OperationStatus status = cursor.getFirst(keyFound, dataFound, null);
@@ -1046,12 +1028,11 @@ public class INCompressorTest extends DualTestCase {
     }
 
     /**
-     * Scan over an empty BIN.  This looks very similar to
+     * Scan over an empty BIN. This looks very similar to
      * com.sleepycat.je.test.SR11297Test. [#11778]
      */
     @Test
-    public void testEmptyInitialBINScan()
-        throws DatabaseException {
+    public void testEmptyInitialBINScan() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys. */
         openAndInit(false, false);
@@ -1059,9 +1040,9 @@ public class INCompressorTest extends DualTestCase {
         deleteAndLazyCompress(false);
 
         /*
-         * Have IN with two entries, first entry is BIN with 0 entries.
-         * Position the cursor at the first entry so that we move over that
-         * zero-entry BIN.
+         * Have IN with two entries, first entry is BIN with 0 entries. Position
+         * the cursor at the first entry so that we move over that zero-entry
+         * BIN.
          */
         Cursor cursor = db.openCursor(null, null);
         OperationStatus status = cursor.getFirst(keyFound, dataFound, null);
@@ -1076,8 +1057,7 @@ public class INCompressorTest extends DualTestCase {
      * daemon handles pruning.
      */
     @Test
-    public void testNodeNotEmpty()
-        throws DatabaseException {
+    public void testNodeNotEmpty() throws DatabaseException {
 
         /* Non-transactional no-dups, 2 keys. */
         openAndInit(false, false);
@@ -1101,8 +1081,7 @@ public class INCompressorTest extends DualTestCase {
     /* Todo: Check cursor movement across an empty bin. */
 
     /* Delete all records from the first bin and invoke lazy compression. */
-    private void deleteAndLazyCompress(boolean doDups)
-        throws DatabaseException {
+    private void deleteAndLazyCompress(boolean doDups) throws DatabaseException {
 
         /* Position the cursor at the first BIN and delete both keys. */
         Cursor cursor = db.openCursor(null, null);
@@ -1139,9 +1118,7 @@ public class INCompressorTest extends DualTestCase {
     /**
      * Checks for expected entry and cursor counts on the given BIN.
      */
-    private void checkBinEntriesAndCursors(BIN checkBin,
-                                           int nEntries,
-                                           int nCursors) {
+    private void checkBinEntriesAndCursors(BIN checkBin, int nEntries, int nCursors) {
         assertEquals("nEntries", nEntries, checkBin.getNEntries());
         assertEquals("nCursors", nCursors, checkBin.nCursors());
     }
@@ -1150,33 +1127,31 @@ public class INCompressorTest extends DualTestCase {
      * Check expected size of the INCompressor queue.
      */
     private void checkINCompQueueSize(int expected) {
-        assertEquals(expected,
-           DbInternal.getNonNullEnvImpl(env).getINCompressorQueueSize());
+        assertEquals(expected, DbInternal.getNonNullEnvImpl(env).getINCompressorQueueSize());
     }
 
     private void openAndInit(boolean transactional, boolean dups) {
-        openAndInit(transactional, dups, false /*binDeltas*/);
+        openAndInit(transactional, dups, false /* binDeltas */);
     }
 
     /**
      * Opens the environment and db and writes 2 records (3 if dups are used).
-     *
-     * <p>Without dups: {0,0}, {1,0}. This gives two LNs in the BIN.</p>
-     *
-     * <p>With dups: {0,0}, {0,1}, {1,0}. This gives three LNs in the BIN.</p>
+     * <p>
+     * Without dups: {0,0}, {1,0}. This gives two LNs in the BIN.
+     * </p>
+     * <p>
+     * With dups: {0,0}, {0,1}, {1,0}. This gives three LNs in the BIN.
+     * </p>
      */
-    private void openAndInit(boolean transactional,
-                             boolean dups,
-                             boolean binDeltas)
-        throws DatabaseException {
+    private void openAndInit(boolean transactional, boolean dups, boolean binDeltas) throws DatabaseException {
 
         openEnv(transactional, dups, binDeltas);
 
         /*
-         * We need at least 2 BINs, otherwise empty BINs won't be deleted.  So
-         * we add keys until the BIN splits, then delete everything in the
-         * first BIN except the first two keys.  Those are the keys we'll use
-         * for testing, and are key values 0 and 1.
+         * We need at least 2 BINs, otherwise empty BINs won't be deleted. So we
+         * add keys until the BIN splits, then delete everything in the first
+         * BIN except the first two keys. Those are the keys we'll use for
+         * testing, and are key values 0 and 1.
          */
         BIN firstBin = null;
         OperationStatus status;
@@ -1200,8 +1175,7 @@ public class INCompressorTest extends DualTestCase {
                 while (firstBin.getNEntries() > 2) {
                     cursor = db.openCursor(null, null);
                     keyFound.setData(entry2.getData());
-                    status =
-                        cursor.getSearchKeyRange(keyFound, dataFound, null);
+                    status = cursor.getSearchKeyRange(keyFound, dataFound, null);
                     assertEquals(OperationStatus.SUCCESS, status);
                     cursor.close();
                     status = db.delete(null, keyFound);
@@ -1230,46 +1204,38 @@ public class INCompressorTest extends DualTestCase {
     /**
      * Initialize IN, BIN.
      */
-    private void initInternalNodes()
-        throws DatabaseException {
+    private void initInternalNodes() throws DatabaseException {
 
         /* Find the BIN. */
         Cursor cursor = db.openCursor(null, null);
-        OperationStatus status =
-            cursor.getFirst(keyFound, dataFound, LockMode.READ_UNCOMMITTED);
+        OperationStatus status = cursor.getFirst(keyFound, dataFound, LockMode.READ_UNCOMMITTED);
         assertEquals(OperationStatus.SUCCESS, status);
         bin = DbInternal.getCursorImpl(cursor).getBIN();
         cursor.close();
 
         /* Find the IN parent of the BIN. */
         bin.latch();
-        in = DbInternal.getDbImpl(db).getTree().getParentINForChildIN(
-            bin, false, /*useTargetLevel*/
-            true, /*doFetch*/ CacheMode.DEFAULT).parent;
+        in = DbInternal.getDbImpl(db).getTree().getParentINForChildIN(bin, false, /* useTargetLevel */
+                true, /* doFetch */ CacheMode.DEFAULT).parent;
         assertNotNull(in);
         in.releaseLatch();
     }
 
     private void openEnv(boolean transactional, boolean dups) {
-        openEnv(transactional, dups, false /*binDeltas*/);
+        openEnv(transactional, dups, false /* binDeltas */);
     }
 
     /**
      * Opens the environment and db.
      */
-    private void openEnv(boolean transactional,
-                         boolean dups,
-                         boolean binDeltas)
-        throws DatabaseException {
+    private void openEnv(boolean transactional, boolean dups, boolean binDeltas) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(transactional);
-        envConfig.setConfigParam
-            (EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         if (binDeltas) {
             /* Enable deltas when only 1/2 records are modified. */
-            envConfig.setConfigParam
-                (EnvironmentConfig.TREE_BIN_DELTA, "60");
+            envConfig.setConfigParam(EnvironmentConfig.TREE_BIN_DELTA, "60");
         }
         envConfig.setAllowCreate(true);
         env = create(envHome, envConfig);
@@ -1285,8 +1251,7 @@ public class INCompressorTest extends DualTestCase {
     /**
      * Closes the db and environment.
      */
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         db.close();
         db = null;

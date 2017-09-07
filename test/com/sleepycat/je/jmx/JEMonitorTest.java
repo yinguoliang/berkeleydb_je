@@ -36,25 +36,22 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * @excludeDualMode
- *
- * Instantiate and exercise the JEMonitor.
+ * @excludeDualMode Instantiate and exercise the JEMonitor.
  */
 public class JEMonitorTest extends TestBase {
 
     private static final boolean DEBUG = false;
-    private File envHome;
+    private File                 envHome;
 
     public JEMonitorTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     /**
-     * Test JEMonitor's attributes getters. 
+     * Test JEMonitor's attributes getters.
      */
     @Test
-    public void testGetters()
-        throws Throwable {
+    public void testGetters() throws Throwable {
 
         Environment env = null;
         try {
@@ -81,14 +78,14 @@ public class JEMonitorTest extends TestBase {
             if (env != null) {
                 env.close();
             }
-            
+
             throw t;
         }
     }
 
-    /* 
-     * Create a DynamicMBean with the assigned standalone or replicated 
-     * Environment. 
+    /*
+     * Create a DynamicMBean with the assigned standalone or replicated
+     * Environment.
      */
     protected DynamicMBean createMBean(Environment env) {
         return new JEMonitor(env);
@@ -98,8 +95,7 @@ public class JEMonitorTest extends TestBase {
      * Test JEMonitor's attributes setters.
      */
     @Test
-    public void testSetters()
-        throws Throwable {
+    public void testSetters() throws Throwable {
 
         Environment env = null;
         try {
@@ -111,27 +107,17 @@ public class JEMonitorTest extends TestBase {
             DynamicMBean mbean = createMBean(env);
 
             /*
-             * Try setting different attributes. Check against the
-             * initial value, and the value after setting.
+             * Try setting different attributes. Check against the initial
+             * value, and the value after setting.
              */
             EnvironmentConfig config = env.getConfig();
             Class configClass = config.getClass();
 
-            Method getCacheSize =
-                configClass.getMethod("getCacheSize", (Class[]) null);
-            checkAttribute(env,
-                           mbean,
-                           getCacheSize,
-                           JEMBeanHelper.ATT_CACHE_SIZE,
-                           new Long(100000)); // new value
+            Method getCacheSize = configClass.getMethod("getCacheSize", (Class[]) null);
+            checkAttribute(env, mbean, getCacheSize, JEMBeanHelper.ATT_CACHE_SIZE, new Long(100000)); // new value
 
-            Method getCachePercent =
-                configClass.getMethod("getCachePercent", (Class[]) null);
-            checkAttribute(env,
-                           mbean,
-                           getCachePercent,
-                           JEMBeanHelper.ATT_CACHE_PERCENT,
-                           new Integer(10));
+            Method getCachePercent = configClass.getMethod("getCachePercent", (Class[]) null);
+            checkAttribute(env, mbean, getCachePercent, JEMBeanHelper.ATT_CACHE_PERCENT, new Integer(10));
             env.close();
 
             MBeanTestUtils.checkForNoOpenHandles(environmentDir);
@@ -150,8 +136,7 @@ public class JEMonitorTest extends TestBase {
      * Test correction of JEMonitor's operations invocation.
      */
     @Test
-    public void testOperations()
-        throws Throwable {
+    public void testOperations() throws Throwable {
 
         Environment env = null;
         try {
@@ -164,24 +149,22 @@ public class JEMonitorTest extends TestBase {
             } else {
                 opNum = 10;
             }
-            MBeanTestUtils.validateMBeanOperations
-                (mbean, opNum, true, null, null, DEBUG);
+            MBeanTestUtils.validateMBeanOperations(mbean, opNum, true, null, null, DEBUG);
 
             /*
-             * Getting database stats against a non-existing db ought to
-             * throw an exception.
+             * Getting database stats against a non-existing db ought to throw
+             * an exception.
              */
             try {
-                MBeanTestUtils.validateMBeanOperations
-                    (mbean, opNum, true, "bozo", null, DEBUG);
+                MBeanTestUtils.validateMBeanOperations(mbean, opNum, true, "bozo", null, DEBUG);
                 fail("Should not have run stats on a non-existent db");
             } catch (MBeanException expected) {
                 // ignore
             }
 
             /*
-             * Make sure the vanilla db open within the helper can open
-             * a db created with a non-default configuration.
+             * Make sure the vanilla db open within the helper can open a db
+             * created with a non-default configuration.
              */
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setAllowCreate(true);
@@ -193,8 +176,7 @@ public class JEMonitorTest extends TestBase {
             IntegerBinding.intToEntry(1, entry);
             db.put(null, entry, entry);
 
-            MBeanTestUtils.validateMBeanOperations
-                (mbean, opNum, true, "bozo", new String[] {"bozo"}, DEBUG);
+            MBeanTestUtils.validateMBeanOperations(mbean, opNum, true, "bozo", new String[] { "bozo" }, DEBUG);
             db.close();
             env.close();
 
@@ -205,8 +187,7 @@ public class JEMonitorTest extends TestBase {
             if (!this.getClass().getName().contains("rep")) {
                 env = openEnv(false);
                 mbean = createMBean(env);
-                MBeanTestUtils.validateMBeanOperations
-                    (mbean, 7, true, null, null, DEBUG);
+                MBeanTestUtils.validateMBeanOperations(mbean, 7, true, null, null, DEBUG);
                 env.close();
             }
 
@@ -221,12 +202,9 @@ public class JEMonitorTest extends TestBase {
     }
 
     /* Check the correction of JEMonitor's attributes. */
-    private void checkAttribute(Environment env,
-                                DynamicMBean mbean,
-                                Method configMethod,
-                                String attributeName,
+    private void checkAttribute(Environment env, DynamicMBean mbean, Method configMethod, String attributeName,
                                 Object newValue)
-        throws Exception {
+            throws Exception {
 
         /* Check starting value. */
         EnvironmentConfig config = env.getConfig();
@@ -238,8 +216,7 @@ public class JEMonitorTest extends TestBase {
 
         /* check present environment config. */
         config = env.getConfig();
-        assertEquals(newValue.toString(),
-                     configMethod.invoke(config, (Object[]) null).toString());
+        assertEquals(newValue.toString(), configMethod.invoke(config, (Object[]) null).toString());
 
         /* check through mbean. */
         Object mbeanNewValue = mbean.getAttribute(attributeName);
@@ -247,12 +224,11 @@ public class JEMonitorTest extends TestBase {
     }
 
     /**
-     * Checks that all parameters and return values are Serializable to
-     * support JMX over RMI.
+     * Checks that all parameters and return values are Serializable to support
+     * JMX over RMI.
      */
     @Test
-    public void testSerializable()
-        throws Exception {
+    public void testSerializable() throws Exception {
 
         /* Create and close the environment. */
         Environment env = openEnv(true);
@@ -267,8 +243,7 @@ public class JEMonitorTest extends TestBase {
     /*
      * Helper to open an environment.
      */
-    protected Environment openEnv(boolean openTransactionally)
-        throws Exception {
+    protected Environment openEnv(boolean openTransactionally) throws Exception {
 
         return MBeanTestUtils.openTxnalEnv(openTransactionally, envHome);
     }

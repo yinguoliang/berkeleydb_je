@@ -51,16 +51,13 @@ import com.sleepycat.util.test.SharedTestUtils;
 public class TxnTimeoutTest extends DualTestCase {
 
     private Environment env;
-    private File envHome;
+    private File        envHome;
 
     public TxnTimeoutTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
-    private void createEnv(boolean setTimeout,
-                           long txnTimeoutVal,
-                           long lockTimeoutVal)
-        throws DatabaseException {
+    private void createEnv(boolean setTimeout, long txnTimeoutVal, long lockTimeoutVal) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
@@ -73,8 +70,7 @@ public class TxnTimeoutTest extends DualTestCase {
         env = create(envHome, envConfig);
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         close(env);
         env = null;
@@ -84,8 +80,7 @@ public class TxnTimeoutTest extends DualTestCase {
      * Test timeout set at txn level.
      */
     @Test
-    public void testTxnTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testTxnTimeout() throws DatabaseException, InterruptedException {
 
         createEnv(false, 0, 0);
 
@@ -99,7 +94,7 @@ public class TxnTimeoutTest extends DualTestCase {
 
         /* Now make a second txn so we can induce some blocking. */
         Transaction txnB = env.beginTransaction(null, null);
-        txnB.setTxnTimeout(300000);  // microseconds
+        txnB.setTxnTimeout(300000); // microseconds
         txnB.setLockTimeout(9000000);
         Thread.sleep(400);
 
@@ -145,8 +140,7 @@ public class TxnTimeoutTest extends DualTestCase {
      * Use Txn.setTimeout(), expect a txn timeout.
      */
     @Test
-    public void testPerTxnTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testPerTxnTimeout() throws DatabaseException, InterruptedException {
 
         doEnvTimeout(false, true, true, 300000, 9000000, false);
     }
@@ -155,8 +149,7 @@ public class TxnTimeoutTest extends DualTestCase {
      * Use EnvironmentConfig.setTxnTimeout(), expect a txn timeout.
      */
     @Test
-    public void testEnvTxnTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testEnvTxnTimeout() throws DatabaseException, InterruptedException {
 
         doEnvTimeout(true, true, true, 300000, 9000000, false);
     }
@@ -166,8 +159,7 @@ public class TxnTimeoutTest extends DualTestCase {
      * EnvironmentConfig.setLockTimeout(0), expect a txn timeout.
      */
     @Test
-    public void testEnvNoLockTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testEnvNoLockTimeout() throws DatabaseException, InterruptedException {
 
         doEnvTimeout(true, true, true, 300000, 0, false);
     }
@@ -176,8 +168,7 @@ public class TxnTimeoutTest extends DualTestCase {
      * Use Txn.setLockTimeout(), expect a lock timeout.
      */
     @Test
-    public void testPerLockTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testPerLockTimeout() throws DatabaseException, InterruptedException {
 
         doEnvTimeout(false, false, true, 0, 100000, true);
     }
@@ -187,29 +178,24 @@ public class TxnTimeoutTest extends DualTestCase {
      * EnvironmentConfig.setLockTimeout(xxx), expect a lcok timeout.
      */
     @Test
-    public void testEnvLockTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testEnvLockTimeout() throws DatabaseException, InterruptedException {
 
         doEnvTimeout(true, false, true, 0, 100000, true);
     }
 
     /**
-     * @param setEnvConfigTimeout
-     * if true, use EnvironmentConfig.set{Lock,Txn}Timeout
+     * @param setEnvConfigTimeout if true, use
+     *            EnvironmentConfig.set{Lock,Txn}Timeout
      * @param setPerTxnTimeout if true, use Txn.setTxnTimeout()
      * @param setPerLockTimeout if true, use Txn.setLockTimeout()
      * @param txnTimeout value for txn timeout
      * @param lockTimeout value for lock timeout
      * @param expectLockException if true, expect a LockTimoutException, if
-     * false, expect a TxnTimeoutException
+     *            false, expect a TxnTimeoutException
      */
-    private void doEnvTimeout(boolean setEnvConfigTimeout,
-                              boolean setPerTxnTimeout,
-                              boolean setPerLockTimeout,
-                              long txnTimeout,
-                              long lockTimeout,
-                              boolean expectLockException)
-        throws DatabaseException, InterruptedException {
+    private void doEnvTimeout(boolean setEnvConfigTimeout, boolean setPerTxnTimeout, boolean setPerLockTimeout,
+                              long txnTimeout, long lockTimeout, boolean expectLockException)
+            throws DatabaseException, InterruptedException {
 
         createEnv(setEnvConfigTimeout, txnTimeout, lockTimeout);
 
@@ -220,8 +206,8 @@ public class TxnTimeoutTest extends DualTestCase {
         Database dbA = env.openDatabase(txnA, "foo", dbConfig);
 
         /*
-         * Now make a second txn so we can induce some blocking. Make the
-         * txn timeout environment wide.
+         * Now make a second txn so we can induce some blocking. Make the txn
+         * timeout environment wide.
          */
         Transaction txnB = env.beginTransaction(null, null);
         long expectTxnTimeoutMillis;
@@ -252,8 +238,7 @@ public class TxnTimeoutTest extends DualTestCase {
         } catch (LockConflictException e) {
             if (expectLockException) {
                 assertLockTimeout(e);
-                assertEquals(expectLockTimeoutMillis,
-                             e.getTimeoutMillis());
+                assertEquals(expectLockTimeoutMillis, e.getTimeoutMillis());
             } else {
                 assertTxnTimeout(e);
                 assertEquals(expectTxnTimeoutMillis, e.getTimeoutMillis());
@@ -276,16 +261,15 @@ public class TxnTimeoutTest extends DualTestCase {
      * Use Locker.setTxnTimeout(), expect a lock timeout.
      */
     @Test
-    public void testPerLockerTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testPerLockerTimeout() throws DatabaseException, InterruptedException {
 
         createEnv(true, 500000000, 0);
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
         /*
-         * Create our Locker object and set the transaction timeout to 0.
-         * 0 should mean no timeout per berkeley API docs).
+         * Create our Locker object and set the transaction timeout to 0. 0
+         * should mean no timeout per berkeley API docs).
          */
         Locker locker = BasicLocker.createBasicLocker(envImpl);
         locker.setTxnTimeout(0);
@@ -310,9 +294,7 @@ public class TxnTimeoutTest extends DualTestCase {
             locker.setTxnTimeout(-1000);
             fail("should get an exception");
         } catch (IllegalArgumentException ie) {
-            assertTrue(ie.
-                       getMessage().
-                       contains("the timeout value cannot be negative"));
+            assertTrue(ie.getMessage().contains("the timeout value cannot be negative"));
         } catch (Exception e) {
             e.printStackTrace();
             fail("Should not get another kind of exception");
@@ -328,8 +310,7 @@ public class TxnTimeoutTest extends DualTestCase {
             locker.setTxnTimeout(timeout);
             fail("should get an exception");
         } catch (IllegalArgumentException ie) {
-            assertTrue(ie.getMessage().contains
-                    ("the timeout value cannot be greater than 2^32"));
+            assertTrue(ie.getMessage().contains("the timeout value cannot be greater than 2^32"));
         } catch (Exception e) {
             e.printStackTrace();
             fail("Should not get another kind of exception");
@@ -339,25 +320,22 @@ public class TxnTimeoutTest extends DualTestCase {
     }
 
     @Test
-    public void testReadCommittedTxnTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testReadCommittedTxnTimeout() throws DatabaseException, InterruptedException {
 
         doReadCommittedTimeout(true);
     }
 
     @Test
-    public void testReadCommittedLockTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testReadCommittedLockTimeout() throws DatabaseException, InterruptedException {
 
         doReadCommittedTimeout(false);
     }
 
     /**
      * Tests that Transaction.setTxnTimeout and setLockTimeout work with the
-     * BuddyLocker used for ReadCommitted reads.  [#16017]
+     * BuddyLocker used for ReadCommitted reads. [#16017]
      */
-    private void doReadCommittedTimeout(boolean useTxnTimeout)
-        throws DatabaseException, InterruptedException {
+    private void doReadCommittedTimeout(boolean useTxnTimeout) throws DatabaseException, InterruptedException {
 
         createEnv(false, 0, 0);
 
@@ -423,15 +401,13 @@ public class TxnTimeoutTest extends DualTestCase {
     }
 
     @Test
-    public void testSerializableTxnTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testSerializableTxnTimeout() throws DatabaseException, InterruptedException {
 
         doSerializableTimeout(true);
     }
 
     @Test
-    public void testSerializableLockTimeout()
-        throws DatabaseException, InterruptedException {
+    public void testSerializableLockTimeout() throws DatabaseException, InterruptedException {
 
         doSerializableTimeout(false);
     }
@@ -440,8 +416,7 @@ public class TxnTimeoutTest extends DualTestCase {
      * Tests that Transaction.setTxnTimeout and setLockTimeout work with the
      * BuddyLocker used for Serializable inserts. [#16017]
      */
-    private void doSerializableTimeout(boolean useTxnTimeout)
-        throws DatabaseException, InterruptedException {
+    private void doSerializableTimeout(boolean useTxnTimeout) throws DatabaseException, InterruptedException {
 
         createEnv(false, 0, 0);
 
@@ -508,8 +483,7 @@ public class TxnTimeoutTest extends DualTestCase {
     }
 
     @Test
-    public void testImportunateOperations()
-        throws DatabaseException {
+    public void testImportunateOperations() throws DatabaseException {
 
         createEnv(false, 0, 0);
 
@@ -548,8 +522,7 @@ public class TxnTimeoutTest extends DualTestCase {
             assertTrue(txnA.isValid());
             key.setData(new byte[1]);
             try {
-                assertEquals(OperationStatus.SUCCESS,
-                             db.get(txnB, key, data, null));
+                assertEquals(OperationStatus.SUCCESS, db.get(txnB, key, data, null));
             } catch (DatabaseException e) {
                 fail("caught unexpected exception " + e);
             }
@@ -578,8 +551,7 @@ public class TxnTimeoutTest extends DualTestCase {
     }
 
     @Test
-    public void testImportunateReadCommitted()
-        throws DatabaseException {
+    public void testImportunateReadCommitted() throws DatabaseException {
 
         createEnv(false, 0, 0);
 
@@ -615,8 +587,7 @@ public class TxnTimeoutTest extends DualTestCase {
             /* Read-committed with txnA and keep it read-locked. */
             txnA = env.beginTransaction(null, txnConfig);
             key.setData(new byte[1]);
-            cursor = db.openCursor(txnA,
-                                   new CursorConfig().setReadCommitted(true));
+            cursor = db.openCursor(txnA, new CursorConfig().setReadCommitted(true));
             status = cursor.getSearchKey(key, data, null);
             assertSame(OperationStatus.SUCCESS, status);
 
@@ -627,8 +598,7 @@ public class TxnTimeoutTest extends DualTestCase {
             key.setData(new byte[1]);
             data.setData(new byte[1]);
             try {
-                assertEquals(OperationStatus.SUCCESS,
-                             db.put(txnB, key, data));
+                assertEquals(OperationStatus.SUCCESS, db.put(txnB, key, data));
             } catch (DatabaseException e) {
                 fail("caught unexpected exception " + e);
             }

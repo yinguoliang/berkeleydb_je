@@ -27,16 +27,12 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * Test setting and retrieving of replication configurations. Should test
- * - mutable configurations
- * - the static fields in ReplicatorParams most be loaded properly.
- *
- * TBW - test is incomplete.
-
- * Test setting and retrieving of replication params. Make sure we can
- * parse the special format of the je.rep.node.* param, and that we
- * give params specified in files precedence over params specified
- * programmatically.
+ * Test setting and retrieving of replication configurations. Should test -
+ * mutable configurations - the static fields in ReplicatorParams most be loaded
+ * properly. TBW - test is incomplete. Test setting and retrieving of
+ * replication params. Make sure we can parse the special format of the
+ * je.rep.node.* param, and that we give params specified in files precedence
+ * over params specified programmatically.
  */
 public class ParamTest extends TestBase {
 
@@ -48,8 +44,8 @@ public class ParamTest extends TestBase {
 
     /**
      * THIS TESTCASE should go first in this file, before a replicator is
-     * instantiated in this JVM, to ensure that an application can instantiate
-     * a ReplicationConfig before instantiating a replicated environment.
+     * instantiated in this JVM, to ensure that an application can instantiate a
+     * ReplicationConfig before instantiating a replicated environment.
      * ReplicationConfig needs a static from ReplicatorParams, and we have to
      * make sure it is loaded properly.
      */
@@ -79,7 +75,7 @@ public class ParamTest extends TestBase {
         } catch (Exception E) {
             E.printStackTrace();
             fail("Unexpected exception: " + E);
-    }
+        }
 
         try {
             EnvironmentConfig envConfig = new EnvironmentConfig();
@@ -98,14 +94,14 @@ public class ParamTest extends TestBase {
             Properties props = new Properties();
             props.put(paramName, badValue);
             DbConfigManager.validateProperties(props, false, null);
-            fail("Bad value: " + badValue+ " not detected.");
+            fail("Bad value: " + badValue + " not detected.");
         } catch (IllegalArgumentException expected) {
         }
 
         try {
             ReplicationConfig badConfig = new ReplicationConfig();
             badConfig.setConfigParam(paramName, badValue);
-            fail("Bad value: " + badValue+ " not detected.");
+            fail("Bad value: " + badValue + " not detected.");
         } catch (IllegalArgumentException expected) {
         }
     }
@@ -113,8 +109,7 @@ public class ParamTest extends TestBase {
     @Test
     public void testGroupName() {
         verifySuccess(RepParams.GROUP_NAME.getName(), "SleepycatGroup1");
-        verifyFailure(RepParams.GROUP_NAME.getName(),
-                      "Sleepycat Group 1");
+        verifyFailure(RepParams.GROUP_NAME.getName(), "Sleepycat Group 1");
     }
 
     @Test

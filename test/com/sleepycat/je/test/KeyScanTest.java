@@ -43,7 +43,7 @@ import com.sleepycat.util.test.TestBase;
 
 public class KeyScanTest extends TestBase {
 
-    private File envHome;
+    private File        envHome;
     private Environment env;
 
     public KeyScanTest() {
@@ -62,24 +62,18 @@ public class KeyScanTest extends TestBase {
         env = null;
     }
 
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         env = new Environment(envHome, envConfig);
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (env != null) {
             env.close();
@@ -89,12 +83,12 @@ public class KeyScanTest extends TestBase {
 
     @Test
     public void testKeyScan() {
-        doKeyScan(false /*dups*/);
+        doKeyScan(false /* dups */);
     }
 
     @Test
     public void testKeyScanDup() {
-        doKeyScan(true /*dups*/);
+        doKeyScan(true /* dups */);
     }
 
     private void doKeyScan(final boolean dups) {
@@ -153,14 +147,12 @@ public class KeyScanTest extends TestBase {
             int count = 0;
             int expectKey = 0;
             if (dups) {
-                while (c.getNextNoDup(key, data, lockMode) ==
-                       OperationStatus.SUCCESS) {
+                while (c.getNextNoDup(key, data, lockMode) == OperationStatus.SUCCESS) {
                     assertEquals(count, IntegerBinding.entryToInt(key));
                     count += 1;
                 }
             } else {
-                while (c.getNext(key, data, lockMode) ==
-                       OperationStatus.SUCCESS) {
+                while (c.getNext(key, data, lockMode) == OperationStatus.SUCCESS) {
                     assertEquals(count, IntegerBinding.entryToInt(key));
                     count += 1;
                 }

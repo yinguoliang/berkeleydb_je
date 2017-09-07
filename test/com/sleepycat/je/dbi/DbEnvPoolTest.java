@@ -37,11 +37,11 @@ import com.sleepycat.je.utilint.TestHookAdapter;
 import com.sleepycat.util.test.TestBase;
 
 public class DbEnvPoolTest extends TestBase {
-    private static final String dbName = "testDb";
+    private static final String dbName       = "testDb";
     private static final String envHomeBName = "envB";
 
-    private final File envHomeA;
-    private final File envHomeB;
+    private final File          envHomeA;
+    private final File          envHomeB;
 
     public DbEnvPoolTest() {
         envHomeA = new File(System.getProperty(TestUtils.DEST_DIR));
@@ -49,8 +49,7 @@ public class DbEnvPoolTest extends TestBase {
     }
 
     @Before
-    public void setUp() 
-        throws Exception {
+    public void setUp() throws Exception {
 
         TestUtils.removeLogFiles("Setup", envHomeA, false);
         if (envHomeB.exists()) {
@@ -75,8 +74,7 @@ public class DbEnvPoolTest extends TestBase {
     }
 
     @Test
-    public void testCanonicalEnvironmentName ()
-        throws Throwable {
+    public void testCanonicalEnvironmentName() throws Throwable {
 
         try {
             /* Create an environment. */
@@ -101,8 +99,7 @@ public class DbEnvPoolTest extends TestBase {
      * Test that SharedCache Environments really shares cache.
      */
     @Test
-    public void testSharedCacheEnv()
-        throws Throwable {
+    public void testSharedCacheEnv() throws Throwable {
 
         OpenEnvThread threadA = null;
         OpenEnvThread threadB = null;
@@ -116,9 +113,9 @@ public class DbEnvPoolTest extends TestBase {
             threadA.start();
             threadB.start();
 
-            /* 
-             * Make sure that all two threads have finished the first 
-             * synchronization block. 
+            /*
+             * Make sure that all two threads have finished the first
+             * synchronization block.
              */
             while (DbEnvPool.getInstance().getEnvImpls().size() != 2) {
             }
@@ -133,16 +130,15 @@ public class DbEnvPoolTest extends TestBase {
             Environment envB = threadB.getEnv();
 
             /* Check the two Environments using the same SharedEvictor. */
-            assertTrue(DbInternal.getNonNullEnvImpl(envA).getEvictor() ==
-                       DbInternal.getNonNullEnvImpl(envB).getEvictor());
-            
+            assertTrue(
+                    DbInternal.getNonNullEnvImpl(envA).getEvictor() == DbInternal.getNonNullEnvImpl(envB).getEvictor());
+
             StatsConfig stConfig = new StatsConfig();
             stConfig.setFast(true);
-            assertTrue(envA.getConfig().getCacheSize() == 
-                       envB.getConfig().getCacheSize());
+            assertTrue(envA.getConfig().getCacheSize() == envB.getConfig().getCacheSize());
             /* Check the shared cache total bytes are the same. */
-            assertTrue(envA.getStats(stConfig).getSharedCacheTotalBytes() ==
-                       envB.getStats(stConfig).getSharedCacheTotalBytes());
+            assertTrue(envA.getStats(stConfig).getSharedCacheTotalBytes() == envB.getStats(stConfig)
+                    .getSharedCacheTotalBytes());
         } catch (Throwable t) {
             t.printStackTrace();
             throw t;
@@ -159,16 +155,13 @@ public class DbEnvPoolTest extends TestBase {
 
     /* Thread used to opening two environments. */
     private static class OpenEnvThread extends JUnitThread {
-        private final File envHome;
+        private final File      envHome;
         private final AwaitHook awaitHook;
-        private final int dbSize;
-        private Environment env;
-        private Database db;
+        private final int       dbSize;
+        private Environment     env;
+        private Database        db;
 
-        public OpenEnvThread(String threadName, 
-                             File envHome, 
-                             AwaitHook awaitHook,
-                             int dbSize) {
+        public OpenEnvThread(String threadName, File envHome, AwaitHook awaitHook, int dbSize) {
             super(threadName);
             this.envHome = envHome;
             this.awaitHook = awaitHook;
@@ -176,8 +169,7 @@ public class DbEnvPoolTest extends TestBase {
         }
 
         @Override
-        public void testBody()
-            throws Throwable {
+        public void testBody() throws Throwable {
 
             EnvironmentConfig envConfig = new EnvironmentConfig();
             envConfig.setAllowCreate(true);
@@ -185,11 +177,11 @@ public class DbEnvPoolTest extends TestBase {
 
             DbEnvPool.getInstance().setBeforeFinishInitHook(awaitHook);
 
-            env = new Environment(envHome, envConfig);                
+            env = new Environment(envHome, envConfig);
 
-            /* 
+            /*
              * Write different data on different environments to check the
-             * shared cache total bytes. 
+             * shared cache total bytes.
              */
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setAllowCreate(true);
@@ -212,7 +204,7 @@ public class DbEnvPoolTest extends TestBase {
             if (db != null) {
                 db.close();
             }
-            
+
             if (env != null) {
                 env.close();
             }
@@ -236,4 +228,3 @@ public class DbEnvPoolTest extends TestBase {
         }
     }
 }
-

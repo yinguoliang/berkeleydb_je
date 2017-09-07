@@ -48,12 +48,11 @@ public class StoppableThreadTest extends RepTestBase {
         createGroup(3);
 
         final AtomicBoolean stop = new AtomicBoolean(false);
-        final StoppableThread testThread =
-            new StoppableThread(repEnvInfo[0].getRepImpl(), "test)") {
+        final StoppableThread testThread = new StoppableThread(repEnvInfo[0].getRepImpl(), "test)") {
 
             @Override
             protected Logger getLogger() {
-              return null;
+                return null;
             }
 
             @Override
@@ -64,7 +63,7 @@ public class StoppableThreadTest extends RepTestBase {
             @Override
             public void run() {
                 while (!stop.get()) {
-                  /* loop uninterruptibly to simulate a runaway thread */
+                    /* loop uninterruptibly to simulate a runaway thread */
                 }
             }
         };

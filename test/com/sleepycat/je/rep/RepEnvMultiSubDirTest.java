@@ -46,13 +46,13 @@ import com.sleepycat.util.test.TestBase;
  * tested in com.sleepycat.je.rep.impl.networkRestore.NetworkBackupTest.
  */
 public class RepEnvMultiSubDirTest extends TestBase {
-    private static final int DATA_DIRS = 3;
-    private static final String DB_NAME = "testDb";
+    private static final int    DATA_DIRS = 3;
+    private static final String DB_NAME   = "testDb";
     private static final String keyPrefix = "herococo";
     private static final String dataValue = "abcdefghijklmnopqrstuvwxyz";
 
-    private final File envRoot;
-    private RepEnvInfo[] repEnvInfo;
+    private final File          envRoot;
+    private RepEnvInfo[]        repEnvInfo;
 
     public RepEnvMultiSubDirTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -71,20 +71,16 @@ public class RepEnvMultiSubDirTest extends TestBase {
          * the sub directories.
          */
         DbInternal.disableParameterValidation(envConfig);
-        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX,
-                                 "10000");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, "10000");
 
         /*
          * Configure a small checkpointer and cleaner interval bytes, so that
          * checkpointer and cleaner can be invoked more frequently to do the
          * cleaning work.
          */
-        envConfig.setConfigParam(EnvironmentConfig.CHECKPOINTER_BYTES_INTERVAL,
-                                 "20000");
-        envConfig.setConfigParam(EnvironmentConfig.CLEANER_BYTES_INTERVAL,
-                                 "10000");
-        envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                 DATA_DIRS + "");
+        envConfig.setConfigParam(EnvironmentConfig.CHECKPOINTER_BYTES_INTERVAL, "20000");
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_BYTES_INTERVAL, "10000");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
 
         return envConfig;
     }
@@ -101,12 +97,10 @@ public class RepEnvMultiSubDirTest extends TestBase {
      * Test the basic database operations on both master and replicas.
      */
     @Test
-    public void testRepBasic()
-        throws Throwable {
+    public void testRepBasic() throws Throwable {
 
         try {
-            repEnvInfo =
-                RepTestUtils.setupEnvInfos(envRoot, 3, createEnvConfig(false));
+            repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3, createEnvConfig(false));
             RepTestUtils.createRepSubDirs(repEnvInfo, DATA_DIRS);
 
             ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
@@ -123,8 +117,7 @@ public class RepEnvMultiSubDirTest extends TestBase {
 
             /* Check that records can be read correctly on replicas. */
             for (int i = 1; i < repEnvInfo.length; i++) {
-                checkContents(repEnvInfo[i].getEnv(), 1001, 2000,
-                              dataValue + dataValue);
+                checkContents(repEnvInfo[i].getEnv(), 1001, 2000, dataValue + dataValue);
             }
 
             assertTrue(repEnvInfo[1].getEnv().getState().isReplica());
@@ -137,8 +130,7 @@ public class RepEnvMultiSubDirTest extends TestBase {
 
                 @Override
                 protected boolean condition() {
-                    return (repEnvInfo[2].isMaster() ||
-                            repEnvInfo[1].isMaster());
+                    return (repEnvInfo[2].isMaster() || repEnvInfo[1].isMaster());
                 }
             }.await();
 
@@ -149,8 +141,7 @@ public class RepEnvMultiSubDirTest extends TestBase {
             assertTrue(repEnvInfo[0].isReplica());
 
             /* Check the contents on the former master. */
-            checkContents
-                (repEnvInfo[0].getEnv(), 1001, 2000, dataValue + dataValue);
+            checkContents(repEnvInfo[0].getEnv(), 1001, 2000, dataValue + dataValue);
         } catch (Throwable t) {
             t.printStackTrace();
             throw t;
@@ -169,8 +160,7 @@ public class RepEnvMultiSubDirTest extends TestBase {
         }
     }
 
-    private void doUpdatesOnMaster(ReplicatedEnvironment master)
-        throws Exception {
+    private void doUpdatesOnMaster(ReplicatedEnvironment master) throws Exception {
 
         Database db = master.openDatabase(null, DB_NAME, createDbConfig());
 
@@ -193,12 +183,7 @@ public class RepEnvMultiSubDirTest extends TestBase {
         db.close();
     }
 
-    private void insertData(Database db,
-                            Transaction txn,
-                            int start,
-                            int end,
-                            String value)
-        throws Exception {
+    private void insertData(Database db, Transaction txn, int start, int end, String value) throws Exception {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -209,11 +194,7 @@ public class RepEnvMultiSubDirTest extends TestBase {
         }
     }
 
-    private void checkContents(ReplicatedEnvironment repEnv,
-                               int start,
-                               int end,
-                               String value)
-        throws Exception {
+    private void checkContents(ReplicatedEnvironment repEnv, int start, int end, String value) throws Exception {
 
         Database db = repEnv.openDatabase(null, DB_NAME, createDbConfig());
 
@@ -221,8 +202,7 @@ public class RepEnvMultiSubDirTest extends TestBase {
         DatabaseEntry data = new DatabaseEntry();
         for (int i = start; i <= end; i++) {
             StringBinding.stringToEntry(keyPrefix + i, key);
-            assertEquals(OperationStatus.SUCCESS,
-                         db.get(null, key, data, null));
+            assertEquals(OperationStatus.SUCCESS, db.get(null, key, data, null));
             assertEquals(StringBinding.entryToString(data), value);
         }
         db.close();
@@ -233,28 +213,22 @@ public class RepEnvMultiSubDirTest extends TestBase {
      * replica.
      */
     @Test
-    public void testHardRecovery()
-        throws Throwable {
+    public void testHardRecovery() throws Throwable {
 
         ArrayList<String> formerLines = null;
         try {
             /* Expect RollbackProhibitedException when hard recovery happen. */
             ReplicationConfig repConfig = new ReplicationConfig();
-            repConfig.setConfigParam
-                (ReplicationConfig.TXN_ROLLBACK_LIMIT, "0");
+            repConfig.setConfigParam(ReplicationConfig.TXN_ROLLBACK_LIMIT, "0");
 
             /*
              * Write the configuration to je.properties so that it can be read
              * by the utility environment.
              */
-            formerLines = TestUtils.readWriteJEProperties
-                (envRoot, "je.log.nDataDirectories=" + DATA_DIRS);
+            formerLines = TestUtils.readWriteJEProperties(envRoot, "je.log.nDataDirectories=" + DATA_DIRS);
 
             /* Start the whole replication group. */
-            repEnvInfo = RepTestUtils.setupEnvInfos(envRoot,
-                                                    3,
-                                                    createEnvConfig(true),
-                                                    repConfig);
+            repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3, createEnvConfig(true), repConfig);
             RepTestUtils.createRepSubDirs(repEnvInfo, DATA_DIRS);
 
             ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
@@ -291,13 +265,9 @@ public class RepEnvMultiSubDirTest extends TestBase {
 
             /* Restart the old master, expecting hard recovery. */
             try {
-                repEnvInfo[0].openEnv
-                    (new CommitPointConsistencyPolicy(token, 1000,
-                                                      TimeUnit.SECONDS));
-                assertTrue(
-                    RepInternal.getNonNullRepImpl(repEnvInfo[0].getEnv()).
-                        getNodeStats().
-                        getBoolean(RepImplStatDefinition.HARD_RECOVERY));
+                repEnvInfo[0].openEnv(new CommitPointConsistencyPolicy(token, 1000, TimeUnit.SECONDS));
+                assertTrue(RepInternal.getNonNullRepImpl(repEnvInfo[0].getEnv()).getNodeStats()
+                        .getBoolean(RepImplStatDefinition.HARD_RECOVERY));
             } catch (RollbackProhibitedException e) {
 
                 /*
@@ -305,14 +275,11 @@ public class RepEnvMultiSubDirTest extends TestBase {
                  * master.
                  */
                 DbTruncateLog truncator = new DbTruncateLog();
-                truncator.truncateLog(repEnvInfo[0].getEnvHome(),
-                                      e.getTruncationFileNumber(),
-                                      e.getTruncationFileOffset());
+                truncator.truncateLog(repEnvInfo[0].getEnvHome(), e.getTruncationFileNumber(),
+                        e.getTruncationFileOffset());
 
                 /* Reopen the old master after truncation. */
-                repEnvInfo[0].openEnv
-                    (new CommitPointConsistencyPolicy(token, 1000,
-                                                      TimeUnit.SECONDS));
+                repEnvInfo[0].openEnv(new CommitPointConsistencyPolicy(token, 1000, TimeUnit.SECONDS));
             }
             assertTrue(repEnvInfo[0].isReplica());
             /* Check that old master has the newest log. */

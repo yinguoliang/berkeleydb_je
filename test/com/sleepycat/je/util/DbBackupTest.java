@@ -69,22 +69,22 @@ public class DbBackupTest extends TestBase {
         FORCE_CONFIG.setForce(true);
     }
 
-    private static final String SAVE1 = "save1";
-    private static final String SAVE2 = "save2";
-    private static final String SAVE3 = "save3";
-    private static final int NUM_RECS = 200;
-    private static final int N_DATA_DIRS = 3;
+    private static final String SAVE1       = "save1";
+    private static final String SAVE2       = "save2";
+    private static final String SAVE3       = "save3";
+    private static final int    NUM_RECS    = 200;
+    private static final int    N_DATA_DIRS = 3;
 
-    private final File envHome;
-    private Environment env;
-    private FileManager fileManager;
-    private final boolean useMultiEnvDirs;
+    private final File          envHome;
+    private Environment         env;
+    private FileManager         fileManager;
+    private final boolean       useMultiEnvDirs;
 
     @Parameters
     public static List<Object[]> genParams() {
-        return Arrays.asList(new Object[][]{{false}, {true}});
+        return Arrays.asList(new Object[][] { { false }, { true } });
     }
-    
+
     public DbBackupTest(boolean multiEnv) {
         envHome = SharedTestUtils.getTestDir();
         useMultiEnvDirs = multiEnv;
@@ -92,9 +92,8 @@ public class DbBackupTest extends TestBase {
     }
 
     @Before
-    public void setUp() 
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         super.setUp();
         deleteSaveDir(SAVE1);
         deleteSaveDir(SAVE2);
@@ -122,16 +121,14 @@ public class DbBackupTest extends TestBase {
      * Test basic backup, make sure log cleaning isn't running.
      */
     @Test
-    public void testBackupVsCleaning()
-        throws Throwable {
+    public void testBackupVsCleaning() throws Throwable {
 
         env = createEnv(false, envHome); /* read-write env */
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         fileManager = envImpl.getFileManager();
 
         /*
-         * Grow files, creating obsolete entries to create cleaner
-         * opportunity.
+         * Grow files, creating obsolete entries to create cleaner opportunity.
          */
         growFiles("db1", env, 8);
 
@@ -139,15 +136,14 @@ public class DbBackupTest extends TestBase {
         DbBackup backupHelper = new DbBackup(env);
         backupHelper.startBackup();
 
-        long lastFileNum =  backupHelper.getLastFileInBackupSet();
+        long lastFileNum = backupHelper.getLastFileInBackupSet();
         long checkLastFileNum = lastFileNum;
 
         /* Copy the backup set. */
         saveFiles(backupHelper, -1, lastFileNum, SAVE1);
 
         /*
-         * Try to clean and checkpoint. Check that the logs grew as
-         * a result.
+         * Try to clean and checkpoint. Check that the logs grew as a result.
          */
         batchClean(0);
         long newLastFileNum = (fileManager.getLastFileNum()).longValue();
@@ -161,8 +157,7 @@ public class DbBackupTest extends TestBase {
         growFiles("db2", env, 8);
 
         /*
-         * Try to clean and checkpoint. Check that the logs grew as
-         * a result.
+         * Try to clean and checkpoint. Check that the logs grew as a result.
          */
         batchClean(0);
         newLastFileNum = fileManager.getLastFileNum().longValue();
@@ -173,7 +168,7 @@ public class DbBackupTest extends TestBase {
         saveFiles(backupHelper, -1, lastFileNum, SAVE3);
 
         /* Check the membership of the saved set. */
-        long lastFile =  backupHelper.getLastFileInBackupSet();
+        long lastFile = backupHelper.getLastFileInBackupSet();
         String[] backupSet = backupHelper.getLogFilesInBackupSet();
         assertEquals((lastFile + 1), backupSet.length);
 
@@ -209,8 +204,7 @@ public class DbBackupTest extends TestBase {
      * Test basic backup, make sure environment can't be closed mid-stream.
      */
     @Test
-    public void testBackupVsClose()
-        throws Throwable {
+    public void testBackupVsClose() throws Throwable {
 
         env = createEnv(false, envHome); /* read-write env */
 
@@ -240,8 +234,7 @@ public class DbBackupTest extends TestBase {
      * Test multiple backup passes
      */
     @Test
-    public void testIncrementalBackup()
-        throws Throwable {
+    public void testIncrementalBackup() throws Throwable {
 
         env = createEnv(false, envHome); /* read-write env */
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
@@ -252,16 +245,15 @@ public class DbBackupTest extends TestBase {
         /* Backup1. */
         DbBackup backupHelper1 = new DbBackup(env);
         backupHelper1.startBackup();
-        long b1LastFile =  backupHelper1.getLastFileInBackupSet();
+        long b1LastFile = backupHelper1.getLastFileInBackupSet();
         saveFiles(backupHelper1, -1, b1LastFile, SAVE1);
-        String lastName =
-            fileManager.getFullFileName(b1LastFile, FileManager.JE_SUFFIX);
+        String lastName = fileManager.getFullFileName(b1LastFile, FileManager.JE_SUFFIX);
         long b1LastFileLen = new File(lastName).length();
         backupHelper1.endBackup();
 
         /*
-         * Add more data. Check that the file did flip, and is not modified
-         * by the additional data.
+         * Add more data. Check that the file did flip, and is not modified by
+         * the additional data.
          */
         growFiles("db2", env, 8);
         checkFileLen(b1LastFile, b1LastFileLen);
@@ -269,20 +261,17 @@ public class DbBackupTest extends TestBase {
         /* Backup2. */
         DbBackup backupHelper2 = new DbBackup(env, b1LastFile);
         backupHelper2.startBackup();
-        long b2LastFile =  backupHelper2.getLastFileInBackupSet();
+        long b2LastFile = backupHelper2.getLastFileInBackupSet();
         saveFiles(backupHelper2, b1LastFile, b2LastFile, SAVE2);
-        lastName =
-            fileManager.getFullFileName(b2LastFile, FileManager.JE_SUFFIX);
+        lastName = fileManager.getFullFileName(b2LastFile, FileManager.JE_SUFFIX);
         long b2LastFileLen = new File(lastName).length();
         backupHelper2.endBackup();
 
         /* Test deprecated getLogFilesInBackupSet(long) method. */
         DbBackup backupHelper3 = new DbBackup(env);
         backupHelper3.startBackup();
-        String[] fileList3 =
-            backupHelper3.getLogFilesInBackupSet(b1LastFile);
-        assertEquals(b1LastFile + 1,
-                     fileManager.getNumFromName(fileList3[0]).longValue());
+        String[] fileList3 = backupHelper3.getLogFilesInBackupSet(b1LastFile);
+        assertEquals(b1LastFile + 1, fileManager.getNumFromName(fileList3[0]).longValue());
         backupHelper3.endBackup();
 
         env.close();
@@ -305,14 +294,11 @@ public class DbBackupTest extends TestBase {
         checkFileLen(b2LastFile, b2LastFileLen);
     }
 
-    private void maybeDeleteDataDirs(File envDir,
-                                     String comment,
-                                     boolean subdirsOnly) {
+    private void maybeDeleteDataDirs(File envDir, String comment, boolean subdirsOnly) {
         if (useMultiEnvDirs) {
             for (int i = 1; i <= N_DATA_DIRS; i += 1) {
                 File dataDir = new File(envDir, "data00" + i);
-                TestUtils.removeFiles
-                    (comment, dataDir, FileManager.JE_SUFFIX);
+                TestUtils.removeFiles(comment, dataDir, FileManager.JE_SUFFIX);
                 if (!subdirsOnly) {
                     dataDir.delete();
                 }
@@ -321,8 +307,7 @@ public class DbBackupTest extends TestBase {
     }
 
     @Test
-    public void testBadUsage()
-        throws Exception {
+    public void testBadUsage() throws Exception {
 
         env = createEnv(false, envHome); /* read-write env */
 
@@ -344,8 +329,7 @@ public class DbBackupTest extends TestBase {
         }
 
         /*
-         * You can only get the backup set when you're in between start
-         * and end.
+         * You can only get the backup set when you're in between start and end.
          */
         backup.endBackup();
 
@@ -378,14 +362,13 @@ public class DbBackupTest extends TestBase {
     }
 
     @Test
-    public void testReadOnly()
-        throws Exception {
+    public void testReadOnly() throws Exception {
 
         if (useMultiEnvDirs) {
             return; // not worth the trouble
         }
 
-        /* Make a read-only handle on a read-write environment directory.*/
+        /* Make a read-only handle on a read-write environment directory. */
         env = createEnv(true, envHome);
 
         try {
@@ -411,9 +394,7 @@ public class DbBackupTest extends TestBase {
         env = null;
 
         if (!tempEnvDir.setWritable(false)) {
-            System.out.println(
-                "Skipping testReadOnly because platform doesn't support " +
-                "setting file permissions");
+            System.out.println("Skipping testReadOnly because platform doesn't support " + "setting file permissions");
             return;
         }
 
@@ -423,8 +404,7 @@ public class DbBackupTest extends TestBase {
             DbBackup backupHelper = new DbBackup(env);
             backupHelper.startBackup();
 
-            FileManager fileManager =
-                DbInternal.getNonNullEnvImpl(env).getFileManager();
+            FileManager fileManager = DbInternal.getNonNullEnvImpl(env).getFileManager();
             long lastFile = fileManager.getLastFileNum().longValue();
             assertEquals(lastFile, backupHelper.getLastFileInBackupSet());
 
@@ -436,22 +416,17 @@ public class DbBackupTest extends TestBase {
         }
     }
 
-    private Environment createEnv(boolean readOnly, File envDir)
-        throws DatabaseException {
+    private Environment createEnv(boolean readOnly, File envDir) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setAllowCreate(true);
         envConfig.setReadOnly(readOnly);
-        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX,
-                                 "10000");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-                                 "false");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, "10000");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
 
         if (useMultiEnvDirs) {
-            envConfig.setConfigParam
-                (EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(),
-                 N_DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentParams.LOG_N_DATA_DIRECTORIES.getName(), N_DATA_DIRS + "");
             for (int i = 1; i <= N_DATA_DIRS; i += 1) {
                 new File(envDir, "data00" + i).mkdir();
             }
@@ -461,18 +436,13 @@ public class DbBackupTest extends TestBase {
         return env;
     }
 
-    private long growFiles(String dbName,
-                           Environment env,
-                           int minNumFiles)
-        throws DatabaseException {
+    private long growFiles(String dbName, Environment env, int minNumFiles) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
         Database db = env.openDatabase(null, dbName, dbConfig);
-        FileManager fileManager =
-            DbInternal.getNonNullEnvImpl(env).getFileManager();
-        long startLastFileNum =
-            DbLsn.getFileNumber(fileManager.getLastUsedLsn());
+        FileManager fileManager = DbInternal.getNonNullEnvImpl(env).getFileManager();
+        long startLastFileNum = DbLsn.getFileNumber(fileManager.getLastUsedLsn());
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry(new byte[1024]);
@@ -489,15 +459,12 @@ public class DbBackupTest extends TestBase {
 
         db.close();
 
-        long endLastFileNum =
-            DbLsn.getFileNumber(fileManager.getLastUsedLsn());
-        assertTrue((endLastFileNum -
-                    startLastFileNum) >= minNumFiles);
+        long endLastFileNum = DbLsn.getFileNumber(fileManager.getLastUsedLsn());
+        assertTrue((endLastFileNum - startLastFileNum) >= minNumFiles);
         return endLastFileNum;
     }
 
-    private long batchClean(int expectedDeletions)
-        throws DatabaseException {
+    private long batchClean(int expectedDeletions) throws DatabaseException {
 
         EnvironmentStats stats = env.getStats(CLEAR_CONFIG);
         while (env.cleanLog() > 0) {
@@ -509,20 +476,13 @@ public class DbBackupTest extends TestBase {
         return stats.getNCleanerDeletions();
     }
 
-    private void saveFiles(DbBackup backupHelper,
-                           long lastFileFromPrevBackup,
-                           long lastFileNum,
-                           String saveDirName)
-        throws DatabaseException {
+    private void saveFiles(DbBackup backupHelper, long lastFileFromPrevBackup, long lastFileNum, String saveDirName)
+            throws DatabaseException {
 
         /* Check that the backup set contains only the files it should have. */
         String[] fileList = backupHelper.getLogFilesInBackupSet();
-        assertEquals(lastFileFromPrevBackup + 1,
-                     fileManager.getNumFromName(fileList[0]).
-                     longValue());
-        assertEquals(lastFileNum,
-                     fileManager.getNumFromName(fileList[fileList.length - 1]).
-                     longValue());
+        assertEquals(lastFileFromPrevBackup + 1, fileManager.getNumFromName(fileList[0]).longValue());
+        assertEquals(lastFileNum, fileManager.getNumFromName(fileList[fileList.length - 1]).longValue());
 
         final String[] snapshotFiles = backupHelper.getLogFilesInSnapshot();
         if (lastFileFromPrevBackup < 0) {
@@ -551,20 +511,16 @@ public class DbBackupTest extends TestBase {
         copyFiles(envHome, saveDir, fileList);
     }
 
-    private void copyFiles(File sourceDir, File destDir, String[] fileList)
-        throws DatabaseException {
+    private void copyFiles(File sourceDir, File destDir, String[] fileList) throws DatabaseException {
 
         try {
             for (int i = 0; i < fileList.length; i++) {
                 File source = new File(sourceDir, fileList[i]);
-                FileChannel sourceChannel =
-                    new FileInputStream(source).getChannel();
+                FileChannel sourceChannel = new FileInputStream(source).getChannel();
                 File save = new File(destDir, fileList[i]);
-                FileChannel saveChannel =
-                    new FileOutputStream(save).getChannel();
+                FileChannel saveChannel = new FileOutputStream(save).getChannel();
 
-                saveChannel.transferFrom(sourceChannel, 0,
-                                         sourceChannel.size());
+                saveChannel.transferFrom(sourceChannel, 0, sourceChannel.size());
 
                 /* Close the channels. */
                 sourceChannel.close();
@@ -581,8 +537,7 @@ public class DbBackupTest extends TestBase {
     private void deleteSaveDir(String saveDirName) {
         if (useMultiEnvDirs) {
             for (int i = 1; i <= N_DATA_DIRS; i += 1) {
-                String saveSubdirName =
-                    saveDirName + File.separator + "data00" + i;
+                String saveSubdirName = saveDirName + File.separator + "data00" + i;
                 deleteSaveDir1(saveSubdirName);
             }
         }
@@ -607,8 +562,7 @@ public class DbBackupTest extends TestBase {
     /**
      * Copy the saved files in, check values.
      */
-    private void verifyDb(String saveDirName, boolean rename)
-        throws DatabaseException {
+    private void verifyDb(String saveDirName, boolean rename) throws DatabaseException {
 
         if (useMultiEnvDirs) {
             for (int i = 1; i <= N_DATA_DIRS; i += 1) {
@@ -622,10 +576,7 @@ public class DbBackupTest extends TestBase {
         }
     }
 
-    private void verifyDbPart1(String saveDirName,
-                               String subdirName,
-                               boolean rename)
-        throws DatabaseException {
+    private void verifyDbPart1(String saveDirName, String subdirName, boolean rename) throws DatabaseException {
 
         File saveDir = new File(envHome, saveDirName + subdirName);
         String[] savedFiles = saveDir.list();
@@ -641,8 +592,7 @@ public class DbBackupTest extends TestBase {
         }
     }
 
-    private void verifyDbPart2()
-        throws DatabaseException {
+    private void verifyDbPart2() throws DatabaseException {
 
         env = createEnv(false, envHome);
         checkDb("db1");
@@ -663,8 +613,7 @@ public class DbBackupTest extends TestBase {
     /**
      * Copy the saved files in, check values.
      */
-    private void verifyBothDbs(String saveDirName1, String saveDirName2)
-        throws DatabaseException {
+    private void verifyBothDbs(String saveDirName1, String saveDirName2) throws DatabaseException {
 
         File saveDir = new File(envHome, saveDirName1);
         String[] savedFiles = saveDir.list();
@@ -682,8 +631,7 @@ public class DbBackupTest extends TestBase {
                 savedFiles = saveDir.list();
                 for (int i = 0; i < savedFiles.length; i++) {
                     File saved = new File(saveDir, savedFiles[i]);
-                    File dest =
-                        new File(envHome + saveSubDirName2, savedFiles[i]);
+                    File dest = new File(envHome + saveSubDirName2, savedFiles[i]);
                     assertTrue(saved.renameTo(dest));
                 }
             }
@@ -704,8 +652,7 @@ public class DbBackupTest extends TestBase {
         env = null;
     }
 
-    private void checkDb(String dbName)
-        throws DatabaseException {
+    private void checkDb(String dbName) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         Database db = env.openDatabase(null, dbName, dbConfig);
@@ -716,12 +663,10 @@ public class DbBackupTest extends TestBase {
             c = db.openCursor(null, null);
 
             for (int i = 0; i < NUM_RECS; i++) {
-                assertEquals(OperationStatus.SUCCESS,
-                             c.getNext(key, data, LockMode.DEFAULT));
+                assertEquals(OperationStatus.SUCCESS, c.getNext(key, data, LockMode.DEFAULT));
                 assertEquals(i, IntegerBinding.entryToInt(key));
             }
-            assertEquals(OperationStatus.NOTFOUND,
-                         c.getNext(key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.NOTFOUND, c.getNext(key, data, LockMode.DEFAULT));
         } finally {
             if (c != null)
                 c.close();
@@ -730,8 +675,7 @@ public class DbBackupTest extends TestBase {
     }
 
     private void checkFileLen(long fileNum, long length) {
-        String fileName = fileManager.getFullFileName(fileNum,
-                                                      FileManager.JE_SUFFIX);
+        String fileName = fileManager.getFullFileName(fileNum, FileManager.JE_SUFFIX);
         File f = new File(fileName);
         assertEquals(length, f.length());
     }
@@ -757,8 +701,7 @@ public class DbBackupTest extends TestBase {
         final long fileSize = getFileSize(0);
 
         /* File flips when ENV_RECOVERY_FORCE_NEW_FILE is true. */
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RECOVERY_FORCE_NEW_FILE,
-                                 "true");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RECOVERY_FORCE_NEW_FILE, "true");
         env = new Environment(envHome, envConfig);
         assertEquals(1, getLastFile());
         env.close();
@@ -766,8 +709,7 @@ public class DbBackupTest extends TestBase {
         assertEquals(fileSize, getFileSize(0));
 
         /* File does not flip when ENV_RECOVERY_FORCE_NEW_FILE is false. */
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RECOVERY_FORCE_NEW_FILE,
-                                 "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RECOVERY_FORCE_NEW_FILE, "false");
         env = new Environment(envHome, envConfig);
         assertEquals(1, getLastFile());
         env.close();
@@ -776,9 +718,7 @@ public class DbBackupTest extends TestBase {
     }
 
     private long getLastFile() {
-        return DbInternal.getNonNullEnvImpl(env).
-                          getFileManager().
-                          getCurrentFileNum();
+        return DbInternal.getNonNullEnvImpl(env).getFileManager().getCurrentFileNum();
     }
 
     private long getFileSize(long fileNum) {

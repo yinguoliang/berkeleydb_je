@@ -57,48 +57,42 @@ import com.sleepycat.je.utilint.DbLsn;
 @RunWith(Parameterized.class)
 public class UtilizationTest extends CleanerTestBase {
 
-    private static final String DB_NAME = "foo";
+    private static final String           DB_NAME             = "foo";
 
-    private static final String OP_NONE = "op-none";
-    private static final String OP_CHECKPOINT = "op-checkpoint";
-    private static final String OP_RECOVER = "op-recover";
+    private static final String           OP_NONE             = "op-none";
+    private static final String           OP_CHECKPOINT       = "op-checkpoint";
+    private static final String           OP_RECOVER          = "op-recover";
     //private static final String[] OPERATIONS = { OP_NONE, };
     //*
-    private static final String[] OPERATIONS = { OP_NONE,
-                                                 OP_CHECKPOINT,
-                                                 OP_RECOVER,
-                                                 OP_RECOVER };
+    private static final String[]         OPERATIONS          = { OP_NONE, OP_CHECKPOINT, OP_RECOVER, OP_RECOVER };
     //*/
 
     /*
-     * Set fetchObsoleteSize=true only for the second OP_RECOVER test.
-     * We check that OP_RECOVER works with without fetching, but with fetching
-     * we check that all LN sizes are counted.
+     * Set fetchObsoleteSize=true only for the second OP_RECOVER test. We check
+     * that OP_RECOVER works with without fetching, but with fetching we check
+     * that all LN sizes are counted.
      */
-    private static final boolean[] FETCH_OBSOLETE_SIZE = { false,
-                                                           false,
-                                                           false,
-                                                           true };
+    private static final boolean[]        FETCH_OBSOLETE_SIZE = { false, false, false, true };
 
-    private static final CheckpointConfig forceConfig = new CheckpointConfig();
+    private static final CheckpointConfig forceConfig         = new CheckpointConfig();
     static {
         forceConfig.setForce(true);
     }
 
     private EnvironmentImpl envImpl;
-    private Database db;
-    private DatabaseImpl dbImpl;
-    private boolean dups = false;
-    private DatabaseEntry keyEntry = new DatabaseEntry();
-    private DatabaseEntry dataEntry = new DatabaseEntry();
-    private final String operation;
-    private long lastFileSeen;
-    private final boolean fetchObsoleteSize;
-    private boolean truncateOrRemoveDone;
+    private Database        db;
+    private DatabaseImpl    dbImpl;
+    private boolean         dups        = false;
+    private DatabaseEntry   keyEntry    = new DatabaseEntry();
+    private DatabaseEntry   dataEntry   = new DatabaseEntry();
+    private final String    operation;
+    private long            lastFileSeen;
+    private final boolean   fetchObsoleteSize;
+    private boolean         truncateOrRemoveDone;
 
-    private boolean embeddedLNs = false;
+    private boolean         embeddedLNs = false;
 
-    public UtilizationTest (String op, boolean fetch) {
+    public UtilizationTest(String op, boolean fetch) {
         this.operation = op;
         this.fetchObsoleteSize = fetch;
         customName = this.operation + (fetchObsoleteSize ? "fetch" : "");
@@ -109,15 +103,14 @@ public class UtilizationTest extends CleanerTestBase {
         int i = 0;
         List<Object[]> list = new ArrayList<Object[]>();
         for (String operation : OPERATIONS) {
-            list.add(new Object[] {operation, FETCH_OBSOLETE_SIZE[i]});
+            list.add(new Object[] { operation, FETCH_OBSOLETE_SIZE[i] });
             i++;
         }
         return list;
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
 
         super.tearDown();
         db = null;
@@ -130,8 +123,7 @@ public class UtilizationTest extends CleanerTestBase {
     /**
      * Opens the environment and database.
      */
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig config = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(config);
@@ -139,30 +131,22 @@ public class UtilizationTest extends CleanerTestBase {
         config.setTxnNoSync(true);
         config.setAllowCreate(true);
         /* Do not run the daemons. */
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         /* Use a tiny log file size to write one LN per file. */
-        config.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                              Integer.toString(64));
+        config.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(64));
         /* With tiny files we can't log expiration profile records. */
         DbInternal.setCreateEP(config, false);
 
         /* Obsolete LN size counting is optional per test. */
         if (fetchObsoleteSize) {
-            config.setConfigParam
-                (EnvironmentParams.CLEANER_FETCH_OBSOLETE_SIZE.getName(),
-                 "true");
+            config.setConfigParam(EnvironmentParams.CLEANER_FETCH_OBSOLETE_SIZE.getName(), "true");
         }
 
         if (envMultiSubDir) {
-            config.setConfigParam
-                (EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
+            config.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, config);
@@ -179,8 +163,7 @@ public class UtilizationTest extends CleanerTestBase {
     /**
      * Opens the database.
      */
-    private void openDb()
-        throws DatabaseException {
+    private void openDb() throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(true);
@@ -193,19 +176,15 @@ public class UtilizationTest extends CleanerTestBase {
     /**
      * Closes the environment and database.
      */
-    private void closeEnv(boolean doCheckpoint)
-        throws DatabaseException {
+    private void closeEnv(boolean doCheckpoint) throws DatabaseException {
 
         /*
          * We pass expectAccurateDbUtilization as false when
          * truncateOrRemoveDone, because the database utilization info for that
          * database is now gone.
          */
-        VerifyUtils.verifyUtilization
-            (envImpl,
-             true, // expectAccurateObsoleteLNCount
-             expectObsoleteLNSizeCounted(),
-             !truncateOrRemoveDone); // expectAccurateDbUtilization
+        VerifyUtils.verifyUtilization(envImpl, true, // expectAccurateObsoleteLNCount
+                expectObsoleteLNSizeCounted(), !truncateOrRemoveDone); // expectAccurateDbUtilization
 
         if (db != null) {
             db.close();
@@ -218,8 +197,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testReuseSlotAfterDelete()
-        throws DatabaseException {
+    public void testReuseSlotAfterDelete() throws DatabaseException {
 
         openEnv();
 
@@ -248,12 +226,11 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testReuseKnownDeletedSlot()
-        throws DatabaseException {
+    public void testReuseKnownDeletedSlot() throws DatabaseException {
 
         openEnv();
 
-        /* Insert key 0 and abort to create a knownDeleted slot.  */
+        /* Insert key 0 and abort to create a knownDeleted slot. */
         Transaction txn = env.beginTransaction(null, null);
         long file0 = doPut(0, txn);
         txn.abort();
@@ -272,12 +249,11 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testReuseKnownDeletedSlotAbort()
-        throws DatabaseException {
+    public void testReuseKnownDeletedSlotAbort() throws DatabaseException {
 
         openEnv();
 
-        /* Insert key 0 and abort to create a knownDeleted slot.  */
+        /* Insert key 0 and abort to create a knownDeleted slot. */
         Transaction txn = env.beginTransaction(null, null);
         long file0 = doPut(0, txn);
         txn.abort();
@@ -296,8 +272,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testReuseKnownDeletedSlotDup()
-        throws DatabaseException {
+    public void testReuseKnownDeletedSlotDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -330,8 +305,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testReuseKnownDeletedSlotDupAbort()
-        throws DatabaseException {
+    public void testReuseKnownDeletedSlotDupAbort() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -364,8 +338,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsert()
-        throws DatabaseException {
+    public void testInsert() throws DatabaseException {
 
         openEnv();
 
@@ -398,8 +371,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertAbort()
-        throws DatabaseException {
+    public void testInsertAbort() throws DatabaseException {
 
         openEnv();
 
@@ -420,8 +392,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertDup()
-        throws DatabaseException {
+    public void testInsertDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -440,8 +411,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertDupAbort()
-        throws DatabaseException {
+    public void testInsertDupAbort() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -453,15 +423,14 @@ public class UtilizationTest extends CleanerTestBase {
         txn.abort();
         performRecoveryOperation();
 
-        expectObsolete(file0, true);  // 1st LN
-        expectObsolete(file2, true);  // 2nd LN
+        expectObsolete(file0, true); // 1st LN
+        expectObsolete(file2, true); // 2nd LN
 
         closeEnv(true);
     }
 
     @Test
-    public void testUpdate()
-        throws DatabaseException {
+    public void testUpdate() throws DatabaseException {
 
         openEnv();
 
@@ -480,8 +449,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateAbort()
-        throws DatabaseException {
+    public void testUpdateAbort() throws DatabaseException {
 
         openEnv();
 
@@ -500,8 +468,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateDup()
-        throws DatabaseException {
+    public void testUpdateDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -527,8 +494,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateDupAbort()
-        throws DatabaseException {
+    public void testUpdateDupAbort() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -554,8 +520,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testDelete()
-        throws DatabaseException {
+    public void testDelete() throws DatabaseException {
 
         openEnv();
 
@@ -574,8 +539,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testDeleteAbort()
-        throws DatabaseException {
+    public void testDeleteAbort() throws DatabaseException {
 
         openEnv();
 
@@ -594,8 +558,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testDeleteDup()
-        throws DatabaseException {
+    public void testDeleteDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -621,8 +584,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testDeleteDupAbort()
-        throws DatabaseException {
+    public void testDeleteDupAbort() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -648,8 +610,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertUpdate()
-        throws DatabaseException {
+    public void testInsertUpdate() throws DatabaseException {
 
         openEnv();
 
@@ -667,8 +628,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertUpdateAbort()
-        throws DatabaseException {
+    public void testInsertUpdateAbort() throws DatabaseException {
 
         openEnv();
 
@@ -686,8 +646,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertUpdateDup()
-        throws DatabaseException {
+    public void testInsertUpdateDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -701,7 +660,7 @@ public class UtilizationTest extends CleanerTestBase {
 
         /* Insert and update {0, 2}. */
         txn = env.beginTransaction(null, null);
-        long file2 = doPut(0, 2, txn);    // 3rd LN
+        long file2 = doPut(0, 2, txn); // 3rd LN
         long file3 = doUpdate(0, 2, txn); // 4rd LN
         txn.commit();
         performRecoveryOperation();
@@ -715,8 +674,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertUpdateDupAbort()
-        throws DatabaseException {
+    public void testInsertUpdateDupAbort() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -730,7 +688,7 @@ public class UtilizationTest extends CleanerTestBase {
 
         /* Insert and update {0, 2}. */
         txn = env.beginTransaction(null, null);
-        long file2 = doPut(0, 2, txn);    // 3rd LN
+        long file2 = doPut(0, 2, txn); // 3rd LN
         long file3 = doUpdate(0, 2, txn); // 4rd LN
         txn.abort();
         performRecoveryOperation();
@@ -744,8 +702,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertDelete()
-        throws DatabaseException {
+    public void testInsertDelete() throws DatabaseException {
 
         openEnv();
 
@@ -763,8 +720,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertDeleteAbort()
-        throws DatabaseException {
+    public void testInsertDeleteAbort() throws DatabaseException {
 
         openEnv();
 
@@ -782,8 +738,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertDeleteDup()
-        throws DatabaseException {
+    public void testInsertDeleteDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -797,7 +752,7 @@ public class UtilizationTest extends CleanerTestBase {
 
         /* Insert and delete {0, 2}. */
         txn = env.beginTransaction(null, null);
-        long file2 = doPut(0, 2, txn);    // 3rd LN
+        long file2 = doPut(0, 2, txn); // 3rd LN
         long file3 = doDelete(0, 2, txn); // 4rd LN
         txn.commit();
         performRecoveryOperation();
@@ -811,8 +766,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testInsertDeleteDupAbort()
-        throws DatabaseException {
+    public void testInsertDeleteDupAbort() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -826,7 +780,7 @@ public class UtilizationTest extends CleanerTestBase {
 
         /* Insert and delete {0, 2} and abort. */
         txn = env.beginTransaction(null, null);
-        long file2 = doPut(0, 2, txn);    // 3rd LN
+        long file2 = doPut(0, 2, txn); // 3rd LN
         long file3 = doDelete(0, 2, txn); // 4rd LN
         txn.abort();
         performRecoveryOperation();
@@ -840,8 +794,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateUpdate()
-        throws DatabaseException {
+    public void testUpdateUpdate() throws DatabaseException {
 
         openEnv();
 
@@ -864,8 +817,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateUpdateAbort()
-        throws DatabaseException {
+    public void testUpdateUpdateAbort() throws DatabaseException {
 
         openEnv();
 
@@ -888,8 +840,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateUpdateDup()
-        throws DatabaseException {
+    public void testUpdateUpdateDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -917,8 +868,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateUpdateDupAbort()
-        throws DatabaseException {
+    public void testUpdateUpdateDupAbort() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -946,8 +896,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateDelete()
-        throws DatabaseException {
+    public void testUpdateDelete() throws DatabaseException {
 
         openEnv();
 
@@ -970,8 +919,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateDeleteAbort()
-        throws DatabaseException {
+    public void testUpdateDeleteAbort() throws DatabaseException {
 
         openEnv();
 
@@ -994,8 +942,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateDeleteDup()
-        throws DatabaseException {
+    public void testUpdateDeleteDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -1023,8 +970,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testUpdateDeleteDupAbort()
-        throws DatabaseException {
+    public void testUpdateDeleteDupAbort() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -1052,44 +998,39 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testTruncate()
-        throws DatabaseException {
+    public void testTruncate() throws DatabaseException {
 
         truncateOrRemove(true, true);
     }
 
     @Test
-    public void testTruncateAbort()
-        throws DatabaseException {
+    public void testTruncateAbort() throws DatabaseException {
 
         truncateOrRemove(true, false);
     }
 
     @Test
-    public void testRemove()
-        throws DatabaseException {
+    public void testRemove() throws DatabaseException {
 
         truncateOrRemove(false, true);
     }
 
     @Test
-    public void testRemoveAbort()
-        throws DatabaseException {
+    public void testRemoveAbort() throws DatabaseException {
 
         truncateOrRemove(false, false);
     }
 
     /**
      */
-    private void truncateOrRemove(boolean truncate, boolean commit)
-        throws DatabaseException {
+    private void truncateOrRemove(boolean truncate, boolean commit) throws DatabaseException {
 
         openEnv();
 
         /*
          * We cannot use forceTreeWalkForTruncateAndRemove with embedded LNs
-         * because we don't have the lastLoggedFile info in the BIN slots.
-         * This info is required by the SortedLSNTreeWalker used in
+         * because we don't have the lastLoggedFile info in the BIN slots. This
+         * info is required by the SortedLSNTreeWalker used in
          * DatabaseImpl.finishDeleteProcessing().
          */
         if (embeddedLNs) {
@@ -1109,8 +1050,7 @@ public class UtilizationTest extends CleanerTestBase {
         if (truncate) {
             db.close();
             db = null;
-            long count = env.truncateDatabase(txn, DB_NAME,
-                                              true /* returnCount */);
+            long count = env.truncateDatabase(txn, DB_NAME, true /* returnCount */);
             assertEquals(3, count);
         } else {
             db.close();
@@ -1129,17 +1069,11 @@ public class UtilizationTest extends CleanerTestBase {
          * Do not check DbFileSummary when we truncate/remove, since the old
          * DatabaseImpl is gone.
          */
-        expectObsolete(file0,
-                       commit || embeddedLNs,
-                       !commit /*checkDbFileSummary*/);
+        expectObsolete(file0, commit || embeddedLNs, !commit /* checkDbFileSummary */);
 
-        expectObsolete(file1,
-                       commit || embeddedLNs,
-                       !commit /*checkDbFileSummary*/);
+        expectObsolete(file1, commit || embeddedLNs, !commit /* checkDbFileSummary */);
 
-        expectObsolete(file2,
-                       commit || embeddedLNs,
-                       !commit /*checkDbFileSummary*/);
+        expectObsolete(file2, commit || embeddedLNs, !commit /* checkDbFileSummary */);
 
         closeEnv(true);
     }
@@ -1148,14 +1082,13 @@ public class UtilizationTest extends CleanerTestBase {
      * The xxxForceTreeWalk tests set the DatabaseImpl
      * forceTreeWalkForTruncateAndRemove field to true, which will force a walk
      * of the tree to count utilization during truncate/remove, rather than
-     * using the per-database info.  This is used to test the "old technique"
-     * for counting utilization, which is now used only if the database was
-     * created prior to log version 6.
+     * using the per-database info. This is used to test the "old technique" for
+     * counting utilization, which is now used only if the database was created
+     * prior to log version 6.
      */
 
     @Test
-    public void testTruncateForceTreeWalk()
-        throws Exception {
+    public void testTruncateForceTreeWalk() throws Exception {
 
         DatabaseImpl.forceTreeWalkForTruncateAndRemove = true;
         try {
@@ -1166,8 +1099,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testTruncateAbortForceTreeWalk()
-        throws Exception {
+    public void testTruncateAbortForceTreeWalk() throws Exception {
 
         DatabaseImpl.forceTreeWalkForTruncateAndRemove = true;
         try {
@@ -1178,8 +1110,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testRemoveForceTreeWalk()
-        throws Exception {
+    public void testRemoveForceTreeWalk() throws Exception {
 
         DatabaseImpl.forceTreeWalkForTruncateAndRemove = true;
         try {
@@ -1190,8 +1121,7 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     @Test
-    public void testRemoveAbortForceTreeWalk()
-        throws Exception {
+    public void testRemoveAbortForceTreeWalk() throws Exception {
 
         DatabaseImpl.forceTreeWalkForTruncateAndRemove = true;
         try {
@@ -1201,29 +1131,21 @@ public class UtilizationTest extends CleanerTestBase {
         }
     }
 
-    private void expectObsolete(long file, boolean obsolete)
-        throws DatabaseException {
+    private void expectObsolete(long file, boolean obsolete) throws DatabaseException {
 
-        expectObsolete(file, obsolete, true /*checkDbFileSummary*/);
+        expectObsolete(file, obsolete, true /* checkDbFileSummary */);
     }
 
-    private void expectObsolete(long file,
-                                boolean obsolete,
-                                boolean checkDbFileSummary)
-        throws DatabaseException {
+    private void expectObsolete(long file, boolean obsolete, boolean checkDbFileSummary) throws DatabaseException {
 
         FileSummary fileSummary = getFileSummary(file);
-        assertEquals("totalLNCount",
-                     1, fileSummary.totalLNCount);
-        assertEquals("obsoleteLNCount",
-                     obsolete ? 1 : 0, fileSummary.obsoleteLNCount);
+        assertEquals("totalLNCount", 1, fileSummary.totalLNCount);
+        assertEquals("obsoleteLNCount", obsolete ? 1 : 0, fileSummary.obsoleteLNCount);
 
         DbFileSummary dbFileSummary = getDbFileSummary(file);
         if (checkDbFileSummary) {
-            assertEquals("db totalLNCount",
-                         1, dbFileSummary.totalLNCount);
-            assertEquals("db obsoleteLNCount",
-                         obsolete ? 1 : 0, dbFileSummary.obsoleteLNCount);
+            assertEquals("db totalLNCount", 1, dbFileSummary.totalLNCount);
+            assertEquals("db obsoleteLNCount", obsolete ? 1 : 0, dbFileSummary.obsoleteLNCount);
         }
 
         if (obsolete) {
@@ -1236,17 +1158,14 @@ public class UtilizationTest extends CleanerTestBase {
                 }
             }
             /* If we counted the size, make sure it is the actual LN size. */
-            if (expectObsoleteLNSizeCounted() &&
-                fileSummary.obsoleteLNSize > 0) {
+            if (expectObsoleteLNSizeCounted() && fileSummary.obsoleteLNSize > 0) {
                 assertEquals(getLNSize(file), fileSummary.obsoleteLNSize);
             }
             if (checkDbFileSummary) {
-                if (expectObsoleteLNSizeCounted() &&
-                    dbFileSummary.obsoleteLNSize > 0) {
+                if (expectObsoleteLNSizeCounted() && dbFileSummary.obsoleteLNSize > 0) {
                     assertEquals(getLNSize(file), dbFileSummary.obsoleteLNSize);
                 }
-                assertEquals(fileSummary.obsoleteLNSize > 0,
-                             dbFileSummary.obsoleteLNSize > 0);
+                assertEquals(fileSummary.obsoleteLNSize > 0, dbFileSummary.obsoleteLNSize > 0);
             }
         } else {
             assertEquals(0, fileSummary.obsoleteLNSize);
@@ -1260,16 +1179,15 @@ public class UtilizationTest extends CleanerTestBase {
 
     /**
      * If an LN is obsolete, expect the size to be counted unless we ran
-     * recovery and we did NOT configure fetchObsoleteSize=true.  In that
-     * case, the size may or may not be counted depending on how the redo
-     * or undo was processed during recovery.
+     * recovery and we did NOT configure fetchObsoleteSize=true. In that case,
+     * the size may or may not be counted depending on how the redo or undo was
+     * processed during recovery.
      */
     private boolean expectObsoleteLNSizeCounted() {
         return fetchObsoleteSize || !OP_RECOVER.equals(operation);
     }
 
-    private long doPut(int key, boolean commit)
-        throws DatabaseException {
+    private long doPut(int key, boolean commit) throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
         long file = doPut(key, txn);
@@ -1281,14 +1199,12 @@ public class UtilizationTest extends CleanerTestBase {
         return file;
     }
 
-    private long doPut(int key, Transaction txn)
-        throws DatabaseException {
+    private long doPut(int key, Transaction txn) throws DatabaseException {
 
         return doPut(key, key, txn);
     }
 
-    private long doPut(int key, int data, Transaction txn)
-        throws DatabaseException {
+    private long doPut(int key, int data, Transaction txn) throws DatabaseException {
 
         Cursor cursor = db.openCursor(txn, null);
         IntegerBinding.intToEntry(key, keyEntry);
@@ -1299,22 +1215,19 @@ public class UtilizationTest extends CleanerTestBase {
         return file;
     }
 
-    private long doUpdate(int key, int data, Transaction txn)
-        throws DatabaseException {
+    private long doUpdate(int key, int data, Transaction txn) throws DatabaseException {
 
         Cursor cursor = db.openCursor(txn, null);
         IntegerBinding.intToEntry(key, keyEntry);
         IntegerBinding.intToEntry(data, dataEntry);
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchBoth(keyEntry, dataEntry, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchBoth(keyEntry, dataEntry, null));
         cursor.putCurrent(dataEntry);
         long file = getFile(cursor);
         cursor.close();
         return file;
     }
 
-    private long doDelete(int key, boolean commit)
-        throws DatabaseException {
+    private long doDelete(int key, boolean commit) throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
         long file = doDelete(key, txn);
@@ -1326,27 +1239,23 @@ public class UtilizationTest extends CleanerTestBase {
         return file;
     }
 
-    private long doDelete(int key, Transaction txn)
-        throws DatabaseException {
+    private long doDelete(int key, Transaction txn) throws DatabaseException {
 
         Cursor cursor = db.openCursor(txn, null);
         IntegerBinding.intToEntry(key, keyEntry);
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchKey(keyEntry, dataEntry, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(keyEntry, dataEntry, null));
         cursor.delete();
         long file = getFile(cursor);
         cursor.close();
         return file;
     }
 
-    private long doDelete(int key, int data, Transaction txn)
-        throws DatabaseException {
+    private long doDelete(int key, int data, Transaction txn) throws DatabaseException {
 
         Cursor cursor = db.openCursor(txn, null);
         IntegerBinding.intToEntry(key, keyEntry);
         IntegerBinding.intToEntry(data, dataEntry);
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchBoth(keyEntry, dataEntry, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchBoth(keyEntry, dataEntry, null));
         cursor.delete();
         long file = getFile(cursor);
         cursor.close();
@@ -1354,11 +1263,10 @@ public class UtilizationTest extends CleanerTestBase {
     }
 
     /**
-     * Checkpoint, recover, or do neither, depending on the configured
-     * operation for this test.  Always compress to count deleted LNs.
+     * Checkpoint, recover, or do neither, depending on the configured operation
+     * for this test. Always compress to count deleted LNs.
      */
-    private void performRecoveryOperation()
-        throws DatabaseException {
+    private void performRecoveryOperation() throws DatabaseException {
 
         if (OP_NONE.equals(operation)) {
             /* Compress to count deleted LNs. */
@@ -1393,25 +1301,21 @@ public class UtilizationTest extends CleanerTestBase {
      * Returns the utilization summary for a given log file.
      */
     private FileSummary getFileSummary(long file) {
-        return envImpl.getUtilizationProfile()
-               .getFileSummaryMap(true)
-               .get(new Long(file));
+        return envImpl.getUtilizationProfile().getFileSummaryMap(true).get(new Long(file));
     }
 
     /**
      * Returns the per-database utilization summary for a given log file.
      */
     private DbFileSummary getDbFileSummary(long file) {
-        return dbImpl.getDbFileSummary
-            (new Long(file), false /*willModify*/);
+        return dbImpl.getDbFileSummary(new Long(file), false /* willModify */);
     }
 
     /**
-     * Peek into the file to get the total size of the first entry past the
-     * file header, which is known to be the LN log entry.
+     * Peek into the file to get the total size of the first entry past the file
+     * header, which is known to be the LN log entry.
      */
-    private int getLNSize(long file)
-        throws DatabaseException {
+    private int getLNSize(long file) throws DatabaseException {
 
         try {
             long offset = FileManager.firstLogEntryOffset();
@@ -1419,8 +1323,7 @@ public class UtilizationTest extends CleanerTestBase {
             LogManager lm = envImpl.getLogManager();
             LogSource src = lm.getLogSource(lsn);
             ByteBuffer buf = src.getBytes(offset);
-            LogEntryHeader header =
-                new LogEntryHeader(buf, LogEntryType.LOG_VERSION, lsn);
+            LogEntryHeader header = new LogEntryHeader(buf, LogEntryType.LOG_VERSION, lsn);
             int size = header.getItemSize();
             src.release();
             return size + header.getSize();

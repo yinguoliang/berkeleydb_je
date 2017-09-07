@@ -36,24 +36,22 @@ public class MultiEnvOpenCloseTest extends TestBase {
     private File envHome;
 
     @Before
-    public void setUp() 
-        throws Exception {
+    public void setUp() throws Exception {
 
         envHome = SharedTestUtils.getTestDir();
         super.setUp();
     }
 
     @Test
-    public void testMultiOpenClose()
-        throws Exception {
+    public void testMultiOpenClose() throws Exception {
 
         /*
          * Before fixing the bug in DaemonThread [#10504] this test would run
-         * out of memory after 7 iterations.  The bug was, if we open an
+         * out of memory after 7 iterations. The bug was, if we open an
          * environment read-only we won't start certain daemon threads, they
          * will not be GC'ed because they are part of a thread group, and they
-         * will retain a reference to the Environment.  The fix was to not
-         * create the threads until we need to start them.
+         * will retain a reference to the Environment. The fix was to not create
+         * the threads until we need to start them.
          */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -69,8 +67,7 @@ public class MultiEnvOpenCloseTest extends TestBase {
         DatabaseEntry data = new DatabaseEntry(new byte[DATA_SIZE]);
 
         Environment env = new Environment(envHome, envConfig);
-        Database db = env.openDatabase(null, "MultiEnvOpenCloseTest",
-                                       dbConfig);
+        Database db = env.openDatabase(null, "MultiEnvOpenCloseTest", dbConfig);
         for (int i = 0; i < N_RECORDS; i += 1) {
             IntegerBinding.intToEntry(i, key);
             db.put(null, key, data);

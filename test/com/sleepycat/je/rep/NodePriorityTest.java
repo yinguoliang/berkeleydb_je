@@ -51,8 +51,7 @@ public class NodePriorityTest extends RepTestBase {
         /* Last node should always be elected the master */
         RepEnvInfo minfo = restartNodes(repEnvInfo);
         assertEquals(1, minfo.getRepConfig().getNodePriority());
-        assertEquals(repEnvInfo[repEnvInfo.length-1].getRepNode().getNodeId(),
-                     minfo.getRepNode().getNodeId());
+        assertEquals(repEnvInfo[repEnvInfo.length - 1].getRepNode().getNodeId(), minfo.getRepNode().getNodeId());
 
         /* shutdown second last node. */
         final int secondLast = repEnvInfo.length - 2;
@@ -61,7 +60,7 @@ public class NodePriorityTest extends RepTestBase {
         /* It will come up with a NZ prio. */
         secondLastEnv.getRepConfig().setNodePriority(1);
 
-        /* Make changes, obsoleting the logs on secondLast  since it's down */
+        /* Make changes, obsoleting the logs on secondLast since it's down */
         ReplicatedEnvironment menv = minfo.getEnv();
         Transaction txn = menv.beginTransaction(null, null);
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -69,8 +68,8 @@ public class NodePriorityTest extends RepTestBase {
         dbConfig.setTransactional(true);
 
         /*
-         * Make updates to ensure that some zero prio nodes have more up to
-         * date files relative to secondLastEnv.
+         * Make updates to ensure that some zero prio nodes have more up to date
+         * files relative to secondLastEnv.
          */
         Database db1 = menv.openDatabase(txn, "db1", dbConfig);
         txn.commit(); /* commit with simple majority. */
@@ -146,11 +145,9 @@ public class NodePriorityTest extends RepTestBase {
         assertTrue(ok);
     }
 
-
     /**
      * test that elections only pick nodes with NZ priority. Kill masters
-     * checking each new master that's elected to make sure it has NZ
-     * priority.
+     * checking each new master that's elected to make sure it has NZ priority.
      */
     @Test
     public void testOnlyNZMasters() throws InterruptedException {
@@ -158,7 +155,7 @@ public class NodePriorityTest extends RepTestBase {
         createGroup();
         closeNodes(repEnvInfo);
 
-        final int majority = (repEnvInfo.length/2) - 1;
+        final int majority = (repEnvInfo.length / 2) - 1;
 
         /* Set less than a simple majority of nodes to have prio zero. */
         for (int i = 0; i < majority; i++) {
@@ -169,7 +166,7 @@ public class NodePriorityTest extends RepTestBase {
         RepEnvInfo minfo = restartNodes(repEnvInfo);
         assertTrue(minfo.getRepConfig().getNodePriority() > 0);
 
-        for (int i=0; i < majority; i++) {
+        for (int i = 0; i < majority; i++) {
             minfo = findMaster(repEnvInfo);
             assertNotNull(minfo);
             assertTrue(minfo.getRepConfig().getNodePriority() > 0);
@@ -189,15 +186,14 @@ public class NodePriorityTest extends RepTestBase {
     class ElectionListener implements StateChangeListener {
 
         final CountDownLatch electionLatch;
-        State prevState;
-        State newState;
+        State                prevState;
+        State                newState;
 
         ElectionListener() {
             electionLatch = new CountDownLatch(1);
         }
 
-        public void stateChange(StateChangeEvent stateChangeEvent)
-            throws RuntimeException {
+        public void stateChange(StateChangeEvent stateChangeEvent) throws RuntimeException {
             if (prevState == null) {
                 prevState = stateChangeEvent.getState();
                 /* Ignore the first immediate synchronous callback. */

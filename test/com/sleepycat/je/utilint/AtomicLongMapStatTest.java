@@ -29,22 +29,18 @@ import com.sleepycat.util.test.TestBase;
 /** Test the AtomicLongMapStat class */
 public class AtomicLongMapStatTest extends TestBase {
 
-    private static final StatGroup statGroup =
-        new StatGroup("TestGroup", "Test group");
-    private static int statDefCount;
+    private static final StatGroup statGroup = new StatGroup("TestGroup", "Test group");
+    private static int             statDefCount;
 
-    private AtomicLongMapStat map;
-    private AtomicLongMapStat cumulativeMap;
+    private AtomicLongMapStat      map;
+    private AtomicLongMapStat      cumulativeMap;
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         map = new AtomicLongMapStat(statGroup, getStatDef());
-        cumulativeMap = new AtomicLongMapStat(
-            statGroup,
-            new StatDefinition(getStatDefName(), "", StatType.CUMULATIVE));
+        cumulativeMap = new AtomicLongMapStat(statGroup, new StatDefinition(getStatDefName(), "", StatType.CUMULATIVE));
     }
 
     private StatDefinition getStatDef() {

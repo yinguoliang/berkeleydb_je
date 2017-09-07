@@ -42,8 +42,7 @@ public class RecoveryTest extends RecoveryTestBase {
      * Basic insert, delete data.
      */
     @Test
-    public void testBasic()
-        throws Throwable {
+    public void testBasic() throws Throwable {
 
         doBasic(true);
     }
@@ -52,8 +51,7 @@ public class RecoveryTest extends RecoveryTestBase {
      * Basic insert, delete data with BtreeComparator
      */
     @Test
-    public void testBasicRecoveryWithBtreeComparator()
-        throws Throwable {
+    public void testBasicRecoveryWithBtreeComparator() throws Throwable {
 
         btreeComparisonFunction = new BtreeComparator(true);
         doBasic(true);
@@ -63,34 +61,25 @@ public class RecoveryTest extends RecoveryTestBase {
      * Test that put(OVERWRITE) works correctly with duplicates.
      */
     @Test
-    public void testDuplicateOverwrite()
-        throws Throwable {
+    public void testDuplicateOverwrite() throws Throwable {
 
         createEnvAndDbs(1 << 10, false, NUM_DBS);
         try {
-            Map<TestData, Set<TestData>> expectedData = 
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             Transaction txn = env.beginTransaction(null, null);
             DatabaseEntry key = new DatabaseEntry(StringUtils.toUTF8("aaaaa"));
-            DatabaseEntry data1 =
-                new DatabaseEntry(StringUtils.toUTF8("dddddddddd"));
-            DatabaseEntry data2 =
-                new DatabaseEntry(StringUtils.toUTF8("eeeeeeeeee"));
-            DatabaseEntry data3 =
-                new DatabaseEntry(StringUtils.toUTF8("ffffffffff"));
+            DatabaseEntry data1 = new DatabaseEntry(StringUtils.toUTF8("dddddddddd"));
+            DatabaseEntry data2 = new DatabaseEntry(StringUtils.toUTF8("eeeeeeeeee"));
+            DatabaseEntry data3 = new DatabaseEntry(StringUtils.toUTF8("ffffffffff"));
             Database db = dbs[0];
-            assertEquals(OperationStatus.SUCCESS,
-                         db.put(null, key, data1));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data1));
             addExpectedData(expectedData, 0, key, data1, true);
-            assertEquals(OperationStatus.SUCCESS,
-                         db.put(null, key, data2));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data2));
             addExpectedData(expectedData, 0, key, data2, true);
-            assertEquals(OperationStatus.SUCCESS,
-                         db.put(null, key, data3));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data3));
             addExpectedData(expectedData, 0, key, data3, true);
-            assertEquals(OperationStatus.SUCCESS,
-                         db.put(null, key, data3));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data3));
             txn.commit();
             closeEnv();
 
@@ -105,42 +94,35 @@ public class RecoveryTest extends RecoveryTestBase {
      * Basic insert, delete data.
      */
     @Test
-    public void testBasicFewerCheckpoints()
-        throws Throwable {
+    public void testBasicFewerCheckpoints() throws Throwable {
 
         doBasic(false);
     }
 
     @Test
-    public void testSR8984Part1()
-        throws Throwable {
+    public void testSR8984Part1() throws Throwable {
 
         doTestSR8984Work(true);
     }
 
     @Test
-    public void testSR8984Part2()
-        throws Throwable {
+    public void testSR8984Part2() throws Throwable {
 
         doTestSR8984Work(false);
     }
 
-    private void doTestSR8984Work(boolean sameKey)
-        throws DatabaseException {
+    private void doTestSR8984Work(boolean sameKey) throws DatabaseException {
 
         final int NUM_EXTRA_DUPS = 150;
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         /* Make an environment and open it */
         envConfig.setTransactional(false);
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(),
-                                 "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), "false");
         envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(),
-                                 "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
 
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         env = new Environment(envHome, envConfig);
 
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -167,8 +149,7 @@ public class RecoveryTest extends RecoveryTestBase {
         data.setData(StringUtils.toUTF8("d1"));
 
         Cursor c = db.openCursor(null, null);
-        assertEquals(OperationStatus.SUCCESS,
-                     c.getFirst(key, data, LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, c.getFirst(key, data, LockMode.DEFAULT));
 
         c.close();
         db.close();
@@ -178,8 +159,7 @@ public class RecoveryTest extends RecoveryTestBase {
         env = new Environment(envHome, envConfig);
         db = env.openDatabase(null, "testSR8984db", dbConfig);
         c = db.openCursor(null, null);
-        assertEquals(OperationStatus.SUCCESS,
-                     c.getFirst(key, data, LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, c.getFirst(key, data, LockMode.DEFAULT));
         assertEquals(NUM_EXTRA_DUPS - 2, c.count());
         c.close();
         db.close();
@@ -189,16 +169,14 @@ public class RecoveryTest extends RecoveryTestBase {
     /**
      * Insert data, delete data into several dbs.
      */
-    public void doBasic(boolean runCheckpointerDaemon)
-        throws Throwable {
+    public void doBasic(boolean runCheckpointerDaemon) throws Throwable {
 
         createEnvAndDbs(1 << 20, runCheckpointerDaemon, NUM_DBS);
         int numRecs = NUM_RECS;
 
         try {
             // Set up an repository of expected data
-            Map<TestData, Set<TestData>> expectedData = 
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             // insert all the data
             Transaction txn = env.beginTransaction(null, null);
@@ -212,7 +190,7 @@ public class RecoveryTest extends RecoveryTestBase {
 
             // modify all the records
             txn = env.beginTransaction(null, null);
-            modifyData(txn, NUM_RECS/2, expectedData, 1, true, NUM_DBS);
+            modifyData(txn, NUM_RECS / 2, expectedData, 1, true, NUM_DBS);
             txn.commit();
 
             closeEnv();
@@ -228,15 +206,13 @@ public class RecoveryTest extends RecoveryTestBase {
      * Insert data, delete all data into several dbs.
      */
     @Test
-    public void testBasicDeleteAll()
-        throws Throwable {
+    public void testBasicDeleteAll() throws Throwable {
 
         createEnvAndDbs(1024, true, NUM_DBS);
         int numRecs = NUM_RECS;
         try {
             // Set up an repository of expected data
-            Map<TestData, Set<TestData>> expectedData = 
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             // insert all the data
             Transaction txn = env.beginTransaction(null, null);
@@ -245,7 +221,7 @@ public class RecoveryTest extends RecoveryTestBase {
 
             // modify half the records
             txn = env.beginTransaction(null, null);
-            modifyData(txn, numRecs/2, expectedData, 1, true, NUM_DBS);
+            modifyData(txn, numRecs / 2, expectedData, 1, true, NUM_DBS);
             txn.commit();
 
             // delete all the records
@@ -294,8 +270,10 @@ public class RecoveryTest extends RecoveryTestBase {
                 if (b1 == b2) {
                     continue;
                 } else {
-                    /* Remember, bytes are signed, so convert to shorts so that
-                       we effectively do an unsigned byte comparison. */
+                    /*
+                     * Remember, bytes are signed, so convert to shorts so that
+                     * we effectively do an unsigned byte comparison.
+                     */
                     short s1 = (short) (b1 & 0x7F);
                     short s2 = (short) (b2 & 0x7F);
                     if (b1 < 0) {

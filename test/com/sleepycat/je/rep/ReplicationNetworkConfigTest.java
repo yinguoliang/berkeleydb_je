@@ -19,40 +19,23 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_FILE;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_PASSWORD_CLASS;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_PASSWORD_PARAMS;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_PASSWORD;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_TYPE;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_CLIENT_KEY_ALIAS;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_SERVER_KEY_ALIAS;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_TRUSTSTORE_FILE;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_TRUSTSTORE_TYPE;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_CIPHER_SUITES;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_PROTOCOLS;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_AUTHENTICATOR;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_AUTHENTICATOR_CLASS;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_AUTHENTICATOR_PARAMS;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_HOST_VERIFIER;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_HOST_VERIFIER_CLASS;
-import static
-    com.sleepycat.je.rep.ReplicationSSLConfig.SSL_HOST_VERIFIER_PARAMS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_FILE;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_PASSWORD_CLASS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_PASSWORD_PARAMS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_PASSWORD;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_KEYSTORE_TYPE;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_CLIENT_KEY_ALIAS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_SERVER_KEY_ALIAS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_TRUSTSTORE_FILE;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_TRUSTSTORE_TYPE;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_CIPHER_SUITES;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_PROTOCOLS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_AUTHENTICATOR;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_AUTHENTICATOR_CLASS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_AUTHENTICATOR_PARAMS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_HOST_VERIFIER;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_HOST_VERIFIER_CLASS;
+import static com.sleepycat.je.rep.ReplicationSSLConfig.SSL_HOST_VERIFIER_PARAMS;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -92,21 +75,17 @@ public class ReplicationNetworkConfigTest extends TestBase {
     @Test
     public void testChannelType() {
         /* default constructor initializes to "basic" */
-        ReplicationNetworkConfig defRnc =
-            ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig defRnc = ReplicationNetworkConfig.createDefault();
         assertEquals(ChannelTypeConfigParam.BASIC, defRnc.getChannelType());
 
         /* property constructor initializes to "basic" */
         Properties props = new Properties();
-        ReplicationNetworkConfig empRnc =
-            ReplicationNetworkConfig.create(props);
+        ReplicationNetworkConfig empRnc = ReplicationNetworkConfig.create(props);
         assertEquals(ChannelTypeConfigParam.BASIC, empRnc.getChannelType());
 
         /* Use property constructor to set to a value */
-        props.setProperty(ReplicationNetworkConfig.CHANNEL_TYPE,
-                          ChannelTypeConfigParam.BASIC);
-        ReplicationNetworkConfig rnc =
-            ReplicationNetworkConfig.create(props);
+        props.setProperty(ReplicationNetworkConfig.CHANNEL_TYPE, ChannelTypeConfigParam.BASIC);
+        ReplicationNetworkConfig rnc = ReplicationNetworkConfig.create(props);
         assertEquals(rnc.getChannelType(), ChannelTypeConfigParam.BASIC);
 
         /* Make sure other valid types work */
@@ -127,21 +106,17 @@ public class ReplicationNetworkConfigTest extends TestBase {
         final String testLogName = "RNC";
 
         /* default constructor initializes to empty */
-        ReplicationNetworkConfig defRnc =
-            ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig defRnc = ReplicationNetworkConfig.createDefault();
         assertEmpty(defRnc.getLogName());
 
         /* property constructor initializes to empty */
         Properties props = new Properties();
-        ReplicationNetworkConfig empRnc =
-            ReplicationNetworkConfig.create(props);
+        ReplicationNetworkConfig empRnc = ReplicationNetworkConfig.create(props);
         assertEmpty(empRnc.getLogName());
 
         /* Use property constructor to set to a value */
-        props.setProperty(ReplicationNetworkConfig.CHANNEL_LOG_NAME,
-                          testLogName);
-        ReplicationNetworkConfig rnc =
-            ReplicationNetworkConfig.create(props);
+        props.setProperty(ReplicationNetworkConfig.CHANNEL_LOG_NAME, testLogName);
+        ReplicationNetworkConfig rnc = ReplicationNetworkConfig.create(props);
         assertEquals(rnc.getLogName(), testLogName);
 
         /* Make sure we can clear it */
@@ -157,23 +132,19 @@ public class ReplicationNetworkConfigTest extends TestBase {
     public void testDCFactoryClass() {
 
         /* default constructor initializes to "" */
-        ReplicationNetworkConfig defRnc =
-            ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig defRnc = ReplicationNetworkConfig.createDefault();
         assertEmpty(defRnc.getChannelFactoryClass());
 
         /* property constructor initializes to "" */
         Properties props = new Properties();
-        ReplicationNetworkConfig empRnc =
-            ReplicationNetworkConfig.create(props);
+        ReplicationNetworkConfig empRnc = ReplicationNetworkConfig.create(props);
         assertEmpty(empRnc.getChannelFactoryClass());
 
         final String dummyClass = "xyz";
 
         /* Use property constructor to set to a value */
-        props.setProperty(ReplicationNetworkConfig.CHANNEL_FACTORY_CLASS,
-                          dummyClass);
-        ReplicationNetworkConfig rnc =
-            ReplicationNetworkConfig.create(props);
+        props.setProperty(ReplicationNetworkConfig.CHANNEL_FACTORY_CLASS, dummyClass);
+        ReplicationNetworkConfig rnc = ReplicationNetworkConfig.create(props);
         assertEquals(rnc.getChannelFactoryClass(), dummyClass);
 
         /* Make sure we can clear it */
@@ -190,21 +161,18 @@ public class ReplicationNetworkConfigTest extends TestBase {
     public void testDCFactoryParams() {
 
         /* default constructor initializes to "" */
-        ReplicationNetworkConfig defRnc =
-            ReplicationNetworkConfig.createDefault();
+        ReplicationNetworkConfig defRnc = ReplicationNetworkConfig.createDefault();
         assertEmpty(defRnc.getChannelFactoryParams());
 
         /* property constructor initializes to "" */
         Properties props = new Properties();
-        ReplicationNetworkConfig empRnc =
-            ReplicationNetworkConfig.create(props);
+        ReplicationNetworkConfig empRnc = ReplicationNetworkConfig.create(props);
         assertEmpty(empRnc.getChannelFactoryParams());
 
         final String dummyParams = "xyz";
 
         /* Use property constructor to set to a value */
-        props.setProperty(ReplicationNetworkConfig.CHANNEL_FACTORY_PARAMS,
-                          dummyParams);
+        props.setProperty(ReplicationNetworkConfig.CHANNEL_FACTORY_PARAMS, dummyParams);
         ReplicationNetworkConfig rnc = ReplicationNetworkConfig.create(props);
         assertEquals(rnc.getChannelFactoryParams(), dummyParams);
 
@@ -803,8 +771,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
     public void testBasicFactory() {
 
         ReplicationNetworkConfig rnc = new ReplicationBasicConfig();
-        DataChannelFactory factory =
-            DataChannelFactoryBuilder.construct(rnc);
+        DataChannelFactory factory = DataChannelFactoryBuilder.construct(rnc);
         assertTrue(factory instanceof SimpleChannelFactory);
     }
 
@@ -812,8 +779,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
     public void testBasicFactoryDefault() {
 
         ReplicationNetworkConfig rnc = ReplicationNetworkConfig.createDefault();
-        DataChannelFactory factory =
-            DataChannelFactoryBuilder.construct(rnc);
+        DataChannelFactory factory = DataChannelFactoryBuilder.construct(rnc);
         assertTrue(factory instanceof SimpleChannelFactory);
     }
 
@@ -821,8 +787,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
     public void testSSLFactory() {
 
         ReplicationNetworkConfig rnc = new ReplicationSSLConfig();
-        DataChannelFactory factory =
-            DataChannelFactoryBuilder.construct(rnc);
+        DataChannelFactory factory = DataChannelFactoryBuilder.construct(rnc);
         assertTrue(factory instanceof SSLChannelFactory);
     }
 
@@ -846,8 +811,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
         /* Keystore with the wrong password */
         ReplicationSSLConfig rsc = new ReplicationSSLConfig();
         rsc.setSSLKeyStore(stdProps.getProperty(SSL_KEYSTORE_FILE));
-        rsc.setSSLKeyStorePassword(stdProps.getProperty(
-                                       SSL_KEYSTORE_PASSWORD) + "XXX");
+        rsc.setSSLKeyStorePassword(stdProps.getProperty(SSL_KEYSTORE_PASSWORD) + "XXX");
 
         try {
             DataChannelFactoryBuilder.construct(rsc);
@@ -910,7 +874,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
     public void testSSLConfigBadKSNotKS() throws IOException {
 
         /* "Keystore" is not a keystore */
-        
+
         File bogusKS = makeBogusKeyStore();
         ReplicationSSLConfig rsc = new ReplicationSSLConfig();
         rsc.setSSLKeyStore(bogusKS.getPath());
@@ -943,7 +907,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
     public void testSSLConfigBadTSNotTS() throws IOException {
 
         /* "truststore" is not a truststore */
-        
+
         File bogusTS = makeBogusKeyStore();
         ReplicationSSLConfig rsc = new ReplicationSSLConfig();
         rsc.setSSLKeyStore(stdProps.getProperty(SSL_KEYSTORE_FILE));
@@ -1119,8 +1083,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
     }
 
     @Test
-    public void testSerializeBasic()
-        throws Throwable {
+    public void testSerializeBasic() throws Throwable {
 
         ReplicationBasicConfig rbc = new ReplicationBasicConfig();
         final String constructParams = "abc";
@@ -1130,8 +1093,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
         rbc.setChannelFactoryParams(constructParams);
 
         File envHome = SharedTestUtils.getTestDir();
-        ReplicationBasicConfig newRbc = (ReplicationBasicConfig)
-            TestUtils.serializeAndReadObject(envHome, rbc);
+        ReplicationBasicConfig newRbc = (ReplicationBasicConfig) TestUtils.serializeAndReadObject(envHome, rbc);
 
         /* clone should produce a distinct object */
         assertFalse(newRbc == rbc);
@@ -1141,8 +1103,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
     }
 
     @Test
-    public void testSerializeSSL()
-        throws Throwable {
+    public void testSerializeSSL() throws Throwable {
 
         ReplicationSSLConfig rsc = new ReplicationSSLConfig();
         final String constructParams = "abc";
@@ -1155,8 +1116,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
         rsc.setSSLKeyStorePasswordSource(pwSource);
 
         File envHome = SharedTestUtils.getTestDir();
-        ReplicationSSLConfig newRsc = (ReplicationSSLConfig)
-            TestUtils.serializeAndReadObject(envHome, rsc);
+        ReplicationSSLConfig newRsc = (ReplicationSSLConfig) TestUtils.serializeAndReadObject(envHome, rsc);
 
         /* clone should produce a distinct object */
         assertFalse(newRsc == rsc);
@@ -1177,7 +1137,6 @@ public class ReplicationNetworkConfigTest extends TestBase {
         fos.close();
         return bogusKS;
     }
-
 
     public static class DummyFactory implements DataChannelFactory {
         private final String params;
@@ -1200,8 +1159,7 @@ public class ReplicationNetworkConfigTest extends TestBase {
         }
 
         @Override
-        public DataChannel connect(InetSocketAddress addr,
-                                   ConnectOptions connectOptions) {
+        public DataChannel connect(InetSocketAddress addr, ConnectOptions connectOptions) {
             return null;
         }
     }

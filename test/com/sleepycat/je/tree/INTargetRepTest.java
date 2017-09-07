@@ -38,8 +38,8 @@ import com.sleepycat.je.tree.INTargetRep.Type;
 
 public class INTargetRepTest extends INEntryTestBase {
 
-    final int size = 32;
-    final IN parent = new TestIN(size);
+    final int size   = 32;
+    final IN  parent = new TestIN(size);
 
     /**
      * Test use of the representations at the IN level. Checks memory
@@ -92,13 +92,11 @@ public class INTargetRepTest extends INEntryTestBase {
         db.close();
     }
 
-    private BIN verifyAcrossINEvict(Database db,
-                                    Type pre,
-                                    Type post) {
+    private BIN verifyAcrossINEvict(Database db, Type pre, Type post) {
 
         DatabaseImpl dbImpl = DbInternal.getDbImpl(db);
 
-        BIN firstBin = (BIN)(dbImpl.getTree().getFirstNode(cacheMode));
+        BIN firstBin = (BIN) (dbImpl.getTree().getFirstNode(cacheMode));
 
         assertEquals(pre, firstBin.getTargets().getType());
 
@@ -117,7 +115,7 @@ public class INTargetRepTest extends INEntryTestBase {
     }
 
     public void commonTest(INArrayRep<INTargetRep, Type, Node> targets) {
-        targets = targets.set(1,new TestNode(1), parent);
+        targets = targets.set(1, new TestNode(1), parent);
         assertEquals(1, ((TestNode) targets.get(1)).id);
 
         targets.copy(0, 5, 1, parent);
@@ -141,7 +139,7 @@ public class INTargetRepTest extends INEntryTestBase {
         assertEquals(Type.NONE, rep.getType());
 
         te = new Default(size);
-        for (int i=0; i < Sparse.MAX_ENTRIES; i++) {
+        for (int i = 0; i < Sparse.MAX_ENTRIES; i++) {
             te.set(i, new TestNode(i), parent);
         }
         assertEquals(Type.DEFAULT, te.getType());
@@ -149,7 +147,7 @@ public class INTargetRepTest extends INEntryTestBase {
         assertEquals(Type.SPARSE, rep.getType());
 
         te = new Default(size);
-        for (int i=0; i <= Sparse.MAX_ENTRIES; i++) {
+        for (int i = 0; i <= Sparse.MAX_ENTRIES; i++) {
             te.set(i, new TestNode(i), parent);
         }
 
@@ -165,10 +163,10 @@ public class INTargetRepTest extends INEntryTestBase {
         Node refEntries[] = new TestNode[size];
 
         /* Ramp up */
-        for (int i=0; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             TestNode n = new TestNode(i);
             entries = entries.set(i, n, parent);
-            if ((i+1) <= Sparse.MAX_ENTRIES) {
+            if ((i + 1) <= Sparse.MAX_ENTRIES) {
                 assertEquals(Type.SPARSE, entries.getType());
             } else {
                 assertEquals(Type.DEFAULT, entries.getType());
@@ -178,11 +176,11 @@ public class INTargetRepTest extends INEntryTestBase {
         }
 
         /* Ramp down with compact. */
-        for (int i=0; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             entries = entries.set(i, null, parent);
             entries = entries.compact(parent);
-            if ((size - (i+1)) <= Sparse.MAX_ENTRIES) {
-                if ((size - (i+1)) == 0) {
+            if ((size - (i + 1)) <= Sparse.MAX_ENTRIES) {
+                if ((size - (i + 1)) == 0) {
                     assertEquals(Type.NONE, entries.getType());
                 } else {
                     assertEquals(Type.SPARSE, entries.getType());
@@ -201,7 +199,7 @@ public class INTargetRepTest extends INEntryTestBase {
         Node refEntries[] = new TestNode[size];
         Random rand = new Random();
         for (int repeat = 1; repeat < 100; repeat++) {
-            for (int i=0; i < 10*size; i++) {
+            for (int i = 0; i < 10 * size; i++) {
                 int slot = rand.nextInt(size);
                 Node n = (i % 5) == 0 ? null : new TestNode(slot);
                 refEntries[slot] = n;
@@ -229,23 +227,20 @@ public class INTargetRepTest extends INEntryTestBase {
 
             /* Simulate an insertion */
             entries = entries.copy(slot, slot + 1, size - (slot + 1), parent);
-            System.arraycopy(refEntries, slot, refEntries, slot + 1,
-                             size - (slot + 1));
+            System.arraycopy(refEntries, slot, refEntries, slot + 1, size - (slot + 1));
             checkEquals(refEntries, entries);
 
             /* Simulate a deletion. */
             entries = entries.copy(slot + 1, slot, size - (slot + 1), parent);
-            entries = entries.set(size-1, null, parent);
-            System.arraycopy(refEntries, slot + 1, refEntries,
-                             slot, size - (slot + 1));
+            entries = entries.set(size - 1, null, parent);
+            System.arraycopy(refEntries, slot + 1, refEntries, slot, size - (slot + 1));
             refEntries[size - 1] = null;
             checkEquals(refEntries, entries);
         }
     }
 
-    private void checkEquals(Node[] refEntries,
-                             INArrayRep<INTargetRep, Type, Node> entries) {
-        for (int i=0; i < refEntries.length; i++) {
+    private void checkEquals(Node[] refEntries, INArrayRep<INTargetRep, Type, Node> entries) {
+        for (int i = 0; i < refEntries.length; i++) {
             assertEquals(refEntries[i], entries.get(i));
         }
     }

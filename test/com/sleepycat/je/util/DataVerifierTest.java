@@ -52,46 +52,41 @@ import org.junit.Test;
  */
 public class DataVerifierTest extends TestBase {
 
-    private static final String DB_NAME = "tempDB";
+    private static final String            DB_NAME                  = "tempDB";
 
-    private Environment env;
-    private Database db;
-    private File envHome;
-    private Cursor c;
+    private Environment                    env;
+    private Database                       db;
+    private File                           envHome;
+    private Cursor                         c;
 
-    private final int recNum = 1000 * 50; //(1000 * 500) * 50 files
-    private final int dataLen = 500;
-    private final int totalWaitTries = 100;
+    private final int                      recNum                   = 1000 * 50;          //(1000 * 500) * 50 files
+    private final int                      dataLen                  = 500;
+    private final int                      totalWaitTries           = 100;
 
-    private static long millsOneDay = 24 * 60 * 60 * 1000;
-    private static long millsOneHour = 60 * 60 * 1000;
-    private static long millsOneMinute = 60 * 1000;
+    private static long                    millsOneDay              = 24 * 60 * 60 * 1000;
+    private static long                    millsOneHour             = 60 * 60 * 1000;
+    private static long                    millsOneMinute           = 60 * 1000;
 
-    private static final EnvironmentConfig envConfigWithVerifier
-        = initConfig();
-    private static final EnvironmentConfig envConfigWithoutVerifier
-        = initConfig();
+    private static final EnvironmentConfig envConfigWithVerifier    = initConfig();
+    private static final EnvironmentConfig envConfigWithoutVerifier = initConfig();
 
     static {
-        envConfigWithoutVerifier.setConfigParam(
-            EnvironmentParams.ENV_RUN_VERIFIER.getName(), "false");
+        envConfigWithoutVerifier.setConfigParam(EnvironmentParams.ENV_RUN_VERIFIER.getName(), "false");
     }
 
     @Before
-    public void setUp() 
-        throws Exception {
+    public void setUp() throws Exception {
         envHome = SharedTestUtils.getTestDir();
         super.setUp();
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
         CronScheduleParser.setCurCalHook = null;
 
         if (c != null) {
             try {
-                c.close(); 
+                c.close();
             } catch (EnvironmentFailureException efe) {
 
             }
@@ -100,7 +95,7 @@ public class DataVerifierTest extends TestBase {
 
         if (db != null) {
             try {
-                db.close(); 
+                db.close();
             } catch (EnvironmentFailureException efe) {
 
             }
@@ -127,39 +122,27 @@ public class DataVerifierTest extends TestBase {
 
         checkConfig("* * * * *", 0, millsOneMinute);
 
-        checkConfig(
-            "10 22 * * 6",
-            9 * millsOneMinute + 22 * millsOneHour + 1 * millsOneDay,
-            7 * millsOneDay);
+        checkConfig("10 22 * * 6", 9 * millsOneMinute + 22 * millsOneHour + 1 * millsOneDay, 7 * millsOneDay);
 
-        checkConfig(
-            "10 22 * * 3",
-            7 * millsOneDay -
-            (51 * millsOneMinute + 1 * millsOneHour + 1 * millsOneDay),
-            7 * millsOneDay);
+        checkConfig("10 22 * * 3", 7 * millsOneDay - (51 * millsOneMinute + 1 * millsOneHour + 1 * millsOneDay),
+                7 * millsOneDay);
     }
 
     private void checkConfig(String cronSchedule, long delay, long interval) {
 
         EnvironmentConfig envConfig = initConfig();
         /*
-         * For current test, in order to let DataVerifier to run
-         * during the JE Standalone test, so I set the default value of
-         * VERIFY_SCHEDULE to be "0 * * * *". 
-         * 
-         * In future, I may set this value in each JE Standalone test and
-         * recover the default value to "0 0 * * *" even if when testing.
-         * 
-         * For now, when we test configuration, we set it to be normal default
-         * value, i.e. "0 0 * * *".
-         * 
+         * For current test, in order to let DataVerifier to run during the JE
+         * Standalone test, so I set the default value of VERIFY_SCHEDULE to be
+         * "0 * * * *". In future, I may set this value in each JE Standalone
+         * test and recover the default value to "0 0 * * *" even if when
+         * testing. For now, when we test configuration, we set it to be normal
+         * default value, i.e. "0 0 * * *".
          */
-        envConfig.setConfigParam(
-            EnvironmentConfig.VERIFY_SCHEDULE, "0 0 * * *");
+        envConfig.setConfigParam(EnvironmentConfig.VERIFY_SCHEDULE, "0 0 * * *");
 
         if (cronSchedule != null) {
-            envConfig.setConfigParam(
-                EnvironmentConfig.VERIFY_SCHEDULE, cronSchedule);
+            envConfig.setConfigParam(EnvironmentConfig.VERIFY_SCHEDULE, cronSchedule);
         }
 
         MyHook hook = new MyHook();
@@ -167,13 +150,12 @@ public class DataVerifierTest extends TestBase {
 
         env = new Environment(envHome, envConfig);
 
-        DataVerifier verifier =
-            DbInternal.getEnvironmentImpl(env).getDataVerifier();
+        DataVerifier verifier = DbInternal.getEnvironmentImpl(env).getDataVerifier();
 
         assertNotNull(verifier);
         assertEquals(delay, verifier.getVerifyDelay());
         assertEquals(interval, verifier.getVerifyInterval());
-    
+
         env.close();
         env = null;
     }
@@ -181,16 +163,14 @@ public class DataVerifierTest extends TestBase {
     @Test
     public void testConfigChange() {
         EnvironmentConfig envConfig = initConfig();
-        envConfig.setConfigParam(
-            EnvironmentConfig.VERIFY_SCHEDULE, "0 0 * * *");
+        envConfig.setConfigParam(EnvironmentConfig.VERIFY_SCHEDULE, "0 0 * * *");
 
         MyHook hook = new MyHook();
         CronScheduleParser.setCurCalHook = hook;
 
         env = new Environment(envHome, envConfig);
 
-        DataVerifier verifier =
-            DbInternal.getEnvironmentImpl(env).getDataVerifier();
+        DataVerifier verifier = DbInternal.getEnvironmentImpl(env).getDataVerifier();
 
         /*
          * The default VERIFY_SCHEDULE "0 0 * * *"
@@ -200,14 +180,13 @@ public class DataVerifierTest extends TestBase {
         assertNotNull(verifier.getCronSchedule());
         assertEquals(millsOneDay - millsOneMinute, verifier.getVerifyDelay());
         assertEquals(millsOneDay, verifier.getVerifyInterval());
-        TimerTask oldVerifyTask  = verifier.getVerifyTask();
+        TimerTask oldVerifyTask = verifier.getVerifyTask();
         String oldCronSchedule = verifier.getCronSchedule();
 
         /*
          * The default VERIFY_SCHEDULE "0 0 * * *"
          */
-        envConfig.setConfigParam(
-            EnvironmentConfig.VERIFY_SCHEDULE, "5 * * * *");
+        envConfig.setConfigParam(EnvironmentConfig.VERIFY_SCHEDULE, "5 * * * *");
         env.setMutableConfig(envConfig);
         assertNotNull(verifier);
         assertNotNull(verifier.getVerifyTask());
@@ -220,8 +199,7 @@ public class DataVerifierTest extends TestBase {
         /*
          * Disable ENV_RUN_VERIFIER.
          */
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_VERIFIER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_VERIFIER, "false");
         env.setMutableConfig(envConfig);
         assertNotNull(verifier);
         assertNull(verifier.getVerifyTask());
@@ -253,12 +231,15 @@ public class DataVerifierTest extends TestBase {
         @Override
         public void doHook(Void obj) {
         }
+
         @Override
         public void hookSetup() {
         }
+
         @Override
         public void doIOHook() throws IOException {
         }
+
         @Override
         public Void getHookValue() {
             return null;
@@ -270,10 +251,8 @@ public class DataVerifierTest extends TestBase {
         config.setAllowCreate(true);
         config.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
         config.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        config.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-            "false");
-        config.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR,
-            "false");
+        config.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        config.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         config.setCacheSize(1000000);
         config.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, "1000000");
         config.setConfigParam(EnvironmentConfig.VERIFY_SCHEDULE, "* * * * *");
@@ -313,7 +292,7 @@ public class DataVerifierTest extends TestBase {
 
     public void initialDb() {
         try {
-            for (int i = 0 ; i < recNum; i++) {
+            for (int i = 0; i < recNum; i++) {
                 final DatabaseEntry key = new DatabaseEntry();
                 IntegerBinding.intToEntry(i, key);
                 final DatabaseEntry data = new DatabaseEntry(new byte[dataLen]);
@@ -323,9 +302,7 @@ public class DataVerifierTest extends TestBase {
             throw new RuntimeException("Initiate Database fails.", dbe);
         }
 
-        final int totalFiles =
-            DbInternal.getEnvironmentImpl(env).getFileManager().                            
-            getAllFileNumbers().length;
+        final int totalFiles = DbInternal.getEnvironmentImpl(env).getFileManager().getAllFileNumbers().length;
         assert totalFiles < 100 : "Total file number is " + totalFiles;
     }
 
@@ -348,13 +325,13 @@ public class DataVerifierTest extends TestBase {
             rafile.seek(fileLength / 2);
             byte b = rafile.readByte();
             if (b == 255) {
-                b = (byte)(b - 1);
+                b = (byte) (b - 1);
             } else {
-                b = (byte)(b + 1);
+                b = (byte) (b + 1);
             }
             rafile.seek(fileLength / 2);
             rafile.writeByte(b);
-            rafile.close(); 
+            rafile.close();
         } catch (Exception e) {
             throw new RuntimeException("Create data corruption fails.", e);
         }
@@ -362,14 +339,12 @@ public class DataVerifierTest extends TestBase {
 
     /*
      * The first pass transverse aims to cache all the log files. The second
-     * pass transverse aims to check whether the Read operation can succeed
-     * when one log file is corrupted, depending on whether ENV_RUN_VERIFIER
-     * is set.
-     * 
+     * pass transverse aims to check whether the Read operation can succeed when
+     * one log file is corrupted, depending on whether ENV_RUN_VERIFIER is set.
      */
     public void transverseDb(boolean check) {
-        boolean verify = DbInternal.getEnvironmentImpl(env).getConfigManager().
-            getBoolean(EnvironmentParams.ENV_RUN_VERIFIER);
+        boolean verify = DbInternal.getEnvironmentImpl(env).getConfigManager()
+                .getBoolean(EnvironmentParams.ENV_RUN_VERIFIER);
         try {
             final DatabaseEntry key = new DatabaseEntry();
             final DatabaseEntry data = new DatabaseEntry();
@@ -384,36 +359,35 @@ public class DataVerifierTest extends TestBase {
                 }
                 IntegerBinding.intToEntry(firstKey, key);
 
-                assert c.getFirst(key, data, null) == OperationStatus.SUCCESS :
-                    "The db should contain this record: key is " + firstKey;
+                assert c.getFirst(key, data,
+                        null) == OperationStatus.SUCCESS : "The db should contain this record: key is " + firstKey;
 
                 if (!check) {
-                    while (c.getNext(key, data, null) ==
-                        OperationStatus.SUCCESS) {
+                    while (c.getNext(key, data, null) == OperationStatus.SUCCESS) {
                         // Do nothing.
                     }
                 }
                 /*
-                 * The smallest interval of the VERIFY_SCHEDULE is 1 minutes,
-                 * so here we try to sleep 1s for totalWaitTries times to
-                 * guarantee that the data corruption verifier task run at
-                 * least once.
+                 * The smallest interval of the VERIFY_SCHEDULE is 1 minutes, so
+                 * here we try to sleep 1s for totalWaitTries times to guarantee
+                 * that the data corruption verifier task run at least once.
                  */
-                try {Thread.sleep(1000);} catch (Exception e) {}
+                try {
+                    Thread.sleep(1000);
+                } catch (Exception e) {
+                }
             } while (check && ++recordCount < totalWaitTries);
 
             if (check) {
                 if (verify) {
-                    fail("With verifying data corruption, we should catch" +
-                        "EnvironmentFailureException.");
+                    fail("With verifying data corruption, we should catch" + "EnvironmentFailureException.");
                 }
             }
         } catch (EnvironmentFailureException efe) {
             assertTrue(efe.isCorrupted());
             if (check) {
                 if (!verify) {
-                    fail("Without verifying data corruption, we should" +
-                        "not catch EnvironmentFailureException");
+                    fail("Without verifying data corruption, we should" + "not catch EnvironmentFailureException");
                 }
             }
             // Leave tearDown() to close cursor, db and env.

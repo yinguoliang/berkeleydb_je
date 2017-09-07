@@ -54,28 +54,28 @@ import com.sleepycat.utilint.StringUtils;
 
 public class DbScavengerTest extends TestBase {
 
-    private static final int TRANSACTIONAL = 1 << 0;
-    private static final int WRITE_MULTIPLE = 1 << 1;
-    private static final int PRINTABLE = 1 << 2;
-    private static final int ABORT_BEFORE = 1 << 3;
-    private static final int ABORT_AFTER = 1 << 4;
-    private static final int CORRUPT_LOG = 1 << 5;
-    private static final int DELETE_DATA = 1 << 6;
-    private static final int AGGRESSIVE = 1 << 7;
+    private static final int TRANSACTIONAL     = 1 << 0;
+    private static final int WRITE_MULTIPLE    = 1 << 1;
+    private static final int PRINTABLE         = 1 << 2;
+    private static final int ABORT_BEFORE      = 1 << 3;
+    private static final int ABORT_AFTER       = 1 << 4;
+    private static final int CORRUPT_LOG       = 1 << 5;
+    private static final int DELETE_DATA       = 1 << 6;
+    private static final int AGGRESSIVE        = 1 << 7;
 
-    private static final int N_DBS = 3;
-    private static final int N_KEYS = 100;
-    private static final int N_DATA_BYTES = 100;
-    private static final int LOG_SIZE = 10000;
+    private static final int N_DBS             = 3;
+    private static final int N_KEYS            = 100;
+    private static final int N_DATA_BYTES      = 100;
+    private static final int LOG_SIZE          = 10000;
 
-    private final String envHomeName;
-    private final File envHome;
+    private final String     envHomeName;
+    private final File       envHome;
 
-    private Environment env;
+    private Environment      env;
 
-    private Database[] dbs = new Database[N_DBS];
+    private Database[]       dbs               = new Database[N_DBS];
 
-    private final boolean duplicatesAllowed = true;
+    private final boolean    duplicatesAllowed = true;
 
     public DbScavengerTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -96,8 +96,7 @@ public class DbScavengerTest extends TestBase {
 
     @Test
     public void testScavenger1() {
-        doScavengerTest(PRINTABLE | TRANSACTIONAL |
-                        ABORT_BEFORE | ABORT_AFTER);
+        doScavengerTest(PRINTABLE | TRANSACTIONAL | ABORT_BEFORE | ABORT_AFTER);
     }
 
     @Test
@@ -190,8 +189,7 @@ public class DbScavengerTest extends TestBase {
                 if (dbs[dbCnt] != null) {
                     throw new RuntimeException("database already open");
                 }
-                Database db =
-                    env.openDatabase(txn, databaseName, dbConfig);
+                Database db = env.openDatabase(txn, databaseName, dbConfig);
                 dbs[dbCnt] = db;
                 db.put(txn, key, data);
             }
@@ -232,8 +230,7 @@ public class DbScavengerTest extends TestBase {
         closeEnv();
     }
 
-    private void doScavengerTest(int config)
-        throws DatabaseException {
+    private void doScavengerTest(int config) throws DatabaseException {
 
         boolean printable = (config & PRINTABLE) != 0;
         boolean transactional = (config & TRANSACTIONAL) != 0;
@@ -244,20 +241,13 @@ public class DbScavengerTest extends TestBase {
         boolean deleteData = (config & DELETE_DATA) != 0;
         boolean aggressive = (config & AGGRESSIVE) != 0;
 
-        assert transactional ||
-            (!abortBefore && !abortAfter);
+        assert transactional || (!abortBefore && !abortAfter);
 
         Map[] dataMaps = new Map[N_DBS];
         Set<Long> lsnsToCorrupt = new HashSet<Long>();
         /* Create the environment and some data. */
-        createEnvAndDbs(dataMaps,
-                        writeMultiple,
-                        transactional,
-                        abortBefore,
-                        abortAfter,
-                        corruptLog,
-                        lsnsToCorrupt,
-                        deleteData);
+        createEnvAndDbs(dataMaps, writeMultiple, transactional, abortBefore, abortAfter, corruptLog, lsnsToCorrupt,
+                deleteData);
         closeEnv();
         createEnv(false, false);
         if (corruptLog) {
@@ -280,8 +270,7 @@ public class DbScavengerTest extends TestBase {
         closeEnv();
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         for (int i = 0; i < N_DBS; i++) {
             if (dbs[i] != null) {
@@ -294,31 +283,21 @@ public class DbScavengerTest extends TestBase {
         env = null;
     }
 
-    private void createEnv(boolean create, boolean transactional)
-        throws DatabaseException {
+    private void createEnv(boolean create, boolean transactional) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 "" + LOG_SIZE);
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), "" + LOG_SIZE);
         envConfig.setTransactional(transactional);
         envConfig.setAllowCreate(create);
         env = new Environment(envHome, envConfig);
     }
 
-    private void createEnvAndDbs(Map[] dataMaps,
-                                 boolean writeMultiple,
-                                 boolean transactional,
-                                 boolean abortBefore,
-                                 boolean abortAfter,
-                                 boolean corruptLog,
-                                 Set<Long> lsnsToCorrupt,
-                                 boolean deleteData)
-        throws DatabaseException {
+    private void createEnvAndDbs(Map[] dataMaps, boolean writeMultiple, boolean transactional, boolean abortBefore,
+                                 boolean abortAfter, boolean corruptLog, Set<Long> lsnsToCorrupt, boolean deleteData)
+            throws DatabaseException {
 
         createEnv(true, transactional);
         Transaction txn = null;
@@ -351,23 +330,20 @@ public class DbScavengerTest extends TestBase {
                     txn = env.beginTransaction(null, null);
                 }
 
-                if (transactional &&
-                    abortBefore) {
-                    assertEquals(OperationStatus.SUCCESS,
-                                 db.put(txn, key, data));
+                if (transactional && abortBefore) {
+                    assertEquals(OperationStatus.SUCCESS, db.put(txn, key, data));
                     txn.abort();
                     txn = env.beginTransaction(null, null);
                 }
 
-                assertEquals(OperationStatus.SUCCESS,
-                             db.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, db.put(txn, key, data));
                 if (corruptLog) {
                     long currentLsn = getLastLsn();
                     long fileNumber = DbLsn.getFileNumber(currentLsn);
                     long fileOffset = DbLsn.getFileOffset(currentLsn);
                     if (fileOffset > (LOG_SIZE >> 1) &&
-                        /* We're writing in the second half of the file. */
-                        fileNumber > lastCorruptedFile) {
+                    /* We're writing in the second half of the file. */
+                            fileNumber > lastCorruptedFile) {
                         /* Corrupt this file. */
                         lsnsToCorrupt.add(new Long(currentLsn));
                         lastCorruptedFile = fileNumber;
@@ -376,44 +352,35 @@ public class DbScavengerTest extends TestBase {
                 }
 
                 if (writeMultiple) {
-                    assertEquals(OperationStatus.SUCCESS,
-                                 db.delete(txn, key));
-                    assertEquals(OperationStatus.SUCCESS,
-                                 db.put(txn, key, data));
+                    assertEquals(OperationStatus.SUCCESS, db.delete(txn, key));
+                    assertEquals(OperationStatus.SUCCESS, db.put(txn, key, data));
                 }
 
                 if (deleteData) {
-                    assertEquals(OperationStatus.SUCCESS,
-                                 db.delete(txn, key));
+                    assertEquals(OperationStatus.SUCCESS, db.delete(txn, key));
                     /* overload this for deleted data. */
                     corruptedThisEntry = true;
                 }
 
                 if (!corruptedThisEntry) {
-                    dataMap.put(new Integer(i),
-                                StringUtils.fromUTF8(dataBytes));
+                    dataMap.put(new Integer(i), StringUtils.fromUTF8(dataBytes));
                 }
 
                 if (transactional) {
                     txn.commit();
                 }
 
-                if (transactional &&
-                    abortAfter) {
+                if (transactional && abortAfter) {
                     txn = env.beginTransaction(null, null);
-                    assertEquals(OperationStatus.SUCCESS,
-                                 db.put(txn, key, data));
+                    assertEquals(OperationStatus.SUCCESS, db.put(txn, key, data));
                     txn.abort();
                 }
             }
         }
     }
 
-    private void openDbs(boolean create,
-                         boolean transactional,
-                         boolean duplicatesAllowed,
-                         Transaction txn)
-        throws DatabaseException {
+    private void openDbs(boolean create, boolean transactional, boolean duplicatesAllowed, Transaction txn)
+            throws DatabaseException {
 
         for (int dbCnt = 0; dbCnt < N_DBS; dbCnt++) {
             String databaseName = "simpleDb" + dbCnt;
@@ -428,21 +395,17 @@ public class DbScavengerTest extends TestBase {
         }
     }
 
-    private void dumpDbs(boolean printable, boolean aggressive)
-        throws DatabaseException {
+    private void dumpDbs(boolean printable, boolean aggressive) throws DatabaseException {
 
         try {
-            DbScavenger scavenger =
-                new DbScavenger(env, envHomeName, printable, aggressive,
-                                false /* verbose */);
+            DbScavenger scavenger = new DbScavenger(env, envHomeName, printable, aggressive, false /* verbose */);
             scavenger.dump();
         } catch (IOException IOE) {
             throw new RuntimeException(IOE);
         }
     }
 
-    private void loadDbs()
-        throws DatabaseException {
+    private void loadDbs() throws DatabaseException {
 
         try {
             String dbNameBase = "simpleDb";
@@ -450,8 +413,7 @@ public class DbScavengerTest extends TestBase {
                 DbLoad loader = new DbLoad();
                 File file = new File(envHomeName, dbNameBase + i + ".dump");
                 FileInputStream is = new FileInputStream(file);
-                BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(is));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is));
                 loader.setEnv(env);
                 loader.setInputReader(reader);
                 loader.setNoOverwrite(false);
@@ -464,18 +426,15 @@ public class DbScavengerTest extends TestBase {
         }
     }
 
-    private void verifyDbs(Map[] dataMaps)
-        throws DatabaseException {
+    private void verifyDbs(Map[] dataMaps) throws DatabaseException {
 
         for (int i = 0; i < N_DBS; i++) {
             Map dataMap = dataMaps[i];
             Cursor cursor = dbs[i].openCursor(null, null);
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
-            while (cursor.getNext(key, data, null) ==
-                   OperationStatus.SUCCESS) {
-                Integer keyInt =
-                    new Integer(IntegerBinding.entryToInt(key));
+            while (cursor.getNext(key, data, null) == OperationStatus.SUCCESS) {
+                Integer keyInt = new Integer(IntegerBinding.entryToInt(key));
                 String databaseString = StringUtils.fromUTF8(data.getData());
                 String originalString = (String) dataMap.get(keyInt);
                 if (originalString == null) {
@@ -483,15 +442,12 @@ public class DbScavengerTest extends TestBase {
                 } else if (databaseString.equals(originalString)) {
                     dataMap.remove(keyInt);
                 } else {
-                    fail(" Mismatch: key=" + keyInt +
-                         " Expected: " + originalString +
-                         " Found: " + databaseString);
+                    fail(" Mismatch: key=" + keyInt + " Expected: " + originalString + " Found: " + databaseString);
                 }
             }
 
             if (dataMap.size() > 0) {
-                fail("entries still remain for db " + i + ": " +
-                     dataMap.keySet());
+                fail("entries still remain for db " + i + ": " + dataMap.keySet());
             }
 
             cursor.close();
@@ -503,8 +459,7 @@ public class DbScavengerTest extends TestBase {
     static class DumpFileFilter implements FilenameFilter {
 
         /**
-         * Accept files of this format:
-         * *.dump
+         * Accept files of this format: *.dump
          */
         public boolean accept(File dir, String name) {
             StringTokenizer tokenizer = new StringTokenizer(name, ".");
@@ -524,31 +479,26 @@ public class DbScavengerTest extends TestBase {
     }
 
     private long getLastLsn() {
-        return DbInternal.getNonNullEnvImpl(env).
-            getFileManager().getLastUsedLsn();
+        return DbInternal.getNonNullEnvImpl(env).getFileManager().getLastUsedLsn();
     }
 
-    private void corruptFiles(Set<Long> lsnsToCorrupt)
-        throws DatabaseException {
+    private void corruptFiles(Set<Long> lsnsToCorrupt) throws DatabaseException {
 
         Iterator<Long> iter = lsnsToCorrupt.iterator();
         while (iter.hasNext()) {
             long lsn = iter.next().longValue();
-            corruptFile(DbLsn.getFileNumber(lsn),
-                        DbLsn.getFileOffset(lsn));
+            corruptFile(DbLsn.getFileNumber(lsn), DbLsn.getFileOffset(lsn));
         }
     }
 
-    private void corruptFile(long fileNumber, long fileOffset)
-        throws DatabaseException {
+    private void corruptFile(long fileNumber, long fileOffset) throws DatabaseException {
 
-        String fileName = DbInternal.getNonNullEnvImpl(env).
-            getFileManager().getFullFileName(fileNumber,
-                                             FileManager.JE_SUFFIX);
+        String fileName = DbInternal.getNonNullEnvImpl(env).getFileManager().getFullFileName(fileNumber,
+                FileManager.JE_SUFFIX);
         /*
-        System.out.println("corrupting 1 byte at " +
-                           DbLsn.makeLsn(fileNumber, fileOffset));
-        */
+         * System.out.println("corrupting 1 byte at " +
+         * DbLsn.makeLsn(fileNumber, fileOffset));
+         */
         try {
             RandomAccessFile raf = new RandomAccessFile(fileName, "rw");
             raf.seek(fileOffset);

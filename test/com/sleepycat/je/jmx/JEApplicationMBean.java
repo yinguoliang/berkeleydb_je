@@ -35,31 +35,28 @@ import com.sleepycat.je.Environment;
 
 /**
  * JEApplicationMBean is an example of how a JE application can incorporate JE
- * monitoring into its existing MBean.  It may be installed as is, or used as a
+ * monitoring into its existing MBean. It may be installed as is, or used as a
  * starting point for building a MBean which includes JE support.
  * <p>
  * JE management is divided between the JEApplicationMBean class and
  * JEMBeanHelper class. JEApplicationMBean contains an instance of
- * JEMBeanHelper, which knows about JE attributes, operations and
- * notifications. JEApplicationMBean itself has the responsibility of
- * configuring, opening and closing the JE environment along with any other
- * resources used by the application, and maintains a
- * com.sleepycat.je.Environment handle.
+ * JEMBeanHelper, which knows about JE attributes, operations and notifications.
+ * JEApplicationMBean itself has the responsibility of configuring, opening and
+ * closing the JE environment along with any other resources used by the
+ * application, and maintains a com.sleepycat.je.Environment handle.
  * <p>
  * The approach taken for accessing the environment is an application specific
  * choice. Some of the salient considerations are:
  * <ul>
- * <li>Applications may open one or many Environment objects per process
- * against a given environment.</li>
- *
+ * <li>Applications may open one or many Environment objects per process against
+ * a given environment.</li>
  * <li>All Environment handles reference the same underlying JE environment
  * implementation object.</li>
-
- * <li> The first Environment object instantiated in the process does the real
+ * <li>The first Environment object instantiated in the process does the real
  * work of configuring and opening the environment. Follow-on instantiations of
- * Environment merely increment a reference count. Likewise,
- * Environment.close() only does real work when it's called by the last
- * Environment object in the process. </li>
+ * Environment merely increment a reference count. Likewise, Environment.close()
+ * only does real work when it's called by the last Environment object in the
+ * process.</li>
  * </ul>
  * <p>
  * Another MBean approach for environment access can be seen in
@@ -70,25 +67,24 @@ import com.sleepycat.je.Environment;
 
 public class JEApplicationMBean implements DynamicMBean {
 
-    private static final String DESCRIPTION =
-        "A MBean for an application which uses JE. Provides open and close " +
-        "operations which configure and open a JE environment as part of the "+
-        "applications's resources. Also supports general JE monitoring.";
+    private static final String DESCRIPTION = "A MBean for an application which uses JE. Provides open and close "
+            + "operations which configure and open a JE environment as part of the "
+            + "applications's resources. Also supports general JE monitoring.";
 
-    private MBeanInfo mbeanInfo;    // this MBean's visible interface.
-    private JEMBeanHelper jeHelper; // gets JE management interface
-    private Environment targetEnv;  // saved environment handle
+    private MBeanInfo           mbeanInfo;                                                                        // this MBean's visible interface.
+    private JEMBeanHelper       jeHelper;                                                                         // gets JE management interface
+    private Environment         targetEnv;                                                                        // saved environment handle
 
     /**
      * This MBean provides an open operation to open the JE environment.
      */
-    public  static final String OP_OPEN = "openJE";
+    public static final String  OP_OPEN     = "openJE";
 
     /**
-     * This MBean provides a close operation to release the JE environment.
-     * Note that environments must be closed to release resources.
+     * This MBean provides a close operation to release the JE environment. Note
+     * that environments must be closed to release resources.
      */
-    public static final String OP_CLOSE = "closeJE";
+    public static final String  OP_CLOSE    = "closeJE";
 
     /**
      * Instantiate a JEApplicationMBean
@@ -105,19 +101,15 @@ public class JEApplicationMBean implements DynamicMBean {
     /**
      * @see DynamicMBean#getAttribute
      */
-    public Object getAttribute(String attributeName)
-        throws AttributeNotFoundException,
-               MBeanException {
+    public Object getAttribute(String attributeName) throws AttributeNotFoundException, MBeanException {
 
-            return jeHelper.getAttribute(targetEnv, attributeName);
+        return jeHelper.getAttribute(targetEnv, attributeName);
     }
 
     /**
      * @see DynamicMBean#setAttribute
      */
-    public void setAttribute(Attribute attribute)
-        throws AttributeNotFoundException,
-               InvalidAttributeValueException {
+    public void setAttribute(Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException {
 
         jeHelper.setAttribute(targetEnv, attribute);
     }
@@ -165,11 +157,10 @@ public class JEApplicationMBean implements DynamicMBean {
                 jeHelper.setAttribute(targetEnv, attr);
 
                 /*
-                 * Add the name and new value to the result list. Be sure
-                 * to ask the MBean for the new value, rather than simply
-                 * using attr.getValue(), because the new value may not
-                 * be same if it is modified according to the JE
-                 * implementation.
+                 * Add the name and new value to the result list. Be sure to ask
+                 * the MBean for the new value, rather than simply using
+                 * attr.getValue(), because the new value may not be same if it
+                 * is modified according to the JE implementation.
                  */
                 String name = attr.getName();
                 Object newValue = jeHelper.getAttribute(targetEnv, name);
@@ -184,10 +175,7 @@ public class JEApplicationMBean implements DynamicMBean {
     /**
      * @see DynamicMBean#invoke
      */
-    public Object invoke(String actionName,
-                         Object[] params,
-                         String[] signature)
-        throws MBeanException {
+    public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException {
 
         Object result = null;
 
@@ -216,91 +204,70 @@ public class JEApplicationMBean implements DynamicMBean {
     }
 
     /**
-     * Create the available management interface for this environment.
-     * The attributes and operations available vary according to
-     * environment configuration.
-     *
+     * Create the available management interface for this environment. The
+     * attributes and operations available vary according to environment
+     * configuration.
      */
     private synchronized void resetMBeanInfo() {
 
         /*
-         * Get JE attributes, operation and notification information
-         * from JEMBeanHelper. An application may choose to add functionality
-         * of its own when constructing the MBeanInfo.
+         * Get JE attributes, operation and notification information from
+         * JEMBeanHelper. An application may choose to add functionality of its
+         * own when constructing the MBeanInfo.
          */
 
         /* Attributes. */
-        List attributeList =  jeHelper.getAttributeList(targetEnv);
-        MBeanAttributeInfo[] attributeInfo =
-            new MBeanAttributeInfo[attributeList.size()];
+        List attributeList = jeHelper.getAttributeList(targetEnv);
+        MBeanAttributeInfo[] attributeInfo = new MBeanAttributeInfo[attributeList.size()];
         attributeList.toArray(attributeInfo);
 
         /* Constructors. */
         Constructor[] constructors = this.getClass().getConstructors();
-        MBeanConstructorInfo[] constructorInfo =
-            new MBeanConstructorInfo[constructors.length];
+        MBeanConstructorInfo[] constructorInfo = new MBeanConstructorInfo[constructors.length];
         for (int i = 0; i < constructors.length; i++) {
-            constructorInfo[i] =
-                new MBeanConstructorInfo(this.getClass().getName(),
-                                         constructors[i]);
+            constructorInfo[i] = new MBeanConstructorInfo(this.getClass().getName(), constructors[i]);
         }
 
         /* Operations. */
 
         /*
-         * Get the list of operations available from the jeHelper. Then add
-         * an open and close operation.
+         * Get the list of operations available from the jeHelper. Then add an
+         * open and close operation.
          */
         List operationList = jeHelper.getOperationList(targetEnv);
         if (targetEnv == null) {
             operationList.add(
-             new MBeanOperationInfo(OP_OPEN,
-                                    "Configure and open the JE environment.",
-                                    new MBeanParameterInfo[0], // no params
-                                    "java.lang.Boolean",
-                                    MBeanOperationInfo.ACTION_INFO));
+                    new MBeanOperationInfo(OP_OPEN, "Configure and open the JE environment.", new MBeanParameterInfo[0], // no params
+                            "java.lang.Boolean", MBeanOperationInfo.ACTION_INFO));
         } else {
-            operationList.add(
-             new MBeanOperationInfo(OP_CLOSE,
-                                    "Close the JE environment.",
-                                    new MBeanParameterInfo[0], // no params
-                                    "void",
-                                    MBeanOperationInfo.ACTION_INFO));
+            operationList.add(new MBeanOperationInfo(OP_CLOSE, "Close the JE environment.", new MBeanParameterInfo[0], // no params
+                    "void", MBeanOperationInfo.ACTION_INFO));
         }
 
-        MBeanOperationInfo[] operationInfo =
-            new MBeanOperationInfo[operationList.size()];
+        MBeanOperationInfo[] operationInfo = new MBeanOperationInfo[operationList.size()];
         operationList.toArray(operationInfo);
 
         /* Notifications. */
-        MBeanNotificationInfo[] notificationInfo =
-            jeHelper.getNotificationInfo(targetEnv);
+        MBeanNotificationInfo[] notificationInfo = jeHelper.getNotificationInfo(targetEnv);
 
         /* Generate the MBean description. */
-        mbeanInfo = new MBeanInfo(this.getClass().getName(),
-                                  DESCRIPTION,
-                                  attributeInfo,
-                                  constructorInfo,
-                                  operationInfo,
-                                  notificationInfo);
+        mbeanInfo = new MBeanInfo(this.getClass().getName(), DESCRIPTION, attributeInfo, constructorInfo, operationInfo,
+                notificationInfo);
     }
 
     /**
-     * Open a JE environment using the configuration specified through
-     * MBean attributes and recorded within the JEMBeanHelper.
+     * Open a JE environment using the configuration specified through MBean
+     * attributes and recorded within the JEMBeanHelper.
      */
-    private  void openEnvironment()
-        throws MBeanException {
+    private void openEnvironment() throws MBeanException {
 
         try {
             if (targetEnv == null) {
                 /*
-                 * The environment configuration has been set through
-                 * mbean attributes managed by the JEMBeanHelper.
+                 * The environment configuration has been set through mbean
+                 * attributes managed by the JEMBeanHelper.
                  */
-                targetEnv =
-                    new Environment(jeHelper.getEnvironmentHome(),
-                                    jeHelper.getEnvironmentOpenConfig());
+                targetEnv = new Environment(jeHelper.getEnvironmentHome(), jeHelper.getEnvironmentOpenConfig());
                 resetMBeanInfo();
             }
         } catch (DatabaseException e) {
@@ -312,8 +279,7 @@ public class JEApplicationMBean implements DynamicMBean {
      * Release the environment handle contained within the MBean to properly
      * release resources.
      */
-    private void closeEnvironment()
-        throws MBeanException {
+    private void closeEnvironment() throws MBeanException {
 
         try {
             if (targetEnv != null) {

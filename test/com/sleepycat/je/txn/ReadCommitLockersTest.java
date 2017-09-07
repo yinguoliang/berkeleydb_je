@@ -61,30 +61,29 @@ import com.sleepycat.util.test.TestBase;
  */
 public class ReadCommitLockersTest extends TestBase {
 
-    File envHome;
-    Environment env;
-    Database db;
+    File          envHome;
+    Environment   env;
+    Database      db;
 
     DatabaseEntry key;
 
-    Object synchronizer1 = new Object();
-    Object synchronizer2 = new Object();
+    Object        synchronizer1 = new Object();
+    Object        synchronizer2 = new Object();
 
-    boolean wait1 = true;
-    boolean wait2 = true;
+    boolean       wait1         = true;
+    boolean       wait2         = true;
 
     public static DatabaseEntry createDatabaseEntry(String key) {
 
         DatabaseEntry keyDBEntry = null;
         try {
-           keyDBEntry = new DatabaseEntry(key.getBytes("UTF-8"));
+            keyDBEntry = new DatabaseEntry(key.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
             System.out.println("Unexpected UnsupportedEncodingException");
         }
 
-      return keyDBEntry;
+        return keyDBEntry;
     }
-
 
     public ReadCommitLockersTest() {
 
@@ -115,17 +114,16 @@ public class ReadCommitLockersTest extends TestBase {
     public void tearDown() {
         try {
             db.close();
-        } catch (DatabaseException ignored) {}
+        } catch (DatabaseException ignored) {
+        }
         try {
             env.close();
-        } catch (DatabaseException ignored) {}
+        } catch (DatabaseException ignored) {
+        }
     }
 
     @Test
-    public void runTest()
-        throws DatabaseException,
-               UnsupportedEncodingException,
-               InterruptedException {
+    public void runTest() throws DatabaseException, UnsupportedEncodingException, InterruptedException {
 
         /*
          * Insert a record R in the DB
@@ -142,7 +140,7 @@ public class ReadCommitLockersTest extends TestBase {
 
         /*
          * Start thread T1 and then wait until it reads record R via a
-         * read-comitted cursor C1. 
+         * read-comitted cursor C1.
          */
         Thread T1 = new TestThread1();
         T1.start();
@@ -160,16 +158,15 @@ public class ReadCommitLockersTest extends TestBase {
         T2.start();
 
         /*
-         * Sleep for a while to allow T2 to block on its lock request. 
+         * Sleep for a while to allow T2 to block on its lock request.
          */
-        while (T2.getState() == Thread.State.RUNNABLE ||
-               T2.getState() == Thread.State.NEW) {
+        while (T2.getState() == Thread.State.RUNNABLE || T2.getState() == Thread.State.NEW) {
             Thread.currentThread().sleep(10);
         }
 
         /*
          * Let thread T1 continue with another search on R via another
-         * read-comitted cursor C2. 
+         * read-comitted cursor C2.
          */
         synchronized (synchronizer2) {
             wait2 = false;
@@ -198,15 +195,14 @@ public class ReadCommitLockersTest extends TestBase {
         }
     }
 
-    private class TestThread1 extends Thread
-    {
-        Environment env;
-        Database db;
+    private class TestThread1 extends Thread {
+        Environment   env;
+        Database      db;
 
         DatabaseEntry key;
 
-        Object synchronizer1;
-        Object synchronizer2;
+        Object        synchronizer1;
+        Object        synchronizer2;
 
         public TestThread1() {
             super("Thread-1");
@@ -250,23 +246,21 @@ public class ReadCommitLockersTest extends TestBase {
                     }
                 }
             }
-            
+
             /* Do a read-committed search for R via cursor C3 and txn X1. */
             Cursor C3 = db.openCursor(X1, config);
             status = C3.getSearchKey(key, data, LockMode.DEFAULT);
             assertTrue(status == OperationStatus.SUCCESS);
-            
+
             C1.close();
             C3.close();
             X1.commit();
         }
     }
 
-
-    private class TestThread2 extends Thread
-    {
-        Environment env;
-        Database db;
+    private class TestThread2 extends Thread {
+        Environment   env;
+        Database      db;
 
         DatabaseEntry key;
 

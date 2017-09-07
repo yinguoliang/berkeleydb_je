@@ -50,10 +50,8 @@ public class OpStatsTest extends RepTestBase {
         groupSize = 3;
         super.setUp();
         for (RepEnvInfo info : repEnvInfo) {
-            info.getEnvConfig().setDurability(new Durability(
-                Durability.SyncPolicy.NO_SYNC,
-                Durability.SyncPolicy.NO_SYNC,
-                Durability.ReplicaAckPolicy.ALL));
+            info.getEnvConfig().setDurability(new Durability(Durability.SyncPolicy.NO_SYNC,
+                    Durability.SyncPolicy.NO_SYNC, Durability.ReplicaAckPolicy.ALL));
         }
     }
 
@@ -75,8 +73,7 @@ public class OpStatsTest extends RepTestBase {
         /* Primary insert. */
 
         IntegerBinding.intToEntry(1, key);
-        OperationResult result =
-            db.put(null, key, data, Put.NO_OVERWRITE, null);
+        OperationResult result = db.put(null, key, data, Put.NO_OVERWRITE, null);
         assertNotNull(result);
 
         Transaction txn = env.beginTransaction(null, null);
@@ -244,8 +241,7 @@ public class OpStatsTest extends RepTestBase {
 
         final Database[] priDbs = new Database[repEnvInfo.length];
 
-        final SecondaryDatabase[] secDbs =
-            new SecondaryDatabase[repEnvInfo.length];
+        final SecondaryDatabase[] secDbs = new SecondaryDatabase[repEnvInfo.length];
 
         for (int i = 0; i < repEnvInfo.length; i += 1) {
 
@@ -259,18 +255,14 @@ public class OpStatsTest extends RepTestBase {
             secConfig.setSortedDuplicates(true);
             secConfig.setKeyCreator(new SecondaryKeyCreator() {
                 @Override
-                public boolean createSecondaryKey(
-                    SecondaryDatabase secondary,
-                    DatabaseEntry key,
-                    DatabaseEntry data,
-                    DatabaseEntry result) {
+                public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
+                                                  DatabaseEntry result) {
                     result.setData(key.getData());
                     return true;
                 }
             });
 
-            final SecondaryDatabase secDb =
-                env.openSecondaryDatabase(null, "secDb", db, secConfig);
+            final SecondaryDatabase secDb = env.openSecondaryDatabase(null, "secDb", db, secConfig);
 
             priDbs[i] = db;
             secDbs[i] = secDb;
@@ -290,8 +282,7 @@ public class OpStatsTest extends RepTestBase {
         /* Secondary insert. */
 
         IntegerBinding.intToEntry(1, key);
-        OperationResult result =
-            db.put(null, key, data, Put.NO_OVERWRITE, null);
+        OperationResult result = db.put(null, key, data, Put.NO_OVERWRITE, null);
         assertNotNull(result);
 
         Transaction txn = env.beginTransaction(null, null);
@@ -313,16 +304,13 @@ public class OpStatsTest extends RepTestBase {
         /* Secondary update. */
 
         IntegerBinding.intToEntry(1, key);
-        result = db.put(
-            null, key, data, Put.OVERWRITE,
-            new WriteOptions().setTTL(1).setUpdateTTL(true));
+        result = db.put(null, key, data, Put.OVERWRITE, new WriteOptions().setTTL(1).setUpdateTTL(true));
         assertNotNull(result);
 
         txn = env.beginTransaction(null, null);
         try (final Cursor c = db.openCursor(txn, null)) {
             IntegerBinding.intToEntry(2, key);
-            result = c.put(
-                key, data, Put.OVERWRITE, null);
+            result = c.put(key, data, Put.OVERWRITE, null);
             assertNotNull(result);
         }
         txn.commit();
@@ -516,24 +504,18 @@ public class OpStatsTest extends RepTestBase {
         expectStats(nNonZero, nNonZero, expectStats);
     }
 
-    private void expectStats(
-        int nNonZeroMaster,
-        int nNonZeroReplica,
-        ExpectStats expectStats) {
+    private void expectStats(int nNonZeroMaster, int nNonZeroReplica, ExpectStats expectStats) {
 
         for (int i = 0; i < repEnvInfo.length; i += 1) {
 
-            EnvironmentStats stats =
-                repEnvInfo[i].getEnv().getStats(StatsConfig.CLEAR);
+            EnvironmentStats stats = repEnvInfo[i].getEnv().getStats(StatsConfig.CLEAR);
 
             try {
                 if (expectStats != null) {
                     expectStats.check(stats, i == 0);
                 }
 
-                expectNonZeroStats(
-                    stats,
-                    (i == 0) ? nNonZeroMaster : nNonZeroReplica);
+                expectNonZeroStats(stats, (i == 0) ? nNonZeroMaster : nNonZeroReplica);
 
             } catch (final Throwable e) {
                 System.out.println("master: " + (i == 0) + "\n" + stats);
@@ -546,8 +528,7 @@ public class OpStatsTest extends RepTestBase {
 
         for (int i = 0; i < repEnvInfo.length; i += 1) {
 
-            EnvironmentStats stats =
-                repEnvInfo[i].getEnv().getStats(StatsConfig.CLEAR);
+            EnvironmentStats stats = repEnvInfo[i].getEnv().getStats(StatsConfig.CLEAR);
 
             try {
                 if (i == 0) {
@@ -569,51 +550,51 @@ public class OpStatsTest extends RepTestBase {
         for (int i = 0;; i += 1) {
             long val;
             switch (i) {
-            case 0:
-                val = stats.getPriSearchOps();
-                break;
-            case 1:
-                val = stats.getPriSearchFailOps();
-                break;
-            case 2:
-                val = stats.getPriPositionOps();
-                break;
-            case 3:
-                val = stats.getPriInsertOps();
-                break;
-            case 4:
-                val = stats.getPriInsertFailOps();
-                break;
-            case 5:
-                val = stats.getPriUpdateOps();
-                break;
-            case 6:
-                val = stats.getPriDeleteOps();
-                break;
-            case 7:
-                val = stats.getPriDeleteFailOps();
-                break;
-            case 8:
-                val = stats.getSecSearchOps();
-                break;
-            case 9:
-                val = stats.getSecSearchFailOps();
-                break;
-            case 10:
-                val = stats.getSecPositionOps();
-                break;
-            case 11:
-                val = stats.getSecInsertOps();
-                break;
-            case 12:
-                val = stats.getSecUpdateOps();
-                break;
-            case 13:
-                val = stats.getSecDeleteOps();
-                break;
-            default:
-                assertEquals(0, nNonZero);
-                return;
+                case 0:
+                    val = stats.getPriSearchOps();
+                    break;
+                case 1:
+                    val = stats.getPriSearchFailOps();
+                    break;
+                case 2:
+                    val = stats.getPriPositionOps();
+                    break;
+                case 3:
+                    val = stats.getPriInsertOps();
+                    break;
+                case 4:
+                    val = stats.getPriInsertFailOps();
+                    break;
+                case 5:
+                    val = stats.getPriUpdateOps();
+                    break;
+                case 6:
+                    val = stats.getPriDeleteOps();
+                    break;
+                case 7:
+                    val = stats.getPriDeleteFailOps();
+                    break;
+                case 8:
+                    val = stats.getSecSearchOps();
+                    break;
+                case 9:
+                    val = stats.getSecSearchFailOps();
+                    break;
+                case 10:
+                    val = stats.getSecPositionOps();
+                    break;
+                case 11:
+                    val = stats.getSecInsertOps();
+                    break;
+                case 12:
+                    val = stats.getSecUpdateOps();
+                    break;
+                case 13:
+                    val = stats.getSecDeleteOps();
+                    break;
+                default:
+                    assertEquals(0, nNonZero);
+                    return;
             }
 
             if (val == 0) {

@@ -40,25 +40,22 @@ import com.sleepycat.util.test.TestBase;
 
 /**
  * This reproduces the bug described SR [#12641], also related to SR [#9543].
- *
  * Note that allthough this is a JUnit test case, it is not run as part of the
- * JUnit test suite.  It takes a long time, and when it fails it hangs.
+ * JUnit test suite. It takes a long time, and when it fails it hangs.
  * Therefore, it was only used for debugging and is not intended to be a
- * regression test.
- *
- * For some reason the bug was not reproducible with a simple main program,
- * which is why a JUnit test was used.
+ * regression test. For some reason the bug was not reproducible with a simple
+ * main program, which is why a JUnit test was used.
  */
 public class SR12641 extends TestBase {
 
     /* Use small NODE_MAX to cause lots of splits. */
     private static final int NODE_MAX = 6;
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
-    private boolean dups;
-    private boolean writerStopped;
+    private final File       envHome;
+    private Environment      env;
+    private Database         db;
+    private boolean          dups;
+    private boolean          writerStopped;
 
     public SR12641() {
         envHome = SharedTestUtils.getTestDir();
@@ -66,7 +63,7 @@ public class SR12641 extends TestBase {
 
     @After
     public void tearDown() {
-        
+
         if (env != null) {
             try {
                 env.close();
@@ -79,16 +76,14 @@ public class SR12641 extends TestBase {
     }
 
     @Test
-    public void testSplitsWithScansDups()
-        throws Throwable {
+    public void testSplitsWithScansDups() throws Throwable {
 
         dups = true;
         testSplitsWithScans();
     }
 
     @Test
-    public void testSplitsWithScans()
-        throws Throwable {
+    public void testSplitsWithScans() throws Throwable {
 
         open();
 
@@ -122,11 +117,11 @@ public class SR12641 extends TestBase {
 
                 } catch (Exception e) {
                     try {
-                        FileOutputStream os =
-                            new FileOutputStream(new File("./err.txt"));
+                        FileOutputStream os = new FileOutputStream(new File("./err.txt"));
                         e.printStackTrace(new PrintStream(os));
                         os.close();
-                    } catch (IOException ignored) {}
+                    } catch (IOException ignored) {
+                    }
                     System.exit(1);
                 }
             }
@@ -155,11 +150,11 @@ public class SR12641 extends TestBase {
 
                 } catch (Exception e) {
                     try {
-                        FileOutputStream os =
-                            new FileOutputStream(new File("./err.txt"));
+                        FileOutputStream os = new FileOutputStream(new File("./err.txt"));
                         e.printStackTrace(new PrintStream(os));
                         os.close();
-                    } catch (IOException ignored) {}
+                    } catch (IOException ignored) {
+                    }
                     System.exit(1);
                 }
             }
@@ -174,12 +169,10 @@ public class SR12641 extends TestBase {
         System.out.println("SUCCESS");
     }
 
-    private void open()
-        throws Exception {
+    private void open() throws Exception {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
-        envConfig.setConfigParam
-            (EnvironmentParams.NODE_MAX.getName(), String.valueOf(NODE_MAX));
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), String.valueOf(NODE_MAX));
         envConfig.setAllowCreate(true);
         env = new Environment(envHome, envConfig);
 
@@ -190,8 +183,7 @@ public class SR12641 extends TestBase {
         db = env.openDatabase(null, "testDb", dbConfig);
     }
 
-    private void close()
-        throws Exception {
+    private void close() throws Exception {
 
         db.close();
         db = null;

@@ -34,17 +34,16 @@ import org.junit.Test;
  */
 public class ReadCommittedTest extends DualTestCase {
 
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database db;
+    private Database    db;
 
     public ReadCommittedTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         LockManager.afterLockHook = null;
 
@@ -55,8 +54,7 @@ public class ReadCommittedTest extends DualTestCase {
         }
     }
 
-    private void open()
-        throws DatabaseException {
+    private void open() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         /* Control over isolation level is required by this test. */
@@ -65,8 +63,8 @@ public class ReadCommittedTest extends DualTestCase {
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
 
-//        envConfig.setConfigParam(
-//            EnvironmentConfig.LOCK_TIMEOUT, "" + Integer.MAX_VALUE);
+        //        envConfig.setConfigParam(
+        //            EnvironmentConfig.LOCK_TIMEOUT, "" + Integer.MAX_VALUE);
 
         env = create(envHome, envConfig);
 
@@ -88,8 +86,7 @@ public class ReadCommittedTest extends DualTestCase {
         }
     }
 
-    private void close()
-        throws DatabaseException {
+    private void close() throws DatabaseException {
 
         db.close();
         db = null;
@@ -98,8 +95,7 @@ public class ReadCommittedTest extends DualTestCase {
     }
 
     @Test
-    public void testIllegalConfig()
-        throws DatabaseException {
+    public void testIllegalConfig() throws DatabaseException {
 
         open();
 
@@ -113,7 +109,8 @@ public class ReadCommittedTest extends DualTestCase {
         try {
             env.beginTransaction(null, txnConfig);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
 
         /* Disallow transaction ReadCommitted and ReadUncommitted. */
         txnConfig = new TransactionConfig();
@@ -122,7 +119,8 @@ public class ReadCommittedTest extends DualTestCase {
         try {
             env.beginTransaction(null, txnConfig);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
 
         /* Disallow cursor ReadCommitted and ReadUncommitted. */
         cursConfig = new CursorConfig();
@@ -132,36 +130,33 @@ public class ReadCommittedTest extends DualTestCase {
         try {
             db.openCursor(txn, cursConfig);
             fail();
-        } catch (IllegalArgumentException expected) {}
+        } catch (IllegalArgumentException expected) {
+        }
         txn.abort();
 
         close();
     }
 
     @Test
-    public void testWithTransactionConfig()
-        throws DatabaseException {
+    public void testWithTransactionConfig() throws DatabaseException {
 
-        doTestWithTransactionConfig(false /*nonSticky*/);
+        doTestWithTransactionConfig(false /* nonSticky */);
     }
 
     @Test
-    public void testNonCloningWithTransactionConfig()
-        throws DatabaseException {
+    public void testNonCloningWithTransactionConfig() throws DatabaseException {
 
-        doTestWithTransactionConfig(true /*nonSticky*/);
+        doTestWithTransactionConfig(true /* nonSticky */);
     }
 
-    private void doTestWithTransactionConfig(boolean nonSticky)
-        throws DatabaseException {
+    private void doTestWithTransactionConfig(boolean nonSticky) throws DatabaseException {
 
         open();
 
         TransactionConfig config = new TransactionConfig();
         config.setReadCommitted(true);
         Transaction txn = env.beginTransaction(null, config);
-        Cursor cursor = db.openCursor(
-            txn, new CursorConfig().setNonSticky(nonSticky));
+        Cursor cursor = db.openCursor(txn, new CursorConfig().setNonSticky(nonSticky));
 
         checkReadCommitted(cursor, 100, true, nonSticky);
 
@@ -171,17 +166,15 @@ public class ReadCommittedTest extends DualTestCase {
     }
 
     @Test
-    public void testWithCursorConfig()
-        throws DatabaseException {
+    public void testWithCursorConfig() throws DatabaseException {
 
-        doTestWithCursorConfig(false /*nonSticky*/);
+        doTestWithCursorConfig(false /* nonSticky */);
     }
 
     @Test
-    public void testNonCloningWithCursorConfig()
-        throws DatabaseException {
+    public void testNonCloningWithCursorConfig() throws DatabaseException {
 
-        doTestWithCursorConfig(true /*nonSticky*/);
+        doTestWithCursorConfig(true /* nonSticky */);
     }
 
     private void doTestWithCursorConfig(boolean nonSticky) {
@@ -205,8 +198,7 @@ public class ReadCommittedTest extends DualTestCase {
     }
 
     @Test
-    public void testWithLockMode()
-        throws DatabaseException {
+    public void testWithLockMode() throws DatabaseException {
 
         open();
 
@@ -223,11 +215,8 @@ public class ReadCommittedTest extends DualTestCase {
      * Checks that the given cursor provides the given
      * expectReadLocksAreReleased behavior.
      */
-    private void checkReadCommitted(Cursor cursor,
-                                    int startKey,
-                                    boolean expectReadLocksAreReleased,
-                                    boolean nonSticky)
-        throws DatabaseException {
+    private void checkReadCommitted(Cursor cursor, int startKey, boolean expectReadLocksAreReleased, boolean nonSticky)
+            throws DatabaseException {
 
         final EnvironmentStats baseStats = env.getStats(null);
         DatabaseEntry key = new DatabaseEntry();
@@ -238,19 +227,21 @@ public class ReadCommittedTest extends DualTestCase {
 
             @Override
             public void doHook() {
-                maxReadLocks = Math.max(
-                    maxReadLocks, getNReadLocks(baseStats));
+                maxReadLocks = Math.max(maxReadLocks, getNReadLocks(baseStats));
             }
 
             @Override
             public void doHook(Void obj) {
             }
+
             @Override
             public void hookSetup() {
             }
+
             @Override
             public void doIOHook() throws IOException {
             }
+
             @Override
             public Void getHookValue() {
                 return null;
@@ -318,9 +309,9 @@ public class ReadCommittedTest extends DualTestCase {
 
         /*
          * The max number of read locks held at one time is indicative of
-         * whether read-committed is used.  Only one lock may be held when
-         * read-committed is used with a non-sticky cursor, since the
-         * non-sticky mode is intended to avoid deadlocks. [#23775]
+         * whether read-committed is used. Only one lock may be held when
+         * read-committed is used with a non-sticky cursor, since the non-sticky
+         * mode is intended to avoid deadlocks. [#23775]
          */
         if (!expectReadLocksAreReleased) {
             /* All records are locked at once with repeatable read. */
@@ -341,11 +332,9 @@ public class ReadCommittedTest extends DualTestCase {
      * Checks that the given lock mode provides the given
      * expectReadLocksAreReleased behavior.
      */
-    private void checkReadCommitted(Transaction txn,
-                                    LockMode lockMode,
-                                    int startKey,
+    private void checkReadCommitted(Transaction txn, LockMode lockMode, int startKey,
                                     boolean expectReadLocksAreReleased)
-        throws DatabaseException {
+            throws DatabaseException {
 
         EnvironmentStats baseStats = env.getStats(null);
         DatabaseEntry key = new DatabaseEntry();
@@ -386,16 +375,12 @@ public class ReadCommittedTest extends DualTestCase {
         checkNReadLocks(baseStats, 0);
     }
 
-    private void checkNReadLocks(EnvironmentStats baseStats,
-                                 int nReadLocksExpected) {
-        assertEquals(
-            "Read locks -- ", nReadLocksExpected, getNReadLocks(baseStats));
+    private void checkNReadLocks(EnvironmentStats baseStats, int nReadLocksExpected) {
+        assertEquals("Read locks -- ", nReadLocksExpected, getNReadLocks(baseStats));
     }
 
-    private void checkNWriteLocks(EnvironmentStats baseStats,
-                                  int nWriteLocksExpected) {
-        assertEquals(
-            "Write locks -- ", nWriteLocksExpected, getNWriteLocks(baseStats));
+    private void checkNWriteLocks(EnvironmentStats baseStats, int nWriteLocksExpected) {
+        assertEquals("Write locks -- ", nWriteLocksExpected, getNWriteLocks(baseStats));
     }
 
     private int getNReadLocks(EnvironmentStats baseStats) {
@@ -409,12 +394,11 @@ public class ReadCommittedTest extends DualTestCase {
     }
 
     /**
-     * Current disabled because we haven't fixed the bug [#24453] that this
-     * test reproduces.
-     *
-     * To debug, uncomment code in open() that sets a large lock timeout.
+     * Current disabled because we haven't fixed the bug [#24453] that this test
+     * reproduces. To debug, uncomment code in open() that sets a large lock
+     * timeout.
      */
-//    @Test
+    //    @Test
     public void testRepeatableReadCombination() throws InterruptedException {
 
         open();
@@ -475,8 +459,7 @@ public class ReadCommittedTest extends DualTestCase {
 
                     try (final Cursor cursor = db.openCursor(null, null)) {
 
-                        final OperationStatus s =
-                            cursor.getFirst(key, data, LockMode.RMW);
+                        final OperationStatus s = cursor.getFirst(key, data, LockMode.RMW);
                         assert (OperationStatus.SUCCESS == s);
 
                         printStats(4);
@@ -495,8 +478,7 @@ public class ReadCommittedTest extends DualTestCase {
 
                 /* Main thread gets read lock again using read-committed. */
 
-                try (final Cursor cursor =
-                         db.openCursor(txn, CursorConfig.READ_COMMITTED)) {
+                try (final Cursor cursor = db.openCursor(txn, CursorConfig.READ_COMMITTED)) {
 
                     final OperationStatus s = cursor.getFirst(key, data, null);
                     assert (OperationStatus.SUCCESS == s);
@@ -532,9 +514,7 @@ public class ReadCommittedTest extends DualTestCase {
 
         final EnvironmentStats stats = env.getStats(null);
 
-        System.out.println("[" + seq +
-            "] write-locks = " + stats.getNWriteLocks() +
-            " read-locks = " + stats.getNReadLocks() +
-            " waiters = " + stats.getNWaiters());
+        System.out.println("[" + seq + "] write-locks = " + stats.getNWriteLocks() + " read-locks = "
+                + stats.getNReadLocks() + " waiters = " + stats.getNWaiters());
     }
 }

@@ -53,136 +53,125 @@ import com.sleepycat.util.test.SharedTestUtils;
 public class PhantomRestartTest extends DualTestCase {
 
     /*
-     * Spec Parameters: Oper name, InsertKey1, InsertKey2, Oper instance
-     *
-     * A- InsertKey1 is inserted in transaction T0 and committed.
-     * B- T1 starts and performs Oper passing InsertKey1; it finishes the
-     *    operation, but doesn't commit.
-     * C- T2 starts and attempts to insert InsertKey2, but is blocked by T1.
-     * D- T3 starts and performs Oper passing InsertKey2, but is restarted
-     *    because it is blocked by T2.
-     * E- T1 is committed, allowing T2 and T3 to finish also.
-     * F- T4 performs Oper a final time passing InsertKey2.
-     *
-     * For each Spec below the Lock owners and waiters are described in between
-     * steps D and E above.  This state describes the condition where the read
+     * Spec Parameters: Oper name, InsertKey1, InsertKey2, Oper instance A-
+     * InsertKey1 is inserted in transaction T0 and committed. B- T1 starts and
+     * performs Oper passing InsertKey1; it finishes the operation, but doesn't
+     * commit. C- T2 starts and attempts to insert InsertKey2, but is blocked by
+     * T1. D- T3 starts and performs Oper passing InsertKey2, but is restarted
+     * because it is blocked by T2. E- T1 is committed, allowing T2 and T3 to
+     * finish also. F- T4 performs Oper a final time passing InsertKey2. For
+     * each Spec below the Lock owners and waiters are described in between
+     * steps D and E above. This state describes the condition where the read
      * operation (Oper) is performing restarts because it is blocked by a
-     * RANGE_INSERT.
-     *
-     * To understand how read operation restarts work consider the "First"
-     * Spec below.  When T1 releases K2, T2 should finish, and T3 should read
-     * K1.  If restart were not implemented in the lock manager, T3 would read
-     * K2 instead of K1; K1 would then be a phantom with respect to T3.  If
+     * RANGE_INSERT. To understand how read operation restarts work consider the
+     * "First" Spec below. When T1 releases K2, T2 should finish, and T3 should
+     * read K1. If restart were not implemented in the lock manager, T3 would
+     * read K2 instead of K1; K1 would then be a phantom with respect to T3. If
      * search restarts were not implemented, a RangeRestartException would
-     * surface at the user level.  These errors were observed when running this
+     * surface at the user level. These errors were observed when running this
      * test before search restarts were fully implemented.
      */
     private static Spec[] SPECS = {
 
-        /*
-         * T1 calls getFirst -- owns RANGE_READ on K2.
-         * T2 inserts K1 -- waits for RANGE_INSERT on K2.
-         * T3 calls getFirst -- requests RANGE_READ on K2: restarts.
-         */
-        new Spec("First", 2, 1, new Oper() {
-            void doOper(int insertedKey) throws DatabaseException {
-                status = cursor.getFirst(key, data, null);
-                checkStatus(OperationStatus.SUCCESS);
-                checkKey(insertedKey);
-            }
-        }),
+            /*
+             * T1 calls getFirst -- owns RANGE_READ on K2. T2 inserts K1 --
+             * waits for RANGE_INSERT on K2. T3 calls getFirst -- requests
+             * RANGE_READ on K2: restarts.
+             */
+            new Spec("First", 2, 1, new Oper() {
+                void doOper(int insertedKey) throws DatabaseException {
+                    status = cursor.getFirst(key, data, null);
+                    checkStatus(OperationStatus.SUCCESS);
+                    checkKey(insertedKey);
+                }
+            }),
 
-        /*
-         * T1 calls getLast -- owns RANGE_READ on EOF.
-         * T2 inserts K2 -- waits for RANGE_INSERT on EOF.
-         * T3 calls getLast -- requests RANGE_READ on EOF: restarts.
-         */
-        new Spec("Last", 1, 2, new Oper() {
-            void doOper(int insertedKey) throws DatabaseException {
-                status = cursor.getLast(key, data, null);
-                checkStatus(OperationStatus.SUCCESS);
-                checkKey(insertedKey);
-            }
-        }),
+            /*
+             * T1 calls getLast -- owns RANGE_READ on EOF. T2 inserts K2 --
+             * waits for RANGE_INSERT on EOF. T3 calls getLast -- requests
+             * RANGE_READ on EOF: restarts.
+             */
+            new Spec("Last", 1, 2, new Oper() {
+                void doOper(int insertedKey) throws DatabaseException {
+                    status = cursor.getLast(key, data, null);
+                    checkStatus(OperationStatus.SUCCESS);
+                    checkKey(insertedKey);
+                }
+            }),
 
-        /*
-         * T1 calls getSearchKey on K1 -- owns RANGE_READ on K2.
-         * T2 inserts K1 -- waits for RANGE_INSERT on K2.
-         * T3 calls getSearchKey on K1 -- requests RANGE_READ on K2: restarts.
-         */
-        new Spec("Search", 2, 1, new Oper() {
-            void doOper(int insertedKey) throws DatabaseException {
-                setKey(1);
-                status = dups ? cursor.getSearchBoth(key, data, null)
-                              : cursor.getSearchKey(key, data, null);
-                checkStatus((insertedKey == 1) ? OperationStatus.SUCCESS
-                                               : OperationStatus.NOTFOUND);
-            }
-        }),
+            /*
+             * T1 calls getSearchKey on K1 -- owns RANGE_READ on K2. T2 inserts
+             * K1 -- waits for RANGE_INSERT on K2. T3 calls getSearchKey on K1
+             * -- requests RANGE_READ on K2: restarts.
+             */
+            new Spec("Search", 2, 1, new Oper() {
+                void doOper(int insertedKey) throws DatabaseException {
+                    setKey(1);
+                    status = dups ? cursor.getSearchBoth(key, data, null) : cursor.getSearchKey(key, data, null);
+                    checkStatus((insertedKey == 1) ? OperationStatus.SUCCESS : OperationStatus.NOTFOUND);
+                }
+            }),
 
-        /*
-         * T1 calls getSearchKeyRange on K0 -- owns RANGE_READ on K2.
-         * T2 inserts K1 -- waits for RANGE_INSERT on K2.
-         * T3 calls getSearchKeyRange on K0 -- requests RANGE_READ on K2:
-         * restarts.
-         */
-        new Spec("SearchRange", 2, 1, new Oper() {
-            void doOper(int insertedKey) throws DatabaseException {
-                setKey(0);
-                status = dups ? cursor.getSearchBothRange(key, data, null)
-                              : cursor.getSearchKeyRange(key, data, null);
-                checkStatus(OperationStatus.SUCCESS);
-                checkKey(insertedKey);
-            }
-        }),
+            /*
+             * T1 calls getSearchKeyRange on K0 -- owns RANGE_READ on K2. T2
+             * inserts K1 -- waits for RANGE_INSERT on K2. T3 calls
+             * getSearchKeyRange on K0 -- requests RANGE_READ on K2: restarts.
+             */
+            new Spec("SearchRange", 2, 1, new Oper() {
+                void doOper(int insertedKey) throws DatabaseException {
+                    setKey(0);
+                    status = dups ? cursor.getSearchBothRange(key, data, null)
+                            : cursor.getSearchKeyRange(key, data, null);
+                    checkStatus(OperationStatus.SUCCESS);
+                    checkKey(insertedKey);
+                }
+            }),
 
-        /*
-         * T1 calls getNext from K1 -- owns RANGE_READ on EOF.
-         * T2 inserts K2 -- waits for RANGE_INSERT on EOF.
-         * T3 calls getNext from K1 -- requests RANGE_READ on EOF: restarts.
-         */
-        new Spec("Next", 1, 2, new Oper() {
-            void doOper(int insertedKey) throws DatabaseException {
-                status = cursor.getFirst(key, data, null);
-                checkStatus(OperationStatus.SUCCESS);
-                checkKey(1);
-                status = cursor.getNext(key, data, null);
-                checkStatus((insertedKey == 2) ? OperationStatus.SUCCESS
-                                               : OperationStatus.NOTFOUND);
-            }
-        }),
+            /*
+             * T1 calls getNext from K1 -- owns RANGE_READ on EOF. T2 inserts K2
+             * -- waits for RANGE_INSERT on EOF. T3 calls getNext from K1 --
+             * requests RANGE_READ on EOF: restarts.
+             */
+            new Spec("Next", 1, 2, new Oper() {
+                void doOper(int insertedKey) throws DatabaseException {
+                    status = cursor.getFirst(key, data, null);
+                    checkStatus(OperationStatus.SUCCESS);
+                    checkKey(1);
+                    status = cursor.getNext(key, data, null);
+                    checkStatus((insertedKey == 2) ? OperationStatus.SUCCESS : OperationStatus.NOTFOUND);
+                }
+            }),
 
-        /*
-         * T1 calls getPrev from K2 -- owns RANGE_READ on K2.
-         * T2 inserts K1 -- waits for RANGE_INSERT on K2.
-         * T3 calls getPrev from K2 -- requests RANGE_READ on K2: restarts.
-         */
-        new Spec("Prev", 2, 1, new Oper() {
-            void doOper(int insertedKey) throws DatabaseException {
-                status = cursor.getLast(key, data, null);
-                checkStatus(OperationStatus.SUCCESS);
-                checkKey(2);
-                status = cursor.getPrev(key, data, null);
-                checkStatus((insertedKey == 1) ? OperationStatus.SUCCESS
-                                               : OperationStatus.NOTFOUND);
-            }
-        }),
+            /*
+             * T1 calls getPrev from K2 -- owns RANGE_READ on K2. T2 inserts K1
+             * -- waits for RANGE_INSERT on K2. T3 calls getPrev from K2 --
+             * requests RANGE_READ on K2: restarts.
+             */
+            new Spec("Prev", 2, 1, new Oper() {
+                void doOper(int insertedKey) throws DatabaseException {
+                    status = cursor.getLast(key, data, null);
+                    checkStatus(OperationStatus.SUCCESS);
+                    checkKey(2);
+                    status = cursor.getPrev(key, data, null);
+                    checkStatus((insertedKey == 1) ? OperationStatus.SUCCESS : OperationStatus.NOTFOUND);
+                }
+            }),
 
-        /*
-         * NextDup, NextNoDup, PrevDup and PrevNoDup are not tested here.
-         * Restarts for these operations are implemented together with Next and
-         * Prev operations, so testing was skipped.
-         */
+            /*
+             * NextDup, NextNoDup, PrevDup and PrevNoDup are not tested here.
+             * Restarts for these operations are implemented together with Next
+             * and Prev operations, so testing was skipped.
+             */
     };
 
     private static abstract class Oper {
 
         PhantomRestartTest test;
-        boolean dups;
-        Cursor cursor;
-        DatabaseEntry key;
-        DatabaseEntry data;
-        OperationStatus status;
+        boolean            dups;
+        Cursor             cursor;
+        DatabaseEntry      key;
+        DatabaseEntry      data;
+        OperationStatus    status;
 
         void init(PhantomRestartTest test, Cursor cursor) {
             this.test = test;
@@ -209,24 +198,21 @@ public class PhantomRestartTest extends DualTestCase {
         void checkKey(int expected) {
             if (dups) {
                 assertEquals(100, IntegerBinding.entryToInt(key));
-                assertEquals
-                    (expected, IntegerBinding.entryToInt(data));
+                assertEquals(expected, IntegerBinding.entryToInt(data));
             } else {
-                assertEquals
-                    (expected, IntegerBinding.entryToInt(key));
+                assertEquals(expected, IntegerBinding.entryToInt(key));
             }
         }
 
-        abstract void doOper(int insertedKey)
-            throws DatabaseException;
+        abstract void doOper(int insertedKey) throws DatabaseException;
     }
 
     protected static class Spec {
 
         String name;
-        int insertKey1;
-        int insertKey2;
-        Oper oper;
+        int    insertKey1;
+        int    insertKey2;
+        Oper   oper;
 
         Spec(String name, int insertKey1, int insertKey2, Oper oper) {
             this.name = name;
@@ -240,22 +226,22 @@ public class PhantomRestartTest extends DualTestCase {
     public static List<Object[]> genParams() {
         List<Object[]> list = new ArrayList<Object[]>();
         for (Spec spec : SPECS) {
-            list.add(new Object[]{spec, true});
-            list.add(new Object[]{spec, false});
+            list.add(new Object[] { spec, true });
+            list.add(new Object[] { spec, false });
         }
-            
+
         return list;
     }
 
     private static final int MAX_INSERT_MILLIS = 5000;
 
-    private File envHome;
-    private Environment env;
-    private Database db;
-    private JUnitThread writerThread;
-    private JUnitThread readerThread;
-    private final boolean dups;
-    private final Spec spec;
+    private File             envHome;
+    private Environment      env;
+    private Database         db;
+    private JUnitThread      writerThread;
+    private JUnitThread      readerThread;
+    private final boolean    dups;
+    private final Spec       spec;
 
     public PhantomRestartTest(Spec spec, Boolean dups) {
         this.spec = spec;
@@ -265,8 +251,7 @@ public class PhantomRestartTest extends DualTestCase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         super.tearDown();
         envHome = null;
@@ -287,8 +272,7 @@ public class PhantomRestartTest extends DualTestCase {
     /**
      * Opens the environment and database.
      */
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -296,14 +280,10 @@ public class PhantomRestartTest extends DualTestCase {
         envConfig.setTxnSerializableIsolation(true);
 
         /* Disable the daemons so the don't interfere with stats. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
 
         env = new Environment(envHome, envConfig);
 
@@ -317,8 +297,7 @@ public class PhantomRestartTest extends DualTestCase {
     /**
      * Closes the environment and database.
      */
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (db != null) {
             db.close();
@@ -331,8 +310,7 @@ public class PhantomRestartTest extends DualTestCase {
     }
 
     @Test
-    public void runTest()
-        throws DatabaseException, InterruptedException {
+    public void runTest() throws DatabaseException, InterruptedException {
 
         openEnv();
 
@@ -340,11 +318,11 @@ public class PhantomRestartTest extends DualTestCase {
         if (dups) {
 
             /*
-             * Create a dup tree and delete it to avoid deadlocking.  Note that
-             * we have the compressor disabled to make this work.  Deadlocking
-             * occurs without a dup tree because insertion locks the sibling
-             * key when creating a dup tree from a single LN.  This extra
-             * locking throws off our test.
+             * Create a dup tree and delete it to avoid deadlocking. Note that
+             * we have the compressor disabled to make this work. Deadlocking
+             * occurs without a dup tree because insertion locks the sibling key
+             * when creating a dup tree from a single LN. This extra locking
+             * throws off our test.
              */
             insert(100, 0);
             insert(100, 1);
@@ -394,8 +372,7 @@ public class PhantomRestartTest extends DualTestCase {
     /**
      * Inserts the given key and data in a new transaction and commits it.
      */
-    private void insert(int keyVal, int dataVal)
-        throws DatabaseException {
+    private void insert(int keyVal, int dataVal) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -420,14 +397,12 @@ public class PhantomRestartTest extends DualTestCase {
     /**
      * Starts writer thread and waits for it to start the insert.
      */
-    private void startInsert(final int keyVal, final int dataVal)
-        throws DatabaseException, InterruptedException {
+    private void startInsert(final int keyVal, final int dataVal) throws DatabaseException, InterruptedException {
 
         EnvironmentStats origStats = env.getStats(null);
 
         writerThread = new JUnitThread("Writer") {
-            public void testBody()
-                throws DatabaseException {
+            public void testBody() throws DatabaseException {
                 DatabaseEntry key = new DatabaseEntry();
                 DatabaseEntry data = new DatabaseEntry();
                 IntegerBinding.intToEntry(keyVal, key);
@@ -466,14 +441,12 @@ public class PhantomRestartTest extends DualTestCase {
     /**
      * Starts reader thread and waits for it to start the read operation.
      */
-    private void startReadOper(final int operKeyParam)
-        throws DatabaseException, InterruptedException {
+    private void startReadOper(final int operKeyParam) throws DatabaseException, InterruptedException {
 
         EnvironmentStats origStats = env.getStats(null);
 
         readerThread = new JUnitThread("Reader") {
-            public void testBody()
-                throws DatabaseException {
+            public void testBody() throws DatabaseException {
                 Transaction readerTxn = env.beginTransaction(null, null);
                 Cursor cursor = db.openCursor(readerTxn, null);
                 spec.oper.init(PhantomRestartTest.this, cursor);
@@ -490,8 +463,7 @@ public class PhantomRestartTest extends DualTestCase {
     /**
      * Waits for a new locker to block waiting for a lock.
      */
-    private void waitForBlock(EnvironmentStats origStats)
-        throws DatabaseException, InterruptedException {
+    private void waitForBlock(EnvironmentStats origStats) throws DatabaseException, InterruptedException {
 
         long startTime = System.currentTimeMillis();
         while (true) {

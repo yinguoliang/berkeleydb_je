@@ -24,25 +24,15 @@ import com.sleepycat.util.test.TestBase;
 
 public class EnvironmentParamsTest extends TestBase {
 
-    private IntConfigParam intParam =
-        new IntConfigParam("param.int",
-                           new Integer(2),
-                           new Integer(10),
-                           new Integer(5),
-                           false, // mutable
-                           false);// for replication
+    private IntConfigParam  intParam  = new IntConfigParam("param.int", new Integer(2), new Integer(10), new Integer(5),
+            false,                                                                                                                 // mutable
+            false);                                                                                                                // for replication
 
-    private LongConfigParam longParam =
-        new LongConfigParam("param.long",
-                            new Long(2),
-                            new Long(10),
-                            new Long(5),
-                            false, // mutable
-                            false);// for replication
+    private LongConfigParam longParam = new LongConfigParam("param.long", new Long(2), new Long(10), new Long(5), false,           // mutable
+            false);                                                                                                                // for replication
 
-    private ConfigParam mvParam =
-        new ConfigParam("some.mv.param.#", null, true /* mutable */,
-                        false /* for replication */);
+    private ConfigParam     mvParam   = new ConfigParam("some.mv.param.#", null, true /* mutable */,
+            false /* for replication */);
 
     /**
      * Test param validation.
@@ -53,7 +43,7 @@ public class EnvironmentParamsTest extends TestBase {
 
         try {
             new ConfigParam(null, "foo", false /* mutable */,
-                            false /* for replication */);
+                    false /* for replication */);
             fail("should disallow null name");
         } catch (EnvironmentFailureException e) {
             // expected.
@@ -67,8 +57,7 @@ public class EnvironmentParamsTest extends TestBase {
     }
 
     /**
-     * Check that an invalid parameter isn't mistaken for a multivalue
-     * param.
+     * Check that an invalid parameter isn't mistaken for a multivalue param.
      */
     @Test
     public void testInvalidVsMultiValue() {

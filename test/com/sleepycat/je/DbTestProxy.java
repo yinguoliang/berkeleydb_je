@@ -17,8 +17,8 @@ import com.sleepycat.je.dbi.CursorImpl;
 
 /**
  * DbTestProxy is for internal use only. It serves to shelter methods that must
- * be public to be used by JE unit tests that but are not part of the
- * public api available to applications.
+ * be public to be used by JE unit tests that but are not part of the public api
+ * available to applications.
  */
 public class DbTestProxy {
     /**

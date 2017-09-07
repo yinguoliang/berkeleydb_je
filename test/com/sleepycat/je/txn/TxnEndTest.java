@@ -71,19 +71,18 @@ import com.sleepycat.util.test.TestBase;
  */
 public class TxnEndTest extends TestBase {
     private static final int NUM_DBS = 1;
-    private Environment env;
-    private final File envHome;
-    private Database[] dbs;
-    private Cursor[] cursors;
-    private JUnitThread junitThread;
+    private Environment      env;
+    private final File       envHome;
+    private Database[]       dbs;
+    private Cursor[]         cursors;
+    private JUnitThread      junitThread;
 
     public TxnEndTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         /*
          * Run environment without in compressor on so we can check the
@@ -93,14 +92,10 @@ public class TxnEndTest extends TestBase {
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
         envConfig.setConfigParam(EnvironmentConfig.NODE_MAX_ENTRIES, "6");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
         envConfig.setAllowCreate(true);
         env = new Environment(envHome, envConfig);
     }
@@ -123,8 +118,7 @@ public class TxnEndTest extends TestBase {
         TestUtils.removeFiles("TearDown", envHome, FileManager.JE_SUFFIX);
     }
 
-    private void createDbs()
-        throws DatabaseException {
+    private void createDbs() throws DatabaseException {
 
         dbs = new Database[NUM_DBS];
         cursors = new Cursor[NUM_DBS];
@@ -137,8 +131,7 @@ public class TxnEndTest extends TestBase {
         }
     }
 
-    private void closeAll()
-        throws DatabaseException {
+    private void closeAll() throws DatabaseException {
 
         for (int i = 0; i < NUM_DBS; i++) {
             dbs[i].close();
@@ -151,8 +144,7 @@ public class TxnEndTest extends TestBase {
     /**
      * Create cursors with this owning transaction
      */
-    private void createCursors(Transaction txn)
-        throws DatabaseException {
+    private void createCursors(Transaction txn) throws DatabaseException {
 
         for (int i = 0; i < cursors.length; i++) {
             cursors[i] = dbs[i].openCursor(txn, null);
@@ -162,8 +154,7 @@ public class TxnEndTest extends TestBase {
     /**
      * Close the current set of cursors
      */
-    private void closeCursors()
-        throws DatabaseException {
+    private void closeCursors() throws DatabaseException {
 
         for (int i = 0; i < cursors.length; i++) {
             cursors[i].close();
@@ -173,8 +164,7 @@ public class TxnEndTest extends TestBase {
     /**
      * Insert keys from i=start; i <end using a cursor
      */
-    private void cursorInsertData(int start, int end)
-        throws DatabaseException {
+    private void cursorInsertData(int start, int end) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -186,11 +176,11 @@ public class TxnEndTest extends TestBase {
             }
         }
     }
+
     /**
      * Insert keys from i=start; i < end using a db
      */
-    private void dbInsertData(int start, int end, Transaction txn)
-        throws DatabaseException {
+    private void dbInsertData(int start, int end, Transaction txn) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -206,18 +196,15 @@ public class TxnEndTest extends TestBase {
     /**
      * Modify keys from i=start; i <end
      */
-    private void cursorModifyData(int start, int end, int valueOffset)
-        throws DatabaseException {
+    private void cursorModifyData(int start, int end, int valueOffset) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         for (int i = 0; i < NUM_DBS; i++) {
-            OperationStatus status =
-                cursors[i].getFirst(key, data, LockMode.DEFAULT);
+            OperationStatus status = cursors[i].getFirst(key, data, LockMode.DEFAULT);
             for (int d = start; d < end; d++) {
                 assertEquals(OperationStatus.SUCCESS, status);
-                byte[] changedVal =
-                    TestUtils.getTestArray(d + valueOffset);
+                byte[] changedVal = TestUtils.getTestArray(d + valueOffset);
                 data.setData(changedVal);
                 cursors[i].putCurrent(data);
                 status = cursors[i].getNext(key, data, LockMode.DEFAULT);
@@ -228,18 +215,15 @@ public class TxnEndTest extends TestBase {
     /**
      * Delete records from i = start; i < end.
      */
-    private void cursorDeleteData(int start, int end)
-        throws DatabaseException {
+    private void cursorDeleteData(int start, int end) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry foundData = new DatabaseEntry();
         for (int i = 0; i < NUM_DBS; i++) {
             for (int d = start; d < end; d++) {
-                byte[] searchValue =
-                    TestUtils.getTestArray(d);
+                byte[] searchValue = TestUtils.getTestArray(d);
                 key.setData(searchValue);
-                OperationStatus status =
-                    cursors[i].getSearchKey(key, foundData, LockMode.DEFAULT);
+                OperationStatus status = cursors[i].getSearchKey(key, foundData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals(OperationStatus.SUCCESS, cursors[i].delete());
             }
@@ -249,14 +233,12 @@ public class TxnEndTest extends TestBase {
     /**
      * Delete records with a db.
      */
-    private void dbDeleteData(int start, int end, Transaction txn)
-        throws DatabaseException {
+    private void dbDeleteData(int start, int end, Transaction txn) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         for (int i = 0; i < NUM_DBS; i++) {
             for (int d = start; d < end; d++) {
-                byte[] searchValue =
-                    TestUtils.getTestArray(d);
+                byte[] searchValue = TestUtils.getTestArray(d);
                 key.setData(searchValue);
                 dbs[i].delete(txn, key);
             }
@@ -264,36 +246,30 @@ public class TxnEndTest extends TestBase {
     }
 
     /**
-     * Check that there are numKeys records in each db, and their value
-     * is i + offset.
+     * Check that there are numKeys records in each db, and their value is i +
+     * offset.
      */
-    private void verifyData(int numKeys, int valueOffset)
-        throws DatabaseException {
+    private void verifyData(int numKeys, int valueOffset) throws DatabaseException {
 
         for (int i = 0; i < NUM_DBS; i++) {
             /* Run verify */
             DatabaseImpl dbImpl = DbInternal.getDbImpl(dbs[i]);
-            assertTrue(dbImpl.verify(new VerifyConfig(),
-                                      dbImpl.getEmptyStats()));
+            assertTrue(dbImpl.verify(new VerifyConfig(), dbImpl.getEmptyStats()));
 
-            Cursor verifyCursor =
-                dbs[i].openCursor(null, CursorConfig.READ_UNCOMMITTED);
+            Cursor verifyCursor = dbs[i].openCursor(null, CursorConfig.READ_UNCOMMITTED);
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
-            OperationStatus status =
-                verifyCursor.getFirst(key, data, LockMode.DEFAULT);
+            OperationStatus status = verifyCursor.getFirst(key, data, LockMode.DEFAULT);
             for (int d = 0; d < numKeys; d++) {
                 assertEquals("key=" + d, OperationStatus.SUCCESS, status);
                 byte[] expected = TestUtils.getTestArray(d + valueOffset);
                 assertTrue(Arrays.equals(expected, key.getData()));
-                assertTrue("Expected= " + TestUtils.dumpByteArray(expected) +
-                           " saw=" + TestUtils.dumpByteArray(data.getData()),
-                           Arrays.equals(expected, data.getData()));
+                assertTrue("Expected= " + TestUtils.dumpByteArray(expected) + " saw="
+                        + TestUtils.dumpByteArray(data.getData()), Arrays.equals(expected, data.getData()));
                 status = verifyCursor.getNext(key, data, LockMode.DEFAULT);
             }
             /* Should be the end of this database. */
-            assertTrue("More data than expected",
-                       (status != OperationStatus.SUCCESS));
+            assertTrue("More data than expected", (status != OperationStatus.SUCCESS));
             verifyCursor.close();
         }
     }
@@ -302,8 +278,7 @@ public class TxnEndTest extends TestBase {
      * Test basic commits, aborts with cursors
      */
     @Test
-    public void testBasicCursor()
-        throws Throwable {
+    public void testBasicCursor() throws Throwable {
 
         try {
             int numKeys = 7;
@@ -312,24 +287,24 @@ public class TxnEndTest extends TestBase {
             /* Insert more data with a user transaction, commit. */
             Transaction txn = env.beginTransaction(null, null);
             createCursors(txn);
-            cursorInsertData(0, numKeys*2);
+            cursorInsertData(0, numKeys * 2);
             closeCursors();
             txn.commit();
-            verifyData(numKeys*2, 0);
+            verifyData(numKeys * 2, 0);
 
             /* Insert more data, abort, check that data is unchanged. */
             txn = env.beginTransaction(null, null);
             createCursors(txn);
-            cursorInsertData(numKeys*2, numKeys*3);
+            cursorInsertData(numKeys * 2, numKeys * 3);
             closeCursors();
             txn.abort();
-            verifyData(numKeys*2, 0);
+            verifyData(numKeys * 2, 0);
 
             /*
-             * Check the in compressor queue, we should have some number of
-             * bins on. If the queue size is 0, then check the processed stats,
-             * the in compressor thread may have already woken up and dealt
-             * with the entries.
+             * Check the in compressor queue, we should have some number of bins
+             * on. If the queue size is 0, then check the processed stats, the
+             * in compressor thread may have already woken up and dealt with the
+             * entries.
              */
             EnvironmentStats envStat = env.getStats(TestUtils.FAST_STATS);
             long queueSize = envStat.getInCompQueueSize();
@@ -341,15 +316,15 @@ public class TxnEndTest extends TestBase {
             cursorModifyData(0, numKeys * 2, 1);
             closeCursors();
             txn.abort();
-            verifyData(numKeys*2, 0);
+            verifyData(numKeys * 2, 0);
 
             /* Delete data, abort, check that data is still there. */
             txn = env.beginTransaction(null, null);
             createCursors(txn);
-            cursorDeleteData(numKeys+1, numKeys*2);
+            cursorDeleteData(numKeys + 1, numKeys * 2);
             closeCursors();
             txn.abort();
-            verifyData(numKeys*2, 0);
+            verifyData(numKeys * 2, 0);
             /* Check the in compressor queue, nothing should be loaded. */
             envStat = env.getStats(TestUtils.FAST_STATS);
             assertEquals(queueSize, envStat.getInCompQueueSize());
@@ -357,7 +332,7 @@ public class TxnEndTest extends TestBase {
             /* Delete data, commit, check that data is gone. */
             txn = env.beginTransaction(null, null);
             createCursors(txn);
-            cursorDeleteData(numKeys, numKeys*2);
+            cursorDeleteData(numKeys, numKeys * 2);
             closeCursors();
             txn.commit();
             verifyData(numKeys, 0);
@@ -379,8 +354,7 @@ public class TxnEndTest extends TestBase {
      * Test that txn commit fails with open cursors.
      */
     @Test
-    public void testTxnClose()
-        throws DatabaseException {
+    public void testTxnClose() throws DatabaseException {
 
         createDbs();
         Transaction txn = env.beginTransaction(null, null);
@@ -423,12 +397,10 @@ public class TxnEndTest extends TestBase {
      * Test use through db.
      */
     @Test
-    public void testBasicDb()
-        throws Throwable {
+    public void testBasicDb() throws Throwable {
 
         try {
-            TransactionStats stats =
-                env.getTransactionStats(TestUtils.FAST_STATS);
+            TransactionStats stats = env.getTransactionStats(TestUtils.FAST_STATS);
             int initialAborts = 0;
             assertEquals(initialAborts, stats.getNAborts());
             /* 2 commits for adding cleaner dbs. */
@@ -438,14 +410,12 @@ public class TxnEndTest extends TestBase {
             long locale = new Date().getTime();
             TransactionStats.Active[] at = new TransactionStats.Active[4];
 
-            for(int i = 0; i < 4; i++) {
-                at[i] = new TransactionStats.Active("TransactionStatForTest",
-                                                    i, i - 1);
+            for (int i = 0; i < 4; i++) {
+                at[i] = new TransactionStats.Active("TransactionStatForTest", i, i - 1);
             }
 
             StatGroup group = new StatGroup("test", "test");
-            ActiveTxnArrayStat arrayStat =
-                new ActiveTxnArrayStat(group, TXN_ACTIVE_TXNS, at);
+            ActiveTxnArrayStat arrayStat = new ActiveTxnArrayStat(group, TXN_ACTIVE_TXNS, at);
             new LongStat(group, TXN_ABORTS, 12);
             new LongStat(group, TXN_XAABORTS, 15);
             new IntStat(group, TXN_ACTIVE, 20);
@@ -457,7 +427,7 @@ public class TxnEndTest extends TestBase {
 
             TransactionStats.Active[] at1 = stats.getActiveTxns();
 
-            for(int i = 0; i < 4; i++) {
+            for (int i = 0; i < 4; i++) {
                 assertEquals("TransactionStatForTest", at1[i].getName());
                 assertEquals(i, at1[i].getId());
                 assertEquals(i - 1, at1[i].getParentId());
@@ -484,21 +454,22 @@ public class TxnEndTest extends TestBase {
 
             /* Insert data with a txn. */
             Transaction txn = env.beginTransaction(null, null);
-            dbInsertData(numKeys, numKeys*2, txn);
+            dbInsertData(numKeys, numKeys * 2, txn);
             txn.commit();
-            verifyData(numKeys*2, 0);
+            verifyData(numKeys * 2, 0);
 
             stats = env.getTransactionStats(TestUtils.FAST_STATS);
             assertEquals(initialAborts, stats.getNAborts());
-            assertEquals((initialCommits + 1 +  // 1 explicit commit above
-                          (1 * NUM_DBS) +       // 1 per create/open
-                          (numKeys*NUM_DBS)),   // 1 per record, using autotxn
-                         stats.getNCommits());
+            assertEquals(
+                    (initialCommits + 1 + // 1 explicit commit above
+                            (1 * NUM_DBS) + // 1 per create/open
+                            (numKeys * NUM_DBS)), // 1 per record, using autotxn
+                    stats.getNCommits());
 
             /* Delete data with a txn, abort. */
             txn = env.beginTransaction(null, null);
             dbDeleteData(numKeys, numKeys * 2, txn);
-            verifyData(numKeys, 0);  // verify w/dirty read
+            verifyData(numKeys, 0); // verify w/dirty read
             txn.abort();
 
             closeAll();
@@ -512,12 +483,10 @@ public class TxnEndTest extends TestBase {
      * Test TransactionStats.
      */
     @Test
-    public void testTxnStats()
-        throws Throwable {
+    public void testTxnStats() throws Throwable {
 
         try {
-            TransactionStats stats =
-                env.getTransactionStats(TestUtils.FAST_STATS);
+            TransactionStats stats = env.getTransactionStats(TestUtils.FAST_STATS);
             int initialAborts = 0;
             assertEquals(initialAborts, stats.getNAborts());
             /* 2 commits for adding cleaner dbs. */
@@ -550,14 +519,14 @@ public class TxnEndTest extends TestBase {
             assertEquals(numBegins, stats.getNBegins());
             assertEquals(numCommits, stats.getNCommits());
             assertEquals(1, stats.getNActive());
-            dbInsertData(numKeys, numKeys*2, txn);
+            dbInsertData(numKeys, numKeys * 2, txn);
             txn.commit();
             numCommits++;
             stats = env.getTransactionStats(TestUtils.FAST_STATS);
             assertEquals(numBegins, stats.getNBegins());
             assertEquals(numCommits, stats.getNCommits());
             assertEquals(0, stats.getNActive());
-            verifyData(numKeys*2, 0);
+            verifyData(numKeys * 2, 0);
 
             /* Delete data with a txn, abort. */
             txn = env.beginTransaction(null, null);
@@ -568,7 +537,7 @@ public class TxnEndTest extends TestBase {
             assertEquals(1, stats.getNActive());
 
             dbDeleteData(numKeys, numKeys * 2, txn);
-            verifyData(numKeys, 0);  // verify w/dirty read
+            verifyData(numKeys, 0); // verify w/dirty read
             txn.abort();
             stats = env.getTransactionStats(TestUtils.FAST_STATS);
             assertEquals(numBegins, stats.getNBegins());
@@ -588,8 +557,7 @@ public class TxnEndTest extends TestBase {
      */
 
     @Test
-    public void testDbCreation()
-        throws DatabaseException {
+    public void testDbCreation() throws DatabaseException {
 
         Transaction txnA = env.beginTransaction(null, null);
         Transaction txnB = env.beginTransaction(null, null);
@@ -597,8 +565,7 @@ public class TxnEndTest extends TestBase {
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
         dbConfig.setTransactional(true);
-        Database dbA =
-            env.openDatabase(txnA, "foo", dbConfig);
+        Database dbA = env.openDatabase(txnA, "foo", dbConfig);
 
         /* Try to see this database with another txn -- we should not see it. */
 
@@ -607,7 +574,7 @@ public class TxnEndTest extends TestBase {
         try {
             txnB.setLockTimeout(1000);
 
-                env.openDatabase(txnB, "foo", dbConfig);
+            env.openDatabase(txnB, "foo", dbConfig);
             fail("Shouldn't be able to open foo");
         } catch (DatabaseException e) {
         }
@@ -616,14 +583,12 @@ public class TxnEndTest extends TestBase {
         txnB.abort();
 
         /* Open this database with the same txn and another handle. */
-        Database dbC =
-            env.openDatabase(txnA, "foo", dbConfig);
+        Database dbC = env.openDatabase(txnA, "foo", dbConfig);
 
         /* Now commit txnA and txnB should be able to open this. */
         txnA.commit();
         txnB = env.beginTransaction(null, null);
-        Database dbB =
-            env.openDatabase(txnB, "foo", dbConfig);
+        Database dbB = env.openDatabase(txnB, "foo", dbConfig);
         txnB.commit();
 
         /* XXX, test db deletion. */
@@ -635,8 +600,7 @@ public class TxnEndTest extends TestBase {
 
     /* Test that the transaction is unusable after a close. */
     @Test
-    public void testClose()
-        throws DatabaseException {
+    public void testClose() throws DatabaseException {
 
         Transaction txnA = env.beginTransaction(null, null);
         txnA.commit();
@@ -650,11 +614,9 @@ public class TxnEndTest extends TestBase {
 
     /**
      * Simulates a race condition between two threads that previously caused a
-     * latch deadlock.  [#19321]
-     *
-     * One thread is aborting a txn.  The other thread is using the same txn to
-     * perform a cursor operation.  While the BIN is held, it attempts to get a
-     * non-blocking lock.
+     * latch deadlock. [#19321] One thread is aborting a txn. The other thread
+     * is using the same txn to perform a cursor operation. While the BIN is
+     * held, it attempts to get a non-blocking lock.
      */
     @Test
     public void testAbortLatchDeadlock() {
@@ -668,8 +630,7 @@ public class TxnEndTest extends TestBase {
         /* Insert one record. */
         final DatabaseEntry key = new DatabaseEntry(new byte[1]);
         final DatabaseEntry data = new DatabaseEntry(new byte[1]);
-        assertSame(OperationStatus.SUCCESS, 
-                   db.putNoOverwrite(null, key, data));
+        assertSame(OperationStatus.SUCCESS, db.putNoOverwrite(null, key, data));
 
         /* Begin txn, to be shared by both threads. */
         final Transaction txn = env.beginTransaction(null, null);
@@ -688,14 +649,13 @@ public class TxnEndTest extends TestBase {
                 /*
                  * The cursor is not closed before the abort is allowed to
                  * continue, sometimes causing an "open cursors" exception,
-                 * depending on timing.  This is acceptable for this test,
-                 * since we are checking that a hang does not occur.
+                 * depending on timing. This is acceptable for this test, since
+                 * we are checking that a hang does not occur.
                  */
                 try {
                     txn.abort();
                 } catch (IllegalStateException e) {
-                    assertTrue(e.getMessage().contains
-                        ("detected open cursors"));
+                    assertTrue(e.getMessage().contains("detected open cursors"));
                 }
             }
         };
@@ -711,12 +671,11 @@ public class TxnEndTest extends TestBase {
         }
 
         /*
-         * Simulate cursor operation that gets non-blocking lock.  Before the
-         * fix [#19321], a latch deadlock would occur here.
+         * Simulate cursor operation that gets non-blocking lock. Before the fix
+         * [#19321], a latch deadlock would occur here.
          */
         try {
-            cursorImpl.getLocker().nonBlockingLock
-                (123L, LockType.WRITE, false, DbInternal.getDbImpl(db));
+            cursorImpl.getLocker().nonBlockingLock(123L, LockType.WRITE, false, DbInternal.getDbImpl(db));
             fail();
         } catch (IllegalStateException expected) {
         } finally {
@@ -741,8 +700,8 @@ public class TxnEndTest extends TestBase {
 
         db.close();
     }
-    
-    /* 
+
+    /*
      * Test the case where truncateDatabase and removeDatabase operations are
      * done on the same database in the same txn. [#19636]
      */
@@ -770,7 +729,7 @@ public class TxnEndTest extends TestBase {
         txn.commit();
         /* the database has been removed after committing the txn. */
         assertEquals(0, env.getDatabaseNames().size());
-        
+
         /* Test multiple truncations before single removement. */
         db = env.openDatabase(null, dbName, dbConfig);
         db.close();

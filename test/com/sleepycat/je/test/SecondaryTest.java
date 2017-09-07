@@ -60,86 +60,73 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 /**
- * Tests basic SecondaryDatabase functionality.  Tests a SecondaryAssociation,
+ * Tests basic SecondaryDatabase functionality. Tests a SecondaryAssociation,
  * but only in a limited mode where there is only one primary DB.
  */
 @RunWith(Parameterized.class)
 public class SecondaryTest extends MultiKeyTxnTestCase {
 
-    private static final int NUM_RECS = 5;
-    private static final int KEY_OFFSET = 100;
+    private static final int           NUM_RECS   = 5;
+    private static final int           KEY_OFFSET = 100;
 
-    private JUnitThread junitThread;
-    private final boolean resetOnFailure;
-    private final boolean useCustomAssociation;
-    private CustomAssociation customAssociation;
+    private JUnitThread                junitThread;
+    private final boolean              resetOnFailure;
+    private final boolean              useCustomAssociation;
+    private CustomAssociation          customAssociation;
 
-    protected static EnvironmentConfig envConfig = TestUtils.initEnvConfig();
+    protected static EnvironmentConfig envConfig  = TestUtils.initEnvConfig();
     static {
-        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                 "6");
+        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
         envConfig.setTxnNoSync(Boolean.getBoolean(TestUtils.NO_SYNC));
         envConfig.setLockTimeout(1); // to speed up intentional deadlocks
         envConfig.setAllowCreate(true);
 
         /* Disable daemons so that stats are reliable. */
-        envConfig.setConfigParam(EnvironmentConfig.STATS_COLLECT,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR,
-                                 "false");
+        envConfig.setConfigParam(EnvironmentConfig.STATS_COLLECT, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
     }
 
     @Parameters
     public static List<Object[]> genParams() {
-       return paramsHelper(false);
+        return paramsHelper(false);
     }
 
     protected static List<Object[]> paramsHelper(boolean rep) {
         final String[] txnTypes = getTxnTypes(null, rep);
         final List<Object[]> newParams = new ArrayList<Object[]>();
-//        if (true) {
-//            newParams.add(new Object[] {txnTypes[0], false, true, false});
-//            return newParams;
-//        }
+        //        if (true) {
+        //            newParams.add(new Object[] {txnTypes[0], false, true, false});
+        //            return newParams;
+        //        }
         for (final String type : txnTypes) {
-            for (final boolean b1 : new boolean[] {false, true, false}) {
-                newParams.add(new Object[] {type, b1, false, true});
-                for (final boolean b2 : new boolean[] {false, true}) {
-                    newParams.add(new Object[] {type, b1, b2, false});
+            for (final boolean b1 : new boolean[] { false, true, false }) {
+                newParams.add(new Object[] { type, b1, false, true });
+                for (final boolean b2 : new boolean[] { false, true }) {
+                    newParams.add(new Object[] { type, b1, b2, false });
                 }
             }
         }
-        
+
         return newParams;
     }
-    
-    public SecondaryTest(String type,
-                         boolean multiKey,
-                         boolean customAssociation,
-                         boolean resetOnFailure) {
+
+    public SecondaryTest(String type, boolean multiKey, boolean customAssociation, boolean resetOnFailure) {
         super.envConfig = envConfig;
         txnType = type;
         useMultiKey = multiKey;
         useCustomAssociation = customAssociation;
         this.resetOnFailure = resetOnFailure;
         isTransactional = (txnType != TXN_NULL);
-        customName = ((useCustomAssociation) ? "customAssoc-" : "") +
-                     ((useMultiKey) ? "multiKey-" : "") +
-                     ((resetOnFailure) ? "resetOnFailure-" : "") +
-                     txnType;
+        customName = ((useCustomAssociation) ? "customAssoc-" : "") + ((useMultiKey) ? "multiKey-" : "")
+                + ((resetOnFailure) ? "resetOnFailure-" : "") + txnType;
     }
-    
+
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         super.tearDown();
         if (junitThread != null) {
@@ -233,8 +220,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             status = priCursor.putNoOverwrite(entry(1), entry(2));
             assertSame(OperationStatus.SUCCESS, status);
             assertNSecWrites(priCursor, 1);
-            status = secCursor.getSearchKey(entry(102), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(102), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertNSecWrites(secCursor, 0);
             assertDataEquals(entry(1), key);
@@ -244,12 +230,10 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             status = priCursor.putCurrent(entry(3));
             assertSame(OperationStatus.SUCCESS, status);
             assertNSecWrites(priCursor, 2);
-            status = secCursor.getSearchKey(entry(102), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(102), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
             assertNSecWrites(secCursor, 0);
-            status = secCursor.getSearchKey(entry(103), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(103), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertNSecWrites(secCursor, 0);
             assertDataEquals(entry(1), key);
@@ -261,19 +245,16 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             assertNSecWrites(priCursor, 1);
             status = priCursor.delete();
             assertSame(OperationStatus.KEYEMPTY, status);
-            status = secCursor.getSearchKey(entry(103), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(103), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
-            status = priCursor.getSearchKey(entry(1), data,
-                                            LockMode.DEFAULT);
+            status = priCursor.getSearchKey(entry(1), data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
 
             /* Cursor.put() */
             status = priCursor.put(entry(1), entry(4));
             assertSame(OperationStatus.SUCCESS, status);
             assertNSecWrites(priCursor, 1);
-            status = secCursor.getSearchKey(entry(104), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(104), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertNSecWrites(secCursor, 0);
             assertDataEquals(entry(1), key);
@@ -285,14 +266,11 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             assertNSecWrites(secCursor, 0); // Known deficiency.
             status = secCursor.delete();
             assertSame(OperationStatus.KEYEMPTY, status);
-            status = secCursor.getCurrent(new DatabaseEntry(), key, data,
-                                          LockMode.DEFAULT);
+            status = secCursor.getCurrent(new DatabaseEntry(), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.KEYEMPTY, status);
-            status = secCursor.getSearchKey(entry(104), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(104), key, data, LockMode.DEFAULT);
             assertNSecWrites(secCursor, 0);
-            status = priCursor.getSearchKey(entry(1), data,
-                                            LockMode.DEFAULT);
+            status = priCursor.getSearchKey(entry(1), data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
 
             /*
@@ -360,8 +338,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             /* Cursor.put() */
             status = priCursor.put(entry(1), partialEntry(3, 2));
             assertSame(OperationStatus.SUCCESS, status);
-            status = secCursor.getSearchKey(entry(102), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(102), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertDataEquals(entry(1), key);
             assertDataEquals(entry(2), data);
@@ -369,11 +346,9 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             /* Cursor.putCurrent() */
             status = priCursor.putCurrent(partialEntry(2, 3));
             assertSame(OperationStatus.SUCCESS, status);
-            status = secCursor.getSearchKey(entry(102), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(102), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
-            status = secCursor.getSearchKey(entry(103), key, data,
-                                            LockMode.DEFAULT);
+            status = secCursor.getSearchKey(entry(103), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertDataEquals(entry(1), key);
             assertDataEquals(entry(3), data);
@@ -417,28 +392,24 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         for (int i = 0; i < NUM_RECS; i += 1) {
 
             data.setData(null);
-            status = secDb.get(txn, entry(i + KEY_OFFSET), key,
-                               data, LockMode.DEFAULT);
+            status = secDb.get(txn, entry(i + KEY_OFFSET), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertDataEquals(entry(i), key);
             assertDataEquals(entry(i), data);
         }
         data.setData(null);
-        status = secDb.get(txn, entry(NUM_RECS + KEY_OFFSET), key,
-                           data, LockMode.DEFAULT);
+        status = secDb.get(txn, entry(NUM_RECS + KEY_OFFSET), key, data, LockMode.DEFAULT);
         assertSame(OperationStatus.NOTFOUND, status);
 
         /* SecondaryDatabase.getSearchBoth() */
         for (int i = 0; i < NUM_RECS; i += 1) {
             data.setData(null);
-            status = secDb.getSearchBoth(txn, entry(i + KEY_OFFSET), entry(i),
-                                         data, LockMode.DEFAULT);
+            status = secDb.getSearchBoth(txn, entry(i + KEY_OFFSET), entry(i), data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertDataEquals(entry(i), data);
         }
         data.setData(null);
-        status = secDb.getSearchBoth(txn, entry(NUM_RECS + KEY_OFFSET),
-                                     entry(NUM_RECS), data, LockMode.DEFAULT);
+        status = secDb.getSearchBoth(txn, entry(NUM_RECS + KEY_OFFSET), entry(NUM_RECS), data, LockMode.DEFAULT);
         assertSame(OperationStatus.NOTFOUND, status);
 
         /* Get a cursor txn. */
@@ -470,8 +441,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
                 secKey.setData(null);
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getCurrent(
-                    secKey, key, data, LockMode.DEFAULT);
+                status = cursor.getCurrent(secKey, key, data, LockMode.DEFAULT);
                 assertSame(OperationStatus.SUCCESS, status);
                 assertDataEquals(entry(NUM_RECS - 1 + KEY_OFFSET), secKey);
                 assertDataEquals(entry(NUM_RECS - 1), key);
@@ -513,14 +483,12 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             /* SecondaryCursor.getSearchKey() */
             key.setData(null);
             data.setData(null);
-            status = cursor.getSearchKey(entry(KEY_OFFSET - 1), key,
-                                         data, LockMode.DEFAULT);
+            status = cursor.getSearchKey(entry(KEY_OFFSET - 1), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
             for (int i = 0; i < NUM_RECS; i += 1) {
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getSearchKey(entry(i + KEY_OFFSET), key,
-                                             data, LockMode.DEFAULT);
+                status = cursor.getSearchKey(entry(i + KEY_OFFSET), key, data, LockMode.DEFAULT);
                 assertSame(OperationStatus.SUCCESS, status);
                 assertDataEquals(entry(i), key);
                 assertDataEquals(entry(i), data);
@@ -528,34 +496,28 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             }
             key.setData(null);
             data.setData(null);
-            status = cursor.getSearchKey(entry(NUM_RECS + KEY_OFFSET), key,
-                                         data, LockMode.DEFAULT);
+            status = cursor.getSearchKey(entry(NUM_RECS + KEY_OFFSET), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
 
             /* SecondaryCursor.getSearchBoth() */
             data.setData(null);
-            status = cursor.getSearchKey(entry(KEY_OFFSET - 1), entry(0),
-                                         data, LockMode.DEFAULT);
+            status = cursor.getSearchKey(entry(KEY_OFFSET - 1), entry(0), data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
             for (int i = 0; i < NUM_RECS; i += 1) {
                 data.setData(null);
-                status = cursor.getSearchBoth(entry(i + KEY_OFFSET), entry(i),
-                                              data, LockMode.DEFAULT);
+                status = cursor.getSearchBoth(entry(i + KEY_OFFSET), entry(i), data, LockMode.DEFAULT);
                 assertSame(OperationStatus.SUCCESS, status);
                 assertDataEquals(entry(i), data);
                 assertPriLocked(priDb, entry(i));
             }
             data.setData(null);
-            status = cursor.getSearchBoth(entry(NUM_RECS + KEY_OFFSET),
-                                          entry(NUM_RECS), data,
-                                          LockMode.DEFAULT);
+            status = cursor.getSearchBoth(entry(NUM_RECS + KEY_OFFSET), entry(NUM_RECS), data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
 
             /* SecondaryCursor.getSearchKeyRange() */
             key.setData(null);
             data.setData(null);
-            status = cursor.getSearchKeyRange(entry(KEY_OFFSET - 1), key,
-                                              data, LockMode.DEFAULT);
+            status = cursor.getSearchKeyRange(entry(KEY_OFFSET - 1), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertDataEquals(entry(0), key);
             assertDataEquals(entry(0), data);
@@ -563,8 +525,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             for (int i = 0; i < NUM_RECS; i += 1) {
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getSearchKeyRange(entry(i + KEY_OFFSET), key,
-                                                  data, LockMode.DEFAULT);
+                status = cursor.getSearchKeyRange(entry(i + KEY_OFFSET), key, data, LockMode.DEFAULT);
                 assertSame(OperationStatus.SUCCESS, status);
                 assertDataEquals(entry(i), key);
                 assertDataEquals(entry(i), data);
@@ -572,30 +533,24 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             }
             key.setData(null);
             data.setData(null);
-            status = cursor.getSearchKeyRange(entry(NUM_RECS + KEY_OFFSET),
-                                              key, data, LockMode.DEFAULT);
+            status = cursor.getSearchKeyRange(entry(NUM_RECS + KEY_OFFSET), key, data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
 
             /* SecondaryCursor.getSearchBothRange() */
             data.setData(null);
-            status = cursor.getSearchBothRange(entry(1 + KEY_OFFSET), entry(1),
-                                               data, LockMode.DEFAULT);
+            status = cursor.getSearchBothRange(entry(1 + KEY_OFFSET), entry(1), data, LockMode.DEFAULT);
             assertSame(OperationStatus.SUCCESS, status);
             assertDataEquals(entry(1), data);
             assertPriLocked(priDb, entry(1));
             for (int i = 0; i < NUM_RECS; i += 1) {
                 data.setData(null);
-                status = cursor.getSearchBothRange(entry(i + KEY_OFFSET),
-                                                   entry(i), data,
-                                                   LockMode.DEFAULT);
+                status = cursor.getSearchBothRange(entry(i + KEY_OFFSET), entry(i), data, LockMode.DEFAULT);
                 assertSame(OperationStatus.SUCCESS, status);
                 assertDataEquals(entry(i), data);
                 assertPriLocked(priDb, entry(i));
             }
             data.setData(null);
-            status = cursor.getSearchBothRange(entry(NUM_RECS + KEY_OFFSET),
-                                               entry(NUM_RECS), data,
-                                               LockMode.DEFAULT);
+            status = cursor.getSearchBothRange(entry(NUM_RECS + KEY_OFFSET), entry(NUM_RECS), data, LockMode.DEFAULT);
             assertSame(OperationStatus.NOTFOUND, status);
 
             /* Add one duplicate for each key. */
@@ -623,8 +578,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
                 secKey.setData(null);
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getNextDup(secKey, key, data,
-                                           LockMode.DEFAULT);
+                status = cursor.getNextDup(secKey, key, data, LockMode.DEFAULT);
                 assertSame(OperationStatus.SUCCESS, status);
                 assertDataEquals(entry(i + KEY_OFFSET), secKey);
                 assertDataEquals(entry(i + KEY_OFFSET), key);
@@ -633,8 +587,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
                 secKey.setData(null);
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getNextDup(secKey, key, data,
-                                           LockMode.DEFAULT);
+                status = cursor.getNextDup(secKey, key, data, LockMode.DEFAULT);
                 assertSame(OperationStatus.NOTFOUND, status);
                 secKey.setData(null);
                 key.setData(null);
@@ -657,8 +610,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
                 secKey.setData(null);
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getNextNoDup(secKey, key, data,
-                                             LockMode.DEFAULT);
+                status = cursor.getNextNoDup(secKey, key, data, LockMode.DEFAULT);
             }
             assertSame(OperationStatus.NOTFOUND, status);
 
@@ -676,8 +628,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
                 secKey.setData(null);
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getPrevDup(secKey, key, data,
-                                           LockMode.DEFAULT);
+                status = cursor.getPrevDup(secKey, key, data, LockMode.DEFAULT);
                 assertSame(OperationStatus.SUCCESS, status);
                 assertDataEquals(entry(i + KEY_OFFSET), secKey);
                 assertDataEquals(entry(i), key);
@@ -686,8 +637,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
                 secKey.setData(null);
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getPrevDup(secKey, key, data,
-                                           LockMode.DEFAULT);
+                status = cursor.getPrevDup(secKey, key, data, LockMode.DEFAULT);
                 assertSame(OperationStatus.NOTFOUND, status);
                 secKey.setData(null);
                 key.setData(null);
@@ -710,8 +660,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
                 secKey.setData(null);
                 key.setData(null);
                 data.setData(null);
-                status = cursor.getPrevNoDup(secKey, key, data,
-                                             LockMode.DEFAULT);
+                status = cursor.getPrevNoDup(secKey, key, data, LockMode.DEFAULT);
             }
             assertSame(OperationStatus.NOTFOUND, status);
         } finally {
@@ -729,19 +678,15 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
         /* Open two secondaries as regular databases and as secondaries. */
         Database secDbDetached = openDatabase(true, "testSecDB", false);
-        SecondaryDatabase secDb = openSecondary(priDb, true, "testSecDB",
-                                                false, false);
+        SecondaryDatabase secDb = openSecondary(priDb, true, "testSecDB", false, false);
         Database secDb2Detached = openDatabase(true, "testSecDB2", false);
-        SecondaryDatabase secDb2 = openSecondary(priDb, true, "testSecDB2",
-                                                 false, false);
-        assertEquals(getSecondaries(priDb), new HashSet(
-                     Arrays.asList(new SecondaryDatabase[] {secDb, secDb2})));
+        SecondaryDatabase secDb2 = openSecondary(priDb, true, "testSecDB2", false, false);
+        assertEquals(getSecondaries(priDb), new HashSet(Arrays.asList(new SecondaryDatabase[] { secDb, secDb2 })));
 
         Transaction txn = txnBegin();
 
         /* Check that primary writes to both secondaries. */
-        checkSecondaryUpdate(txn, priDb, 1, secDbDetached, true,
-                                            secDb2Detached, true);
+        checkSecondaryUpdate(txn, priDb, 1, secDbDetached, true, secDb2Detached, true);
 
         /* New txn before closing database. */
         txnCommit(txn);
@@ -749,12 +694,10 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
         /* Close 2nd secondary. */
         closeSecondary(secDb2);
-        assertEquals(getSecondaries(priDb), new HashSet(
-                     Arrays.asList(new SecondaryDatabase[] {secDb })));
+        assertEquals(getSecondaries(priDb), new HashSet(Arrays.asList(new SecondaryDatabase[] { secDb })));
 
         /* Check that primary writes to 1st secondary only. */
-        checkSecondaryUpdate(txn, priDb, 2, secDbDetached, true,
-                                             secDb2Detached, false);
+        checkSecondaryUpdate(txn, priDb, 2, secDbDetached, true, secDb2Detached, false);
 
         /* New txn before closing database. */
         txnCommit(txn);
@@ -765,18 +708,15 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         assertEquals(0, getSecondaries(priDb).size());
 
         /* Check that primary writes to no secondaries. */
-        checkSecondaryUpdate(txn, priDb, 3, secDbDetached, false,
-                                            secDb2Detached, false);
+        checkSecondaryUpdate(txn, priDb, 3, secDbDetached, false, secDb2Detached, false);
 
         /* Open the two secondaries again. */
         secDb = openSecondary(priDb, true, "testSecDB", false, false);
         secDb2 = openSecondary(priDb, true, "testSecDB2", false, false);
-        assertEquals(getSecondaries(priDb), new HashSet(
-                     Arrays.asList(new SecondaryDatabase[] {secDb, secDb2})));
+        assertEquals(getSecondaries(priDb), new HashSet(Arrays.asList(new SecondaryDatabase[] { secDb, secDb2 })));
 
         /* Check that primary writes to both secondaries. */
-        checkSecondaryUpdate(txn, priDb, 4, secDbDetached, true,
-                                            secDb2Detached, true);
+        checkSecondaryUpdate(txn, priDb, 4, secDbDetached, true, secDb2Detached, true);
 
         txnCommit(txn);
 
@@ -790,8 +730,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             if (useCustomAssociation) {
                 throw e;
             }
-            assertTrue(
-                e.getMessage().contains("2 associated SecondaryDatabases"));
+            assertTrue(e.getMessage().contains("2 associated SecondaryDatabases"));
         }
         /* Orphaned secondaries can be closed without errors. */
         secDb2.close();
@@ -804,13 +743,8 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
     /**
      * Check that primary put() writes to each secondary that is open.
      */
-    private void checkSecondaryUpdate(Transaction txn,
-                                      Database priDb,
-                                      int val,
-                                      Database secDb,
-                                      boolean expectSecDbVal,
-                                      Database secDb2,
-                                      boolean expectSecDb2Val) {
+    private void checkSecondaryUpdate(Transaction txn, Database priDb, int val, Database secDb, boolean expectSecDbVal,
+                                      Database secDb2, boolean expectSecDb2Val) {
         OperationStatus status;
         DatabaseEntry data = new DatabaseEntry();
         int secVal = KEY_OFFSET + val;
@@ -819,12 +753,10 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         assertSame(OperationStatus.SUCCESS, status);
 
         status = secDb.get(txn, entry(secVal), data, LockMode.DEFAULT);
-        assertSame(expectSecDbVal ? OperationStatus.SUCCESS
-                                  : OperationStatus.NOTFOUND, status);
+        assertSame(expectSecDbVal ? OperationStatus.SUCCESS : OperationStatus.NOTFOUND, status);
 
         status = secDb2.get(txn, entry(secVal), data, LockMode.DEFAULT);
-        assertSame(expectSecDb2Val ? OperationStatus.SUCCESS
-                                   : OperationStatus.NOTFOUND, status);
+        assertSame(expectSecDb2Val ? OperationStatus.SUCCESS : OperationStatus.NOTFOUND, status);
 
         status = priDb.delete(txn, entry(val));
         assertSame(OperationStatus.SUCCESS, status);
@@ -844,13 +776,11 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
         /*
          * Secondaries can be opened without a key creator if the primary is
-         * read only.  openSecondary will specify a null key creator if the
+         * read only. openSecondary will specify a null key creator if the
          * readOnly param is false.
          */
         Database readOnlyPriDb = openPrimary(false, "testDB", true);
-        SecondaryDatabase readOnlySecDb = openSecondary(readOnlyPriDb,
-                                                        true, "testSecDB",
-                                                        false, true);
+        SecondaryDatabase readOnlySecDb = openSecondary(readOnlyPriDb, true, "testSecDB", false, true);
         assertNull(readOnlySecDb.getSecondaryConfig().getKeyCreator());
         verifyRecords(txn, readOnlySecDb, NUM_RECS, true);
 
@@ -872,20 +802,18 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         Database priDb = openPrimary(false, "testDB", false);
         Transaction txn = txnBegin();
         for (int i = 0; i < NUM_RECS; i += 1) {
-            assertSame(OperationStatus.SUCCESS,
-                       priDb.put(txn, entry(i), entry(i)));
+            assertSame(OperationStatus.SUCCESS, priDb.put(txn, entry(i), entry(i)));
         }
         txnCommit(txn);
 
         /*
-         * Open secondary with allowPopulate option and it will automatically
-         * be populated.
+         * Open secondary with allowPopulate option and it will automatically be
+         * populated.
          */
 
         SecondaryDatabase secDb;
         try {
-            secDb = openSecondary(
-                priDb, true, "testSecDB", true /*allowPopulate*/, false);
+            secDb = openSecondary(priDb, true, "testSecDB", true /* allowPopulate */, false);
             if (useCustomAssociation) {
                 fail();
             }
@@ -908,16 +836,15 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         txnCommit(txn);
 
         /*
-         * Clear secondary and perform populate again, to test the case where
-         * an existing database is opened, and therefore a write txn will only
-         * be created in order to populate it
+         * Clear secondary and perform populate again, to test the case where an
+         * existing database is opened, and therefore a write txn will only be
+         * created in order to populate it
          */
         Database secDbDetached = openDatabase(true, "testSecDB", false);
         secDb.close();
         txn = txnBegin();
         for (int i = 0; i < NUM_RECS; i += 1) {
-            assertSame(OperationStatus.SUCCESS,
-                       secDbDetached.delete(txn, entry(i + KEY_OFFSET)));
+            assertSame(OperationStatus.SUCCESS, secDbDetached.delete(txn, entry(i + KEY_OFFSET)));
         }
         verifyRecords(txn, secDbDetached, 0, true);
         txnCommit(txn);
@@ -934,7 +861,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
     /**
      * Tests population of newly created secondary database via explicit calls
-     * to incremental indexing methods.  This is a very basic test and not
+     * to incremental indexing methods. This is a very basic test and not
      * intended to take the place of a stress test that performs concurrent
      * writes.
      */
@@ -944,37 +871,31 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         final Database priDb = openPrimary(false, "testDB", false);
         final Transaction txn = txnBegin();
         for (int i = 0; i < NUM_RECS; i += 1) {
-            assertSame(OperationStatus.SUCCESS,
-                       priDb.put(txn, entry(i), entry(i)));
+            assertSame(OperationStatus.SUCCESS, priDb.put(txn, entry(i), entry(i)));
         }
         txnCommit(txn);
 
         /*
-         * Open secondary without allowPopulate option.  It will initially be
+         * Open secondary without allowPopulate option. It will initially be
          * empty.
          */
-        final SecondaryDatabase secDb = openSecondary(
-            priDb, true, "testSecDB", false /*allowPopulate*/, false);
+        final SecondaryDatabase secDb = openSecondary(priDb, true, "testSecDB", false /* allowPopulate */, false);
         assertEquals(0, secDb.count());
 
-        /* Enable incremental population.  Secondary reads are not allowed. */
+        /* Enable incremental population. Secondary reads are not allowed. */
         secDb.startIncrementalPopulation();
         try {
-            secDb.get(null, new DatabaseEntry(new byte[0]),
-                      new DatabaseEntry(), null);
+            secDb.get(null, new DatabaseEntry(new byte[0]), new DatabaseEntry(), null);
             fail();
         } catch (IllegalStateException expected) {
         }
 
         final DatabaseEntry keyEntry = new DatabaseEntry();
         final DatabaseEntry dataEntry = new DatabaseEntry();
-        final Cursor cursor = priDb.openCursor(
-            null, CursorConfig.READ_COMMITTED);
+        final Cursor cursor = priDb.openCursor(null, CursorConfig.READ_COMMITTED);
         OperationResult result;
-        while ((result = cursor.get(
-                keyEntry, dataEntry, Get.NEXT, null)) != null) {
-            priDb.populateSecondaries(
-                null, keyEntry, dataEntry, result.getExpirationTime(), null);
+        while ((result = cursor.get(keyEntry, dataEntry, Get.NEXT, null)) != null) {
+            priDb.populateSecondaries(null, keyEntry, dataEntry, result.getExpirationTime(), null);
         }
         cursor.close();
 
@@ -1018,10 +939,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         priDb.close();
     }
 
-    private void verifyRecords(Transaction txn,
-                               Database db,
-                               int numRecs,
-                               boolean isSecondary) {
+    private void verifyRecords(Transaction txn, Database db, int numRecs, boolean isSecondary) {
         /* We're only reading, so txn may be null. */
         Cursor cursor = openCursor(db, txn);
         try {
@@ -1049,8 +967,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
     @Test
     public void testUniqueSecondaryKey() {
         Database priDb = openPrimary(false, "testDB", false);
-        SecondaryDatabase secDb =
-            openSecondary(priDb, false, "testSecDB", false, false);
+        SecondaryDatabase secDb = openSecondary(priDb, false, "testSecDB", false, false);
         DatabaseEntry key;
         DatabaseEntry data;
         DatabaseEntry pkey = new DatabaseEntry();
@@ -1061,9 +978,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         key = entry(0);
         data = entry(0);
         priDb.put(txn, key, data);
-        assertEquals(OperationStatus.SUCCESS,
-                     secDb.get(txn, entry(0 + KEY_OFFSET),
-                               pkey, data, null));
+        assertEquals(OperationStatus.SUCCESS, secDb.get(txn, entry(0 + KEY_OFFSET), pkey, data, null));
         assertEquals(0, TestUtils.getTestVal(pkey.getData()));
         assertEquals(0, TestUtils.getTestVal(data.getData()));
         txnCommit(txn);
@@ -1073,9 +988,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         key = entry(1);
         data = entry(1);
         priDb.put(txn, key, data);
-        assertEquals(OperationStatus.SUCCESS,
-                     secDb.get(txn, entry(1 + KEY_OFFSET),
-                               pkey, data, null));
+        assertEquals(OperationStatus.SUCCESS, secDb.get(txn, entry(1 + KEY_OFFSET), pkey, data, null));
         txnCommit(txn);
         assertEquals(1, TestUtils.getTestVal(pkey.getData()));
         assertEquals(1, TestUtils.getTestVal(data.getData()));
@@ -1091,12 +1004,9 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         } catch (UniqueConstraintException e) {
             txnAbort(txn);
             /* Ensure that primary record was not inserted. */
-            assertEquals(OperationStatus.NOTFOUND,
-                         secDb.get(null, key, data, null));
+            assertEquals(OperationStatus.NOTFOUND, secDb.get(null, key, data, null));
             /* Ensure that secondary record has not changed. */
-            assertEquals(OperationStatus.SUCCESS,
-                         secDb.get(null, entry(0 + KEY_OFFSET),
-                                   pkey, data, null));
+            assertEquals(OperationStatus.SUCCESS, secDb.get(null, entry(0 + KEY_OFFSET), pkey, data, null));
             assertEquals(0, TestUtils.getTestVal(pkey.getData()));
             assertEquals(0, TestUtils.getTestVal(data.getData()));
         }
@@ -1106,9 +1016,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         key = entry(1);
         data = entry(1);
         priDb.put(txn, key, data);
-        assertEquals(OperationStatus.SUCCESS,
-                     secDb.get(txn, entry(1 + KEY_OFFSET),
-                               pkey, data, null));
+        assertEquals(OperationStatus.SUCCESS, secDb.get(txn, entry(1 + KEY_OFFSET), pkey, data, null));
         assertEquals(1, TestUtils.getTestVal(pkey.getData()));
         assertEquals(1, TestUtils.getTestVal(data.getData()));
         txnCommit(txn);
@@ -1118,9 +1026,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         key = entry(1);
         data = entry(3);
         priDb.put(txn, key, data);
-        assertEquals(OperationStatus.SUCCESS,
-                     secDb.get(txn, entry(3 + KEY_OFFSET),
-                               pkey, data, null));
+        assertEquals(OperationStatus.SUCCESS, secDb.get(txn, entry(3 + KEY_OFFSET), pkey, data, null));
         assertEquals(1, TestUtils.getTestVal(pkey.getData()));
         assertEquals(3, TestUtils.getTestVal(data.getData()));
         txnCommit(txn);
@@ -1139,22 +1045,23 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         try {
             env.openSecondaryDatabase(txn, "xxx", priDb, null);
             fail();
-        } catch (IllegalArgumentException expected) { }
+        } catch (IllegalArgumentException expected) {
+        }
         try {
-            env.openSecondaryDatabase(txn, "xxx", priDb,
-                                      new SecondaryConfig());
+            env.openSecondaryDatabase(txn, "xxx", priDb, new SecondaryConfig());
             fail();
-        } catch (IllegalArgumentException expected) { }
+        } catch (IllegalArgumentException expected) {
+        }
 
         /* Open secondary with both single and multi key creators. */
         SecondaryConfig config = new SecondaryConfig();
         config.setKeyCreator(new MyKeyCreator());
-        config.setMultiKeyCreator
-            (new SimpleMultiKeyCreator(new MyKeyCreator()));
+        config.setMultiKeyCreator(new SimpleMultiKeyCreator(new MyKeyCreator()));
         try {
             env.openSecondaryDatabase(txn, "xxx", priDb, config);
             fail();
-        } catch (IllegalArgumentException expected) { }
+        } catch (IllegalArgumentException expected) {
+        }
 
         /* Open secondary with non-null primaryDb and SecondaryAssociation. */
         config = new SecondaryConfig();
@@ -1165,9 +1072,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             fail();
         } catch (IllegalArgumentException expected) {
             final String msg = expected.toString();
-            assertTrue(msg, msg.contains(
-                "Exactly one must be non-null: " +
-                "PrimaryDatabase or SecondaryAssociation"));
+            assertTrue(msg, msg.contains("Exactly one must be non-null: " + "PrimaryDatabase or SecondaryAssociation"));
         }
 
         /* Database operations. */
@@ -1178,27 +1083,32 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         try {
             secDb.getSearchBoth(txn, key, data, LockMode.DEFAULT);
             fail();
-        } catch (UnsupportedOperationException expected) { }
+        } catch (UnsupportedOperationException expected) {
+        }
 
         try {
             secDb.put(txn, key, data);
             fail();
-        } catch (UnsupportedOperationException expected) { }
+        } catch (UnsupportedOperationException expected) {
+        }
 
         try {
             secDb.putNoOverwrite(txn, key, data);
             fail();
-        } catch (UnsupportedOperationException expected) { }
+        } catch (UnsupportedOperationException expected) {
+        }
 
         try {
             secDb.putNoDupData(txn, key, data);
             fail();
-        } catch (UnsupportedOperationException expected) { }
+        } catch (UnsupportedOperationException expected) {
+        }
 
         try {
             secDb.join(new Cursor[0], null);
             fail();
-        } catch (UnsupportedOperationException expected) { }
+        } catch (UnsupportedOperationException expected) {
+        }
 
         /* Cursor operations. */
 
@@ -1212,32 +1122,38 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             try {
                 cursor.getSearchBoth(key, data, LockMode.DEFAULT);
                 fail();
-            } catch (UnsupportedOperationException expected) { }
+            } catch (UnsupportedOperationException expected) {
+            }
 
             try {
                 cursor.getSearchBothRange(key, data, LockMode.DEFAULT);
                 fail();
-            } catch (UnsupportedOperationException expected) { }
+            } catch (UnsupportedOperationException expected) {
+            }
 
             try {
                 cursor.putCurrent(data);
                 fail();
-            } catch (UnsupportedOperationException expected) { }
+            } catch (UnsupportedOperationException expected) {
+            }
 
             try {
                 cursor.put(key, data);
                 fail();
-            } catch (UnsupportedOperationException expected) { }
+            } catch (UnsupportedOperationException expected) {
+            }
 
             try {
                 cursor.putNoOverwrite(key, data);
                 fail();
-            } catch (UnsupportedOperationException expected) { }
+            } catch (UnsupportedOperationException expected) {
+            }
 
             try {
                 cursor.putNoDupData(key, data);
                 fail();
-            } catch (UnsupportedOperationException expected) { }
+            } catch (UnsupportedOperationException expected) {
+            }
         } finally {
             if (cursor != null) {
                 cursor.close();
@@ -1264,7 +1180,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         }
         priDb.close();
 
-        /* Single secondary with two primaries.*/
+        /* Single secondary with two primaries. */
         if (!useCustomAssociation) {
             Database pri1 = openPrimary(false, "pri1", false);
             Database pri2 = openPrimary(false, "pri2", false);
@@ -1272,7 +1188,8 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             try {
                 openSecondary(pri2, false, "sec", false, false);
                 fail();
-            } catch (IllegalArgumentException expected) {}
+            } catch (IllegalArgumentException expected) {
+            }
             sec1.close();
             pri1.close();
             pri2.close();
@@ -1295,25 +1212,17 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         DatabaseEntry found2 = new DatabaseEntry();
         DatabaseEntry found3 = new DatabaseEntry();
 
-        assertEquals(OperationStatus.SUCCESS,
-                     priDb.put(txn, key, data));
-        assertEquals(OperationStatus.SUCCESS,
-                     priDb.put(txn, entry(1), data));
-        assertEquals(OperationStatus.SUCCESS,
-                     priDb.put(txn, entry(2), entry(2)));
+        assertEquals(OperationStatus.SUCCESS, priDb.put(txn, key, data));
+        assertEquals(OperationStatus.SUCCESS, priDb.put(txn, entry(1), data));
+        assertEquals(OperationStatus.SUCCESS, priDb.put(txn, entry(2), entry(2)));
 
         /* Database operations. */
 
-        assertEquals(OperationStatus.SUCCESS,
-                     priDb.get(txn, key, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     priDb.getSearchBoth(txn, key, data, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secDb.get(txn, secKey, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secDb.get(txn, secKey, found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secDb.getSearchBoth(txn, secKey, key, found, null));
+        assertEquals(OperationStatus.SUCCESS, priDb.get(txn, key, found, null));
+        assertEquals(OperationStatus.SUCCESS, priDb.getSearchBoth(txn, key, data, null));
+        assertEquals(OperationStatus.SUCCESS, secDb.get(txn, secKey, found, null));
+        assertEquals(OperationStatus.SUCCESS, secDb.get(txn, secKey, found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secDb.getSearchBoth(txn, secKey, key, found, null));
 
         /* Cursor operations. */
 
@@ -1322,76 +1231,42 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         Cursor cursor = openCursor(priDb, txn);
         SecondaryCursor secCursor = openCursor(secDb, txn);
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchKey(key, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchBoth(key, data, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchKeyRange(key, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchBothRange(key, data, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getFirst(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getNext(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getPrev(found, found2, null));
-        assertEquals(OperationStatus.NOTFOUND,
-                     cursor.getNextDup(found, found2, null));
-        assertEquals(OperationStatus.NOTFOUND,
-                     cursor.getPrevDup(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getNextNoDup(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getPrevNoDup(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getLast(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(key, found, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchBoth(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKeyRange(key, found, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchBothRange(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getNext(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getPrev(found, found2, null));
+        assertEquals(OperationStatus.NOTFOUND, cursor.getNextDup(found, found2, null));
+        assertEquals(OperationStatus.NOTFOUND, cursor.getPrevDup(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getNextNoDup(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getPrevNoDup(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getLast(found, found2, null));
 
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getSearchKey(secKey, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getSearchKeyRange(secKey, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getFirst(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getNext(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getPrev(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getNextDup(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getPrevDup(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getNextNoDup(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getPrevNoDup(found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getLast(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getSearchKey(secKey, found, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getSearchKeyRange(secKey, found, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getFirst(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getNext(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getPrev(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getNextDup(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getPrevDup(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getNextNoDup(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getPrevNoDup(found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getLast(found, found2, null));
 
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getSearchKey(secKey, found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getSearchBoth(secKey, data, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getSearchKeyRange(secKey, found, found2, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getSearchBothRange(secKey, data, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getFirst(found, found2, found3, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getNext(found, found2, found3, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getPrev(found, found2, found3, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getNextDup(found, found2, found3, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getPrevDup(found, found2, found3, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getNextNoDup(found, found2, found3, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getPrevNoDup(found, found2, found3, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getLast(found, found2, found3, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getSearchKey(secKey, found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getSearchBoth(secKey, data, found, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getSearchKeyRange(secKey, found, found2, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getSearchBothRange(secKey, data, found, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getFirst(found, found2, found3, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getNext(found, found2, found3, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getPrev(found, found2, found3, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getNextDup(found, found2, found3, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getPrevDup(found, found2, found3, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getNextNoDup(found, found2, found3, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getPrevNoDup(found, found2, found3, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getLast(found, found2, found3, null));
 
         secCursor.close();
         cursor.close();
@@ -1404,8 +1279,8 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
     /**
      * Test that an exception is thrown when a cursor is used in the wrong
-     * state.  No put or get is allowed in the closed state, and certain gets
-     * and puts are not allowed in the uninitialized state.
+     * state. No put or get is allowed in the closed state, and certain gets and
+     * puts are not allowed in the uninitialized state.
      */
     @Test
     public void testCursorState() {
@@ -1419,8 +1294,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         DatabaseEntry found = new DatabaseEntry();
         DatabaseEntry found2 = new DatabaseEntry();
 
-        assertEquals(OperationStatus.SUCCESS,
-                     priDb.put(txn, key, data));
+        assertEquals(OperationStatus.SUCCESS, priDb.put(txn, key, data));
 
         txnCommit(txn);
         txn = txnBeginCursor();
@@ -1432,48 +1306,59 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         try {
             cursor.count();
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.delete();
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.putCurrent(data);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getCurrent(key, data, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getNextDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getPrevDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
 
         try {
             secCursor.count();
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.delete();
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getCurrent(key, data, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getNextDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getPrevDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
 
         /* Cursor.dup works whether initialized or not. */
         {
@@ -1489,10 +1374,8 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
         /* Initialize, then close, then check all operations. */
 
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchKey(key, found, null));
-        assertEquals(OperationStatus.SUCCESS,
-                     secCursor.getSearchKey(secKey, found, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(key, found, null));
+        assertEquals(OperationStatus.SUCCESS, secCursor.getSearchKey(secKey, found, null));
 
         /* Cursor.dup works whether initialized or not. */
         {
@@ -1520,79 +1403,98 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         try {
             cursor.count();
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.delete();
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.put(key, data);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.putNoOverwrite(key, data);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.putNoDupData(key, data);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.putCurrent(data);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getCurrent(key, data, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getSearchKey(key, found, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getSearchBoth(key, data, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getSearchKeyRange(key, found, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getSearchBothRange(key, data, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getFirst(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getNext(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getPrev(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getNextDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getPrevDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getNextNoDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getPrevNoDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             cursor.getLast(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
 
         try {
             secCursor.close();
@@ -1603,55 +1505,68 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         try {
             secCursor.count();
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.delete();
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getCurrent(key, data, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getSearchKey(secKey, found, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getSearchKeyRange(secKey, found, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getFirst(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getNext(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getPrev(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getNextDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getPrevDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getNextNoDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getPrevNoDup(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
         try {
             secCursor.getLast(found, found2, null);
             fail();
-        } catch (IllegalStateException expected) {}
+        } catch (IllegalStateException expected) {
+        }
 
         txnCommit(txn);
         secDb.close();
@@ -1679,16 +1594,14 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         assertSame(OperationStatus.SUCCESS, status);
 
         /* Regular get */
-        status = secDb.get(txn, entry(0 + KEY_OFFSET), key,
-                           data, LockMode.DEFAULT);
+        status = secDb.get(txn, entry(0 + KEY_OFFSET), key, data, LockMode.DEFAULT);
         assertSame(OperationStatus.SUCCESS, status);
         assertDataEquals(entry(0), key);
         assertDataEquals(entry(0), data);
 
         /* Dirty read returning no data */
         data.setPartial(0, 0, true);
-        status = secDb.get(txn, entry(0 + KEY_OFFSET), key,
-                           data, LockMode.READ_UNCOMMITTED);
+        status = secDb.get(txn, entry(0 + KEY_OFFSET), key, data, LockMode.READ_UNCOMMITTED);
         assertSame(OperationStatus.SUCCESS, status);
         assertDataEquals(entry(0), key);
         assertEquals(0, data.getData().length);
@@ -1696,8 +1609,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
         /* Dirty read returning partial data */
         data.setPartial(0, 1, true);
-        status = secDb.get(txn, entry(0 + KEY_OFFSET), key,
-                           data, LockMode.READ_UNCOMMITTED);
+        status = secDb.get(txn, entry(0 + KEY_OFFSET), key, data, LockMode.READ_UNCOMMITTED);
         assertSame(OperationStatus.SUCCESS, status);
         assertDataEquals(entry(0), key);
         assertEquals(1, data.getData().length);
@@ -1709,45 +1621,36 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
     }
 
     /**
-     * Tests ImmutableSecondaryKey optimization.
-     * 
-     * expectFetchOnDelete is true because the data (not just the key) is used
-     * by the key creator/extractor.
+     * Tests ImmutableSecondaryKey optimization. expectFetchOnDelete is true
+     * because the data (not just the key) is used by the key creator/extractor.
      */
     @Test
     public void testImmutableSecondaryKey() {
         final SecondaryConfig secConfig = new SecondaryConfig();
         secConfig.setImmutableSecondaryKey(true);
-        checkUpdateWithNoFetchOfOldData(secConfig,
-                                        true /*expectFetchOnDelete*/);
+        checkUpdateWithNoFetchOfOldData(secConfig, true /* expectFetchOnDelete */);
     }
 
     /**
-     * Tests ExtractFromPrimaryKeyOnly optimization.
-     * 
-     * expectFetchOnDelete is false because only the key is used by the key
-     * creator/extractor.
+     * Tests ExtractFromPrimaryKeyOnly optimization. expectFetchOnDelete is
+     * false because only the key is used by the key creator/extractor.
      */
     @Test
     public void testExtractFromPrimaryKeyOnly() {
         final SecondaryConfig secConfig = new SecondaryConfig();
         secConfig.setExtractFromPrimaryKeyOnly(true);
         if (useMultiKey) {
-            secConfig.setMultiKeyCreator(
-                new SimpleMultiKeyCreator(new KeyOnlyKeyCreator()));
+            secConfig.setMultiKeyCreator(new SimpleMultiKeyCreator(new KeyOnlyKeyCreator()));
         } else {
             secConfig.setKeyCreator(new KeyOnlyKeyCreator());
         }
-        checkUpdateWithNoFetchOfOldData(secConfig,
-                                        false /*expectFetchOnDelete*/);
+        checkUpdateWithNoFetchOfOldData(secConfig, false /* expectFetchOnDelete */);
     }
 
     /**
      * Tests ImmutableSecondaryKey and ExtractFromPrimaryKeyOnly optimizations
-     * together.
-     * 
-     * expectFetchOnDelete is false because only the key is used by the key
-     * creator/extractor.
+     * together. expectFetchOnDelete is false because only the key is used by
+     * the key creator/extractor.
      */
     @Test
     public void testImmutableSecondaryKeyAndExtractFromPrimaryKeyOnly() {
@@ -1755,24 +1658,20 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         secConfig.setImmutableSecondaryKey(true);
         secConfig.setExtractFromPrimaryKeyOnly(true);
         if (useMultiKey) {
-            secConfig.setMultiKeyCreator(
-                new SimpleMultiKeyCreator(new KeyOnlyKeyCreator()));
+            secConfig.setMultiKeyCreator(new SimpleMultiKeyCreator(new KeyOnlyKeyCreator()));
         } else {
             secConfig.setKeyCreator(new KeyOnlyKeyCreator());
         }
-        checkUpdateWithNoFetchOfOldData(secConfig,
-                                        false /*expectFetchOnDelete*/);
+        checkUpdateWithNoFetchOfOldData(secConfig, false /* expectFetchOnDelete */);
     }
 
     /**
      * When ImmutableSecondaryKey or ExtractFromPrimaryKeyOnly is configured,
-     * the data should not be fetched when updating the record.  It should also
+     * the data should not be fetched when updating the record. It should also
      * not be fetched during a delete when ExtractFromPrimaryKeyOnly is
      * configured (i.e., when expectFetchOnDelete is true).
      */
-    private void checkUpdateWithNoFetchOfOldData(
-        final SecondaryConfig secConfig,
-        final boolean expectFetchOnDelete) {
+    private void checkUpdateWithNoFetchOfOldData(final SecondaryConfig secConfig, final boolean expectFetchOnDelete) {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
@@ -1781,8 +1680,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         final Database priDb = openPrimary(false, "testDB", false);
 
         secConfig.setSortedDuplicates(true);
-        final SecondaryDatabase secDb = openSecondary(
-            priDb, "testSecDB", secConfig);
+        final SecondaryDatabase secDb = openSecondary(priDb, "testSecDB", secConfig);
 
         final StatsConfig clearStats = new StatsConfig().setClear(true);
         final DatabaseEntry data = new DatabaseEntry();
@@ -1800,8 +1698,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
         /* Get via secondary. */
         env.getStats(clearStats);
-        status = secDb.get(
-            txn, entry(0 + KEY_OFFSET), key, data, LockMode.DEFAULT);
+        status = secDb.get(txn, entry(0 + KEY_OFFSET), key, data, LockMode.DEFAULT);
         assertSame(OperationStatus.SUCCESS, status);
         assertDataEquals(entry(0), key);
         assertDataEquals(entry(0), data);
@@ -1817,8 +1714,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
         /* Get via secondary. */
         env.getStats(clearStats);
-        status = secDb.get(
-            txn, entry(0 + KEY_OFFSET), key, data, LockMode.DEFAULT);
+        status = secDb.get(txn, entry(0 + KEY_OFFSET), key, data, LockMode.DEFAULT);
         assertSame(OperationStatus.SUCCESS, status);
         assertDataEquals(entry(0), key);
         assertDataEquals(entry(0), data);
@@ -1830,13 +1726,10 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         status = priDb.delete(txn, entry(0));
         assertSame(OperationStatus.SUCCESS, status);
         final EnvironmentStats stats5 = env.getStats(null);
-        assertEquals(
-            (expectFetchOnDelete && !embeddedLNs ? 1 : 0),
-            stats5.getNLNsFetch());
+        assertEquals((expectFetchOnDelete && !embeddedLNs ? 1 : 0), stats5.getNLNsFetch());
 
         /* Get via secondary. */
-        status = secDb.get(txn, entry(0 + KEY_OFFSET), key,
-                           data, LockMode.DEFAULT);
+        status = secDb.get(txn, entry(0 + KEY_OFFSET), key, data, LockMode.DEFAULT);
         assertSame(OperationStatus.NOTFOUND, status);
 
         txnCommit(txn);
@@ -1849,23 +1742,19 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
      */
     private SecondaryDatabase initDb() {
         Database priDb = openPrimary(false, "testDB", false);
-        SecondaryDatabase secDb = openSecondary(priDb, true, "testSecDB",
-                                                false, false);
+        SecondaryDatabase secDb = openSecondary(priDb, true, "testSecDB", false, false);
         return secDb;
     }
 
-    private Database openPrimary(boolean allowDuplicates, String name,
-                                 boolean readOnly) {
+    private Database openPrimary(boolean allowDuplicates, String name, boolean readOnly) {
         return openDbInternal(allowDuplicates, name, readOnly, true);
     }
 
-    private Database openDatabase(boolean allowDuplicates, String name,
-                                  boolean readOnly) {
+    private Database openDatabase(boolean allowDuplicates, String name, boolean readOnly) {
         return openDbInternal(allowDuplicates, name, readOnly, false);
     }
 
-    private Database openDbInternal(boolean allowDuplicates, String name,
-                                    boolean readOnly, boolean isPrimary) {
+    private Database openDbInternal(boolean allowDuplicates, String name, boolean readOnly, boolean isPrimary) {
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(isTransactional);
         dbConfig.setAllowCreate(true);
@@ -1889,11 +1778,8 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         return priDb;
     }
 
-    private SecondaryDatabase openSecondary(Database priDb,
-                                            boolean allowDuplicates,
-                                            String dbName,
-                                            boolean allowPopulate,
-                                            boolean readOnly) {
+    private SecondaryDatabase openSecondary(Database priDb, boolean allowDuplicates, String dbName,
+                                            boolean allowPopulate, boolean readOnly) {
         final SecondaryConfig dbConfig = new SecondaryConfig();
         dbConfig.setSortedDuplicates(allowDuplicates);
         dbConfig.setReadOnly(readOnly);
@@ -1901,19 +1787,12 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         return openSecondary(priDb, dbName, dbConfig);
     }
 
-
-
-    private SecondaryDatabase openSecondary(Database priDb,
-                                            String dbName,
-                                            SecondaryConfig dbConfig) {
+    private SecondaryDatabase openSecondary(Database priDb, String dbName, SecondaryConfig dbConfig) {
         dbConfig.setTransactional(isTransactional);
         dbConfig.setAllowCreate(true);
-        if (!dbConfig.getReadOnly() &&
-            dbConfig.getMultiKeyCreator() == null &&
-            dbConfig.getKeyCreator() == null) {
+        if (!dbConfig.getReadOnly() && dbConfig.getMultiKeyCreator() == null && dbConfig.getKeyCreator() == null) {
             if (useMultiKey) {
-                dbConfig.setMultiKeyCreator(
-                    new SimpleMultiKeyCreator(new MyKeyCreator()));
+                dbConfig.setMultiKeyCreator(new SimpleMultiKeyCreator(new MyKeyCreator()));
             } else {
                 dbConfig.setKeyCreator(new MyKeyCreator());
             }
@@ -1927,13 +1806,11 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             priDbParam = priDb;
             assertNull(customAssociation);
         }
-        final Collection<SecondaryDatabase> secListBefore =
-            getSecondaries(priDb);
+        final Collection<SecondaryDatabase> secListBefore = getSecondaries(priDb);
         final Transaction txn = txnBegin();
         final SecondaryDatabase secDb;
         try {
-            secDb = env.openSecondaryDatabase(txn, dbName, priDbParam,
-                                              dbConfig);
+            secDb = env.openSecondaryDatabase(txn, dbName, priDbParam, dbConfig);
         } finally {
             txnCommit(txn);
         }
@@ -1951,13 +1828,11 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         final SecondaryConfig config2 = secDb.getSecondaryConfig();
         assertEquals(dbConfig.getAllowPopulate(), config2.getAllowPopulate());
         assertEquals(dbConfig.getKeyCreator(), config2.getKeyCreator());
-        assertEquals(dbConfig.getMultiKeyCreator(),
-                     config2.getMultiKeyCreator());
+        assertEquals(dbConfig.getMultiKeyCreator(), config2.getMultiKeyCreator());
         assertSame(customAssociation, config2.getSecondaryAssociation());
 
         /* Make sure the new secondary is added to the primary's list. */
-        final Collection<SecondaryDatabase> secListAfter =
-            getSecondaries(priDb);
+        final Collection<SecondaryDatabase> secListAfter = getSecondaries(priDb);
         assertTrue(secListAfter.remove(secDb));
         assertEquals(secListBefore, secListAfter);
 
@@ -1984,17 +1859,15 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
      */
     private Set<SecondaryDatabase> getSecondaries(Database priDb) {
         if (useCustomAssociation) {
-            return new HashSet<SecondaryDatabase>(
-                customAssociation.getSecondaries(null));
+            return new HashSet<SecondaryDatabase>(customAssociation.getSecondaries(null));
         }
         return new HashSet<SecondaryDatabase>(priDb.getSecondaryDatabases());
     }
 
     private static class CustomAssociation implements SecondaryAssociation {
-        
-        private Database priDb = null;
-        private final Set<SecondaryDatabase> secondaries =
-            new HashSet<SecondaryDatabase>();
+
+        private Database                     priDb       = null;
+        private final Set<SecondaryDatabase> secondaries = new HashSet<SecondaryDatabase>();
 
         void initPrimary(final Database priDb) {
             this.priDb = priDb;
@@ -2004,15 +1877,12 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
             return secondaries.isEmpty();
         }
 
-        public Database getPrimary(@SuppressWarnings("unused")
-                                   DatabaseEntry primaryKey) {
+        public Database getPrimary(@SuppressWarnings("unused") DatabaseEntry primaryKey) {
             assertNotNull(priDb);
             return priDb;
         }
 
-        public Collection<SecondaryDatabase>
-            getSecondaries(@SuppressWarnings("unused")
-                           DatabaseEntry primaryKey) {
+        public Collection<SecondaryDatabase> getSecondaries(@SuppressWarnings("unused") DatabaseEntry primaryKey) {
             return secondaries;
         }
 
@@ -2026,19 +1896,12 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
     }
 
     private Cursor openCursor(Database priDb, Transaction txn) {
-        final CursorConfig config =
-            resetOnFailure ?
-            (new CursorConfig().setNonSticky(true)) :
-            null;
+        final CursorConfig config = resetOnFailure ? (new CursorConfig().setNonSticky(true)) : null;
         return priDb.openCursor(txn, config);
     }
 
-    private SecondaryCursor openCursor(SecondaryDatabase secDb,
-                                       Transaction txn) {
-        final CursorConfig config =
-            resetOnFailure ?
-                (new CursorConfig().setNonSticky(true)) :
-                null;
+    private SecondaryCursor openCursor(SecondaryDatabase secDb, Transaction txn) {
+        final CursorConfig config = resetOnFailure ? (new CursorConfig().setNonSticky(true)) : null;
         return secDb.openCursor(txn, config);
     }
 
@@ -2052,10 +1915,8 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
      */
     private DatabaseEntry partialEntry(final int oldVal, final int newVal) {
 
-        final DatabaseEntry oldEntry =
-            new DatabaseEntry(TestUtils.getTestArray(oldVal));
-        final DatabaseEntry newEntry =
-            new DatabaseEntry(TestUtils.getTestArray(newVal));
+        final DatabaseEntry oldEntry = new DatabaseEntry(TestUtils.getTestArray(oldVal));
+        final DatabaseEntry newEntry = new DatabaseEntry(TestUtils.getTestArray(newVal));
 
         final int size = oldEntry.getSize();
         assertEquals(size, newEntry.getSize());
@@ -2092,13 +1953,11 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
 
     /**
      * Checks that the given key (or both key and data if data is non-null) is
-     * locked in the primary database.  The primary record should be locked
+     * locked in the primary database. The primary record should be locked
      * whenever a secondary cursor is positioned to point to that primary
      * record. [#15573]
      */
-    private void assertPriLocked(final Database priDb,
-                                 final DatabaseEntry key,
-                                 final DatabaseEntry data) {
+    private void assertPriLocked(final Database priDb, final DatabaseEntry key, final DatabaseEntry data) {
 
         /*
          * Whether the record is locked transactionally or not in the current
@@ -2119,9 +1978,7 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
                     }
                     error.append("Expected LockConflictException");
                 } catch (Exception expected) {
-                    assertTrue(
-                        expected.toString(),
-                        expected instanceof LockConflictException);
+                    assertTrue(expected.toString(), expected instanceof LockConflictException);
                 } finally {
                     cursor.close();
                 }
@@ -2147,40 +2004,28 @@ public class SecondaryTest extends MultiKeyTxnTestCase {
         }
     }
 
-    private void assertNSecWrites(final Cursor cursor,
-                                  final int expectNWrites) {
-        assertEquals(
-            customName,
-            expectNWrites,
-            DbInternal.getCursorImpl(cursor).getNSecondaryWrites());
+    private void assertNSecWrites(final Cursor cursor, final int expectNWrites) {
+        assertEquals(customName, expectNWrites, DbInternal.getCursorImpl(cursor).getNSecondaryWrites());
     }
 
     private static class MyKeyCreator implements SecondaryKeyCreator {
 
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data,
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                           DatabaseEntry result) {
-            result.setData(
-                TestUtils.getTestArray(
-                    TestUtils.getTestVal(data.getData()) + KEY_OFFSET));
+            result.setData(TestUtils.getTestArray(TestUtils.getTestVal(data.getData()) + KEY_OFFSET));
             return true;
         }
     }
 
     /**
      * Derives secondary key from primary key alone, to test the
-     * ExtractFromPrimaryKeyOnly optimization.  The data param may be null.
+     * ExtractFromPrimaryKeyOnly optimization. The data param may be null.
      */
     private static class KeyOnlyKeyCreator implements SecondaryKeyCreator {
 
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data,
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                           DatabaseEntry result) {
-            result.setData(
-                TestUtils.getTestArray(
-                    TestUtils.getTestVal(key.getData()) + KEY_OFFSET));
+            result.setData(TestUtils.getTestArray(TestUtils.getTestVal(key.getData()) + KEY_OFFSET));
             return true;
         }
     }

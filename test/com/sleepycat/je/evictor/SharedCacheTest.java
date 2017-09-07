@@ -49,28 +49,28 @@ import com.sleepycat.util.test.TestBase;
  */
 public class SharedCacheTest extends TestBase {
 
-    private static final int N_ENVS = 5;
-    private static final int ONE_MB = 1 << 20;
-    private static final int ENV_DATA_SIZE = ONE_MB;
-    private static final int TOTAL_DATA_SIZE = N_ENVS * ENV_DATA_SIZE;
-    private static final int LOG_BUFFER_SIZE = (ENV_DATA_SIZE * 7) / 100;
-    private static final int MIN_DATA_SIZE = 50 * 1024;
-    private static final int LRU_ACCURACY_PCT = 60;
-    private static final int ENTRY_DATA_SIZE = 500;
-    private static final String TEST_PREFIX = "SharedCacheTest_";
-    private static final StatsConfig CLEAR_CONFIG = new StatsConfig();
+    private static final int         N_ENVS           = 5;
+    private static final int         ONE_MB           = 1 << 20;
+    private static final int         ENV_DATA_SIZE    = ONE_MB;
+    private static final int         TOTAL_DATA_SIZE  = N_ENVS * ENV_DATA_SIZE;
+    private static final int         LOG_BUFFER_SIZE  = (ENV_DATA_SIZE * 7) / 100;
+    private static final int         MIN_DATA_SIZE    = 50 * 1024;
+    private static final int         LRU_ACCURACY_PCT = 60;
+    private static final int         ENTRY_DATA_SIZE  = 500;
+    private static final String      TEST_PREFIX      = "SharedCacheTest_";
+    private static final StatsConfig CLEAR_CONFIG     = new StatsConfig();
 
     static {
         CLEAR_CONFIG.setClear(true);
     }
 
-    private File envHome;
-    private File[] dirs;
+    private File          envHome;
+    private File[]        dirs;
     private Environment[] envs;
-    private Database[] dbs;
-    private boolean sharedCache = true;
-    private boolean offHeapCache = false;
-    private long actualTotalCacheSize;
+    private Database[]    dbs;
+    private boolean       sharedCache  = true;
+    private boolean       offHeapCache = false;
+    private long          actualTotalCacheSize;
 
     public SharedCacheTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -78,8 +78,7 @@ public class SharedCacheTest extends TestBase {
 
     @Override
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         dirs = new File[N_ENVS];
         envs = new Environment[N_ENVS];
@@ -156,8 +155,7 @@ public class SharedCacheTest extends TestBase {
                 for (int i = 0; !done; i += 1) {
                     IntegerBinding.intToEntry(i, key);
                     for (int j = 0; j < N_DBS; j += 1) {
-                        if (dbs[j].get(null, key, data, null) !=
-                            OperationStatus.SUCCESS) {
+                        if (dbs[j].get(null, key, data, null) != OperationStatus.SUCCESS) {
                             done = true;
                         }
                     }
@@ -184,12 +182,10 @@ public class SharedCacheTest extends TestBase {
 
             final long pct = (low * 100) / high;
 
-//            System.out.println("Baseline LRU accuracy pct=" + pct + buf);
+            //            System.out.println("Baseline LRU accuracy pct=" + pct + buf);
 
             if (iter > 25) {
-                assertTrue(
-                    "failed with pct=" + pct + buf,
-                    pct >= LRU_ACCURACY_PCT);
+                assertTrue("failed with pct=" + pct + buf, pct >= LRU_ACCURACY_PCT);
             }
         }
 
@@ -234,7 +230,7 @@ public class SharedCacheTest extends TestBase {
 
     /**
      * Writes to each env one at a time, writing enough data in each env to fill
-     * the entire cache.  Each env in turn takes up a large majority of the
+     * the entire cache. Each env in turn takes up a large majority of the
      * cache.
      */
     @Test
@@ -242,8 +238,7 @@ public class SharedCacheTest extends TestBase {
 
         final int SMALL_DATA_SIZE = MIN_DATA_SIZE + (20 * 1024);
         final int SMALL_TOTAL_SIZE = SMALL_DATA_SIZE + LOG_BUFFER_SIZE;
-        final int BIG_TOTAL_SIZE =
-            ENV_DATA_SIZE - ((N_ENVS - 1) * SMALL_TOTAL_SIZE);
+        final int BIG_TOTAL_SIZE = ENV_DATA_SIZE - ((N_ENVS - 1) * SMALL_TOTAL_SIZE);
 
         openAll();
 
@@ -253,9 +248,7 @@ public class SharedCacheTest extends TestBase {
             final long sharedTotal = getSharedCacheTotal(i);
             final long localTotal = getLocalCacheTotal(i);
 
-            String msg = "env=" + i +
-                " total=" + localTotal +
-                " shared=" + sharedTotal;
+            String msg = "env=" + i + " total=" + localTotal + " shared=" + sharedTotal;
 
             assertTrue(msg, sharedTotal >= BIG_TOTAL_SIZE);
             assertTrue(msg, localTotal >= BIG_TOTAL_SIZE);
@@ -274,8 +267,7 @@ public class SharedCacheTest extends TestBase {
 
         final long mainSize = stats.getCacheTotalBytes();
 
-        final long offHeapSize = offHeapCache ?
-            getDatabaseCacheBytes(dbs[i], true) : 0;
+        final long offHeapSize = offHeapCache ? getDatabaseCacheBytes(dbs[i], true) : 0;
 
         final long total = mainSize + offHeapSize;
 
@@ -306,7 +298,7 @@ public class SharedCacheTest extends TestBase {
 
     /**
      * Writes alternating records to each env, writing enough data to fill the
-     * entire cache.  Each env takes up roughly equal portions of the cache.
+     * entire cache. Each env takes up roughly equal portions of the cache.
      */
     @Test
     public void testWriteAllEnvsEvenly() {
@@ -415,15 +407,13 @@ public class SharedCacheTest extends TestBase {
                 }
                 checkStatsConsistency();
 
-                if (getLocalCacheTotal(i) < HOT_CACHE_SIZE ||
-                    getLocalCacheTotal(j) < HOT_CACHE_SIZE) {
+                if (getLocalCacheTotal(i) < HOT_CACHE_SIZE || getLocalCacheTotal(j) < HOT_CACHE_SIZE) {
 
                     EnvironmentStats iStats = envs[i].getStats(null);
                     EnvironmentStats jStats = envs[j].getStats(null);
 
                     StringBuilder msg = new StringBuilder();
-                    msg.append("Hot cache size is below " + HOT_CACHE_SIZE +
-                        " for env " + i + " or " + j);
+                    msg.append("Hot cache size is below " + HOT_CACHE_SIZE + " for env " + i + " or " + j);
                     for (int k = 0; k < N_ENVS; k += 1) {
                         msg.append("\n**** ENV " + k + " ****\n");
                         msg.append(envs[k].getStats(null));
@@ -455,28 +445,24 @@ public class SharedCacheTest extends TestBase {
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(envs[0]);
         DbConfigManager configManager = envImpl.getConfigManager();
 
-        long evictBytes =
-            configManager.getLong(EnvironmentParams.EVICTOR_EVICT_BYTES);
+        long evictBytes = configManager.getLong(EnvironmentParams.EVICTOR_EVICT_BYTES);
 
-        long nodeMaxEntries =
-            configManager.getInt(EnvironmentParams.NODE_MAX);
+        long nodeMaxEntries = configManager.getInt(EnvironmentParams.NODE_MAX);
 
-        long maxLNBytesPerBIN =
-            (nodeMaxEntries - 1) *
-            (MemoryBudget.LN_OVERHEAD +
-             MemoryBudget.byteArraySize(ENTRY_DATA_SIZE));
+        long maxLNBytesPerBIN = (nodeMaxEntries - 1)
+                * (MemoryBudget.LN_OVERHEAD + MemoryBudget.byteArraySize(ENTRY_DATA_SIZE));
 
-        long maxFreeMem = (evictBytes * 2)  + maxLNBytesPerBIN;
+        long maxFreeMem = (evictBytes * 2) + maxLNBytesPerBIN;
 
         /* Full cache size. */
         readEvenly(nRecs);
 
         long memConsumed = envs[0].getStats(null).getSharedCacheTotalBytes();
 
-//        System.out.println(
-//            "Mem consumed = " + memConsumed +
-//            " free mem = " + (actualTotalCacheSize - memConsumed) +
-//            " max free allowed = " + maxFreeMem);
+        //        System.out.println(
+        //            "Mem consumed = " + memConsumed +
+        //            " free mem = " + (actualTotalCacheSize - memConsumed) +
+        //            " max free allowed = " + maxFreeMem);
 
         assertTrue(Math.abs(actualTotalCacheSize - memConsumed) < maxFreeMem);
 
@@ -484,17 +470,16 @@ public class SharedCacheTest extends TestBase {
         EnvironmentMutableConfig config = envs[0].getMutableConfig();
         config.setCacheSize(HALF_DATA_SIZE);
         envs[0].setMutableConfig(config);
-        final long actualHalfSize =
-            TestUtils.adjustSharedCacheSize(envs, HALF_DATA_SIZE);
+        final long actualHalfSize = TestUtils.adjustSharedCacheSize(envs, HALF_DATA_SIZE);
 
         readEvenly(nRecs);
 
         memConsumed = envs[0].getStats(null).getSharedCacheTotalBytes();
 
-//        System.out.println(
-//            "Mem consumed = " + memConsumed +
-//            " free mem = " + (actualHalfSize - memConsumed) +
-//            " max free allowed = " + maxFreeMem);
+        //        System.out.println(
+        //            "Mem consumed = " + memConsumed +
+        //            " free mem = " + (actualHalfSize - memConsumed) +
+        //            " max free allowed = " + maxFreeMem);
 
         assertTrue(Math.abs(actualHalfSize - memConsumed) < maxFreeMem);
 
@@ -502,17 +487,16 @@ public class SharedCacheTest extends TestBase {
         config = envs[0].getMutableConfig();
         config.setCacheSize(TOTAL_DATA_SIZE);
         envs[0].setMutableConfig(config);
-        actualTotalCacheSize =
-            TestUtils.adjustSharedCacheSize(envs, TOTAL_DATA_SIZE);
+        actualTotalCacheSize = TestUtils.adjustSharedCacheSize(envs, TOTAL_DATA_SIZE);
 
         readEvenly(nRecs);
 
         memConsumed = envs[0].getStats(null).getSharedCacheTotalBytes();
 
-//        System.out.println(
-//            "Mem consumed = " + memConsumed +
-//            " free mem = " + (actualTotalCacheSize - memConsumed) +
-//            " max free allowed = " + maxFreeMem);
+        //        System.out.println(
+        //            "Mem consumed = " + memConsumed +
+        //            " free mem = " + (actualTotalCacheSize - memConsumed) +
+        //            " max free allowed = " + maxFreeMem);
 
         assertTrue(Math.abs(actualTotalCacheSize - memConsumed) < maxFreeMem);
 
@@ -545,24 +529,15 @@ public class SharedCacheTest extends TestBase {
         envConfig.setSharedCache(sharedCache);
         envConfig.setCacheSize(mainSize);
         envConfig.setOffHeapCacheSize(offHeapSize);
-        envConfig.setConfigParam(
-            EnvironmentConfig.TREE_MIN_MEMORY, String.valueOf(MIN_DATA_SIZE));
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.STATS_COLLECT, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.EVICTOR_EVICT_BYTES, "10240");
-        envConfig.setConfigParam(
-            EnvironmentConfig.OFFHEAP_EVICT_BYTES, "10240");
+        envConfig.setConfigParam(EnvironmentConfig.TREE_MIN_MEMORY, String.valueOf(MIN_DATA_SIZE));
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.STATS_COLLECT, "false");
+        envConfig.setConfigParam(EnvironmentConfig.EVICTOR_EVICT_BYTES, "10240");
+        envConfig.setConfigParam(EnvironmentConfig.OFFHEAP_EVICT_BYTES, "10240");
 
         /*
          * Because the evictors each have multiple LRU lists per LRUSet, the
@@ -570,10 +545,8 @@ public class SharedCacheTest extends TestBase {
          * especially due to outliers on some machines. Use a single LRU list
          * per LRUSet.
          */
-        envConfig.setConfigParam(
-            EnvironmentConfig.OFFHEAP_N_LRU_LISTS, "1");
-        envConfig.setConfigParam(
-            EnvironmentConfig.EVICTOR_N_LRU_LISTS, "1");
+        envConfig.setConfigParam(EnvironmentConfig.OFFHEAP_N_LRU_LISTS, "1");
+        envConfig.setConfigParam(EnvironmentConfig.EVICTOR_N_LRU_LISTS, "1");
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -582,12 +555,9 @@ public class SharedCacheTest extends TestBase {
         dbs[i] = envs[i].openDatabase(null, "foo", dbConfig);
 
         if (offHeapCache) {
-            actualTotalCacheSize =
-                TestUtils.adjustSharedCacheSize(envs, ONE_MB) +
-                TOTAL_DATA_SIZE;
+            actualTotalCacheSize = TestUtils.adjustSharedCacheSize(envs, ONE_MB) + TOTAL_DATA_SIZE;
         } else {
-            actualTotalCacheSize =
-                TestUtils.adjustSharedCacheSize(envs, TOTAL_DATA_SIZE);
+            actualTotalCacheSize = TestUtils.adjustSharedCacheSize(envs, TOTAL_DATA_SIZE);
         }
     }
 
@@ -609,8 +579,8 @@ public class SharedCacheTest extends TestBase {
     }
 
     /**
-     * Writes enough records in the given envIndex environment to cause at
-     * least minSizeToWrite bytes to be used in the cache.
+     * Writes enough records in the given envIndex environment to cause at least
+     * minSizeToWrite bytes to be used in the cache.
      */
     private int write(int envIndex, int minSizeToWrite) {
         DatabaseEntry key = new DatabaseEntry();
@@ -626,22 +596,18 @@ public class SharedCacheTest extends TestBase {
 
     /**
      * Reads alternating records from each env, reading all records from each
-     * env.  Checks that all environments use roughly equal portions of the
+     * env. Checks that all environments use roughly equal portions of the
      * cache.
      */
     private void readEvenly(int nRecs) {
 
         /*
-        EnvironmentImpl firstEnvImpl = DbInternal.getNonNullEnvImpl(envs[0]);
-        LRUEvictor evictor = (LRUEvictor)firstEnvImpl.getEvictor();
-
-        ArrayList<LRUEvictor.LRUDebugStats> statsList =
-            new ArrayList<LRUEvictor.LRUDebugStats>(N_ENVS);
-
-        for (int i = 0; i < N_ENVS; i += 1) {
-            statsList.add(new LRUEvictor.LRUDebugStats());
-        }
-        */
+         * EnvironmentImpl firstEnvImpl = DbInternal.getNonNullEnvImpl(envs[0]);
+         * LRUEvictor evictor = (LRUEvictor)firstEnvImpl.getEvictor();
+         * ArrayList<LRUEvictor.LRUDebugStats> statsList = new
+         * ArrayList<LRUEvictor.LRUDebugStats>(N_ENVS); for (int i = 0; i <
+         * N_ENVS; i += 1) { statsList.add(new LRUEvictor.LRUDebugStats()); }
+         */
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -650,16 +616,15 @@ public class SharedCacheTest extends TestBase {
         for (int repeat = 0; repeat < 2; repeat += 1) {
 
             /*
-            for (int k = 0; k < N_ENVS; k += 1) {
-                EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(envs[k]);
-                System.out.println("Before-read LRU stats for env " + k);
-                evictor.getPri1LRUStats(envImpl, statsList.get(k));
-                System.out.println("MIXED: " + statsList.get(k));
-                evictor.getPri2LRUStats(envImpl, statsList.get(k));
-                System.out.println("DIRTY: " + statsList.get(k));
-                System.out.println("");
-            }
-            */
+             * for (int k = 0; k < N_ENVS; k += 1) { EnvironmentImpl envImpl =
+             * DbInternal.getNonNullEnvImpl(envs[k]); System.out.println(
+             * "Before-read LRU stats for env " + k);
+             * evictor.getPri1LRUStats(envImpl, statsList.get(k));
+             * System.out.println("MIXED: " + statsList.get(k));
+             * evictor.getPri2LRUStats(envImpl, statsList.get(k));
+             * System.out.println("DIRTY: " + statsList.get(k));
+             * System.out.println(""); }
+             */
 
             for (int i = 0; i < nRecs; i += 1) {
 
@@ -671,41 +636,37 @@ public class SharedCacheTest extends TestBase {
                 }
 
                 /*
-                if (i % 512 == 0 || i == 1600) {
-                    for (int k = 0; k < N_ENVS; k += 1) {
-                        EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(envs[k]);
-                        System.out.println("LRU stats for env " + k +
-                                           " at record " + i);
-                        evictor.getPri1LRUStats(envImpl, statsList.get(k));
-                        System.out.println("MIXED: " + statsList.get(k));
-                        evictor.getPri2LRUStats(envImpl, statsList.get(k));
-                        System.out.println("DIRTY: " + statsList.get(k));
-                        System.out.println("");
-                    }
-                }
-                */
+                 * if (i % 512 == 0 || i == 1600) { for (int k = 0; k < N_ENVS;
+                 * k += 1) { EnvironmentImpl envImpl =
+                 * DbInternal.getNonNullEnvImpl(envs[k]); System.out.println(
+                 * "LRU stats for env " + k + " at record " + i);
+                 * evictor.getPri1LRUStats(envImpl, statsList.get(k));
+                 * System.out.println("MIXED: " + statsList.get(k));
+                 * evictor.getPri2LRUStats(envImpl, statsList.get(k));
+                 * System.out.println("DIRTY: " + statsList.get(k));
+                 * System.out.println(""); } }
+                 */
                 checkStatsConsistency();
             }
         }
 
         /*
-        for (int i = 0; i < N_ENVS; i += 1) {
-            EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(envs[i]);
-            System.out.println("After-read LRU stats for env " + i);
-            evictor.getPri1LRUStats(envImpl, statsList.get(i));
-            System.out.println("MIXED: " + statsList.get(i));
-            evictor.getPri2LRUStats(envImpl, statsList.get(i));
-            System.out.println("DIRTY: " + statsList.get(i));
-            System.out.println("");
-        }
-        */
+         * for (int i = 0; i < N_ENVS; i += 1) { EnvironmentImpl envImpl =
+         * DbInternal.getNonNullEnvImpl(envs[i]); System.out.println(
+         * "After-read LRU stats for env " + i);
+         * evictor.getPri1LRUStats(envImpl, statsList.get(i));
+         * System.out.println("MIXED: " + statsList.get(i));
+         * evictor.getPri2LRUStats(envImpl, statsList.get(i));
+         * System.out.println("DIRTY: " + statsList.get(i));
+         * System.out.println(""); }
+         */
 
         checkEvenCacheUsage();
     }
 
     /**
-     * Checks that each env uses approximately equal portions of the cache.
-     * How equal the portions are depends on the accuracy of the LRU.
+     * Checks that each env uses approximately equal portions of the cache. How
+     * equal the portions are depends on the accuracy of the LRU.
      */
     private void checkEvenCacheUsage() {
 
@@ -733,12 +694,12 @@ public class SharedCacheTest extends TestBase {
         if (pct < LRU_ACCURACY_PCT) {
             fail("failed with pct=" + pct + buf);
         }
-//        System.out.println("readEven LRU accuracy pct=" + pct + buf);
+        //        System.out.println("readEven LRU accuracy pct=" + pct + buf);
     }
 
     /**
-     * Checks that the sum of all env cache usages is the total cache usage,
-     * and other self-consistency checks.
+     * Checks that the sum of all env cache usages is the total cache usage, and
+     * other self-consistency checks.
      */
     private void checkStatsConsistency() {
 
@@ -772,11 +733,11 @@ public class SharedCacheTest extends TestBase {
 
             localTotal += local;
 
-//            System.out.println(
-//                "Env= " + i +
-//                " localTotal= " + localTotal +
-//                " localTotal=" + local +
-//                " shared=" + sharedTotal);
+            //            System.out.println(
+            //                "Env= " + i +
+            //                " localTotal= " + localTotal +
+            //                " localTotal=" + local +
+            //                " shared=" + sharedTotal);
 
             nShared += 1;
 
@@ -788,12 +749,8 @@ public class SharedCacheTest extends TestBase {
         assertEquals(nShared, stats.getNSharedCacheEnvironments());
         assertEquals(sharedTotal, localTotal);
 
-        final long expectMax =
-            actualTotalCacheSize + (actualTotalCacheSize / 10);
+        final long expectMax = actualTotalCacheSize + (actualTotalCacheSize / 10);
 
-        assertTrue(
-            "sharedTotal= " + sharedTotal +
-            " expectMax= " + expectMax,
-            sharedTotal < expectMax);
+        assertTrue("sharedTotal= " + sharedTotal + " expectMax= " + expectMax, sharedTotal < expectMax);
     }
 }

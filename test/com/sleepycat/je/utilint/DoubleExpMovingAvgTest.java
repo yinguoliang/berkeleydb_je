@@ -28,8 +28,7 @@ public class DoubleExpMovingAvgTest extends TestBase {
     private DoubleExpMovingAvg avg;
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         avg = new DoubleExpMovingAvg("stat", 3000);

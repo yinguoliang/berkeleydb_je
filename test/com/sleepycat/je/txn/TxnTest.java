@@ -69,9 +69,9 @@ import org.junit.Test;
  * Simple transaction testing
  */
 public class TxnTest extends DualTestCase {
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database db;
+    private Database    db;
 
     public TxnTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -79,8 +79,7 @@ public class TxnTest extends DualTestCase {
 
     @Override
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
 
@@ -96,8 +95,7 @@ public class TxnTest extends DualTestCase {
     private void createEnv() {
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
-            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                     "6");
+            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
             envConfig.setTransactional(true);
             envConfig.setAllowCreate(true);
             env = create(envHome, envConfig);
@@ -130,8 +128,7 @@ public class TxnTest extends DualTestCase {
      * Test transaction locking and releasing.
      */
     @Test
-    public void testBasicLocking()
-        throws Throwable {
+    public void testBasicLocking() throws Throwable {
 
         createEnv();
 
@@ -148,10 +145,7 @@ public class TxnTest extends DualTestCase {
             long beforeLock = mb.getCacheMemoryUsage();
             Locker nullTxn = BasicLocker.createBasicLocker(envImpl);
 
-            LockGrantType lockGrant = nullTxn.lock
-                (lsn, LockType.READ, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            LockGrantType lockGrant = nullTxn.lock(lsn, LockType.READ, false, DbInternal.getDbImpl(db)).getLockGrant();
             assertEquals(LockGrantType.NEW, lockGrant);
             long afterLock = mb.getCacheMemoryUsage();
             checkHeldLocks(nullTxn, 1, 0);
@@ -159,15 +153,11 @@ public class TxnTest extends DualTestCase {
             nullTxn.releaseNonTxnLocks();
             long afterRelease = mb.getCacheMemoryUsage();
             checkHeldLocks(nullTxn, 0, 0);
-            checkCacheUsage(beforeLock, afterLock, afterRelease,
-                            LockManager.TOTAL_THINLOCKIMPL_OVERHEAD);
+            checkCacheUsage(beforeLock, afterLock, afterRelease, LockManager.TOTAL_THINLOCKIMPL_OVERHEAD);
 
             /* Take a lock, release it. */
             beforeLock = mb.getCacheMemoryUsage();
-            lockGrant = nullTxn.lock
-                (lsn, LockType.READ, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            lockGrant = nullTxn.lock(lsn, LockType.READ, false, DbInternal.getDbImpl(db)).getLockGrant();
             afterLock = mb.getCacheMemoryUsage();
             assertEquals(LockGrantType.NEW, lockGrant);
             checkHeldLocks(nullTxn, 1, 0);
@@ -175,8 +165,7 @@ public class TxnTest extends DualTestCase {
             nullTxn.releaseLock(lsn);
             checkHeldLocks(nullTxn, 0, 0);
             afterRelease = mb.getCacheMemoryUsage();
-            checkCacheUsage(beforeLock, afterLock, afterRelease,
-                            LockManager.TOTAL_THINLOCKIMPL_OVERHEAD);
+            checkCacheUsage(beforeLock, afterLock, afterRelease, LockManager.TOTAL_THINLOCKIMPL_OVERHEAD);
 
             /*
              * Make a user transaction, check lock and release.
@@ -192,10 +181,7 @@ public class TxnTest extends DualTestCase {
             }
             Txn userTxn = Txn.createLocalTxn(envImpl, new TransactionConfig());
 
-            lockGrant = userTxn.lock
-                (lsn, LockType.READ, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            lockGrant = userTxn.lock(lsn, LockType.READ, false, DbInternal.getDbImpl(db)).getLockGrant();
             afterLock = mb.getCacheMemoryUsage();
 
             assertEquals(LockGrantType.NEW, lockGrant);
@@ -205,17 +191,14 @@ public class TxnTest extends DualTestCase {
             try {
                 userTxn.demoteLock(lsn);
                 fail("exception not thrown on phoney demoteLock");
-            } catch (AssertionError e){
+            } catch (AssertionError e) {
             }
             checkHeldLocks(userTxn, 1, 0);
             long afterDemotion = mb.getCacheMemoryUsage();
             assertEquals(afterLock, afterDemotion);
 
             /* Make it a write lock, then demote. */
-            lockGrant = userTxn.lock
-                (lsn, LockType.WRITE, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            lockGrant = userTxn.lock(lsn, LockType.WRITE, false, DbInternal.getDbImpl(db)).getLockGrant();
             assertEquals(LockGrantType.PROMOTION, lockGrant);
             long afterWriteLock = mb.getCacheMemoryUsage();
             assertTrue(afterWriteLock > afterLock);
@@ -247,8 +230,7 @@ public class TxnTest extends DualTestCase {
      * Test lock mutation.
      */
     @Test
-    public void testLockMutation()
-        throws Throwable {
+    public void testLockMutation() throws Throwable {
 
         createEnv();
 
@@ -265,18 +247,15 @@ public class TxnTest extends DualTestCase {
 
             EnvironmentStats envStats = env.getStats(null);
             assertEquals(1, envStats.getNTotalLocks());
-            LockGrantType lockGrant1 = userTxn1.lock
-                (lsn, LockType.READ, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            LockGrantType lockGrant1 = userTxn1.lock(lsn, LockType.READ, false, DbInternal.getDbImpl(db))
+                    .getLockGrant();
             assertEquals(LockGrantType.NEW, lockGrant1);
             checkHeldLocks(userTxn1, 1, 0);
             envStats = env.getStats(null);
             assertEquals(2, envStats.getNTotalLocks());
 
             try {
-                userTxn2.lock(lsn, LockType.WRITE, false,
-                              DbInternal.getDbImpl(db)).getLockGrant();
+                userTxn2.lock(lsn, LockType.WRITE, false, DbInternal.getDbImpl(db)).getLockGrant();
             } catch (LockConflictException DE) {
                 // ok
             }
@@ -288,9 +267,8 @@ public class TxnTest extends DualTestCase {
             userTxn2.abort(false);
 
             /*
-             * Since the replicated tests use shared cache to reduce the
-             * memory usage, so this check would fail. Ignore it in replicated
-             * tests.
+             * Since the replicated tests use shared cache to reduce the memory
+             * usage, so this check would fail. Ignore it in replicated tests.
              */
             long afterRelease = mb.getCacheMemoryUsage();
             if (!isReplicatedTest(getClass())) {
@@ -305,10 +283,7 @@ public class TxnTest extends DualTestCase {
         }
     }
 
-    private void checkHeldLocks(Locker txn,
-                                int numReadLocks,
-                                int numWriteLocks)
-        throws DatabaseException {
+    private void checkHeldLocks(Locker txn, int numReadLocks, int numWriteLocks) throws DatabaseException {
 
         StatGroup stat = txn.collectStats();
         assertEquals(numReadLocks, stat.getInt(LOCK_READ_LOCKS));
@@ -319,8 +294,7 @@ public class TxnTest extends DualTestCase {
      * Test transaction commit, from the locking point of view.
      */
     @Test
-    public void testCommit()
-        throws Throwable {
+    public void testCommit() throws Throwable {
 
         createEnv();
 
@@ -339,48 +313,34 @@ public class TxnTest extends DualTestCase {
             Txn userTxn = Txn.createUserTxn(envImpl, new TransactionConfig());
 
             /* Get read lock 1. */
-            LockGrantType lockGrant = userTxn.lock
-                (lsn1, LockType.READ, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            LockGrantType lockGrant = userTxn.lock(lsn1, LockType.READ, false, DbInternal.getDbImpl(db)).getLockGrant();
             assertEquals(LockGrantType.NEW, lockGrant);
             checkHeldLocks(userTxn, 1, 0);
 
             /* Get read lock 2. */
-            lockGrant = userTxn.lock
-                (lsn2, LockType.READ, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            lockGrant = userTxn.lock(lsn2, LockType.READ, false, DbInternal.getDbImpl(db)).getLockGrant();
             assertEquals(LockGrantType.NEW, lockGrant);
             checkHeldLocks(userTxn, 2, 0);
 
             /* Upgrade read lock 2 to a write. */
-            lockGrant = userTxn.lock
-                (lsn2, LockType.WRITE, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            lockGrant = userTxn.lock(lsn2, LockType.WRITE, false, DbInternal.getDbImpl(db)).getLockGrant();
             assertEquals(LockGrantType.PROMOTION, lockGrant);
             checkHeldLocks(userTxn, 1, 1);
 
             /* Read lock 1 again, shouldn't increase count. */
-            lockGrant = userTxn.lock
-                (lsn1, LockType.READ, false,
-                 DbInternal.getDbImpl(db)).
-                getLockGrant();
+            lockGrant = userTxn.lock(lsn1, LockType.READ, false, DbInternal.getDbImpl(db)).getLockGrant();
             assertEquals(LockGrantType.EXISTING, lockGrant);
             checkHeldLocks(userTxn, 1, 1);
 
             /*
-             * The commit won't actually write a log record if this
-             * transaction has never done an update, so fake it out and simulate
-             * a write.
+             * The commit won't actually write a log record if this transaction
+             * has never done an update, so fake it out and simulate a write.
              */
             userTxn.addLogInfo(DbLsn.makeLsn(1, 1000));
             long commitLsn = userTxn.commit(Durability.COMMIT_SYNC);
             checkHeldLocks(userTxn, 0, 0);
 
-            TxnCommit commitRecord =
-                (TxnCommit) envImpl.getLogManager().getEntry(commitLsn);
+            TxnCommit commitRecord = (TxnCommit) envImpl.getLogManager().getEntry(commitLsn);
 
             assertEquals(userTxn.getId(), commitRecord.getId());
             assertEquals(userTxn.getLastLsn(), commitRecord.getLastLsn());
@@ -397,8 +357,7 @@ public class TxnTest extends DualTestCase {
      * Make sure an abort never tries to split the tree.
      */
     @Test
-    public void testAbortNoSplit()
-        throws Throwable {
+    public void testAbortNoSplit() throws Throwable {
 
         createEnv();
 
@@ -423,10 +382,9 @@ public class TxnTest extends DualTestCase {
             assertTrue(splitChecker.getReadyToSplit());
 
             /*
-             * Make another txn that will get a read lock on the map
-             * LSN. Then abort the first txn. It shouldn't try to do a
-             * split, if it does, we'll run into the
-             * no-latches-while-locking check.
+             * Make another txn that will get a read lock on the map LSN. Then
+             * abort the first txn. It shouldn't try to do a split, if it does,
+             * we'll run into the no-latches-while-locking check.
              */
             Transaction txnSpoiler = env.beginTransaction(null, null);
             DatabaseConfig dbConfig = new DatabaseConfig();
@@ -440,8 +398,7 @@ public class TxnTest extends DualTestCase {
              */
             Cursor cursor = dbSpoiler.openCursor(txnSpoiler, null);
 
-            assertTrue(cursor.getFirst(keyDbt, dataDbt, LockMode.DEFAULT) !=
-                       OperationStatus.SUCCESS);
+            assertTrue(cursor.getFirst(keyDbt, dataDbt, LockMode.DEFAULT) != OperationStatus.SUCCESS);
             cursor.close();
             txnSpoiler.abort();
 
@@ -454,8 +411,7 @@ public class TxnTest extends DualTestCase {
     }
 
     @Test
-    public void testTransactionName()
-        throws Throwable {
+    public void testTransactionName() throws Throwable {
 
         createEnv();
 
@@ -466,8 +422,8 @@ public class TxnTest extends DualTestCase {
             txn.abort();
 
             /*
-             * [#14349] Make sure the txn is printable after closing. We
-             * once had a NullPointerException.
+             * [#14349] Make sure the txn is printable after closing. We once
+             * had a NullPointerException.
              */
             txn.toString();
 
@@ -480,8 +436,7 @@ public class TxnTest extends DualTestCase {
     }
 
     /**
-     * Test all combinations of sync, nosync, and writeNoSync for txn
-     * commits.
+     * Test all combinations of sync, nosync, and writeNoSync for txn commits.
      */
 
     /* SyncCombo expresses all the combinations of txn sync properties. */
@@ -491,18 +446,12 @@ public class TxnTest extends DualTestCase {
         private final boolean txnNoSync;
         private final boolean txnWriteNoSync;
         private final boolean txnSync;
-        boolean expectSync;
-        boolean expectWrite;
-        boolean expectException;
+        boolean               expectSync;
+        boolean               expectWrite;
+        boolean               expectException;
 
-        SyncCombo(int envWriteNoSync,
-                  int envNoSync,
-                  int txnSync,
-                  int txnWriteNoSync,
-                  int txnNoSync,
-                  boolean expectSync,
-                  boolean expectWrite,
-                  boolean expectException) {
+        SyncCombo(int envWriteNoSync, int envNoSync, int txnSync, int txnWriteNoSync, int txnNoSync, boolean expectSync,
+                  boolean expectWrite, boolean expectException) {
             this.envNoSync = (envNoSync == 0) ? false : true;
             this.envWriteNoSync = (envWriteNoSync == 0) ? false : true;
             this.txnNoSync = (txnNoSync == 0) ? false : true;
@@ -521,8 +470,7 @@ public class TxnTest extends DualTestCase {
             return txnConfig;
         }
 
-        void setEnvironmentMutableConfig(Environment env)
-            throws DatabaseException {
+        void setEnvironmentMutableConfig(Environment env) throws DatabaseException {
 
             EnvironmentMutableConfig config = env.getMutableConfig();
             config.setTxnNoSync(envNoSync);
@@ -532,50 +480,34 @@ public class TxnTest extends DualTestCase {
     }
 
     @Test
-    public void testSyncCombo()
-        throws Throwable {
+    public void testSyncCombo() throws Throwable {
 
         createEnv();
 
-        RandomAccessFile logFile =
-            new RandomAccessFile(new File(env.getHome(), "00000000.jdb"), "r");
+        RandomAccessFile logFile = new RandomAccessFile(new File(env.getHome(), "00000000.jdb"), "r");
         try {
             SyncCombo[] testCombinations = {
-        /*            Env    Env    Txn    Txn    Txn    Expect Expect Expect
-         *            WrNoSy NoSy   Sync  WrNoSy  NoSyc  Sync   Write   IAE*/
-        new SyncCombo(  0,     0,     0,     0,     0,    true,  true, false),
-        new SyncCombo(  0,     0,     0,     0,     1,   false, false, false),
-        new SyncCombo(  0,     0,     0,     1,     0,   false,  true, false),
-        new SyncCombo(  0,     0,     0,     1,     1,   false,  true, true),
-        new SyncCombo(  0,     0,     1,     0,     0,    true,  true, false),
-        new SyncCombo(  0,     0,     1,     0,     1,    true,  true, true),
-        new SyncCombo(  0,     0,     1,     1,     0,    true,  true, true),
-        new SyncCombo(  0,     0,     1,     1,     1,    true,  true, true),
-        new SyncCombo(  0,     1,     0,     0,     0,   false, false, false),
-        new SyncCombo(  0,     1,     0,     0,     1,   false, false, false),
-        new SyncCombo(  0,     1,     0,     1,     0,   false,  true, false),
-        new SyncCombo(  0,     1,     0,     1,     1,   false,  true, true),
-        new SyncCombo(  0,     1,     1,     0,     0,    true,  true, false),
-        new SyncCombo(  0,     1,     1,     0,     1,    true,  true, true),
-        new SyncCombo(  0,     1,     1,     1,     0,    true,  true, true),
-        new SyncCombo(  0,     1,     1,     1,     1,    true,  true, true),
-        new SyncCombo(  1,     0,     0,     0,     0,   false,  true, false),
-        new SyncCombo(  1,     0,     0,     0,     1,   false, false, false),
-        new SyncCombo(  1,     0,     0,     1,     0,   false,  true, false),
-        new SyncCombo(  1,     0,     0,     1,     1,   false,  true, true),
-        new SyncCombo(  1,     0,     1,     0,     0,    true,  true, false),
-        new SyncCombo(  1,     0,     1,     0,     1,    true,  true, true),
-        new SyncCombo(  1,     0,     1,     1,     0,    true,  true, true),
-        new SyncCombo(  1,     0,     1,     1,     1,    true,  true, true),
-        new SyncCombo(  1,     1,     0,     0,     0,   false,  true, true),
-        new SyncCombo(  1,     1,     0,     0,     1,   false, false, true),
-        new SyncCombo(  1,     1,     0,     1,     0,   false,  true, true),
-        new SyncCombo(  1,     1,     0,     1,     1,   false,  true, true),
-        new SyncCombo(  1,     1,     1,     0,     0,    true,  true, true),
-        new SyncCombo(  1,     1,     1,     0,     1,    true,  true, true),
-        new SyncCombo(  1,     1,     1,     1,     0,    true,  true, true),
-        new SyncCombo(  1,     1,     1,     1,     1,    true,  true, true)
-            };
+                    /*
+                     * Env Env Txn Txn Txn Expect Expect Expect WrNoSy NoSy Sync
+                     * WrNoSy NoSyc Sync Write IAE
+                     */
+                    new SyncCombo(0, 0, 0, 0, 0, true, true, false), new SyncCombo(0, 0, 0, 0, 1, false, false, false),
+                    new SyncCombo(0, 0, 0, 1, 0, false, true, false), new SyncCombo(0, 0, 0, 1, 1, false, true, true),
+                    new SyncCombo(0, 0, 1, 0, 0, true, true, false), new SyncCombo(0, 0, 1, 0, 1, true, true, true),
+                    new SyncCombo(0, 0, 1, 1, 0, true, true, true), new SyncCombo(0, 0, 1, 1, 1, true, true, true),
+                    new SyncCombo(0, 1, 0, 0, 0, false, false, false),
+                    new SyncCombo(0, 1, 0, 0, 1, false, false, false), new SyncCombo(0, 1, 0, 1, 0, false, true, false),
+                    new SyncCombo(0, 1, 0, 1, 1, false, true, true), new SyncCombo(0, 1, 1, 0, 0, true, true, false),
+                    new SyncCombo(0, 1, 1, 0, 1, true, true, true), new SyncCombo(0, 1, 1, 1, 0, true, true, true),
+                    new SyncCombo(0, 1, 1, 1, 1, true, true, true), new SyncCombo(1, 0, 0, 0, 0, false, true, false),
+                    new SyncCombo(1, 0, 0, 0, 1, false, false, false), new SyncCombo(1, 0, 0, 1, 0, false, true, false),
+                    new SyncCombo(1, 0, 0, 1, 1, false, true, true), new SyncCombo(1, 0, 1, 0, 0, true, true, false),
+                    new SyncCombo(1, 0, 1, 0, 1, true, true, true), new SyncCombo(1, 0, 1, 1, 0, true, true, true),
+                    new SyncCombo(1, 0, 1, 1, 1, true, true, true), new SyncCombo(1, 1, 0, 0, 0, false, true, true),
+                    new SyncCombo(1, 1, 0, 0, 1, false, false, true), new SyncCombo(1, 1, 0, 1, 0, false, true, true),
+                    new SyncCombo(1, 1, 0, 1, 1, false, true, true), new SyncCombo(1, 1, 1, 0, 0, true, true, true),
+                    new SyncCombo(1, 1, 1, 0, 1, true, true, true), new SyncCombo(1, 1, 1, 1, 0, true, true, true),
+                    new SyncCombo(1, 1, 1, 1, 1, true, true, true) };
 
             /* envNoSync=false with default env config */
             assertTrue(!env.getMutableConfig().getTxnNoSync());
@@ -584,10 +516,9 @@ public class TxnTest extends DualTestCase {
             assertTrue(!env.getMutableConfig().getTxnWriteNoSync());
 
             /*
-             * For each combination of settings, call commit and
-             * check that we have the expected sync and log
-             * write. Make sure that commitSync(), commitNoSync always
-             * override all preferences.
+             * For each combination of settings, call commit and check that we
+             * have the expected sync and log write. Make sure that
+             * commitSync(), commitNoSync always override all preferences.
              */
             for (int i = 0; i < testCombinations.length; i++) {
                 SyncCombo combo = testCombinations[i];
@@ -595,8 +526,7 @@ public class TxnTest extends DualTestCase {
                 try {
                     TransactionConfig txnConfig = combo.getTxnConfig();
                     combo.setEnvironmentMutableConfig(env);
-                    syncExplicit(logFile, txnConfig,
-                                 combo.expectSync, combo.expectWrite);
+                    syncExplicit(logFile, txnConfig, combo.expectSync, combo.expectWrite);
                 } catch (IllegalArgumentException IAE) {
                     IAECaught = true;
                 }
@@ -604,13 +534,12 @@ public class TxnTest extends DualTestCase {
             }
 
             SyncCombo[] autoCommitCombinations = {
-        /*            Env    Env    Txn    Txn    Txn    Expect Expect Expect
-         *            WrNoSy NoSy   Sync  WrNoSy  NoSyc  Sync   Write   IAE*/
-        new SyncCombo(  0,     0,     0,     0,     0,    true,  true, false),
-        new SyncCombo(  0,     1,     0,     0,     0,   false, false, false),
-        new SyncCombo(  1,     0,     0,     0,     0,   false,  true, false),
-        new SyncCombo(  1,     1,     0,     0,     0,   false,  true, true)
-            };
+                    /*
+                     * Env Env Txn Txn Txn Expect Expect Expect WrNoSy NoSy Sync
+                     * WrNoSy NoSyc Sync Write IAE
+                     */
+                    new SyncCombo(0, 0, 0, 0, 0, true, true, false), new SyncCombo(0, 1, 0, 0, 0, false, false, false),
+                    new SyncCombo(1, 0, 0, 0, 0, false, true, false), new SyncCombo(1, 1, 0, 0, 0, false, true, true) };
 
             for (int i = 0; i < autoCommitCombinations.length; i++) {
                 SyncCombo combo = autoCommitCombinations[i];
@@ -634,15 +563,17 @@ public class TxnTest extends DualTestCase {
         }
     }
 
-    enum DurabilityAPI {SYNC_API, DUR_API, DEFAULT_API};
+    enum DurabilityAPI {
+        SYNC_API,
+        DUR_API,
+        DEFAULT_API
+    };
 
     /*
      * Returns true if there is mixed mode usage across the two apis
      */
-    private boolean mixedModeUsage(DurabilityAPI outerAPI,
-                                   DurabilityAPI innerAPI) {
-        if ((innerAPI == DurabilityAPI.DEFAULT_API) ||
-             (outerAPI == DurabilityAPI.DEFAULT_API)){
+    private boolean mixedModeUsage(DurabilityAPI outerAPI, DurabilityAPI innerAPI) {
+        if ((innerAPI == DurabilityAPI.DEFAULT_API) || (outerAPI == DurabilityAPI.DEFAULT_API)) {
             return false;
         }
 
@@ -657,9 +588,7 @@ public class TxnTest extends DualTestCase {
      * Does a three level check at the env, config and transaction levels to
      * check for mixed mode uaage
      */
-    boolean mixedModeUsage(DurabilityAPI envAPI,
-                           DurabilityAPI tconfigAPI,
-                           DurabilityAPI transAPI) {
+    boolean mixedModeUsage(DurabilityAPI envAPI, DurabilityAPI tconfigAPI, DurabilityAPI transAPI) {
         DurabilityAPI outerAPI;
         if (tconfigAPI == DurabilityAPI.DEFAULT_API) {
             outerAPI = envAPI;
@@ -684,7 +613,7 @@ public class TxnTest extends DualTestCase {
         } catch (IllegalArgumentException e) {
             assertTrue(true); // pass expected exception
         }
-        config =  new EnvironmentMutableConfig();
+        config = new EnvironmentMutableConfig();
         config.setDurability(Durability.COMMIT_NO_SYNC);
         try {
             config.setTxnNoSync(true);
@@ -718,13 +647,12 @@ public class TxnTest extends DualTestCase {
      * Test for exceptions resulting from mixed mode usage.
      */
     @Test
-    public void testMultiLevelLocalDurabilityComboErrors()
-        throws Throwable {
+    public void testMultiLevelLocalDurabilityComboErrors() throws Throwable {
 
         createEnv();
 
-        for (DurabilityAPI envAPI: DurabilityAPI.values()) {
-            EnvironmentMutableConfig config =  new EnvironmentMutableConfig();
+        for (DurabilityAPI envAPI : DurabilityAPI.values()) {
+            EnvironmentMutableConfig config = new EnvironmentMutableConfig();
             switch (envAPI) {
                 case SYNC_API:
                     config.setTxnNoSync(true);
@@ -736,7 +664,7 @@ public class TxnTest extends DualTestCase {
                     break;
             }
             env.setMutableConfig(config);
-            for (DurabilityAPI tconfigAPI: DurabilityAPI.values()) {
+            for (DurabilityAPI tconfigAPI : DurabilityAPI.values()) {
                 TransactionConfig txnConfig = new TransactionConfig();
                 switch (tconfigAPI) {
                     case SYNC_API:
@@ -748,11 +676,11 @@ public class TxnTest extends DualTestCase {
                     case DEFAULT_API:
                         txnConfig = null;
                         break;
-                    }
+                }
                 try {
                     Transaction txn = env.beginTransaction(null, txnConfig);
                     txn.abort();
-                    assertFalse(mixedModeUsage(envAPI,tconfigAPI));
+                    assertFalse(mixedModeUsage(envAPI, tconfigAPI));
                     for (DurabilityAPI transAPI : DurabilityAPI.values()) {
                         Transaction t = env.beginTransaction(null, txnConfig);
                         try {
@@ -767,18 +695,14 @@ public class TxnTest extends DualTestCase {
                                     t.commit();
                                     break;
                             }
-                            assertFalse(mixedModeUsage(envAPI,
-                                                       tconfigAPI,
-                                                       transAPI));
+                            assertFalse(mixedModeUsage(envAPI, tconfigAPI, transAPI));
                         } catch (IllegalArgumentException e) {
                             t.abort();
-                            assertTrue(mixedModeUsage(envAPI,
-                                                      tconfigAPI,
-                                                      transAPI));
+                            assertTrue(mixedModeUsage(envAPI, tconfigAPI, transAPI));
                         }
                     }
                 } catch (IllegalArgumentException e) {
-                    assertTrue(mixedModeUsage(envAPI,tconfigAPI));
+                    assertTrue(mixedModeUsage(envAPI, tconfigAPI));
                 }
             }
         }
@@ -786,31 +710,27 @@ public class TxnTest extends DualTestCase {
     }
 
     @Test
-    public void testLocalDurabilityCombo()
-        throws Throwable {
+    public void testLocalDurabilityCombo() throws Throwable {
 
         createEnv();
 
-        RandomAccessFile logFile =
-            new RandomAccessFile(new File(env.getHome(), "00000000.jdb"), "r");
-        /* Note that the default must be first. An "unspecified"  durability is
+        RandomAccessFile logFile = new RandomAccessFile(new File(env.getHome(), "00000000.jdb"), "r");
+        /*
+         * Note that the default must be first. An "unspecified" durability is
          * represented by a null value in the env props. It's not possible to
          * restore durability back to its "unspecified" state, since
          * Environment.setMutableConfig effectively does a merge operation.
          */
         Durability[] localDurabilities = new Durability[] {
-                    null, /* Run default settings first.  */
-                    Durability.COMMIT_SYNC,
-                    Durability.COMMIT_WRITE_NO_SYNC,
-                    Durability.COMMIT_NO_SYNC
-                    };
+                null, /* Run default settings first. */
+                Durability.COMMIT_SYNC, Durability.COMMIT_WRITE_NO_SYNC, Durability.COMMIT_NO_SYNC };
 
         DatabaseEntry key = new DatabaseEntry(new byte[1]);
         DatabaseEntry data = new DatabaseEntry(new byte[1]);
 
         try {
             for (Durability envDurability : localDurabilities) {
-                EnvironmentMutableConfig config =  env.getMutableConfig();
+                EnvironmentMutableConfig config = env.getMutableConfig();
                 config.setDurability(envDurability);
                 env.setMutableConfig(config);
                 for (Durability transConfigDurability : localDurabilities) {
@@ -829,14 +749,9 @@ public class TxnTest extends DualTestCase {
                         } else {
                             txn.commit(transDurability);
                         }
-                        Durability effectiveDurability =
-                            (transDurability != null) ?
-                            transDurability :
-                            ((transConfigDurability != null) ?
-                             transConfigDurability :
-                             ((envDurability != null) ?
-                              envDurability :
-                              Durability.COMMIT_SYNC));
+                        Durability effectiveDurability = (transDurability != null) ? transDurability
+                                : ((transConfigDurability != null) ? transConfigDurability
+                                        : ((envDurability != null) ? envDurability : Durability.COMMIT_SYNC));
 
                         long afterSyncs = getNSyncs();
                         long afterLength = logFile.length();
@@ -871,11 +786,9 @@ public class TxnTest extends DualTestCase {
     /**
      * Does an explicit commit and returns whether an fsync occured.
      */
-    private void syncExplicit(RandomAccessFile lastLogFile,
-                              TransactionConfig config,
-                              boolean expectSync,
+    private void syncExplicit(RandomAccessFile lastLogFile, TransactionConfig config, boolean expectSync,
                               boolean expectWrite)
-        throws DatabaseException, IOException {
+            throws DatabaseException, IOException {
 
         DatabaseEntry key = new DatabaseEntry(new byte[1]);
         DatabaseEntry data = new DatabaseEntry(new byte[1]);
@@ -904,8 +817,8 @@ public class TxnTest extends DualTestCase {
         txn.commitSync();
         afterSyncs = getNSyncs();
         afterLength = lastLogFile.length();
-        assert(afterSyncs > beforeSyncs);
-        assert(afterLength > beforeLength);
+        assert (afterSyncs > beforeSyncs);
+        assert (afterLength > beforeLength);
 
         /* Expect neither a sync nor write. */
         beforeSyncs = getNSyncs();
@@ -915,8 +828,8 @@ public class TxnTest extends DualTestCase {
         txn.commitNoSync();
         afterSyncs = getNSyncs();
         afterLength = lastLogFile.length();
-        assert(afterSyncs == beforeSyncs);
-        assert(afterLength == beforeLength);
+        assert (afterSyncs == beforeSyncs);
+        assert (afterLength == beforeLength);
 
         /* Expect no sync but do expect a write. */
         beforeSyncs = getNSyncs();
@@ -926,17 +839,15 @@ public class TxnTest extends DualTestCase {
         txn.commitWriteNoSync();
         afterSyncs = getNSyncs();
         afterLength = lastLogFile.length();
-        assert(afterSyncs == beforeSyncs);
-        assert(afterLength > beforeLength);
+        assert (afterSyncs == beforeSyncs);
+        assert (afterLength > beforeLength);
     }
 
     /**
      * Does an auto-commit and returns whether an fsync occured.
      */
-    private void syncAutoCommit(RandomAccessFile lastLogFile,
-                                boolean expectSync,
-                                boolean expectWrite)
-        throws DatabaseException, IOException {
+    private void syncAutoCommit(RandomAccessFile lastLogFile, boolean expectSync, boolean expectWrite)
+            throws DatabaseException, IOException {
 
         DatabaseEntry key = new DatabaseEntry(new byte[1]);
         DatabaseEntry data = new DatabaseEntry(new byte[1]);
@@ -955,14 +866,13 @@ public class TxnTest extends DualTestCase {
      */
     private long getNSyncs() {
         EnvironmentStats es = env.getStats(null);
-        Map<String, StatGroup>grpmap = es.getStatGroupsMap();
+        Map<String, StatGroup> grpmap = es.getStatGroupsMap();
         StatGroup sg = grpmap.get(GROUP_NAME);
         return sg.getLong(FSYNCMGR_FSYNCS);
     }
 
     @Test
-    public void testNoWaitConfig()
-        throws Throwable {
+    public void testNoWaitConfig() throws Throwable {
 
         createEnv();
 
@@ -999,11 +909,10 @@ public class TxnTest extends DualTestCase {
     }
 
     /**
-     * Asserts that the given txn is a no-wait txn, or if the txn parameter
-     * is null asserts that an auto-commit txn is a no-wait txn.
+     * Asserts that the given txn is a no-wait txn, or if the txn parameter is
+     * null asserts that an auto-commit txn is a no-wait txn.
      */
-    private void expectNoWaitTxn(Transaction txn, boolean expectNoWaitTxn)
-        throws DatabaseException {
+    private void expectNoWaitTxn(Transaction txn, boolean expectNoWaitTxn) throws DatabaseException {
 
         final DatabaseEntry key = new DatabaseEntry(new byte[1]);
         final DatabaseEntry data = new DatabaseEntry(new byte[1]);
@@ -1035,19 +944,16 @@ public class TxnTest extends DualTestCase {
     }
 
     /*
-     * Assert that cache utilization is correctly incremented by locks and
-     * txns, and decremented after release.
+     * Assert that cache utilization is correctly incremented by locks and txns,
+     * and decremented after release.
      */
-    private void checkCacheUsage(long beforeLock,
-                                 long afterLock,
-                                 long afterRelease,
-                                 long expectedSize) {
+    private void checkCacheUsage(long beforeLock, long afterLock, long afterRelease, long expectedSize) {
         assertEquals(beforeLock, afterRelease);
         assertEquals(afterLock, (beforeLock + expectedSize));
     }
 
     class CheckReadyToSplit implements WithRootLatched {
-        private boolean readyToSplit;
+        private boolean            readyToSplit;
         private final DatabaseImpl database;
 
         CheckReadyToSplit(DatabaseImpl database) {
@@ -1059,8 +965,7 @@ public class TxnTest extends DualTestCase {
             return readyToSplit;
         }
 
-        public IN doWork(ChildReference root)
-            throws DatabaseException {
+        public IN doWork(ChildReference root) throws DatabaseException {
 
             IN rootIN = (IN) root.fetchTarget(database, null);
             readyToSplit = rootIN.needsSplitting();
@@ -1069,9 +974,8 @@ public class TxnTest extends DualTestCase {
     }
 
     /**
-     * Ensures that when an operation failure sets a txn to abort-only, the
-     * same exeption is rethrown if the user insists on continuing to use the
-     * txn.
+     * Ensures that when an operation failure sets a txn to abort-only, the same
+     * exeption is rethrown if the user insists on continuing to use the txn.
      */
     @Test
     public void testRepeatingOperationFailures() {
@@ -1086,8 +990,8 @@ public class TxnTest extends DualTestCase {
         assertSame(Transaction.State.OPEN, txn2.getState());
         assertSame(Transaction.State.OPEN, txn1.getState());
 
-        final DatabaseEntry key1 = new DatabaseEntry(new byte[] {1});
-        final DatabaseEntry key2 = new DatabaseEntry(new byte[] {2});
+        final DatabaseEntry key1 = new DatabaseEntry(new byte[] { 1 });
+        final DatabaseEntry key2 = new DatabaseEntry(new byte[] { 2 });
         final DatabaseEntry data = new DatabaseEntry(new byte[1]);
 
         db.put(txn1, key1, data);
@@ -1127,7 +1031,7 @@ public class TxnTest extends DualTestCase {
 
     /**
      * Tests that Transaction.State.POSSIBLY_COMMITTED is set when an exception
-     * occurs while logging the commit entry.  Checks that the env is
+     * occurs while logging the commit entry. Checks that the env is
      * invalidated.
      */
     @Test
@@ -1135,37 +1039,35 @@ public class TxnTest extends DualTestCase {
 
         /*
          * With SYNC or WRITE_NO_SYNC, the data is durable in spite of the
-         * exception, since the exception is thrown after writing but before
-         * the fsync.
+         * exception, since the exception is thrown after writing but before the
+         * fsync.
          */
         writePossiblyCommittedData(1, Durability.COMMIT_SYNC);
-        checkPossiblyCommittedData(1, true /*expectDurable*/);
+        checkPossiblyCommittedData(1, true /* expectDurable */);
 
         writePossiblyCommittedData(2, Durability.COMMIT_WRITE_NO_SYNC);
-        checkPossiblyCommittedData(2, true /*expectDurable*/);
+        checkPossiblyCommittedData(2, true /* expectDurable */);
 
         /* But with NO_SYNC, the data is not durable. */
         writePossiblyCommittedData(3, Durability.COMMIT_NO_SYNC);
-        checkPossiblyCommittedData(3, false /*expectDurable*/);
+        checkPossiblyCommittedData(3, false /* expectDurable */);
     }
 
     /**
      * Causes the Transaction.State.POSSIBLY_COMMITTED to be set by throwing an
-     * exception after writing the commit entry but before the fsync.  Checks
+     * exception after writing the commit entry but before the fsync. Checks
      * that the env is invalidated and the txn state is correct.
      */
-    private void writePossiblyCommittedData(int keyVal,
-                                            Durability durability) {
+    private void writePossiblyCommittedData(int keyVal, Durability durability) {
         createEnv();
-        final DatabaseEntry key = new DatabaseEntry(new byte[] {(byte) keyVal});
+        final DatabaseEntry key = new DatabaseEntry(new byte[] { (byte) keyVal });
         final DatabaseEntry data = new DatabaseEntry(new byte[1]);
 
         final Transaction txn = env.beginTransaction(null, null);
         db.put(txn, key, data);
 
         /* Throw an exception during logging. */
-        DbInternal.getNonNullEnvImpl(env).getLogManager().
-            setFlushLogHook(new FlushHook());
+        DbInternal.getNonNullEnvImpl(env).getLogManager().setFlushLogHook(new FlushHook());
 
         assertSame(Transaction.State.OPEN, txn.getState());
         try {
@@ -1192,10 +1094,9 @@ public class TxnTest extends DualTestCase {
         }
     }
 
-    private void checkPossiblyCommittedData(int keyVal,
-                                            boolean expectDurable) {
+    private void checkPossiblyCommittedData(int keyVal, boolean expectDurable) {
         createEnv();
-        final DatabaseEntry key = new DatabaseEntry(new byte[] {(byte) keyVal});
+        final DatabaseEntry key = new DatabaseEntry(new byte[] { (byte) keyVal });
         final DatabaseEntry data = new DatabaseEntry(new byte[1]);
 
         final OperationStatus status = db.get(null, key, data, null);
@@ -1211,22 +1112,20 @@ public class TxnTest extends DualTestCase {
 
     /**
      * Throws a runtime exception after writing the log entry but before the
-     * fsync.  The commit will be durable, since the OS doesn't crash.
-     *
-     * The fact that the type param is CountDownLatch is incidental, and a
-     * CountDownLatch is not used in this implementation of the hook.
+     * fsync. The commit will be durable, since the OS doesn't crash. The fact
+     * that the type param is CountDownLatch is incidental, and a CountDownLatch
+     * is not used in this implementation of the hook.
      */
     private static class FlushHook implements TestHook<CountDownLatch> {
 
         public void hookSetup() {
         }
 
-        public void doIOHook()
-            throws IOException {
+        public void doIOHook() throws IOException {
         }
 
         public void doHook(CountDownLatch obj) {
-	}
+        }
 
         public void doHook() {
             throw new RuntimeException("Generated by FlushHook");

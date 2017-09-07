@@ -42,8 +42,8 @@ import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * Checks that optimized uncontended locks (see CursorImpl.lockLN) are taken
- * during delete/update operations for a non-duplicates DB.  For a duplicates
- * DB, ensure that uncontended locks are not taken, since this is not fully
+ * during delete/update operations for a non-duplicates DB. For a duplicates DB,
+ * ensure that uncontended locks are not taken, since this is not fully
  * implemented and would be unreliable.
  */
 public class UncontendedLockTest extends DualTestCase {
@@ -53,18 +53,17 @@ public class UncontendedLockTest extends DualTestCase {
         CLEAR_STATS = new StatsConfig();
         CLEAR_STATS.setClear(true);
     }
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database db;
-    private boolean isSerializable;
+    private Database    db;
+    private boolean     isSerializable;
 
     public UncontendedLockTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
 
         try {
             super.tearDown();
@@ -91,38 +90,29 @@ public class UncontendedLockTest extends DualTestCase {
 
         /*
          * NOTE: Number of contended and dup DB requests are expected based on
-         * testing, not on any specific requirement.  If we can reduce these
-         * over time, great, just update the test.
-         *
-         * The critical thing is that the number of requests and write locks is
-         * exactly one for the non-dup, non-contended case.
+         * testing, not on any specific requirement. If we can reduce these over
+         * time, great, just update the test. The critical thing is that the
+         * number of requests and write locks is exactly one for the non-dup,
+         * non-contended case.
          */
 
         /* Insert */
         Transaction txn = env.beginTransaction(null, null);
-        writeData(dups, txn, false /*update*/);
-        checkLocks(
-            txn,
-            dups ? 2 : 1 /*nRequests*/,
-            dups ? 2 : 1 /*nWriteLocks*/);
+        writeData(dups, txn, false /* update */);
+        checkLocks(txn, dups ? 2 : 1 /* nRequests */, dups ? 2 : 1 /* nWriteLocks */);
         txn.commit();
 
         /* Update */
         txn = env.beginTransaction(null, null);
-        writeData(dups, txn, true /*update*/);
-        checkLocks(
-            txn,
-            dups ? 2 : 1 /*nRequests*/,
-            dups ? 2 : 1 /*nWriteLocks*/);
+        writeData(dups, txn, true /* update */);
+        checkLocks(txn, dups ? 2 : 1 /* nRequests */, dups ? 2 : 1 /* nWriteLocks */);
         txn.commit();
 
         /* Delete */
         txn = env.beginTransaction(null, null);
         deleteData(dups, txn);
-        checkLocks(
-            txn,
-            dups ? 3 : (isSerializable ? 3 : 1) /*nRequests*/,
-            dups ? 2 : (isSerializable ? 2 : 1) /*nWriteLocks*/);
+        checkLocks(txn, dups ? 3 : (isSerializable ? 3 : 1) /* nRequests */,
+                dups ? 2 : (isSerializable ? 2 : 1) /* nWriteLocks */);
         txn.commit();
 
         close();
@@ -144,34 +134,28 @@ public class UncontendedLockTest extends DualTestCase {
 
         /*
          * NOTE: Number of contended and dup DB requests are expected based on
-         * testing, not on any specific requirement.  If we can reduce these
-         * over time, great, just update the test.
+         * testing, not on any specific requirement. If we can reduce these over
+         * time, great, just update the test.
          */
 
         /* Insert - no way to have contention on a new slot. */
-        writeData(dups, null, false /*update*/);
+        writeData(dups, null, false /* update */);
 
         /* Simulate contended locking by reading first. */
 
         /* Update */
         Transaction txn = env.beginTransaction(null, null);
         readData(dups, txn);
-        writeData(dups, txn, true /*update*/);
-        checkLocks(
-            txn,
-            dups ? (isSerializable ? 6 : 6) : (isSerializable ? 4 : 4)
-            /*nRequests*/,
-            dups ? 3 : 2 /*nWriteLocks*/);
+        writeData(dups, txn, true /* update */);
+        checkLocks(txn, dups ? (isSerializable ? 6 : 6) : (isSerializable ? 4 : 4)
+        /* nRequests */, dups ? 3 : 2 /* nWriteLocks */);
         txn.commit();
 
         /* Delete */
         txn = env.beginTransaction(null, null);
         readData(dups, txn);
         deleteData(dups, txn);
-        checkLocks(
-            txn,
-            dups ? 4 : (isSerializable ? 4 : 3) /*nRequests*/,
-            dups ? 2 : 2 /*nWriteLocks*/);
+        checkLocks(txn, dups ? 4 : (isSerializable ? 4 : 3) /* nRequests */, dups ? 2 : 2 /* nWriteLocks */);
         txn.commit();
 
         close();
@@ -191,14 +175,10 @@ public class UncontendedLockTest extends DualTestCase {
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
         /* Don't run daemons, so they don't lock unexpectedly. */
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         env = create(envHome, envConfig);
 
         isSerializable = env.getConfig().getTxnSerializableIsolation();
@@ -262,8 +242,7 @@ public class UncontendedLockTest extends DualTestCase {
         final DatabaseEntry key = new DatabaseEntry();
         IntegerBinding.intToEntry(1, key);
         if (!dups) {
-            final OperationStatus status =
-                db.get(txn, key, new DatabaseEntry(), null);
+            final OperationStatus status = db.get(txn, key, new DatabaseEntry(), null);
             assertSame(OperationStatus.SUCCESS, status);
             return;
         }

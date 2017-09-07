@@ -42,8 +42,7 @@ public class ReplicationConfigTest extends TestBase {
 
     @Override
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         repConfig = new ReplicationConfig();
@@ -54,9 +53,7 @@ public class ReplicationConfigTest extends TestBase {
     @Test
     public void testConsistency() {
 
-        ReplicaConsistencyPolicy policy =
-            new TimeConsistencyPolicy(100, TimeUnit.MILLISECONDS,
-                                      1, TimeUnit.SECONDS);
+        ReplicaConsistencyPolicy policy = new TimeConsistencyPolicy(100, TimeUnit.MILLISECONDS, 1, TimeUnit.SECONDS);
         repConfig.setConsistencyPolicy(policy);
         assertEquals(policy, repConfig.getConsistencyPolicy());
 
@@ -65,9 +62,7 @@ public class ReplicationConfigTest extends TestBase {
         assertEquals(policy, repConfig.getConsistencyPolicy());
 
         try {
-            policy =
-                new CommitPointConsistencyPolicy
-                    (new CommitToken(new UUID(0, 0), 0), 0, null);
+            policy = new CommitPointConsistencyPolicy(new CommitToken(new UUID(0, 0), 0), 0, null);
             repConfig.setConsistencyPolicy(policy);
             fail("Exception expected");
         } catch (IllegalArgumentException e) {
@@ -75,7 +70,7 @@ public class ReplicationConfigTest extends TestBase {
         }
 
         try {
-            policy =  new PointConsistencyPolicy(VLSN.NULL_VLSN);
+            policy = new PointConsistencyPolicy(VLSN.NULL_VLSN);
             repConfig.setConsistencyPolicy(policy);
             fail("Exception expected");
         } catch (IllegalArgumentException e) {
@@ -83,9 +78,7 @@ public class ReplicationConfigTest extends TestBase {
         }
 
         try {
-            repConfig.setConfigParam
-            (RepParams.CONSISTENCY_POLICY.getName(),
-             "badPolicy");
+            repConfig.setConfigParam(RepParams.CONSISTENCY_POLICY.getName(), "badPolicy");
             fail("Exception expected");
         } catch (IllegalArgumentException e) {
             // expected
@@ -98,8 +91,7 @@ public class ReplicationConfigTest extends TestBase {
         repConfig.setHelperHosts("localhost");
         Set<InetSocketAddress> helperSockets = repConfig.getHelperSockets();
         assertEquals(1, helperSockets.size());
-        assertEquals(Integer.parseInt(RepParams.DEFAULT_PORT.getDefault()),
-                     helperSockets.iterator().next().getPort());
+        assertEquals(Integer.parseInt(RepParams.DEFAULT_PORT.getDefault()), helperSockets.iterator().next().getPort());
 
         repConfig.setHelperHosts("localhost:6000");
         helperSockets = repConfig.getHelperSockets();
@@ -113,14 +105,10 @@ public class ReplicationConfigTest extends TestBase {
         /* Incorrect configs */
         /*
          * It would be nice if this were an effective test, but because various
-         * ISPs will not actually let their DNS servers return an unknown
-         * host, we can't rely on this failing.
-        try {
-            repConfig.setHelperHosts("unknownhost");
-            fail("expected exception");
-        } catch (IllegalArgumentException iae) {
-            // Expected
-        }
+         * ISPs will not actually let their DNS servers return an unknown host,
+         * we can't rely on this failing. try {
+         * repConfig.setHelperHosts("unknownhost"); fail("expected exception");
+         * } catch (IllegalArgumentException iae) { // Expected }
          */
         try {
             repConfig.setHelperHosts("localhost:80");
@@ -149,16 +137,13 @@ public class ReplicationConfigTest extends TestBase {
         /* Boundary conditions */
         repConfig.setConfigParam(RepParams.MIN_RETAINED_VLSNS.getName(), "0");
 
-        repConfig.setConfigParam(RepParams.MIN_RETAINED_VLSNS.getName(),
-                                 Integer.toString(Integer.MAX_VALUE));
+        repConfig.setConfigParam(RepParams.MIN_RETAINED_VLSNS.getName(), Integer.toString(Integer.MAX_VALUE));
 
         /* Routine */
-        repConfig.setConfigParam(RepParams.MIN_RETAINED_VLSNS.getName(),
-                                 "100");
+        repConfig.setConfigParam(RepParams.MIN_RETAINED_VLSNS.getName(), "100");
 
         try {
-            repConfig.setConfigParam(RepParams.MIN_RETAINED_VLSNS.getName(),
-                "-1");
+            repConfig.setConfigParam(RepParams.MIN_RETAINED_VLSNS.getName(), "-1");
             fail("expected exception");
         } catch (IllegalArgumentException iae) {
             // Expected
@@ -166,8 +151,7 @@ public class ReplicationConfigTest extends TestBase {
     }
 
     @Test
-    public void testSerialize()
-        throws Throwable {
+    public void testSerialize() throws Throwable {
 
         ReplicationConfig repConfig = new ReplicationConfig();
         /* Test the serialized fields in RepliationMutableConfig, props. */
@@ -178,16 +162,13 @@ public class ReplicationConfigTest extends TestBase {
         repConfig.setAllowConvert(true);
 
         File envHome = SharedTestUtils.getTestDir();
-        ReplicationConfig newConfig = (ReplicationConfig)
-            TestUtils.serializeAndReadObject(envHome, repConfig);
+        ReplicationConfig newConfig = (ReplicationConfig) TestUtils.serializeAndReadObject(envHome, repConfig);
 
         assertTrue(newConfig != repConfig);
         assertEquals(newConfig.getNodeName(), "node1");
         assertEquals(newConfig.getGroupName(), "group");
         assertEquals(newConfig.getNodeHostPort(), "localhost:5001");
-        assertFalse
-            (newConfig.getValidateParams() == repConfig.getValidateParams());
-        assertTrue
-            (newConfig.getAllowConvert() == repConfig.getAllowConvert());
+        assertFalse(newConfig.getValidateParams() == repConfig.getValidateParams());
+        assertTrue(newConfig.getAllowConvert() == repConfig.getAllowConvert());
     }
 }

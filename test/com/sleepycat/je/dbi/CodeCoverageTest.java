@@ -35,8 +35,7 @@ public class CodeCoverageTest extends DbCursorTestBase {
      * Test the internal CursorImpl.delete() deleted LN code..
      */
     @Test
-    public void testDeleteDeleted()
-        throws Throwable {
+    public void testDeleteDeleted() throws Throwable {
 
         try {
             initEnv(false);
@@ -45,8 +44,7 @@ public class CodeCoverageTest extends DbCursorTestBase {
             StringDbt foundKey = new StringDbt();
             StringDbt foundData = new StringDbt();
 
-            OperationStatus status = cursor.getFirst(foundKey, foundData,
-                                                     LockMode.DEFAULT);
+            OperationStatus status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
             assertEquals(OperationStatus.SUCCESS, status);
 
             cursor.delete();

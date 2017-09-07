@@ -51,16 +51,15 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * Needs testing (not executed in coverage report):
- *   - enable checksums and run unit tests
- *   - loadBINIfLsnMatches, evictBINIfLsnMatch
+ * Needs testing (not executed in coverage report): - enable checksums and run
+ * unit tests - loadBINIfLsnMatches, evictBINIfLsnMatch
  */
 public class OffHeapCacheTest extends TestBase {
 
-    private File envHome;
-    private Environment env;
-    private Database db;
-    private OffHeapCache ohCache;
+    private File             envHome;
+    private Environment      env;
+    private Database         db;
+    private OffHeapCache     ohCache;
     private OffHeapAllocator allocator;
 
     public OffHeapCacheTest() {
@@ -97,16 +96,11 @@ public class OffHeapCacheTest extends TestBase {
         envConfig.setTransactional(transactional);
         envConfig.setOffHeapCacheSize(1024 * 1024);
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
 
         env = new Environment(envHome, envConfig);
 
@@ -131,10 +125,7 @@ public class OffHeapCacheTest extends TestBase {
 
         open();
 
-        final BIN bin = new BIN(
-            DbInternal.getDbImpl(db),
-            new byte[] { 1, 2, 3 },
-            128, IN.BIN_LEVEL);
+        final BIN bin = new BIN(DbInternal.getDbImpl(db), new byte[] { 1, 2, 3 }, 128, IN.BIN_LEVEL);
 
         /* Avoid assertions setting LN memIds. */
         bin.setOffHeapLruId(1);
@@ -178,7 +169,7 @@ public class OffHeapCacheTest extends TestBase {
         for (int i = 0; i < memIds.length; i += 1) {
 
             if (i >= bin.getNEntries()) {
-                assertTrue(bin.insertEntry(null, new byte[] {(byte) i}, 0));
+                assertTrue(bin.insertEntry(null, new byte[] { (byte) i }, 0));
             }
 
             bin.setOffHeapLNId(i, memIds[i]);
@@ -249,8 +240,7 @@ public class OffHeapCacheTest extends TestBase {
     }
 
     /**
-     * Verifies the phases of eviction of a BIN in main cache with off-heap
-     * LNs.
+     * Verifies the phases of eviction of a BIN in main cache with off-heap LNs.
      */
     @Test
     public void testMainBINEviction() {
@@ -266,8 +256,8 @@ public class OffHeapCacheTest extends TestBase {
         assertEquals(10, bin.getNEntries());
 
         /*
-         * First eviction: 5 expired LNs are evicted;
-         * expired slots are removed except for one dirty slot.
+         * First eviction: 5 expired LNs are evicted; expired slots are removed
+         * except for one dirty slot.
          */
         bytes = ohCache.testEvictMainBIN(bin);
         assertTrue(bytes > 0);
@@ -280,8 +270,8 @@ public class OffHeapCacheTest extends TestBase {
         }
 
         /*
-         * Second eviction: remaining LNs are evicted;
-         * the one expired dirty slot remains.
+         * Second eviction: remaining LNs are evicted; the one expired dirty
+         * slot remains.
          */
         bytes = ohCache.testEvictMainBIN(bin);
         assertTrue(bytes > 0);
@@ -315,8 +305,8 @@ public class OffHeapCacheTest extends TestBase {
         assertEquals(10, bin.getNEntries());
 
         /*
-         * First eviction: 5 expired LNs are evicted;
-         * expired slots are removed except for one dirty slot.
+         * First eviction: 5 expired LNs are evicted; expired slots are removed
+         * except for one dirty slot.
          */
         bytes = ohCache.testEvictOffHeapBIN(parent, 0);
         assertTrue(bytes > 0);
@@ -332,8 +322,8 @@ public class OffHeapCacheTest extends TestBase {
         }
 
         /*
-         * Second eviction: remaining LNs are evicted;
-         * the one expired dirty slot remains.
+         * Second eviction: remaining LNs are evicted; the one expired dirty
+         * slot remains.
          */
         bytes = ohCache.testEvictOffHeapBIN(parent, 0);
         assertTrue(bytes > 0);
@@ -381,27 +371,22 @@ public class OffHeapCacheTest extends TestBase {
 
     /**
      * Tests a bug fix where we were freeing an off-heap LN twice, when it
-     * expired but was still locked. The scenario is:
-     *
-     * 1. LN with an expiration time is locked.
-     * 2. LN is moved off-heap.
-     * 3. The LN's parent BIN is moved off-heap.
-     * 4. The LN's expiration time passes.
-     * 5. Off-heap evictor processes BIN. It frees the expired LN, but cannot
-     *    compress the BIN slot, since the record is locked. The serialized
-     *    BIN is mistakenly not updated, so it still has the reference to the
-     *    LN that was freed. The BIN is re-serialized, but only if a slot was
-     *    compressed, and this didn't happen.
+     * expired but was still locked. The scenario is: 1. LN with an expiration
+     * time is locked. 2. LN is moved off-heap. 3. The LN's parent BIN is moved
+     * off-heap. 4. The LN's expiration time passes. 5. Off-heap evictor
+     * processes BIN. It frees the expired LN, but cannot compress the BIN slot,
+     * since the record is locked. The serialized BIN is mistakenly not updated,
+     * so it still has the reference to the LN that was freed. The BIN is
+     * re-serialized, but only if a slot was compressed, and this didn't happen.
      * 6. Off-heap evictor processes BIN again. This time it tries to free the
-     *    LN that was previously freed, resulting in a JVM crash.
-     *
-     * The fix is to always re-serialize the BIN when an expired LN was freed,
-     * even if its slot cannot be compressed due to a lock.
+     * LN that was previously freed, resulting in a JVM crash. The fix is to
+     * always re-serialize the BIN when an expired LN was freed, even if its
+     * slot cannot be compressed due to a lock.
      */
     @Test
     public void testLockedExpiredLNInOffHeapBIN() {
 
-        open(true /*transactional*/);
+        open(true /* transactional */);
 
         /* Used a fixed time for expiring records. */
         TTLTest.setFixedTimeHook(System.currentTimeMillis());
@@ -410,15 +395,12 @@ public class OffHeapCacheTest extends TestBase {
         IntegerBinding.intToEntry(0, key);
         final DatabaseEntry data = new DatabaseEntry(new byte[100]);
 
-        final WriteOptions options = new WriteOptions().
-            setCacheMode(CacheMode.EVICT_BIN).
-            setTTL(1, TimeUnit.HOURS);
+        final WriteOptions options = new WriteOptions().setCacheMode(CacheMode.EVICT_BIN).setTTL(1, TimeUnit.HOURS);
 
         final Transaction txn = env.beginTransaction(null, null);
         final Cursor cursor = db.openCursor(txn, null);
 
-        final OperationResult result =
-            cursor.put(key, data, Put.NO_OVERWRITE, options);
+        final OperationResult result = cursor.put(key, data, Put.NO_OVERWRITE, options);
 
         assertNotNull(result);
 
@@ -468,34 +450,24 @@ public class OffHeapCacheTest extends TestBase {
     /**
      * Tests the following compression scenario, which caused a "double free".
      * This was fixed by always considering off-heap BINs stale when a main
-     * cache version is present.
-     *
-     * 1. BIN is off-heap and contains an LN in an expired slot.
-     * 2. BIN will be loaded into main.
-     * 3. After materializing, but before calling OffHeapCache.postBINLoad,
-     *    we compress the BIN, which removes the expired slot and frees the
-     *    off-heap LN.
-     * 4. Because postBINLoad had not been called, the BIN's IN_OFFHEAP_BIT was
-     *    not set before compressing, and BIN.setOffHeapLNId(idx, 0) did not
-     *    set the BIN's IN_OFFHEAP_STALE_BIT.
-     * 5. Later, when the off-heap evictor tries to strip LNs, it attempts to
-     *    free an already freed block.
-     *
-     * Note that another, similar compression scenario, would have caused a
-     * lost deletion:
-     *
-     * 1. BIN is dirty and is both on-heap and off-heap.
-     * 2. Compression removes a dirty slot and sets ProhibitNextDelta.
-     * 3. Main BIN is evicted, but is not re-copied off-heap, because off-heap
-     *    BIN is not stale.
-     * 4. Checkpoint logs the off-heap BIN as a delta, losing the deletion.
-     *
-     * This was not observed, because (we think) it is difficult to create
-     * condition 1. This is because of another bug, where when loading a dirty
-     * off-heap BIN, the off-heap version was immediately made stale when
-     * postBINLoad called BIN.setDirty. This is also resolved by the new
-     * approach where always consider off-heap BINs stale when a main cache
-     * version is present.
+     * cache version is present. 1. BIN is off-heap and contains an LN in an
+     * expired slot. 2. BIN will be loaded into main. 3. After materializing,
+     * but before calling OffHeapCache.postBINLoad, we compress the BIN, which
+     * removes the expired slot and frees the off-heap LN. 4. Because
+     * postBINLoad had not been called, the BIN's IN_OFFHEAP_BIT was not set
+     * before compressing, and BIN.setOffHeapLNId(idx, 0) did not set the BIN's
+     * IN_OFFHEAP_STALE_BIT. 5. Later, when the off-heap evictor tries to strip
+     * LNs, it attempts to free an already freed block. Note that another,
+     * similar compression scenario, would have caused a lost deletion: 1. BIN
+     * is dirty and is both on-heap and off-heap. 2. Compression removes a dirty
+     * slot and sets ProhibitNextDelta. 3. Main BIN is evicted, but is not
+     * re-copied off-heap, because off-heap BIN is not stale. 4. Checkpoint logs
+     * the off-heap BIN as a delta, losing the deletion. This was not observed,
+     * because (we think) it is difficult to create condition 1. This is because
+     * of another bug, where when loading a dirty off-heap BIN, the off-heap
+     * version was immediately made stale when postBINLoad called BIN.setDirty.
+     * This is also resolved by the new approach where always consider off-heap
+     * BINs stale when a main cache version is present.
      */
     @Test
     public void testCompressDuringLoad() {
@@ -509,14 +481,11 @@ public class OffHeapCacheTest extends TestBase {
         IntegerBinding.intToEntry(0, key);
         final DatabaseEntry data = new DatabaseEntry(new byte[100]);
 
-        final WriteOptions options = new WriteOptions().
-            setCacheMode(CacheMode.EVICT_BIN).
-            setTTL(1, TimeUnit.HOURS);
+        final WriteOptions options = new WriteOptions().setCacheMode(CacheMode.EVICT_BIN).setTTL(1, TimeUnit.HOURS);
 
         final Cursor cursor = db.openCursor(null, null);
 
-        final OperationResult result =
-            cursor.put(key, data, Put.NO_OVERWRITE, options);
+        final OperationResult result = cursor.put(key, data, Put.NO_OVERWRITE, options);
 
         assertNotNull(result);
 
@@ -536,8 +505,7 @@ public class OffHeapCacheTest extends TestBase {
         bin = (BIN) parent.loadIN(0, CacheMode.UNCHANGED);
         parent.releaseLatch();
 
-        final Evictor evictor =
-            DbInternal.getNonNullEnvImpl(env).getEvictor();
+        final Evictor evictor = DbInternal.getNonNullEnvImpl(env).getEvictor();
 
         bin.latchNoUpdateLRU();
         evictor.doTestEvict(bin, Evictor.EvictionSource.MANUAL);
@@ -550,20 +518,19 @@ public class OffHeapCacheTest extends TestBase {
 
     /**
      * Tests a fix to a bug where the ProhibitNextDelta flag was not honored
-     * when logging an off-heap BIN, and the BIN was re-materialized in order
-     * to compress expired slots. [#24973]
+     * when logging an off-heap BIN, and the BIN was re-materialized in order to
+     * compress expired slots. [#24973]
      */
     @Test
     public void testProhibitNextDeltaBug() {
 
         open();
 
-        final IN parent = createOffHeapBIN(true /*prohibitNextDelta*/);
+        final IN parent = createOffHeapBIN(true /* prohibitNextDelta */);
 
         parent.latchNoUpdateLRU();
 
-        final INLogEntry<BIN> entry =
-            ohCache.createBINLogEntryForCheckpoint(parent, 0);
+        final INLogEntry<BIN> entry = ohCache.createBINLogEntryForCheckpoint(parent, 0);
 
         /* This failed prior to the bug fix. */
         assertFalse(entry.isBINDelta());
@@ -584,15 +551,14 @@ public class OffHeapCacheTest extends TestBase {
             return null;
         }
 
-        return ohCache.materializeBIN(
-            DbInternal.getNonNullEnvImpl(env), bytes);
+        return ohCache.materializeBIN(DbInternal.getNonNullEnvImpl(env), bytes);
     }
 
     /**
      * Calls createBIN and then moves it off-heap.
      *
-     * @return the parent, which will only have one slot containing the
-     * off-heap BIN.
+     * @return the parent, which will only have one slot containing the off-heap
+     *         BIN.
      */
     private IN createOffHeapBIN(final boolean prohibitNextDelta) {
         final IN parent = createBIN(CacheMode.EVICT_BIN, prohibitNextDelta);
@@ -602,15 +568,14 @@ public class OffHeapCacheTest extends TestBase {
     }
 
     private IN createOffHeapBIN() {
-        return createOffHeapBIN(false /*prohibitNextDelta*/);
+        return createOffHeapBIN(false /* prohibitNextDelta */);
     }
 
     /**
      * Calls createBIN and moves its LNs off-heap.
      */
     private BIN createMainCacheBIN() {
-        final IN parent = createBIN(
-            CacheMode.EVICT_LN, false /*prohibitNextDelta*/);
+        final IN parent = createBIN(CacheMode.EVICT_LN, false /* prohibitNextDelta */);
         final BIN bin = (BIN) parent.getTarget(0);
         assertNotNull(bin);
         assertTrue(bin.getOffHeapLruId() >= 0);
@@ -619,18 +584,14 @@ public class OffHeapCacheTest extends TestBase {
     }
 
     /**
-     * Creates a BIN with:
-     *  - 10 LNs
-     *  - the first 5 LNs are expired
-     *  - all LNs are moved off-heap if cacheMode is EVICT_LN, or the entire
-     *    BIN is moved off-heap if it is EVICT_BIN
-     *  - only one slot (an expired slot) is dirty, and therefore the BIN can
-     *    be mutated to a delta
+     * Creates a BIN with: - 10 LNs - the first 5 LNs are expired - all LNs are
+     * moved off-heap if cacheMode is EVICT_LN, or the entire BIN is moved
+     * off-heap if it is EVICT_BIN - only one slot (an expired slot) is dirty,
+     * and therefore the BIN can be mutated to a delta
      *
      * @return the parent, which will only have one slot.
      */
-    private IN createBIN(final CacheMode cacheMode,
-                         final boolean prohibitNextDelta) {
+    private IN createBIN(final CacheMode cacheMode, final boolean prohibitNextDelta) {
 
         /* Used a fixed time for expiring records. */
         TTLTest.setFixedTimeHook(System.currentTimeMillis());
@@ -638,8 +599,7 @@ public class OffHeapCacheTest extends TestBase {
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry(new byte[100]);
 
-        final WriteOptions options =
-            new WriteOptions().setCacheMode(cacheMode);
+        final WriteOptions options = new WriteOptions().setCacheMode(cacheMode);
 
         final Cursor cursor = db.openCursor(null, null);
         OperationResult result;

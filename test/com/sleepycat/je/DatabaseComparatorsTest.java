@@ -34,28 +34,25 @@ import com.sleepycat.util.test.SharedTestUtils;
 
 public class DatabaseComparatorsTest extends DualTestCase {
 
-    private File envHome;
+    private File        envHome;
     private Environment env;
-    private boolean DEBUG = false;
+    private boolean     DEBUG = false;
 
     public DatabaseComparatorsTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         openEnv(false);
     }
 
-    private void openEnv(boolean transactional)
-        throws DatabaseException {
+    private void openEnv(boolean transactional) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(transactional);
-        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(),
-                                 "true");
+        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), "true");
         /* Prevent compression. */
         envConfig.setConfigParam("je.env.runINCompressor", "false");
         envConfig.setConfigParam("je.env.runCheckpointer", "false");
@@ -64,12 +61,9 @@ public class DatabaseComparatorsTest extends DualTestCase {
         env = create(envHome, envConfig);
     }
 
-    private Database openDb
-        (boolean transactional,
-         boolean dups,
-         Class<? extends Comparator<byte[]>> btreeComparator,
-         Class<? extends Comparator<byte[]>> dupComparator)
-        throws DatabaseException {
+    private Database openDb(boolean transactional, boolean dups, Class<? extends Comparator<byte[]>> btreeComparator,
+                            Class<? extends Comparator<byte[]>> dupComparator)
+            throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -85,12 +79,11 @@ public class DatabaseComparatorsTest extends DualTestCase {
     }
 
     @Test
-    public void testSR12517()
-        throws Exception {
+    public void testSR12517() throws Exception {
 
         openEnv();
-        Database db = openDb(false /*transactional*/, false /*dups*/,
-                             ReverseComparator.class, ReverseComparator.class);
+        Database db = openDb(false /* transactional */, false /* dups */, ReverseComparator.class,
+                ReverseComparator.class);
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -110,8 +103,7 @@ public class DatabaseComparatorsTest extends DualTestCase {
         close(env);
 
         openEnv();
-        db = openDb(false /*transactional*/, false /*dups*/,
-                    ReverseComparator.class, ReverseComparator.class);
+        db = openDb(false /* transactional */, false /* dups */, ReverseComparator.class, ReverseComparator.class);
 
         read(db);
         db.close();
@@ -120,12 +112,10 @@ public class DatabaseComparatorsTest extends DualTestCase {
     }
 
     @Test
-    public void testDatabaseCompareKeysArgs()
-        throws Exception {
+    public void testDatabaseCompareKeysArgs() throws Exception {
 
         openEnv();
-        Database db = openDb(false /*transactional*/, false /*dups*/,
-                             null, null);
+        Database db = openDb(false /* transactional */, false /* dups */, null, null);
 
         DatabaseEntry entry1 = new DatabaseEntry();
         DatabaseEntry entry2 = new DatabaseEntry();
@@ -228,27 +218,21 @@ public class DatabaseComparatorsTest extends DualTestCase {
     }
 
     @Test
-    public void testSR16816DefaultComparator()
-        throws Exception {
+    public void testSR16816DefaultComparator() throws Exception {
 
         doTestSR16816(null, null, 1);
     }
 
     @Test
-    public void testSR16816ReverseComparator()
-        throws Exception {
+    public void testSR16816ReverseComparator() throws Exception {
 
         doTestSR16816(ReverseComparator.class, ReverseComparator.class, -1);
     }
 
-    private void doTestSR16816(Class btreeComparator,
-                               Class dupComparator,
-                               int expectedSign)
-        throws Exception {
+    private void doTestSR16816(Class btreeComparator, Class dupComparator, int expectedSign) throws Exception {
 
         openEnv();
-        Database db = openDb(false /*transactional*/, false /*dups*/,
-                             btreeComparator, dupComparator);
+        Database db = openDb(false /* transactional */, false /* dups */, btreeComparator, dupComparator);
 
         DatabaseEntry entry1 = new DatabaseEntry();
         DatabaseEntry entry2 = new DatabaseEntry();
@@ -271,8 +255,7 @@ public class DatabaseComparatorsTest extends DualTestCase {
         env = null;
     }
 
-    private void read(Database db)
-        throws DatabaseException {
+    private void read(Database db) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -280,15 +263,12 @@ public class DatabaseComparatorsTest extends DualTestCase {
         /* Iterate */
         Cursor c = db.openCursor(null, null);
         int expected = 4;
-        while (c.getNext(key, data, LockMode.DEFAULT) ==
-               OperationStatus.SUCCESS) {
+        while (c.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
             assertEquals(expected, IntegerBinding.entryToInt(key));
             expected--;
             if (DEBUG) {
-                System.out.println("cursor: k=" +
-                                   IntegerBinding.entryToInt(key) +
-                                   " d=" +
-                                   IntegerBinding.entryToInt(data));
+                System.out.println(
+                        "cursor: k=" + IntegerBinding.entryToInt(key) + " d=" + IntegerBinding.entryToInt(data));
             }
         }
         assertEquals(expected, -1);
@@ -298,15 +278,11 @@ public class DatabaseComparatorsTest extends DualTestCase {
         /* Retrieve 5 items */
         for (int i = 0; i < 5; i++) {
             IntegerBinding.intToEntry(i, key);
-            assertEquals(OperationStatus.SUCCESS,
-                         db.get(null, key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, db.get(null, key, data, LockMode.DEFAULT));
             assertEquals(i, IntegerBinding.entryToInt(key));
             assertEquals(i * 2, IntegerBinding.entryToInt(data));
             if (DEBUG) {
-                System.out.println("k=" +
-                                   IntegerBinding.entryToInt(key) +
-                                   " d=" +
-                                   IntegerBinding.entryToInt(data));
+                System.out.println("k=" + IntegerBinding.entryToInt(key) + " d=" + IntegerBinding.entryToInt(data));
             }
         }
     }
@@ -335,50 +311,38 @@ public class DatabaseComparatorsTest extends DualTestCase {
 
     /**
      * Checks that when reusing a slot and then aborting the transaction, the
-     * original data is restored, when using a btree comparator. [#15704]
-     *
-     * When using partial keys to reuse a slot with a different--but equal
-     * according to a custom comparator--key, a bug caused corruption of an
-     * existing record after an abort.  The sequence for a non-duplicate
-     * database and a btree comparator that compares only the first integer in
-     * a two integer key is:
-     *
-     * 100 Insert LN key={0,0} txn 1
-     * 110 Commit txn 1
-     * 120 Delete LN key={0,0} txn 2
-     * 130 Insert LN key={0,1} txn 2
-     * 140 Abort txn 2
-     *
-     * When key {0,1} is inserted at LSN 130, it reuses the slot for {0,0}
-     * because these two keys are considered equal by the comparator.  When txn
-     * 2 is aborted, it restores LSN 100 in the slot, but the key in the BIN
-     * stays {0,1}.  Fetching the record after the abort gives key {0,1}.
+     * original data is restored, when using a btree comparator. [#15704] When
+     * using partial keys to reuse a slot with a different--but equal according
+     * to a custom comparator--key, a bug caused corruption of an existing
+     * record after an abort. The sequence for a non-duplicate database and a
+     * btree comparator that compares only the first integer in a two integer
+     * key is: 100 Insert LN key={0,0} txn 1 110 Commit txn 1 120 Delete LN
+     * key={0,0} txn 2 130 Insert LN key={0,1} txn 2 140 Abort txn 2 When key
+     * {0,1} is inserted at LSN 130, it reuses the slot for {0,0} because these
+     * two keys are considered equal by the comparator. When txn 2 is aborted,
+     * it restores LSN 100 in the slot, but the key in the BIN stays {0,1}.
+     * Fetching the record after the abort gives key {0,1}.
      */
     @Test
-    public void testReuseSlotAbortPartialKey()
-        throws DatabaseException {
+    public void testReuseSlotAbortPartialKey() throws DatabaseException {
 
-        doTestReuseSlotPartialKey(false /*runRecovery*/);
+        doTestReuseSlotPartialKey(false /* runRecovery */);
     }
 
     /**
      * Same as testReuseSlotAbortPartialKey but runs recovery after the abort.
      */
     @Test
-    public void testReuseSlotRecoverPartialKey()
-        throws DatabaseException {
+    public void testReuseSlotRecoverPartialKey() throws DatabaseException {
 
-        doTestReuseSlotPartialKey(true /*runRecovery*/);
+        doTestReuseSlotPartialKey(true /* runRecovery */);
     }
 
-    private void doTestReuseSlotPartialKey(boolean runRecovery)
-        throws DatabaseException {
+    private void doTestReuseSlotPartialKey(boolean runRecovery) throws DatabaseException {
 
-        openEnv(true /*transactional*/);
-        Database db = openDb
-            (true /*transactional*/, false /*dups*/,
-             Partial2PartComparator.class /*btreeComparator*/,
-             null /*dupComparator*/);
+        openEnv(true /* transactional */);
+        Database db = openDb(true /* transactional */, false /* dups */,
+                Partial2PartComparator.class /* btreeComparator */, null /* dupComparator */);
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -414,11 +378,9 @@ public class DatabaseComparatorsTest extends DualTestCase {
             db.close();
             close(env);
             env = null;
-            openEnv(true /*transactional*/);
-            db = openDb
-                (true /*transactional*/, false /*dups*/,
-                 Partial2PartComparator.class /*btreeComparator*/,
-                 null /*dupComparator*/);
+            openEnv(true /* transactional */);
+            db = openDb(true /* transactional */, false /* dups */, Partial2PartComparator.class /* btreeComparator */,
+                    null /* dupComparator */);
         }
 
         /* Check that we rolled back to key={0,0}/data={0}. */
@@ -436,49 +398,37 @@ public class DatabaseComparatorsTest extends DualTestCase {
 
     /**
      * Same as testReuseSlotAbortPartialKey but for reuse of duplicate data
-     * slots.  [#15704]
-     *
-     * The sequence for a duplicate database and a duplicate comparator that
-     * compares only the first integer in a two integer data value is:
-     *
-     * 100 Insert LN key={0}/data={0,0} txn 1
-     * 110 Insert LN key={0}/data={1,1} txn 1
-     * 120 Commit txn 1
-     * 130 Delete LN key={0}/data={0,0} txn 2
-     * 140 Insert LN key={0}/data={0,1} txn 2
-     * 150 Abort txn 2
-     *
-     * When data {0,1} is inserted at LSN 140, it reuses the slot for {0,0}
-     * because these two data values are considered equal by the comparator.
-     * When txn 2 is aborted, it restores LSN 100 in the slot, but the data in
-     * the DBIN stays {0,1}.  Fetching the record after the abort gives data
-     * {0,1}.
+     * slots. [#15704] The sequence for a duplicate database and a duplicate
+     * comparator that compares only the first integer in a two integer data
+     * value is: 100 Insert LN key={0}/data={0,0} txn 1 110 Insert LN
+     * key={0}/data={1,1} txn 1 120 Commit txn 1 130 Delete LN
+     * key={0}/data={0,0} txn 2 140 Insert LN key={0}/data={0,1} txn 2 150 Abort
+     * txn 2 When data {0,1} is inserted at LSN 140, it reuses the slot for
+     * {0,0} because these two data values are considered equal by the
+     * comparator. When txn 2 is aborted, it restores LSN 100 in the slot, but
+     * the data in the DBIN stays {0,1}. Fetching the record after the abort
+     * gives data {0,1}.
      */
     @Test
-    public void testReuseSlotAbortPartialDup()
-        throws DatabaseException {
+    public void testReuseSlotAbortPartialDup() throws DatabaseException {
 
-        doTestReuseSlotPartialDup(false /*runRecovery*/);
+        doTestReuseSlotPartialDup(false /* runRecovery */);
     }
 
     /**
      * Same as testReuseSlotAbortPartialDup but runs recovery after the abort.
      */
     @Test
-    public void testReuseSlotRecoverPartialDup()
-        throws DatabaseException {
+    public void testReuseSlotRecoverPartialDup() throws DatabaseException {
 
-        doTestReuseSlotPartialDup(true /*runRecovery*/);
+        doTestReuseSlotPartialDup(true /* runRecovery */);
     }
 
-    private void doTestReuseSlotPartialDup(boolean runRecovery)
-        throws DatabaseException {
+    private void doTestReuseSlotPartialDup(boolean runRecovery) throws DatabaseException {
 
-        openEnv(true /*transactional*/);
-        Database db = openDb
-            (true /*transactional*/, true /*dups*/,
-             null /*btreeComparator*/,
-             Partial2PartComparator.class /*dupComparator*/);
+        openEnv(true /* transactional */);
+        Database db = openDb(true /* transactional */, true /* dups */, null /* btreeComparator */,
+                Partial2PartComparator.class /* dupComparator */);
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -524,11 +474,9 @@ public class DatabaseComparatorsTest extends DualTestCase {
             db.close();
             close(env);
             env = null;
-            openEnv(true /*transactional*/);
-            db = openDb
-                (true /*transactional*/, true /*dups*/,
-                 null /*btreeComparator*/,
-                 Partial2PartComparator.class /*dupComparator*/);
+            openEnv(true /* transactional */);
+            db = openDb(true /* transactional */, true /* dups */, null /* btreeComparator */,
+                    Partial2PartComparator.class /* dupComparator */);
         }
 
         /* Check that we rolled back to key={0,0}/data={0}. */
@@ -546,24 +494,19 @@ public class DatabaseComparatorsTest extends DualTestCase {
 
     /**
      * In the past, we prohibited the case where dups are configured and the
-     * btree comparator does not compare all bytes of the key.  With the old
+     * btree comparator does not compare all bytes of the key. With the old
      * DBIN/DIN dup implementation, to support this would require maintaining
      * the BIN slot and DIN/DBIN.dupKey fields to be transactionally correct.
      * This would have impractical since INs by design are non-transctional.
-     * [#15704]
-     *
-     * But with the two-part key dups implementation, the BIN slot is always
-     * transactionally correct, and this test now confirms this. [#19165]
+     * [#15704] But with the two-part key dups implementation, the BIN slot is
+     * always transactionally correct, and this test now confirms this. [#19165]
      */
     @Test
-    public void testDupsWithPartialComparator()
-        throws DatabaseException {
+    public void testDupsWithPartialComparator() throws DatabaseException {
 
-        openEnv(false /*transactional*/);
-        Database db = openDb
-            (false /*transactional*/, true /*dups*/,
-             Partial2PartComparator.class /*btreeComparator*/,
-             null /*dupComparator*/);
+        openEnv(false /* transactional */);
+        Database db = openDb(false /* transactional */, true /* dups */,
+                Partial2PartComparator.class /* btreeComparator */, null /* dupComparator */);
 
         OperationStatus status;
 
@@ -600,26 +543,16 @@ public class DatabaseComparatorsTest extends DualTestCase {
     }
 
     /*
-    private void dump(Database db, Transaction txn)
-        throws DatabaseException {
-
-        System.out.println("-- dump --");
-        DatabaseEntry key = new DatabaseEntry();
-        DatabaseEntry data = new DatabaseEntry();
-        OperationStatus status;
-        Cursor c = db.openCursor(txn, null);
-        while (c.getNext(key, data, null) == OperationStatus.SUCCESS) {
-            TupleInput keyInput = TupleBase.entryToInput(key);
-            int keyP1 = keyInput.readInt();
-            int keyP2 = keyInput.readInt();
-            int dataVal = IntegerBinding.entryToInt(data);
-            System.out.println("keyP1=" + keyP1 +
-                               " keyP2=" + keyP2 +
-                               " dataVal=" + dataVal);
-        }
-        c.close();
-    }
-    */
+     * private void dump(Database db, Transaction txn) throws DatabaseException
+     * { System.out.println("-- dump --"); DatabaseEntry key = new
+     * DatabaseEntry(); DatabaseEntry data = new DatabaseEntry();
+     * OperationStatus status; Cursor c = db.openCursor(txn, null); while
+     * (c.getNext(key, data, null) == OperationStatus.SUCCESS) { TupleInput
+     * keyInput = TupleBase.entryToInput(key); int keyP1 = keyInput.readInt();
+     * int keyP2 = keyInput.readInt(); int dataVal =
+     * IntegerBinding.entryToInt(data); System.out.println("keyP1=" + keyP1 +
+     * " keyP2=" + keyP2 + " dataVal=" + dataVal); } c.close(); }
+     */
 
     private DatabaseEntry entry(int p1) {
         DatabaseEntry entry = new DatabaseEntry();
@@ -651,8 +584,7 @@ public class DatabaseComparatorsTest extends DualTestCase {
     /**
      * Compares only the first integer in the byte arrays.
      */
-    public static class Partial2PartComparator
-        implements Comparator<byte[]>, PartialComparator {
+    public static class Partial2PartComparator implements Comparator<byte[]>, PartialComparator {
 
         public int compare(byte[] o1, byte[] o2) {
             int val1 = new TupleInput(o1).readInt();

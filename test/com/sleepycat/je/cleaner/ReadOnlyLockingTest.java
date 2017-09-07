@@ -13,7 +13,6 @@
 
 package com.sleepycat.je.cleaner;
 
-
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -47,27 +46,26 @@ import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Verifies that opening an environment read-only will prevent cleaned files
- * from being deleted in a read-write environment.  Uses the ReadOnlyProcess
+ * from being deleted in a read-write environment. Uses the ReadOnlyProcess
  * class to open the environment read-only in a separate process.
  */
 @RunWith(Parameterized.class)
 public class ReadOnlyLockingTest extends CleanerTestBase {
 
-    private static final int FILE_SIZE = 4096;
-    private static final int READER_STARTUP_SECS = 30;
+    private static final int              FILE_SIZE           = 4096;
+    private static final int              READER_STARTUP_SECS = 30;
 
-    private static final CheckpointConfig forceConfig = new CheckpointConfig();
+    private static final CheckpointConfig forceConfig         = new CheckpointConfig();
     static {
         forceConfig.setForce(true);
     }
 
     private EnvironmentImpl envImpl;
-    private Database db;
-    private Process readerProcess;
+    private Database        db;
+    private Process         readerProcess;
 
     private static File getProcessFile() {
-        return new File(System.getProperty(TestUtils.DEST_DIR),
-                        "ReadOnlyProcessFile");
+        return new File(System.getProperty(TestUtils.DEST_DIR), "ReadOnlyProcessFile");
     }
 
     private static void deleteProcessFile() {
@@ -76,8 +74,7 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
         assertTrue(!file.exists());
     }
 
-    static void createProcessFile()
-        throws IOException {
+    static void createProcessFile() throws IOException {
 
         File file = getProcessFile();
         assertTrue(file.createNewFile());
@@ -86,18 +83,17 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
 
     public ReadOnlyLockingTest(boolean multiSubDir) {
         envMultiSubDir = multiSubDir;
-        customName = envMultiSubDir ? "multi-sub-dir" : null ;
+        customName = envMultiSubDir ? "multi-sub-dir" : null;
     }
-    
+
     @Parameters
     public static List<Object[]> genParams() {
-        
-        return getEnv(new boolean[] {false, true});
+
+        return getEnv(new boolean[] { false, true });
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
 
         deleteProcessFile();
         try {
@@ -113,26 +109,19 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
         readerProcess = null;
     }
 
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
         envConfig.setTxnNoSync(Boolean.getBoolean(TestUtils.NO_SYNC));
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_MAX.getName(),
-             Integer.toString(FILE_SIZE));
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(FILE_SIZE));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         if (envMultiSubDir) {
-            envConfig.setConfigParam
-                (EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, envConfig);
@@ -144,8 +133,7 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
         db = env.openDatabase(null, "ReadOnlyLockingTest", dbConfig);
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (db != null) {
             db.close();
@@ -161,8 +149,7 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
      * Tests that cleaned files are deleted when there is no reader process.
      */
     @Test
-    public void testBaseline()
-        throws DatabaseException {
+    public void testBaseline() throws DatabaseException {
 
         openEnv();
         writeAndDeleteData();
@@ -183,8 +170,7 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
      * Tests that cleaned files are not deleted when there is a reader process.
      */
     @Test
-    public void testReadOnlyLocking()
-        throws Exception {
+    public void testReadOnlyLocking() throws Exception {
 
         openEnv();
         writeAndDeleteData();
@@ -203,8 +189,8 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
         assertTrue(listFiles(), !areAnyFilesDeleted());
 
         /*
-         * Files are deleted when a checkpoint occurs after the reader
-         * process stops.
+         * Files are deleted when a checkpoint occurs after the reader process
+         * stops.
          */
         stopReaderProcess();
         env.cleanLog();
@@ -214,8 +200,7 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
         closeEnv();
     }
 
-    private void writeAndDeleteData()
-        throws DatabaseException {
+    private void writeAndDeleteData() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry(new byte[1]);
         DatabaseEntry data = new DatabaseEntry(new byte[FILE_SIZE]);
@@ -227,8 +212,7 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
     private boolean areAnyFilesDeleted() {
         long lastNum = envImpl.getFileManager().getLastFileNum().longValue();
         for (long i = 0; i <= lastNum; i += 1) {
-            String name = envImpl.getFileManager().getFullFileName
-                (i, FileManager.JE_SUFFIX);
+            String name = envImpl.getFileManager().getFullFileName(i, FileManager.JE_SUFFIX);
             if (!(new File(name).exists())) {
                 return true;
             }
@@ -249,37 +233,27 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
         return builder.toString();
     }
 
-    private void startReaderProcess()
-        throws Exception {
+    private void startReaderProcess() throws Exception {
 
         List<String> cmd = new ArrayList<>();
         cmd.add("java");
         JVMSystemUtils.addZingJVMArgs(cmd);
 
-        cmd.addAll(Arrays.asList(
-            "-cp",
-            System.getProperty("java.class.path"),
-            "-D" + SharedTestUtils.DEST_DIR + '=' +
-                SharedTestUtils.getDestDir(),
-            ReadOnlyProcess.class.getName(),
-            Boolean.toString(envMultiSubDir),
-            DATA_DIRS + ""));
+        cmd.addAll(Arrays.asList("-cp", System.getProperty("java.class.path"),
+                "-D" + SharedTestUtils.DEST_DIR + '=' + SharedTestUtils.getDestDir(), ReadOnlyProcess.class.getName(),
+                Boolean.toString(envMultiSubDir), DATA_DIRS + ""));
 
         /* Start it and wait for it to open the environment. */
         readerProcess = new ProcessBuilder(cmd).start();
         InputStream error = readerProcess.getErrorStream();
         InputStream output = readerProcess.getInputStream();
-        Thread err =
-            new Thread(new OutErrReader(error, false /*ignoreOutput*/));
+        Thread err = new Thread(new OutErrReader(error, false /* ignoreOutput */));
         err.start();
-        Thread out =
-            new Thread(new OutErrReader(output, false /*ignoreOutput*/));
+        Thread out = new Thread(new OutErrReader(output, false /* ignoreOutput */));
         out.start();
         long startTime = System.currentTimeMillis();
         boolean running = false;
-        while (!running &&
-               ((System.currentTimeMillis() - startTime) <
-                (READER_STARTUP_SECS * 1000))) {
+        while (!running && ((System.currentTimeMillis() - startTime) < (READER_STARTUP_SECS * 1000))) {
             if (getProcessFile().exists()) {
                 running = true;
             } else {
@@ -287,13 +261,10 @@ public class ReadOnlyLockingTest extends CleanerTestBase {
             }
         }
         //printReaderStatus();
-        assertTrue("ReadOnlyProcess did not start after " +
-                   READER_STARTUP_SECS + " + secs",
-                   running);
+        assertTrue("ReadOnlyProcess did not start after " + READER_STARTUP_SECS + " + secs", running);
     }
 
-    private void stopReaderProcess()
-        throws Exception {
+    private void stopReaderProcess() throws Exception {
 
         if (readerProcess != null) {
             readerProcess.destroy();

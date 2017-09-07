@@ -51,34 +51,37 @@ import com.sleepycat.util.test.TestBase;
 /**
  * Tests involving secondary indexes with respect to deadlock free access.
  * Access is performed using Database, SecondaryDatabase, Cursor and
- * SecondaryCursor. When serialization is NOT being used, concurrent access
- * of a record should not deadlock.
+ * SecondaryCursor. When serialization is NOT being used, concurrent access of a
+ * record should not deadlock.
  *
  * @author dwchung
- *
  */
 @RunWith(Parameterized.class)
 public class SecondaryMultiTest extends TestBase {
 
-    private enum ReadType {GETSEARCHKEY, GETSEARCHKEY2, GETSEARCHBOTH,
-                           GETSEARCHBOTH2, GETSEARCHKEYRANGE,
-                           GETSEARCHKEYRANGE2};
-    private final ReadType[] readTypes = ReadType.values();
-    private static final String DB_NAME = "foo";
-    private static final String SDB_NAME = "fooSec";
-    private volatile int currentEvent;
-    private volatile boolean testDone = false;
-    private volatile int threadid = 0;
-    private final boolean db1UsePrimary;
-    private final boolean db2UsePrimary;
-    private final boolean useSerialization;
-    Environment env = null;
-    Database db = null;
-    SecondaryDatabase sdb = null;
+    private enum ReadType {
+        GETSEARCHKEY,
+        GETSEARCHKEY2,
+        GETSEARCHBOTH,
+        GETSEARCHBOTH2,
+        GETSEARCHKEYRANGE,
+        GETSEARCHKEYRANGE2
+    };
 
-    public SecondaryMultiTest(boolean db1UsePrimary,
-                              boolean db2UsePrimary,
-                              boolean useSerialization) {
+    private final ReadType[]    readTypes = ReadType.values();
+    private static final String DB_NAME   = "foo";
+    private static final String SDB_NAME  = "fooSec";
+    private volatile int        currentEvent;
+    private volatile boolean    testDone  = false;
+    private volatile int        threadid  = 0;
+    private final boolean       db1UsePrimary;
+    private final boolean       db2UsePrimary;
+    private final boolean       useSerialization;
+    Environment                 env       = null;
+    Database                    db        = null;
+    SecondaryDatabase           sdb       = null;
+
+    public SecondaryMultiTest(boolean db1UsePrimary, boolean db2UsePrimary, boolean useSerialization) {
         this.db1UsePrimary = db1UsePrimary;
         this.db2UsePrimary = db2UsePrimary;
         this.useSerialization = useSerialization;
@@ -86,36 +89,32 @@ public class SecondaryMultiTest extends TestBase {
 
     @Parameters
     public static List<Object[]> genParams() {
-       return paramsHelper(false);
+        return paramsHelper(false);
     }
 
     /*
-     * The parameters for the test are three booleans
-     * db1UsePrimary, db2UsePrimary, useSeralization.
-     * Test may access the data using the various
-     * combinations of primary/secondary access
-     * methods.
+     * The parameters for the test are three booleans db1UsePrimary,
+     * db2UsePrimary, useSeralization. Test may access the data using the
+     * various combinations of primary/secondary access methods.
      */
     private static List<Object[]> paramsHelper(boolean rep) {
         final List<Object[]> newParams = new ArrayList<Object[]>();
-        newParams.add(new Object[] {false, false, false});
-        newParams.add(new Object[] {false, false, true});
-        newParams.add(new Object[] {false, true, false});
-        newParams.add(new Object[] {true, false, false});
+        newParams.add(new Object[] { false, false, false });
+        newParams.add(new Object[] { false, false, true });
+        newParams.add(new Object[] { false, true, false });
+        newParams.add(new Object[] { true, false, false });
 
         /*
-         * The next two tests cause deadlocks. The tests
-         * are written to handle them, but the time the
-         * test runs is not predictable. The tests are
-         * currently commented out since this set of tests
-         * target secondary index deadlock avoidance.
-         * Both of the tests use serialization, which is
-         * not part of the "deadlock avoidance project.
-        newParams.add(new Object[] {false, true, true});
-        newParams.add(new Object[] {true, false, true});
-        */
-        newParams.add(new Object[] {true, true, false});
-        newParams.add(new Object[] {true, true, true});
+         * The next two tests cause deadlocks. The tests are written to handle
+         * them, but the time the test runs is not predictable. The tests are
+         * currently commented out since this set of tests target secondary
+         * index deadlock avoidance. Both of the tests use serialization, which
+         * is not part of the "deadlock avoidance project. newParams.add(new
+         * Object[] {false, true, true}); newParams.add(new Object[] {true,
+         * false, true});
+         */
+        newParams.add(new Object[] { true, true, false });
+        newParams.add(new Object[] { true, true, true });
 
         return newParams;
     }
@@ -164,8 +163,8 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     /**
-     * Have two threads attempt to delete the same record.
-     * One thread commits the other should get not found.
+     * Have two threads attempt to delete the same record. One thread commits
+     * the other should get not found.
      */
     @Test
     public void testMultiDelete() throws Exception {
@@ -176,17 +175,11 @@ public class SecondaryMultiTest extends TestBase {
         /* populate */
         for (int i = 0; i < DATACOUNT; i++) {
             byte[] val = Integer.valueOf(i).toString().getBytes();
-            db.put(null,
-                   new DatabaseEntry(val),
-                   new DatabaseEntry(val));
+            db.put(null, new DatabaseEntry(val), new DatabaseEntry(val));
         }
 
-        DeleteIt t1 =
-            new DeleteIt(KEY, env, db1UsePrimary ? db : sdb,
-                         0, 3, 1000);
-        DeleteIt t2 =
-            new DeleteIt(KEY, env, db2UsePrimary ? db : sdb,
-                         2, 4, 1000);
+        DeleteIt t1 = new DeleteIt(KEY, env, db1UsePrimary ? db : sdb, 0, 3, 1000);
+        DeleteIt t2 = new DeleteIt(KEY, env, db2UsePrimary ? db : sdb, 2, 4, 1000);
 
         new Thread(t1).start();
         new Thread(t2).start();
@@ -220,9 +213,7 @@ public class SecondaryMultiTest extends TestBase {
         /* populate */
         for (int i = 0; i < DATACOUNT; i++) {
             byte[] val = Integer.valueOf(i).toString().getBytes();
-            db.put(null,
-                   new DatabaseEntry(val),
-                   new DatabaseEntry(val));
+            db.put(null, new DatabaseEntry(val), new DatabaseEntry(val));
         }
 
         for (int i = 0; i < threads.length; i++) {
@@ -232,8 +223,7 @@ public class SecondaryMultiTest extends TestBase {
             } else {
                 tdb = db2UsePrimary ? db : sdb;
             }
-            deleters[i] =
-                new DeleteIt(KEY, env, tdb, 0, deleters.length / 2, 1);
+            deleters[i] = new DeleteIt(KEY, env, tdb, 0, deleters.length / 2, 1);
             threads[i] = new Thread(deleters[i]);
         }
 
@@ -262,8 +252,7 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     /*
-     * Have multiple readers and writer threads accessing the
-     * same record.
+     * Have multiple readers and writer threads accessing the same record.
      */
     @Test
     public void testMultiReadInsert() throws Exception {
@@ -284,9 +273,7 @@ public class SecondaryMultiTest extends TestBase {
                 continue;
             }
             byte[] val = Integer.valueOf(i).toString().getBytes();
-            db.put(null,
-                   new DatabaseEntry(val),
-                   new DatabaseEntry(val));
+            db.put(null, new DatabaseEntry(val), new DatabaseEntry(val));
         }
 
         for (int i = 0; i < readers.length; i++) {
@@ -302,9 +289,7 @@ public class SecondaryMultiTest extends TestBase {
                 curReadType = curReadType + 1;
             }
 
-            readers[i] =
-                    new ReadIt(KEY, env, tdb, 0, 0, 1,
-                               OperationStatus.NOTFOUND, trt);
+            readers[i] = new ReadIt(KEY, env, tdb, 0, 0, 1, OperationStatus.NOTFOUND, trt);
             threads[i] = new Thread(readers[i]);
         }
 
@@ -351,9 +336,7 @@ public class SecondaryMultiTest extends TestBase {
         /* populate */
         for (int i = 0; i < DATACOUNT; i++) {
             byte[] val = Integer.valueOf(i).toString().getBytes();
-            db.put(null,
-                   new DatabaseEntry(val),
-                   new DatabaseEntry(val));
+            db.put(null, new DatabaseEntry(val), new DatabaseEntry(val));
         }
 
         for (int i = 0; i < readers.length; i++) {
@@ -363,19 +346,14 @@ public class SecondaryMultiTest extends TestBase {
             } else {
                 tdb = db2UsePrimary ? db : sdb;
             }
-            ReadType trt = tdb instanceof SecondaryDatabase ?
-                                readTypes[curReadType++ % readTypes.length] :
-                                ReadType.GETSEARCHKEY;
-            readers[i] =
-                    new ReadIt(KEY, env, tdb, 0, 0, 1,
-                               OperationStatus.SUCCESS, trt);
+            ReadType trt = tdb instanceof SecondaryDatabase ? readTypes[curReadType++ % readTypes.length]
+                    : ReadType.GETSEARCHKEY;
+            readers[i] = new ReadIt(KEY, env, tdb, 0, 0, 1, OperationStatus.SUCCESS, trt);
             threads[i] = new Thread(readers[i]);
         }
 
         for (int i = 0; i < writers.length; i++) {
-            writers[i] =
-                new DeleteIt(KEY, env, db1UsePrimary ? db : sdb,
-                             0, readers.length / 2, 1);
+            writers[i] = new DeleteIt(KEY, env, db1UsePrimary ? db : sdb, 0, readers.length / 2, 1);
             threads[i + readers.length] = new Thread(writers[i]);
         }
 
@@ -399,8 +377,7 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     /*
-     * Have multiple threads deleting, inserting, and reading
-     * the same record.
+     * Have multiple threads deleting, inserting, and reading the same record.
      */
     @Test
     public void testMultiReadDeleteInsert() throws Exception {
@@ -422,9 +399,7 @@ public class SecondaryMultiTest extends TestBase {
         /* populate */
         for (int i = 0; i < DATACOUNT; i++) {
             byte[] val = Integer.valueOf(i).toString().getBytes();
-            db.put(null,
-                   new DatabaseEntry(val),
-                   new DatabaseEntry(val));
+            db.put(null, new DatabaseEntry(val), new DatabaseEntry(val));
         }
 
         for (int i = 0; i < readers.length; i++) {
@@ -439,24 +414,18 @@ public class SecondaryMultiTest extends TestBase {
                 trt = readTypes[curReadType % readTypes.length];
                 curReadType = curReadType + 1;
             }
-            readers[i] =
-                new ReadTillITellYou(KEY, env, tdb, 0, 0, 1, trt, null);
+            readers[i] = new ReadTillITellYou(KEY, env, tdb, 0, 0, 1, trt, null);
             threads[i] = new Thread(readers[i]);
         }
 
         for (int i = 0; i < writers.length; i++) {
-            writers[i] =
-                new InsertIt(KEY, env, db,
-                             0, readers.length / 2, 1);
+            writers[i] = new InsertIt(KEY, env, db, 0, readers.length / 2, 1);
             threads[i + readers.length] = new Thread(writers[i]);
         }
 
         for (int i = 0; i < deleters.length; i++) {
-            deleters[i] =
-                new DeleteIt(KEY, env, db1UsePrimary ? db : sdb,
-                             0, readers.length / 2, 1);
-            threads[i + readers.length + writers.length] =
-                new Thread(writers[i]);
+            deleters[i] = new DeleteIt(KEY, env, db1UsePrimary ? db : sdb, 0, readers.length / 2, 1);
+            threads[i + readers.length + writers.length] = new Thread(writers[i]);
         }
 
         for (int i = 0; i < threads.length; i++) {
@@ -484,8 +453,8 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     /*
-     * Have multiple threads update (delete/insert in a
-     * transaction) and read the same record.
+     * Have multiple threads update (delete/insert in a transaction) and read
+     * the same record.
      */
     @Test
     public void testMultiReadUpdate() throws Exception {
@@ -505,9 +474,7 @@ public class SecondaryMultiTest extends TestBase {
         /* populate */
         for (int i = 0; i < DATACOUNT; i++) {
             byte[] val = Integer.valueOf(i).toString().getBytes();
-            db.put(null,
-                   new DatabaseEntry(val),
-                   new DatabaseEntry(val));
+            db.put(null, new DatabaseEntry(val), new DatabaseEntry(val));
         }
 
         for (int i = 0; i < readers.length; i++) {
@@ -522,15 +489,12 @@ public class SecondaryMultiTest extends TestBase {
                 trt = readTypes[curReadType % readTypes.length];
                 curReadType = curReadType + 1;
             }
-            readers[i] =
-                new ReadTillITellYou(KEY, env, tdb, 0, 0, 1, trt, null);
+            readers[i] = new ReadTillITellYou(KEY, env, tdb, 0, 0, 1, trt, null);
             threads[i] = new Thread(readers[i]);
         }
 
         for (int i = 0; i < writers.length; i++) {
-            writers[i] =
-                new UpdateIt(KEY, env, db, sdb,
-                             0, readers.length / 2, 1);
+            writers[i] = new UpdateIt(KEY, env, db, sdb, 0, readers.length / 2, 1);
             threads[i + readers.length] = new Thread(writers[i]);
         }
 
@@ -564,8 +528,7 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     /*
-     * Multiple readers reading the same record with different
-     * lock types.
+     * Multiple readers reading the same record with different lock types.
      */
     @Test
     public void testMultiReaders() throws Exception {
@@ -584,9 +547,7 @@ public class SecondaryMultiTest extends TestBase {
         /* populate */
         for (int i = 0; i < DATACOUNT; i++) {
             byte[] val = Integer.valueOf(i).toString().getBytes();
-            db.put(null,
-                   new DatabaseEntry(val),
-                   new DatabaseEntry(val));
+            db.put(null, new DatabaseEntry(val), new DatabaseEntry(val));
         }
 
         for (int i = 0; i < readers.length; i++) {
@@ -603,8 +564,7 @@ public class SecondaryMultiTest extends TestBase {
                 trt = readTypes[curReadType % readTypes.length];
                 curReadType = curReadType + 1;
             }
-            readers[i] =
-                new ReadTillITellYou(KEY, env, tdb, 0, 0, 1, trt, lockMode);
+            readers[i] = new ReadTillITellYou(KEY, env, tdb, 0, 0, 1, trt, lockMode);
             threads[i] = new Thread(readers[i]);
         }
 
@@ -633,29 +593,23 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     public boolean deadlocksCanHappen() {
-        if (useSerialization &&
-            db1UsePrimary ^ db2UsePrimary) {
+        if (useSerialization && db1UsePrimary ^ db2UsePrimary) {
             return true;
         }
         return false;
     }
 
     class DeleteIt implements Runnable {
-        int key;
-        Database db;
-        Environment env;
+        int             key;
+        Database        db;
+        Environment     env;
         OperationStatus retstat = null;
-        int waitEventPre;
-        int waitEventPost;
-        int id;
-        long waittime;
+        int             waitEventPre;
+        int             waitEventPost;
+        int             id;
+        long            waittime;
 
-        DeleteIt(int key,
-                 Environment env,
-                 Database db,
-                 int waiteventpre,
-                 int waiteventpost,
-                 long waittime) {
+        DeleteIt(int key, Environment env, Database db, int waiteventpre, int waiteventpost, long waittime) {
             this.key = key;
             this.db = db;
             this.env = env;
@@ -663,18 +617,18 @@ public class SecondaryMultiTest extends TestBase {
             this.waitEventPost = waiteventpost;
             id = threadid++;
             this.waittime = waittime;
-         }
+        }
 
-       private boolean deadlockCanHappen() {
-            if (useSerialization &&
-                db1UsePrimary ^ db2UsePrimary) {
+        private boolean deadlockCanHappen() {
+            if (useSerialization && db1UsePrimary ^ db2UsePrimary) {
                 return true;
             }
             return false;
         }
 
         public void run() {
-            while (!doWork());
+            while (!doWork())
+                ;
         }
 
         private boolean doWork() {
@@ -692,7 +646,7 @@ public class SecondaryMultiTest extends TestBase {
                 try {
                     retstat = db.delete(xact, createEntry(key));
                 } catch (LockConflictException e) {
-                    if (!deadlockCanHappen() ) {
+                    if (!deadlockCanHappen()) {
                         fail("deadlock occured but not expected.");
                     }
                     Transaction tx = xact;
@@ -729,34 +683,28 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     class ReadIt implements Runnable {
-        int key;
-        Database db;
-        Environment env;
-        int waitEventPre;
-        int waitEventPost;
-        long waitTime;
+        int             key;
+        Database        db;
+        Environment     env;
+        int             waitEventPre;
+        int             waitEventPost;
+        long            waitTime;
         OperationStatus result;
-        int id;
+        int             id;
         OperationStatus initStatus;
-        ReadType readType;
+        ReadType        readType;
 
-        ReadIt(int key,
-               Environment env,
-               Database db,
-               int waitEventPre,
-               int waitEventPost,
-               long waitTime,
-               OperationStatus initStatus,
-               ReadType readType) {
-           this.key = key;
-           this.db = db;
-           this.env = env;
-           this.waitEventPre = waitEventPre;
-           this.waitEventPost = waitEventPost;
-           this.waitTime = waitTime;
-           id = threadid++;
-           this.initStatus = initStatus;
-           this.readType = readType;
+        ReadIt(int key, Environment env, Database db, int waitEventPre, int waitEventPost, long waitTime,
+               OperationStatus initStatus, ReadType readType) {
+            this.key = key;
+            this.db = db;
+            this.env = env;
+            this.waitEventPre = waitEventPre;
+            this.waitEventPost = waitEventPost;
+            this.waitTime = waitTime;
+            id = threadid++;
+            this.initStatus = initStatus;
+            this.readType = readType;
         }
 
         public void run() {
@@ -796,32 +744,20 @@ public class SecondaryMultiTest extends TestBase {
                 if (readType == ReadType.GETSEARCHKEY) {
                     result = c.getSearchKey(dek, data, null);
                 } else if (readType == ReadType.GETSEARCHKEY2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKey(dek, dek,
-                                                          data, null);
+                    result = ((SecondaryCursor) c).getSearchKey(dek, dek, data, null);
                 } else if (readType == ReadType.GETSEARCHBOTH) {
-                    result =
-                        ((SecondaryCursor)c).getSearchBoth(dek, dek,
-                                                           data, null);
+                    result = ((SecondaryCursor) c).getSearchBoth(dek, dek, data, null);
                 } else if (readType == ReadType.GETSEARCHBOTH2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchBoth(dek, dek,
-                                                           data, null);
+                    result = ((SecondaryCursor) c).getSearchBoth(dek, dek, data, null);
                 } else if (readType == ReadType.GETSEARCHKEYRANGE) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKeyRange(seckey,
-                                                               data, null);
+                    result = ((SecondaryCursor) c).getSearchKeyRange(seckey, data, null);
                     if (result == OperationStatus.SUCCESS) {
                         if (!seckey.equals(dek)) {
                             result = OperationStatus.NOTFOUND;
                         }
                     }
                 } else if (readType == ReadType.GETSEARCHKEYRANGE2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKeyRange(seckey,
-                                                               prikey,
-                                                               data,
-                                                               null);
+                    result = ((SecondaryCursor) c).getSearchKeyRange(seckey, prikey, data, null);
                     if (result == OperationStatus.SUCCESS) {
                         if (!seckey.equals(dek)) {
                             result = OperationStatus.NOTFOUND;
@@ -841,8 +777,7 @@ public class SecondaryMultiTest extends TestBase {
                 if (!deadlockCanHappen()) {
                     fail("deadlock occured but not expected.");
                 }
-            }
-            finally {
+            } finally {
                 if (c != null) {
                     c.close();
                 }
@@ -857,8 +792,7 @@ public class SecondaryMultiTest extends TestBase {
         }
 
         private boolean deadlockCanHappen() {
-            if (useSerialization &&
-                db1UsePrimary ^ db2UsePrimary) {
+            if (useSerialization && db1UsePrimary ^ db2UsePrimary) {
                 return true;
             }
             return false;
@@ -866,37 +800,31 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     class ReadTillITellYou implements Runnable {
-        int key;
-        Database db;
-        Environment env;
-        int waitEventPre;
-        int waitEventPost;
-        long waitTime;
+        int             key;
+        Database        db;
+        Environment     env;
+        int             waitEventPre;
+        int             waitEventPost;
+        long            waitTime;
         OperationStatus result;
-        int id;
-        boolean done = false;
-        ReadType readType;
-        long found;
-        long notFound;
-        LockMode lockMode;
+        int             id;
+        boolean         done = false;
+        ReadType        readType;
+        long            found;
+        long            notFound;
+        LockMode        lockMode;
 
-        ReadTillITellYou(int key,
-                         Environment env,
-                         Database db,
-                         int waitEventPre,
-                         int waitEventPost,
-                         long waitTime,
-                         ReadType readType,
-                         LockMode lkmode) {
-           this.key = key;
-           this.db = db;
-           this.env = env;
-           this.waitEventPre = waitEventPre;
-           this.waitEventPost = waitEventPost;
-           this.waitTime = waitTime;
-           id = threadid++;
-           this.readType = readType;
-           lockMode = lkmode;
+        ReadTillITellYou(int key, Environment env, Database db, int waitEventPre, int waitEventPost, long waitTime,
+                         ReadType readType, LockMode lkmode) {
+            this.key = key;
+            this.db = db;
+            this.env = env;
+            this.waitEventPre = waitEventPre;
+            this.waitEventPost = waitEventPost;
+            this.waitTime = waitTime;
+            id = threadid++;
+            this.readType = readType;
+            lockMode = lkmode;
         }
 
         public void run() {
@@ -935,32 +863,20 @@ public class SecondaryMultiTest extends TestBase {
                 if (readType == ReadType.GETSEARCHKEY) {
                     result = c.getSearchKey(dek, data, lockMode);
                 } else if (readType == ReadType.GETSEARCHKEY2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKey(dek, dek,
-                                                          data, lockMode);
+                    result = ((SecondaryCursor) c).getSearchKey(dek, dek, data, lockMode);
                 } else if (readType == ReadType.GETSEARCHBOTH) {
-                    result =
-                        ((SecondaryCursor)c).getSearchBoth(dek, dek,
-                                                           data, lockMode);
+                    result = ((SecondaryCursor) c).getSearchBoth(dek, dek, data, lockMode);
                 } else if (readType == ReadType.GETSEARCHBOTH2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchBoth(dek, dek,
-                                                           data, lockMode);
+                    result = ((SecondaryCursor) c).getSearchBoth(dek, dek, data, lockMode);
                 } else if (readType == ReadType.GETSEARCHKEYRANGE) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKeyRange(seckey,
-                                                                data, lockMode);
+                    result = ((SecondaryCursor) c).getSearchKeyRange(seckey, data, lockMode);
                     if (result == OperationStatus.SUCCESS) {
                         if (!seckey.equals(dek)) {
                             result = OperationStatus.NOTFOUND;
                         }
                     }
                 } else if (readType == ReadType.GETSEARCHKEYRANGE2) {
-                    result =
-                        ((SecondaryCursor)c).getSearchKeyRange(seckey,
-                                                               prikey,
-                                                               data,
-                                                               lockMode);
+                    result = ((SecondaryCursor) c).getSearchKeyRange(seckey, prikey, data, lockMode);
                     if (result == OperationStatus.SUCCESS) {
                         if (!seckey.equals(dek)) {
                             result = OperationStatus.NOTFOUND;
@@ -972,7 +888,7 @@ public class SecondaryMultiTest extends TestBase {
                 } else if (result == OperationStatus.NOTFOUND) {
                     notFound++;
                 } else {
-                    fail("Read operation returned "+result);
+                    fail("Read operation returned " + result);
                 }
             } catch (LockConflictException e) {
                 if (!deadlockCanHappen()) {
@@ -982,8 +898,7 @@ public class SecondaryMultiTest extends TestBase {
                 xact = null;
                 tx.abort();
                 result = null;
-            }
-            finally {
+            } finally {
                 if (c != null) {
                     c.close();
                 }
@@ -1010,8 +925,7 @@ public class SecondaryMultiTest extends TestBase {
         }
 
         private boolean deadlockCanHappen() {
-            if (useSerialization &&
-                db1UsePrimary ^ db2UsePrimary) {
+            if (useSerialization && db1UsePrimary ^ db2UsePrimary) {
                 return true;
             }
             return false;
@@ -1019,21 +933,16 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     class InsertIt implements Runnable {
-        int key;
-        Database db;
-        Environment env;
+        int             key;
+        Database        db;
+        Environment     env;
         OperationStatus retstat = null;
-        int waitEventPre;
-        int waitEventPost;
-        int id;
-        long waittime;
+        int             waitEventPre;
+        int             waitEventPost;
+        int             id;
+        long            waittime;
 
-        InsertIt(int key,
-                 Environment env,
-                 Database db,
-                 int waiteventpre,
-                 int waiteventpost,
-                 long waittime) {
+        InsertIt(int key, Environment env, Database db, int waiteventpre, int waiteventpost, long waittime) {
             this.key = key;
             this.db = db;
             this.env = env;
@@ -1041,7 +950,7 @@ public class SecondaryMultiTest extends TestBase {
             this.waitEventPost = waiteventpost;
             id = threadid++;
             this.waittime = waittime;
-         }
+        }
 
         public void run() {
             Transaction xact = env.beginTransaction(null, null);
@@ -1085,8 +994,7 @@ public class SecondaryMultiTest extends TestBase {
         }
 
         private boolean deadlockCanHappen() {
-            if (useSerialization &&
-                db1UsePrimary ^ db2UsePrimary) {
+            if (useSerialization && db1UsePrimary ^ db2UsePrimary) {
                 return true;
             }
             return false;
@@ -1098,22 +1006,17 @@ public class SecondaryMultiTest extends TestBase {
     }
 
     class UpdateIt implements Runnable {
-        int key;
-        Database db;
+        int               key;
+        Database          db;
         SecondaryDatabase sdb;
-        Environment env;
-        OperationStatus retstat = null;
-        int waitEventPre;
-        int waitEventPost;
-        int id;
-        long waittime;
+        Environment       env;
+        OperationStatus   retstat = null;
+        int               waitEventPre;
+        int               waitEventPost;
+        int               id;
+        long              waittime;
 
-        UpdateIt(int key,
-                 Environment env,
-                 Database db,
-                 SecondaryDatabase sdb,
-                 int waiteventpre,
-                 int waiteventpost,
+        UpdateIt(int key, Environment env, Database db, SecondaryDatabase sdb, int waiteventpre, int waiteventpost,
                  long waittime) {
             this.key = key;
             this.db = db;
@@ -1123,18 +1026,18 @@ public class SecondaryMultiTest extends TestBase {
             id = threadid++;
             this.waittime = waittime;
             this.sdb = sdb;
-         }
+        }
 
-       private boolean deadlockCanHappen() {
-            if (useSerialization &&
-                db1UsePrimary ^ db2UsePrimary) {
+        private boolean deadlockCanHappen() {
+            if (useSerialization && db1UsePrimary ^ db2UsePrimary) {
                 return true;
             }
             return false;
         }
 
         public void run() {
-            while (!doWork());
+            while (!doWork())
+                ;
         }
 
         private boolean doWork() {
@@ -1155,7 +1058,7 @@ public class SecondaryMultiTest extends TestBase {
                     retstat = db.put(xact, createEntry(key), createEntry(key));
                     assertEquals(retstat, OperationStatus.SUCCESS);
                 } catch (LockConflictException e) {
-                    if (!deadlockCanHappen() ) {
+                    if (!deadlockCanHappen()) {
                         fail("deadlock occured but not expected.");
                     }
                     Transaction tx = xact;
@@ -1195,24 +1098,19 @@ public class SecondaryMultiTest extends TestBase {
         return new DatabaseEntry(Integer.valueOf(val).toString().getBytes());
     }
 
-    private SecondaryDatabase
-        openSecondary(Environment env,
-                      Database priDb,
-                      String dbName,
-                      SecondaryConfig dbConfig) {
+    private SecondaryDatabase openSecondary(Environment env, Database priDb, String dbName, SecondaryConfig dbConfig) {
         dbConfig.setAllowPopulate(true);
         dbConfig.setSortedDuplicates(true);
         dbConfig.setTransactional(true);
         dbConfig.setAllowCreate(true);
         dbConfig.setKeyCreator(new MyKeyCreator());
-        return env.openSecondaryDatabase(null, dbName,
-                                         priDb, dbConfig);
+        return env.openSecondaryDatabase(null, dbName, priDb, dbConfig);
     }
 
     class MyKeyCreator implements SecondaryKeyCreator {
         @Override
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                DatabaseEntry key, DatabaseEntry data, DatabaseEntry result) {
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
+                                          DatabaseEntry result) {
             result.setData(key.getData());
 
             return true;

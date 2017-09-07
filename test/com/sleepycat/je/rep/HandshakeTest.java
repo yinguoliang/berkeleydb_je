@@ -39,14 +39,14 @@ import com.sleepycat.util.test.TestBase;
 
 public class HandshakeTest extends TestBase {
 
-    private final File envRoot;
-    private final int groupSize = 4;
+    private final File            envRoot;
+    private final int             groupSize      = 4;
 
-    private ReplicatedEnvironment master = null;
-    private RepNode masterNode = null;
+    private ReplicatedEnvironment master         = null;
+    private RepNode               masterNode     = null;
 
-    RepEnvInfo[] repEnvInfo = null;
-    RepEnvInfo replicaEnvInfo = null;
+    RepEnvInfo[]                  repEnvInfo     = null;
+    RepEnvInfo                    replicaEnvInfo = null;
 
     public HandshakeTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -54,22 +54,20 @@ public class HandshakeTest extends TestBase {
 
     @Override
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
 
         repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, groupSize);
 
         /*
-         * Disable stat collection to avoid NPE in testDup.  It constructs a
+         * Disable stat collection to avoid NPE in testDup. It constructs a
          * Feeder() with a null outputThread field, and this causes an NPE when
          * getProtocolStats is called from the stat collector, which depends on
-         * timing.  Outside of this particular test the outputThread field is
+         * timing. Outside of this particular test the outputThread field is
          * non-null and final, so checking for null in Feeder is undesirable.
          */
-        repEnvInfo[0].getEnvConfig().setConfigParam(
-            EnvironmentConfig.STATS_COLLECT, "false");
+        repEnvInfo[0].getEnvConfig().setConfigParam(EnvironmentConfig.STATS_COLLECT, "false");
 
         master = repEnvInfo[0].openEnv();
         replicaEnvInfo = repEnvInfo[1];
@@ -80,8 +78,7 @@ public class HandshakeTest extends TestBase {
 
     @Override
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         RepTestUtils.shutdownRepEnvs(repEnvInfo);
     }
@@ -90,14 +87,12 @@ public class HandshakeTest extends TestBase {
      * Test error handling on a version mismatch
      */
     @Test
-    public void testProtocolVersionMismatch()
-        throws Throwable {
+    public void testProtocolVersionMismatch() throws Throwable {
 
         /* Hack the version number for the test */
         try {
             ReplicaFeederHandshake.setTestProtocolVersion(Integer.MIN_VALUE);
-            checkForException
-                (EnvironmentFailureReason.PROTOCOL_VERSION_MISMATCH);
+            checkForException(EnvironmentFailureReason.PROTOCOL_VERSION_MISMATCH);
         } finally {
             /* Restore the default version */
             ReplicaFeederHandshake.setTestProtocolVersion(0);
@@ -105,12 +100,11 @@ public class HandshakeTest extends TestBase {
     }
 
     /**
-     * Test feeder older log version than replica. Version 13 introduces
-     * dtvlsn commits and so changes the txn commit/abort record formats.
+     * Test feeder older log version than replica. Version 13 introduces dtvlsn
+     * commits and so changes the txn commit/abort record formats.
      */
     @Test
-    public void testLogVersionFeeder12Replica13()
-        throws Throwable {
+    public void testLogVersionFeeder12Replica13() throws Throwable {
 
         try {
             ReplicaFeederHandshake.setTestLogVersion(13);
@@ -122,12 +116,11 @@ public class HandshakeTest extends TestBase {
     }
 
     /**
-     * Test feeder newer log version than replica. Version 13 introduces
-     * dtvlsn commits and so changes the txn commit/abort record formats.
+     * Test feeder newer log version than replica. Version 13 introduces dtvlsn
+     * commits and so changes the txn commit/abort record formats.
      */
     @Test
-    public void testLogVersionFeeder13Replica12()
-        throws Throwable {
+    public void testLogVersionFeeder13Replica12() throws Throwable {
 
         try {
             ReplicaFeederHandshake.setTestLogVersion(12);
@@ -143,8 +136,7 @@ public class HandshakeTest extends TestBase {
      * replica is not supported until feeder version 9.
      */
     @Test
-    public void testOneOlderLogVersion8()
-        throws Throwable {
+    public void testOneOlderLogVersion8() throws Throwable {
 
         try {
             ReplicaFeederHandshake.setTestLogVersion(7);
@@ -161,8 +153,7 @@ public class HandshakeTest extends TestBase {
      * is supported.
      */
     @Test
-    public void testOneOlderLogVersion9()
-        throws Throwable {
+    public void testOneOlderLogVersion9() throws Throwable {
 
         try {
             ReplicaFeederHandshake.setTestLogVersion(8);
@@ -179,13 +170,11 @@ public class HandshakeTest extends TestBase {
      * log entry version may not be the current log version.
      */
     @Test
-    public void testLogVersionFeederHighestReplicableVersion()
-        throws Throwable {
+    public void testLogVersionFeederHighestReplicableVersion() throws Throwable {
 
         int highestFeederVersion = LogEntryType.LOG_VERSION_HIGHEST_REPLICABLE;
         int lowestReplicaVersion;
-        if (highestFeederVersion >=
-            LogEntryType.LOG_VERSION_REPLICATE_OLDER) {
+        if (highestFeederVersion >= LogEntryType.LOG_VERSION_REPLICATE_OLDER) {
             /* Feeder can downgrade by one or more versions */
             lowestReplicaVersion = highestFeederVersion - 1;
         } else {
@@ -204,21 +193,17 @@ public class HandshakeTest extends TestBase {
      * Test error handling when there is a duplicate replica node.
      */
     @Test
-    public void testDup()
-        throws Exception {
+    public void testDup() throws Exception {
 
         // Introduce a fake feeder in the map
-        masterNode.feederManager().putFeeder(replicaEnvInfo.getRepConfig().
-                                             getNodeName(), new Feeder());
+        masterNode.feederManager().putFeeder(replicaEnvInfo.getRepConfig().getNodeName(), new Feeder());
         checkForException(EnvironmentFailureReason.HANDSHAKE_ERROR);
     }
 
     @Test
-    public void testReplicaLeadingClockSkew()
-        throws Exception {
+    public void testReplicaLeadingClockSkew() throws Exception {
 
-        int delta = (int) replicaEnvInfo.getRepConfig().getMaxClockDelta
-            (TimeUnit.MILLISECONDS);
+        int delta = (int) replicaEnvInfo.getRepConfig().getMaxClockDelta(TimeUnit.MILLISECONDS);
         try {
             RepImpl.setSkewMs(delta + 10);
             checkForException(EnvironmentFailureReason.HANDSHAKE_ERROR);
@@ -228,11 +213,9 @@ public class HandshakeTest extends TestBase {
     }
 
     @Test
-    public void testReplicaLaggingClockSkew()
-        throws Exception {
+    public void testReplicaLaggingClockSkew() throws Exception {
 
-        int delta = (int) replicaEnvInfo.getRepConfig().getMaxClockDelta
-            (TimeUnit.MILLISECONDS);
+        int delta = (int) replicaEnvInfo.getRepConfig().getMaxClockDelta(TimeUnit.MILLISECONDS);
         RepImpl.setSkewMs(-(delta + 10));
         checkForException(EnvironmentFailureReason.HANDSHAKE_ERROR);
         try {
@@ -243,45 +226,40 @@ public class HandshakeTest extends TestBase {
     }
 
     @Test
-    public void testDuplicateSocket()
-        throws Exception {
+    public void testDuplicateSocket() throws Exception {
 
         ReplicatedEnvironment renv2 = repEnvInfo[1].openEnv();
         ReplicatedEnvironment renv3 = repEnvInfo[2].openEnv();
         renv3.close();
         try {
             ReplicationConfig config = repEnvInfo[3].getRepConfig();
-            config.setNodeHostPort(repEnvInfo[2].getRepConfig().
-                                   getNodeHostPort());
+            config.setNodeHostPort(repEnvInfo[2].getRepConfig().getNodeHostPort());
             ReplicatedEnvironment renv4 = repEnvInfo[3].openEnv();
             renv4.close();
             fail("Expected exception");
         } catch (EnvironmentFailureException e) {
-            assertEquals(EnvironmentFailureReason.HANDSHAKE_ERROR,
-                         e.getReason());
+            assertEquals(EnvironmentFailureReason.HANDSHAKE_ERROR, e.getReason());
         } catch (Exception e) {
-            fail ("Wrong exception type " + e);
+            fail("Wrong exception type " + e);
         }
         renv2.close();
     }
 
     @Test
-    public void testConflictingPort()
-        throws Exception {
+    public void testConflictingPort() throws Exception {
 
         /* Establish the node in the rep group db. */
         replicaEnvInfo.openEnv();
         replicaEnvInfo.closeEnv();
 
         ReplicationConfig config = replicaEnvInfo.getRepConfig();
-        config.setNodeHostPort(config.getNodeHostname() + ":" + 8888 );
+        config.setNodeHostPort(config.getNodeHostname() + ":" + 8888);
 
         checkForException(EnvironmentFailureReason.HANDSHAKE_ERROR);
     }
 
     @Test
-    public void testConflictingType()
-        throws Exception {
+    public void testConflictingType() throws Exception {
 
         /* Establish the node in the rep group db. */
         replicaEnvInfo.openEnv();
@@ -294,8 +272,7 @@ public class HandshakeTest extends TestBase {
     }
 
     @Test
-    public void testBadGroupOnReopen()
-        throws Exception {
+    public void testBadGroupOnReopen() throws Exception {
 
         /* Establish the node in the rep group db. */
         replicaEnvInfo.openEnv();

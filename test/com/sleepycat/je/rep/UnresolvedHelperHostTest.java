@@ -41,11 +41,10 @@ import com.sleepycat.je.rep.utilint.RepTestUtils.RepEnvInfo;
  */
 public class UnresolvedHelperHostTest extends RepTestBase {
 
-    private static final String dnsHostPrefix =
-        "hostname-from-LocalAliasNameService-";
-    private static final String originalSkipHelperHostResolution =
-        System.getProperty(SKIP_HELPER_HOST_RESOLUTION, "false");
-    private int[] originalDNSCachePolicy;
+    private static final String dnsHostPrefix                    = "hostname-from-LocalAliasNameService-";
+    private static final String originalSkipHelperHostResolution = System.getProperty(SKIP_HELPER_HOST_RESOLUTION,
+            "false");
+    private int[]               originalDNSCachePolicy;
 
     @BeforeClass
     public static void setUpClass() {
@@ -62,50 +61,41 @@ public class UnresolvedHelperHostTest extends RepTestBase {
 
     @Override
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         RepTestUtils.removeRepEnvironments(envRoot);
 
         originalDNSCachePolicy = LocalAliasNameService.setDNSCachePolicy(0, 0);
 
         /* Confirm that DNS providers were installed properly */
-        assertEquals("sun.net.spi.nameservice.provider.1",
-                     "default",
-                     System.getProperty("sun.net.spi.nameservice.provider.1"));
-        assertEquals("sun.net.spi.nameservice.provider.2",
-                     "dns,localalias",
-                     System.getProperty("sun.net.spi.nameservice.provider.2"));
+        assertEquals("sun.net.spi.nameservice.provider.1", "default",
+                System.getProperty("sun.net.spi.nameservice.provider.1"));
+        assertEquals("sun.net.spi.nameservice.provider.2", "dns,localalias",
+                System.getProperty("sun.net.spi.nameservice.provider.2"));
     }
 
     @Override
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         super.tearDown();
         LocalAliasNameService.clearAllAliases();
 
-        LocalAliasNameService.setDNSCachePolicy(
-            originalDNSCachePolicy[0], originalDNSCachePolicy[1]);
+        LocalAliasNameService.setDNSCachePolicy(originalDNSCachePolicy[0], originalDNSCachePolicy[1]);
 
-        System.setProperty(SKIP_HELPER_HOST_RESOLUTION,
-                           originalSkipHelperHostResolution);
+        System.setProperty(SKIP_HELPER_HOST_RESOLUTION, originalSkipHelperHostResolution);
     }
 
     /**
-     * Test starting nodes when one of their helper hosts has a hostname that
-     * is not resolvable.  [#23120]
+     * Test starting nodes when one of their helper hosts has a hostname that is
+     * not resolvable. [#23120]
      */
     @Test
-    public void testBasic()
-        throws Exception {
+    public void testBasic() throws Exception {
 
         try {
             InetAddress.getByName("this-is-an-unknown-hostname");
-            assumeThat("Skip when running on systems that resolve unknown" +
-                       " hostnames",
-                       nullValue());
+            assumeThat("Skip when running on systems that resolve unknown" + " hostnames", nullValue());
         } catch (UnknownHostException e) {
         }
 
@@ -136,14 +126,12 @@ public class UnresolvedHelperHostTest extends RepTestBase {
             String hostPort = rc.getNodeHostPort();
             rc.setNodeHostPort(hostPort.replaceAll("localhost", hostname));
 
-            repEnvInfo[i] =
-                RepTestUtils.setupEnvInfo(dirs[i], ec, rc, repEnvInfo[0]);
+            repEnvInfo[i] = RepTestUtils.setupEnvInfo(dirs[i], ec, rc, repEnvInfo[0]);
         }
 
         /* Use the first two nodes as the helpers for the last three */
-        String helpers = repEnvInfo[0].getRepConfig().getNodeHostPort() +
-            "," +
-            repEnvInfo[1].getRepConfig().getNodeHostPort();
+        String helpers = repEnvInfo[0].getRepConfig().getNodeHostPort() + ","
+                + repEnvInfo[1].getRepConfig().getNodeHostPort();
         for (int i = 2; i < 5; i++) {
             repEnvInfo[i].getRepConfig().setHelperHosts(helpers);
         }
@@ -208,8 +196,7 @@ public class UnresolvedHelperHostTest extends RepTestBase {
         RepEnvInfo prevMasterInfo = findMasterWait(0, repEnvInfo);
         prevMasterInfo.closeEnv();
         masterInfo = findMasterWait(30000, repEnvInfo);
-        assertFalse(prevMasterInfo + " should not equal " + masterInfo,
-                    prevMasterInfo.equals(masterInfo));
+        assertFalse(prevMasterInfo + " should not equal " + masterInfo, prevMasterInfo.equals(masterInfo));
         prevMasterInfo.openEnv();
     }
 }

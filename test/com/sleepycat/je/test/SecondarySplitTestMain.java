@@ -34,29 +34,27 @@ import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * Tests that splits during secondary inserts don't cause a LatchException
- * (latch already held).  This was caused by a latch that wasn't released
- * during a duplicate insert, when a split occurred during the insert.  See
- * [#12841] in Tree.java.
- *
- * The record keys are random long values and the record data is the long
- * time (millis) of the record creation.  The secondary database is indexed on
- * the full data value (the timestamp).  When a record is updated, its timstamp
- * is changed to the current time, cause secondary deletes and inserts.  This
- * scenario is what happened to bring out the bug in SR [#12841].
+ * (latch already held). This was caused by a latch that wasn't released during
+ * a duplicate insert, when a split occurred during the insert. See [#12841] in
+ * Tree.java. The record keys are random long values and the record data is the
+ * long time (millis) of the record creation. The secondary database is indexed
+ * on the full data value (the timestamp). When a record is updated, its
+ * timstamp is changed to the current time, cause secondary deletes and inserts.
+ * This scenario is what happened to bring out the bug in SR [#12841].
  */
 public class SecondarySplitTestMain {
 
-    private static final int WRITER_THREADS = 2;
-    private static final int INSERTS_PER_ITER = 2;
-    private static final int UPDATES_PER_ITER = 1;
-    private static final int ITERS_PER_THREAD = 20000;
-    private static final int ITERS_PER_TRACE = 1000;
+    private static final int  WRITER_THREADS   = 2;
+    private static final int  INSERTS_PER_ITER = 2;
+    private static final int  UPDATES_PER_ITER = 1;
+    private static final int  ITERS_PER_THREAD = 20000;
+    private static final int  ITERS_PER_TRACE  = 1000;
 
-    private final File envHome;
-    private Environment env;
-    private Database priDb;
+    private final File        envHome;
+    private Environment       env;
+    private Database          priDb;
     private SecondaryDatabase secDb;
-    private final Random rnd = new Random(123);
+    private final Random      rnd              = new Random(123);
 
     public static void main(String[] args) {
         try {
@@ -73,8 +71,7 @@ public class SecondarySplitTestMain {
         envHome = SharedTestUtils.getTestDir();
     }
 
-    private void doTest()
-        throws Exception {
+    private void doTest() throws Exception {
 
         TestUtils.removeLogFiles("Setup", envHome, false);
         open();
@@ -93,8 +90,7 @@ public class SecondarySplitTestMain {
         System.out.println("SUCCESS");
     }
 
-    private void open()
-        throws DatabaseException {
+    private void open() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -114,8 +110,7 @@ public class SecondarySplitTestMain {
         secDb = env.openSecondaryDatabase(null, "sec", priDb, secConfig);
     }
 
-    private void close()
-        throws DatabaseException {
+    private void close() throws DatabaseException {
 
         secDb.close();
         secDb = null;
@@ -129,9 +124,7 @@ public class SecondarySplitTestMain {
 
     static class KeyCreator implements SecondaryKeyCreator {
 
-        public boolean createSecondaryKey(SecondaryDatabase db,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data,
+        public boolean createSecondaryKey(SecondaryDatabase db, DatabaseEntry key, DatabaseEntry data,
                                           DatabaseEntry result) {
             result.setData(data.getData(), data.getOffset(), data.getSize());
             return true;
@@ -168,8 +161,7 @@ public class SecondarySplitTestMain {
                         if (status == OperationStatus.SUCCESS) {
                             inserts += 1;
                         } else {
-                            System.out.println
-                                (getName() + " *** INSERT " + status);
+                            System.out.println(getName() + " *** INSERT " + status);
                         }
                     }
 
@@ -179,8 +171,7 @@ public class SecondarySplitTestMain {
                         cursor = priDb.openCursor(null, null);
 
                         LongBinding.longToEntry(rnd.nextLong(), key);
-                        status = cursor.getSearchKeyRange(key, data,
-                                                          LockMode.RMW);
+                        status = cursor.getSearchKeyRange(key, data, LockMode.RMW);
                         if (status == OperationStatus.NOTFOUND) {
                             status = cursor.getFirst(key, data, LockMode.RMW);
                         }
@@ -191,8 +182,7 @@ public class SecondarySplitTestMain {
                             cursor.putCurrent(data);
                             updates += 1;
                         } else {
-                            System.out.println
-                                (getName() + " *** UPDATE " + status);
+                            System.out.println(getName() + " *** UPDATE " + status);
                         }
 
                         cursor.close();
@@ -213,10 +203,7 @@ public class SecondarySplitTestMain {
                 }
 
                 if (iter % ITERS_PER_TRACE == 0) {
-                    System.out.println
-                        (getName() +
-                         " inserts=" + inserts +
-                         " updates=" + updates);
+                    System.out.println(getName() + " inserts=" + inserts + " updates=" + updates);
                 }
             }
         }

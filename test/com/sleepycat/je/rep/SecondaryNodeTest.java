@@ -52,8 +52,7 @@ public class SecondaryNodeTest extends RepTestBase {
 
     /** Add a secondary to a group, shutdown secondary, and restart. */
     @Test
-    public void testJoinLeaveJoin()
-        throws Exception {
+    public void testJoinLeaveJoin() throws Exception {
 
         /* Create initial group */
         createGroup();
@@ -82,8 +81,7 @@ public class SecondaryNodeTest extends RepTestBase {
 
     /** Add a secondary to a group, then shutdown and restart all nodes. */
     @Test
-    public void testJoinLeaveAllJoinAll()
-        throws Exception {
+    public void testJoinLeaveAllJoinAll() throws Exception {
 
         /* Create initial group */
         createGroup();
@@ -109,7 +107,7 @@ public class SecondaryNodeTest extends RepTestBase {
         /*
          * Reopen all members, using a longer join wait time to allow the
          * secondary to query the primaries a second time after the election is
-         * complete.  See RepNode.MASTER_QUERY_INTERVAL.
+         * complete. See RepNode.MASTER_QUERY_INTERVAL.
          */
         final long masterQueryInterval = 10000;
         restartNodes(JOIN_WAIT_TIME + masterQueryInterval, repEnvInfo);
@@ -120,11 +118,10 @@ public class SecondaryNodeTest extends RepTestBase {
 
     /**
      * Add a secondary node to a group and force a new master, to test that the
-     * secondary node can successfully replicate with the new master.  [#22980]
+     * secondary node can successfully replicate with the new master. [#22980]
      */
     @Test
-    public void testSecondaryChangeMaster()
-        throws Exception {
+    public void testSecondaryChangeMaster() throws Exception {
 
         /* Create initial group */
         createGroup();
@@ -151,8 +148,7 @@ public class SecondaryNodeTest extends RepTestBase {
 
     /** Test election and durability quorums. */
     @Test
-    public void testQuorums()
-        throws Exception {
+    public void testQuorums() throws Exception {
 
         /* Create initial group with three members */
         createGroup(3);
@@ -164,26 +160,23 @@ public class SecondaryNodeTest extends RepTestBase {
         secondaryInfo.openEnv();
 
         /*
-         * Close one primary and confirm that quorum is maintained.  Note that
-         * 2/3 is a majority if the secondary is not counted, but 2/4 is not,
-         * so closing one primary should confirm that the secondary is not
-         * being included in the quorum count.
+         * Close one primary and confirm that quorum is maintained. Note that
+         * 2/3 is a majority if the secondary is not counted, but 2/4 is not, so
+         * closing one primary should confirm that the secondary is not being
+         * included in the quorum count.
          */
         repEnvInfo[0].closeEnv();
-        ReplicatedEnvironment master =
-            findMasterAndWaitForReplicas(5000, 1, repEnvInfo).getEnv();
+        ReplicatedEnvironment master = findMasterAndWaitForReplicas(5000, 1, repEnvInfo).getEnv();
         logger.info("2/3 plus secondary, master " + master.getNodeName());
         populateDB(master, TEST_DB_NAME, 0, 100,
-                   new TransactionConfig().setDurability(
-                       RepTestUtils.DEFAULT_DURABILITY));
+                new TransactionConfig().setDurability(RepTestUtils.DEFAULT_DURABILITY));
 
         /* Close the secondary and confirm again. */
         secondaryInfo.closeEnv();
         master = findMasterWait(5000, repEnvInfo).getEnv();
         logger.info("2/3 without secondary, master " + master.getNodeName());
         populateDB(master, TEST_DB_NAME, 100, 100,
-                   new TransactionConfig().setDurability(
-                       RepTestUtils.DEFAULT_DURABILITY));
+                new TransactionConfig().setDurability(RepTestUtils.DEFAULT_DURABILITY));
 
         /*
          * Open the secondary and close another primary to confirm that the
@@ -195,8 +188,7 @@ public class SecondaryNodeTest extends RepTestBase {
         logger.info("1/3 with secondary, master " + master.getNodeName());
         try {
             populateDB(master, TEST_DB_NAME, 200, 100,
-                       new TransactionConfig().setDurability(
-                           RepTestUtils.DEFAULT_DURABILITY));
+                    new TransactionConfig().setDurability(RepTestUtils.DEFAULT_DURABILITY));
             fail("Expected exception");
         } catch (InsufficientReplicasException e) {
             logger.info("Got expected exception: " + e);
@@ -204,25 +196,21 @@ public class SecondaryNodeTest extends RepTestBase {
 
         /*
          * Reopen the last closed primary but introduce a long delay for
-         * acknowledgments so that its acknowledgment isn't counted, to
-         * confirm that the secondary is not providing an acknowledgment.
+         * acknowledgments so that its acknowledgment isn't counted, to confirm
+         * that the secondary is not providing an acknowledgment.
          */
-        repEnvInfo[1].getRepConfig().setConfigParam(
-            TEST_REPLICA_DELAY.getName(), "10000");
+        repEnvInfo[1].getRepConfig().setConfigParam(TEST_REPLICA_DELAY.getName(), "10000");
         repEnvInfo[1].openEnv();
         master = findMasterWait(5000, repEnvInfo).getEnv();
-        logger.info("2/3 with delay and secondary, master " +
-                    master.getNodeName());
+        logger.info("2/3 with delay and secondary, master " + master.getNodeName());
         try {
             populateDB(master, TEST_DB_NAME, 300, 100,
-                       new TransactionConfig().setDurability(
-                           RepTestUtils.DEFAULT_DURABILITY));
+                    new TransactionConfig().setDurability(RepTestUtils.DEFAULT_DURABILITY));
             fail("Expected exception");
         } catch (InsufficientAcksException e) {
             logger.info("Got expected exception: " + e);
         }
-        repEnvInfo[1].getRepConfig().setConfigParam(
-            TEST_REPLICA_DELAY.getName(), "0");
+        repEnvInfo[1].getRepConfig().setConfigParam(TEST_REPLICA_DELAY.getName(), "0");
 
         /*
          * Close and restart using commitToNetwork, to test that separate code
@@ -230,28 +218,21 @@ public class SecondaryNodeTest extends RepTestBase {
          */
         closeNodes(repEnvInfo);
         for (final RepEnvInfo info : repEnvInfo) {
-            info.getRepConfig().setConfigParam(
-                COMMIT_TO_NETWORK.getName(), "true");
+            info.getRepConfig().setConfigParam(COMMIT_TO_NETWORK.getName(), "true");
         }
         restartNodes(repEnvInfo[1], repEnvInfo[2]);
-        RepTestUtils.syncGroupToLastCommit(
-            new RepEnvInfo[] { repEnvInfo[1], repEnvInfo[2] }, 2);
+        RepTestUtils.syncGroupToLastCommit(new RepEnvInfo[] { repEnvInfo[1], repEnvInfo[2] }, 2);
         secondaryInfo.openEnv();
         RepEnvInfo masterInfo = findMasterWait(5000, repEnvInfo);
         master = masterInfo.getEnv();
-        RepEnvInfo replicaInfo = (masterInfo == repEnvInfo[1]) ?
-            repEnvInfo[2] :
-            repEnvInfo[1];
-        Feeder replicaFeeder = masterInfo.getRepNode().feederManager().
-            getFeeder(replicaInfo.getEnv().getNodeName());
+        RepEnvInfo replicaInfo = (masterInfo == repEnvInfo[1]) ? repEnvInfo[2] : repEnvInfo[1];
+        Feeder replicaFeeder = masterInfo.getRepNode().feederManager().getFeeder(replicaInfo.getEnv().getNodeName());
         WaitTestHook<Message> writeMessageHook = new WaitTestHook<Message>();
-        logger.info("2/3 with commitToNetwork, delay, and secondary, master " +
-                    master.getNodeName());
+        logger.info("2/3 with commitToNetwork, delay, and secondary, master " + master.getNodeName());
         try {
             replicaFeeder.setWriteMessageHook(writeMessageHook);
             populateDB(master, TEST_DB_NAME, 300, 100,
-                       new TransactionConfig().setDurability(
-                           RepTestUtils.DEFAULT_DURABILITY));
+                    new TransactionConfig().setDurability(RepTestUtils.DEFAULT_DURABILITY));
             fail("Expected exception");
         } catch (InsufficientAcksException e) {
             logger.info("Got expected exception: " + e);
@@ -260,8 +241,7 @@ public class SecondaryNodeTest extends RepTestBase {
             replicaFeeder.setWriteMessageHook(null);
         }
         for (final RepEnvInfo info : repEnvInfo) {
-            info.getRepConfig().setConfigParam(
-                COMMIT_TO_NETWORK.getName(), "false");
+            info.getRepConfig().setConfigParam(COMMIT_TO_NETWORK.getName(), "false");
         }
 
         /*
@@ -276,8 +256,7 @@ public class SecondaryNodeTest extends RepTestBase {
         master = restartNodes(primaries).getEnv();
         logger.info("ALL without secondary, master " + master.getNodeName());
         populateDB(master, TEST_DB_NAME, 0, 100,
-                   new TransactionConfig().setDurability(
-                       RepTestUtils.SYNC_SYNC_ALL_DURABILITY));
+                new TransactionConfig().setDurability(RepTestUtils.SYNC_SYNC_ALL_DURABILITY));
     }
 
     /**
@@ -285,8 +264,7 @@ public class SecondaryNodeTest extends RepTestBase {
      * statistic.
      */
     @Test
-    public void testSecondaryLag()
-        throws Exception {
+    public void testSecondaryLag() throws Exception {
 
         /* Create group with secondary */
         repEnvInfo = RepTestUtils.setupExtendEnvInfo(repEnvInfo, 1);
@@ -302,19 +280,17 @@ public class SecondaryNodeTest extends RepTestBase {
 
         /* Configure a message delay for the secondary */
         final String secondaryName = secondaryInfo.getEnv().getNodeName();
-        final Feeder secondaryFeeder =
-            masterInfo.getRepNode().feederManager().getFeeder(secondaryName);
+        final Feeder secondaryFeeder = masterInfo.getRepNode().feederManager().getFeeder(secondaryName);
         try {
-            secondaryFeeder.setWriteMessageHook(
-                new TestHookAdapter<Message>() {
-                    @Override
-                    public void doHook(Message msg) {
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                        }
+            secondaryFeeder.setWriteMessageHook(new TestHookAdapter<Message>() {
+                @Override
+                public void doHook(Message msg) {
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
                     }
-                });
+                }
+            });
 
             /* Populate */
             populateDB(masterInfo.getEnv(), 100);
@@ -324,10 +300,8 @@ public class SecondaryNodeTest extends RepTestBase {
         }
 
         /* Check stats */
-        final ReplicatedEnvironmentStats stats =
-            masterInfo.getEnv().getRepStats(statsConfig);
-        assertEquals("Secondary node should be the slowest",
-                     secondaryName, stats.getNMaxReplicaLagName());
+        final ReplicatedEnvironmentStats stats = masterInfo.getEnv().getRepStats(statsConfig);
+        assertEquals("Secondary node should be the slowest", secondaryName, stats.getNMaxReplicaLagName());
     }
 
     /**
@@ -335,8 +309,7 @@ public class SecondaryNodeTest extends RepTestBase {
      * disconnected secondary.
      */
     @Test
-    public void testReadDisconnectedSecondary()
-        throws Exception {
+    public void testReadDisconnectedSecondary() throws Exception {
 
         /* Create group with secondary */
         repEnvInfo = RepTestUtils.setupExtendEnvInfo(repEnvInfo, 1);
@@ -353,9 +326,7 @@ public class SecondaryNodeTest extends RepTestBase {
         closeNodes(repEnvInfo);
 
         /* Start up secondary in unknown state */
-        secondaryInfo.getRepConfig()
-            .setConfigParam(ReplicationConfig.ENV_UNKNOWN_STATE_TIMEOUT,
-                            "200 ms");
+        secondaryInfo.getRepConfig().setConfigParam(ReplicationConfig.ENV_UNKNOWN_STATE_TIMEOUT, "200 ms");
         secondaryInfo.openEnv();
 
         /* Read from secondary */
@@ -364,8 +335,7 @@ public class SecondaryNodeTest extends RepTestBase {
 
     /** Convert between ELECTABLE and SECONDARY node types. */
     @Test
-    public void testConvertNodeType()
-        throws Exception {
+    public void testConvertNodeType() throws Exception {
 
         createGroup();
 
@@ -374,8 +344,7 @@ public class SecondaryNodeTest extends RepTestBase {
         repEnvInfo[1].getRepConfig().setNodeType(NodeType.SECONDARY);
         try {
             repEnvInfo[1].openEnv();
-            fail("Convert ELECTABLE to SECONDARY should throw" +
-                 " EnvironmentFailureException");
+            fail("Convert ELECTABLE to SECONDARY should throw" + " EnvironmentFailureException");
         } catch (EnvironmentFailureException e) {
             logger.info("Convert ELECTABLE to SECONDARY: " + e);
         }
@@ -391,9 +360,7 @@ public class SecondaryNodeTest extends RepTestBase {
         /* Should succeed */
         secondaryInfo.openEnv();
         final ReplicationGroup group = secondaryInfo.getEnv().getGroup();
-        assertEquals("Group size",
-                     repEnvInfo.length,
-                     group.getElectableNodes().size());
+        assertEquals("Group size", repEnvInfo.length, group.getElectableNodes().size());
     }
 
     /**
@@ -401,16 +368,12 @@ public class SecondaryNodeTest extends RepTestBase {
      * version, or they are offline.
      */
     @Test
-    public void testCheckCompatible()
-        throws Exception {
+    public void testCheckCompatible() throws Exception {
 
         /* Start replicas using old version that doesn't support secondaries */
         final JEVersion rgV3 = RepGroupImpl.FORMAT_VERSION_3_JE_VERSION;
-        final JEVersion oldVersion =
-            new JEVersion(String.format("%d.%d.%d",
-                                        rgV3.getMajor(),
-                                        rgV3.getMinor(),
-                                        rgV3.getPatch() - 1));
+        final JEVersion oldVersion = new JEVersion(
+                String.format("%d.%d.%d", rgV3.getMajor(), rgV3.getMinor(), rgV3.getPatch() - 1));
         final RepEnvInfo secondary;
         setJEVersion(oldVersion, repEnvInfo);
 
@@ -424,8 +387,7 @@ public class SecondaryNodeTest extends RepTestBase {
         /* Attempt to create with all nodes up */
         try {
             secondary.openEnv();
-            fail("Create secondary before upgrade should fail with" +
-                 " EnvironmentFailureException");
+            fail("Create secondary before upgrade should fail with" + " EnvironmentFailureException");
         } catch (EnvironmentFailureException e) {
             logger.info("Create secondary before upgrade: " + e);
         }
@@ -440,8 +402,7 @@ public class SecondaryNodeTest extends RepTestBase {
         restartNodes(repEnvInfo[0], repEnvInfo[1]);
         try {
             secondary.openEnv();
-            fail("Create secondary after partial upgrade should fail with" +
-                 " EnvironmentFailureException");
+            fail("Create secondary after partial upgrade should fail with" + " EnvironmentFailureException");
         } catch (EnvironmentFailureException e) {
             logger.info("Create secondary after partial upgrade: " + e);
         }
@@ -456,8 +417,7 @@ public class SecondaryNodeTest extends RepTestBase {
 
     /** Test that a secondary node can be a helper. */
     @Test
-    public void testHelper()
-        throws Exception {
+    public void testHelper() throws Exception {
 
         /* Create initial group */
         createGroup();
@@ -485,8 +445,7 @@ public class SecondaryNodeTest extends RepTestBase {
      * that has lost quorum.
      */
     @Test
-    public void testAddSecondaryWithNonAuthoritativeMaster()
-        throws Exception {
+    public void testAddSecondaryWithNonAuthoritativeMaster() throws Exception {
 
         /* Create initial group */
         createGroup();
@@ -505,11 +464,9 @@ public class SecondaryNodeTest extends RepTestBase {
     /* Utilities */
 
     /** Set the JE version for the specified nodes. */
-    private void setJEVersion(final JEVersion jeVersion,
-                              final RepEnvInfo... nodes) {
+    private void setJEVersion(final JEVersion jeVersion, final RepEnvInfo... nodes) {
         for (final RepEnvInfo node : nodes) {
-            node.getRepConfig().setConfigParam(
-                TEST_JE_VERSION.getName(), jeVersion.toString());
+            node.getRepConfig().setConfigParam(TEST_JE_VERSION.getName(), jeVersion.toString());
         }
     }
 }

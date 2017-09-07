@@ -64,11 +64,11 @@ import com.sleepycat.util.test.TestBase;
  */
 public class DatabaseOperationTest extends TestBase {
 
-    private final File envRoot;
-    private final String[] dbNames = new String[] {"DbA", "DbB"};
-    private RepEnvInfo[] repEnvInfo;
+    private final File          envRoot;
+    private final String[]      dbNames = new String[] { "DbA", "DbB" };
+    private RepEnvInfo[]        repEnvInfo;
     private Map<String, TestDb> expectedResults;
-    private final boolean verbose = Boolean.getBoolean("verbose");
+    private final boolean       verbose = Boolean.getBoolean("verbose");
 
     public DatabaseOperationTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -78,8 +78,7 @@ public class DatabaseOperationTest extends TestBase {
      * Check that master->replica replication of database operations work.
      */
     @Test
-    public void testBasic()
-        throws Exception {
+    public void testBasic() throws Exception {
 
         expectedResults = new HashMap<String, TestDb>();
 
@@ -98,8 +97,7 @@ public class DatabaseOperationTest extends TestBase {
 
     /* Test whether database configure changes are replayed on replicas. */
     @Test
-    public void testDatabaseConfigUpdates()
-        throws Exception {
+    public void testDatabaseConfigUpdates() throws Exception {
 
         try {
             /* Open the ReplicatedEnvironments. */
@@ -128,16 +126,13 @@ public class DatabaseOperationTest extends TestBase {
             dbConfig.setKeyPrefixing(true);
 
             /* Set trigger properties. */
-            List<Trigger> triggers = new LinkedList<Trigger>
-                (Arrays.asList((Trigger) new RDBT("t1"),
-                               (Trigger) new RDBT("t2")));
+            List<Trigger> triggers = new LinkedList<Trigger>(
+                    Arrays.asList((Trigger) new RDBT("t1"), (Trigger) new RDBT("t2")));
             dbConfig.setTriggers(triggers);
 
             db = master.openDatabase(null, "testDb", dbConfig);
-            assertTrue
-                (db.getConfig().getBtreeComparator() instanceof FooComparator);
-            assertTrue(db.getConfig().getDuplicateComparator() 
-                       instanceof BarComparator);
+            assertTrue(db.getConfig().getBtreeComparator() instanceof FooComparator);
+            assertTrue(db.getConfig().getDuplicateComparator() instanceof BarComparator);
             assertTrue(db.getConfig().getNodeMaxEntries() == 512);
             assertTrue(db.getConfig().getKeyPrefixing());
             db.close();
@@ -149,16 +144,13 @@ public class DatabaseOperationTest extends TestBase {
             dbConfig.setOverrideBtreeComparator(false);
             dbConfig.setBtreeComparator(new BarComparator());
             db = master.openDatabase(null, "testDb", dbConfig);
-            assertTrue
-                (db.getConfig().getBtreeComparator() instanceof FooComparator);
-            assertFalse
-                (db.getConfig().getBtreeComparator() instanceof BarComparator);
+            assertTrue(db.getConfig().getBtreeComparator() instanceof FooComparator);
+            assertFalse(db.getConfig().getBtreeComparator() instanceof BarComparator);
             insertData(db);
             db.close();
 
             /* Do a sync make sure that all replicated entries are replayed. */
-            VLSN vlsn = RepTestUtils.syncGroupToLastCommit(repEnvInfo,
-                                                           repEnvInfo.length);
+            VLSN vlsn = RepTestUtils.syncGroupToLastCommit(repEnvInfo, repEnvInfo.length);
             RepTestUtils.checkNodeEquality(vlsn, false, repEnvInfo);
 
             /*
@@ -170,14 +162,12 @@ public class DatabaseOperationTest extends TestBase {
             dbConfig.setUseExistingConfig(true);
             db = replica.openDatabase(null, "testDb", dbConfig);
 
-            /* 
-             * Do the check to see configuration properties changes made on the 
+            /*
+             * Do the check to see configuration properties changes made on the
              * master are replayed on the replica.
              */
-            assertTrue
-                (db.getConfig().getBtreeComparator() instanceof FooComparator);
-            assertTrue(db.getConfig().getDuplicateComparator()
-                       instanceof BarComparator);
+            assertTrue(db.getConfig().getBtreeComparator() instanceof FooComparator);
+            assertTrue(db.getConfig().getDuplicateComparator() instanceof BarComparator);
             assertTrue(db.getConfig().getNodeMaxEntries() == 512);
             assertTrue(db.getConfig().getKeyPrefixing());
             assertTrue(db.getConfig().getTriggers().size() == 2);
@@ -191,13 +181,12 @@ public class DatabaseOperationTest extends TestBase {
         }
     }
 
-    /* 
-     * Test the master updates a database config while the same name database 
-     * on the replica is reading data. 
+    /*
+     * Test the master updates a database config while the same name database on
+     * the replica is reading data.
      */
     @Test
-    public void testMasterUpdateWhileReplicaReading()
-        throws Exception {
+    public void testMasterUpdateWhileReplicaReading() throws Exception {
 
         try {
             /* Construct the replication group. */
@@ -217,9 +206,9 @@ public class DatabaseOperationTest extends TestBase {
             insertData(db);
             db.close();
 
-            /* 
-             * Open the database with a changed config on the replica, it is 
-             * expected to fail because it requires a write operation. 
+            /*
+             * Open the database with a changed config on the replica, it is
+             * expected to fail because it requires a write operation.
              */
             Database replicaDb = null;
             try {
@@ -233,23 +222,22 @@ public class DatabaseOperationTest extends TestBase {
                 fail("Unexpected exception: " + e);
             }
 
-            /* 
-             * Open the database on the replica with no database config 
-             * changes, start a reading thread on the replica. 
+            /*
+             * Open the database on the replica with no database config changes,
+             * start a reading thread on the replica.
              */
             replicaDb = replica.openDatabase(null, "testDb", dbConfig);
             CountDownLatch start = new CountDownLatch(1);
             CountDownLatch end = new CountDownLatch(1);
-            ReplicaReadingThread thread = 
-                new ReplicaReadingThread(start, end, replicaDb);
+            ReplicaReadingThread thread = new ReplicaReadingThread(start, end, replicaDb);
             thread.start();
-            
+
             /* Make sure the replica reading thread has done some jobs. */
             start.await();
 
-            /* 
-             * Do the database config changes, it would create a 
-             * DatabasePreemptedException on the database on replicas. 
+            /*
+             * Do the database config changes, it would create a
+             * DatabasePreemptedException on the database on replicas.
              */
             dbConfig.setNodeMaxEntries(512);
             db = master.openDatabase(null, "testDb", dbConfig);
@@ -262,9 +250,9 @@ public class DatabaseOperationTest extends TestBase {
             end.await();
             assertTrue(thread.getException());
 
-            /* 
-             * Because DatabasePreemptedException, the underlying DatabaseImpl 
-             * has been null, close it. 
+            /*
+             * Because DatabasePreemptedException, the underlying DatabaseImpl
+             * has been null, close it.
              */
             replicaDb.close();
 
@@ -282,12 +270,11 @@ public class DatabaseOperationTest extends TestBase {
 
     /**
      * Check that master->replica replication of database operations work, and
-     * also verify that the client has logged enough information to act
-     * as the master later on.
+     * also verify that the client has logged enough information to act as the
+     * master later on.
      */
     @Test
-    public void testCascade()
-        throws Exception {
+    public void testCascade() throws Exception {
 
         expectedResults = new HashMap<String, TestDb>();
 
@@ -310,9 +297,8 @@ public class DatabaseOperationTest extends TestBase {
             execDatabaseOperations(master);
             /* Sync the replicators and shutdown the master. */
             checkEquality(RepTestUtils.getOpenRepEnvs(repEnvInfo));
-            for (RepEnvInfo repInfo: repEnvInfo) {
-                if (repInfo.getEnv() != null &&
-                    repInfo.getEnv().getState().isMaster()) {
+            for (RepEnvInfo repInfo : repEnvInfo) {
+                if (repInfo.getEnv() != null && repInfo.getEnv().getState().isMaster()) {
                     repInfo.closeEnv();
                     break;
                 }
@@ -322,15 +308,13 @@ public class DatabaseOperationTest extends TestBase {
             master = RepTestUtils.openRepEnvsJoin(repEnvInfo);
             /* Make sure the master is not the former one. */
             assertTrue(formerMasterId != RepInternal.getNodeId(master));
-            doMoreDatabaseOperations(master,
-                                     RepTestUtils.getOpenRepEnvs(repEnvInfo));
+            doMoreDatabaseOperations(master, RepTestUtils.getOpenRepEnvs(repEnvInfo));
 
             /* Re-open closed replicators and check the node equality. */
             master = RepTestUtils.joinGroup(repEnvInfo);
             /* Verify the new master is different from the first master. */
             assertTrue(formerMasterId != RepInternal.getNodeId(master));
-            assertEquals(RepTestUtils.getOpenRepEnvs(repEnvInfo).length,
-                         repEnvInfo.length);
+            assertEquals(RepTestUtils.getOpenRepEnvs(repEnvInfo).length, repEnvInfo.length);
             checkEquality(repEnvInfo);
         } finally {
             RepTestUtils.shutdownRepEnvs(repEnvInfo);
@@ -339,14 +323,13 @@ public class DatabaseOperationTest extends TestBase {
 
     /**
      * Check that ReplicaWriteException occurs when doing a DB name operation
-     * (rename, remove, truncate) on a replica, but that it can later be done
-     * if that node is elected master.  Previously a bug [#22394] prevented the
+     * (rename, remove, truncate) on a replica, but that it can later be done if
+     * that node is elected master. Previously a bug [#22394] prevented the
      * operation on the master because a use count on the database was not
      * decremented when the ReplicaWriteException was thrown.
      */
     @Test
-    public void testDbNameOpReplicaWriteException()
-        throws Exception {
+    public void testDbNameOpReplicaWriteException() throws Exception {
 
         expectedResults = new HashMap<String, TestDb>();
 
@@ -360,7 +343,7 @@ public class DatabaseOperationTest extends TestBase {
             checkEquality(RepTestUtils.getOpenRepEnvs(repEnvInfo));
 
             /* Try DB ops on replicas -- should get ReplicaWriteException. */
-            for (RepEnvInfo repInfo: repEnvInfo) {
+            for (RepEnvInfo repInfo : repEnvInfo) {
                 if (repInfo.getEnv().getState().isMaster()) {
                     continue;
                 }
@@ -372,9 +355,8 @@ public class DatabaseOperationTest extends TestBase {
             }
 
             /* Shutdown the master. */
-            for (RepEnvInfo repInfo: repEnvInfo) {
-                if (repInfo.getEnv() != null &&
-                    repInfo.getEnv().getState().isMaster()) {
+            for (RepEnvInfo repInfo : repEnvInfo) {
+                if (repInfo.getEnv() != null && repInfo.getEnv().getState().isMaster()) {
                     repInfo.closeEnv();
                     break;
                 }
@@ -385,16 +367,14 @@ public class DatabaseOperationTest extends TestBase {
             assertTrue(formerMasterId != RepInternal.getNodeId(master));
 
             /*
-             * DB ops should succeed on former replica.  Before the bug fix
+             * DB ops should succeed on former replica. Before the bug fix
              * [#22394] this operation looped forever.
              */
-            doMoreDatabaseOperations(master,
-                                     RepTestUtils.getOpenRepEnvs(repEnvInfo));
+            doMoreDatabaseOperations(master, RepTestUtils.getOpenRepEnvs(repEnvInfo));
 
             /* Re-open closed replicators and check the node equality. */
             master = RepTestUtils.joinGroup(repEnvInfo);
-            assertEquals(RepTestUtils.getOpenRepEnvs(repEnvInfo).length,
-                         repEnvInfo.length);
+            assertEquals(RepTestUtils.getOpenRepEnvs(repEnvInfo).length, repEnvInfo.length);
             checkEquality(repEnvInfo);
         } finally {
             RepTestUtils.shutdownRepEnvs(repEnvInfo);
@@ -403,21 +383,20 @@ public class DatabaseOperationTest extends TestBase {
 
     @Entity
     static class MyEntity {
-        @PrimaryKey(sequence="id")
-        int key;
+        @PrimaryKey(sequence = "id")
+        int    key;
         String data;
-        @SecondaryKey(relate=MANY_TO_ONE)
-        int skey = 1;
+        @SecondaryKey(relate = MANY_TO_ONE)
+        int    skey = 1;
     }
 
     /**
-     * Check that local (non-replicated) databases are not replicated.  Also
+     * Check that local (non-replicated) databases are not replicated. Also
      * check that creating a replicated database on a replica is prohibited.
      * [#20543]
      */
     @Test
-    public void testLocalDatabases()
-        throws Exception {
+    public void testLocalDatabases() throws Exception {
 
         expectedResults = new HashMap<String, TestDb>();
 
@@ -434,8 +413,7 @@ public class DatabaseOperationTest extends TestBase {
             storeConfig.setAllowCreate(true);
 
             /*
-             * Ensure that a replicated database cannot be created on a
-             * replica.
+             * Ensure that a replicated database cannot be created on a replica.
              */
             dbConfig.setReplicated(true);
             storeConfig.setReplicated(true);
@@ -443,7 +421,7 @@ public class DatabaseOperationTest extends TestBase {
             for (int i = 0; i < nEnvs; i += 1) {
                 final ReplicatedEnvironment env = repEnvInfo[i].getEnv();
                 if (env.getState().isReplica()) {
-                    for (final boolean txnl : new boolean[] {false, true}) {
+                    for (final boolean txnl : new boolean[] { false, true }) {
                         dbConfig.setTransactional(txnl);
                         storeConfig.setTransactional(txnl);
                         try {
@@ -455,8 +433,7 @@ public class DatabaseOperationTest extends TestBase {
                             assertFalse(txnl);
                         }
                         try {
-                            new EntityStore(env, "anotherRepStore",
-                                            storeConfig);
+                            new EntityStore(env, "anotherRepStore", storeConfig);
                         } catch (ReplicaWriteException expected) {
                             assertTrue(txnl);
                         } catch (IllegalArgumentException expected) {
@@ -484,26 +461,13 @@ public class DatabaseOperationTest extends TestBase {
             storeConfig.setReplicated(false);
             storeConfig.setTransactional(false);
 
-            createLocalDbs("txnl",
-                           txnlDbs,
-                           dbConfig.clone().setTransactional(true),
-                           txnlStores,
-                           storeConfig.clone().setTransactional(true));
-            createLocalDbs("nonTxnl",
-                           nonTxnlDbs,
-                           dbConfig,
-                           nonTxnlStores,
-                           storeConfig);
-            createLocalDbs("dw",
-                           dwDbs,
-                           dbConfig.clone().setDeferredWrite(true),
-                           dwStores,
-                           storeConfig.clone().setDeferredWrite(true));
-            createLocalDbs("temp",
-                           tempDbs,
-                           dbConfig.clone().setTemporary(true),
-                           tempStores,
-                           storeConfig.clone().setTemporary(true));
+            createLocalDbs("txnl", txnlDbs, dbConfig.clone().setTransactional(true), txnlStores,
+                    storeConfig.clone().setTransactional(true));
+            createLocalDbs("nonTxnl", nonTxnlDbs, dbConfig, nonTxnlStores, storeConfig);
+            createLocalDbs("dw", dwDbs, dbConfig.clone().setDeferredWrite(true), dwStores,
+                    storeConfig.clone().setDeferredWrite(true));
+            createLocalDbs("temp", tempDbs, dbConfig.clone().setTemporary(true), tempStores,
+                    storeConfig.clone().setTemporary(true));
 
             /* Test abort. */
             checkLocalDbAbort(txnlDbs);
@@ -535,22 +499,18 @@ public class DatabaseOperationTest extends TestBase {
                     RepTestUtils.shutdownRepEnvs(repEnvInfo);
                 } catch (Throwable e) {
                     /* Do not preempt in-flight exception. */
-                    System.out.println("Shutdown error while another " +
-                                       "exception is in flight: " + e);
+                    System.out.println("Shutdown error while another " + "exception is in flight: " + e);
                 }
             }
         }
     }
 
     /**
-     * Create local DBs and write a single record in each with a unique key
-     * for each env.
+     * Create local DBs and write a single record in each with a unique key for
+     * each env.
      */
-    private void createLocalDbs(final String namePrefix,
-                                final Database[] localDbs,
-                                final DatabaseConfig dbConfig,
-                                final EntityStore[] localStores,
-                                final StoreConfig storeConfig) {
+    private void createLocalDbs(final String namePrefix, final Database[] localDbs, final DatabaseConfig dbConfig,
+                                final EntityStore[] localStores, final StoreConfig storeConfig) {
 
         final int nEnvs = repEnvInfo.length;
         assertEquals(nEnvs, localDbs.length);
@@ -575,12 +535,10 @@ public class DatabaseOperationTest extends TestBase {
             assertEquals(i, data.getData()[0]);
 
             final String storeName = namePrefix + "Store";
-            final EntityStore store =
-                new EntityStore(env, storeName, storeConfig);
+            final EntityStore store = new EntityStore(env, storeName, storeConfig);
             localStores[i] = store;
             assertTrue(!store.getConfig().getReplicated());
-            final PrimaryIndex<Integer, MyEntity> index =
-                store.getPrimaryIndex(Integer.class, MyEntity.class);
+            final PrimaryIndex<Integer, MyEntity> index = store.getPrimaryIndex(Integer.class, MyEntity.class);
             assertTrue(!index.getDatabase().getConfig().getReplicated());
 
             MyEntity entity = new MyEntity();
@@ -595,10 +553,10 @@ public class DatabaseOperationTest extends TestBase {
     }
 
     /**
-     * Checks that undo works for a non-replicated txnal db on a replica.
-     * There was a bug where the undo databases were not updated properly, and
-     * although this seems to have had no impact except in rare corner cases,
-     * we check here that undo works for good measure. [#22875]
+     * Checks that undo works for a non-replicated txnal db on a replica. There
+     * was a bug where the undo databases were not updated properly, and
+     * although this seems to have had no impact except in rare corner cases, we
+     * check here that undo works for good measure. [#22875]
      */
     private void checkLocalDbAbort(final Database[] localDbs) {
         final int nEnvs = repEnvInfo.length;
@@ -607,8 +565,7 @@ public class DatabaseOperationTest extends TestBase {
 
         for (int i = 0; i < nEnvs; i += 1) {
             final ReplicatedEnvironment env = repEnvInfo[i].getEnv();
-            final Transaction txn = env.beginTransaction(
-                null, new TransactionConfig().setLocalWrite(true));
+            final Transaction txn = env.beginTransaction(null, new TransactionConfig().setLocalWrite(true));
             final Database db = localDbs[i];
 
             /* Update. */
@@ -642,8 +599,7 @@ public class DatabaseOperationTest extends TestBase {
     /**
      * Check local DBs and then remove them.
      */
-    private void checkAndRemoveLocalDbs(final String namePrefix,
-                                        final Database[] localDbs,
+    private void checkAndRemoveLocalDbs(final String namePrefix, final Database[] localDbs,
                                         final EntityStore[] localStores) {
 
         final int nEnvs = repEnvInfo.length;
@@ -673,8 +629,7 @@ public class DatabaseOperationTest extends TestBase {
 
             final String storeName = namePrefix + "Store";
             final EntityStore store = localStores[i];
-            final PrimaryIndex<Integer, MyEntity> index =
-                store.getPrimaryIndex(Integer.class, MyEntity.class);
+            final PrimaryIndex<Integer, MyEntity> index = store.getPrimaryIndex(Integer.class, MyEntity.class);
             assertEquals(1, index.count());
             MyEntity entity = index.get(1);
             assertNotNull(entity);
@@ -696,24 +651,19 @@ public class DatabaseOperationTest extends TestBase {
 
     /**
      * Check that with a local (non-replicated) EntityStore, auto-commit
-     * transactions do not check replication consistency.  [#20543]
+     * transactions do not check replication consistency. [#20543]
      */
     @Test
-    public void testLocalStoreNoConsistency()
-        throws IOException {
+    public void testLocalStoreNoConsistency() throws IOException {
 
         /* Register custom consistency policy format while quiescent. */
-        RepUtils.addConsistencyPolicyFormat
-            (RepTestUtils.AlwaysFail.NAME,
-             new RepTestUtils.AlwaysFailFormat());
+        RepUtils.addConsistencyPolicyFormat(RepTestUtils.AlwaysFail.NAME, new RepTestUtils.AlwaysFailFormat());
 
         /* Open with max durabity and AlwaysFail consistency. */
         repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3);
         for (RepEnvInfo rei : repEnvInfo) {
-            rei.getEnvConfig().setDurability
-                (RepTestUtils.SYNC_SYNC_ALL_DURABILITY);
-            rei.getRepConfig().setConsistencyPolicy
-                (new RepTestUtils.AlwaysFail());
+            rei.getEnvConfig().setDurability(RepTestUtils.SYNC_SYNC_ALL_DURABILITY);
+            rei.getRepConfig().setConsistencyPolicy(new RepTestUtils.AlwaysFail());
         }
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
 
@@ -724,10 +674,8 @@ public class DatabaseOperationTest extends TestBase {
         final StoreConfig repStoreConfig = new StoreConfig();
         repStoreConfig.setTransactional(true);
         repStoreConfig.setAllowCreate(true);
-        final EntityStore repStore =
-            new EntityStore(master, repStoreName, repStoreConfig);
-        final PrimaryIndex<Integer, MyEntity> repIndex =
-            repStore.getPrimaryIndex(Integer.class, MyEntity.class);
+        final EntityStore repStore = new EntityStore(master, repStoreName, repStoreConfig);
+        final PrimaryIndex<Integer, MyEntity> repIndex = repStore.getPrimaryIndex(Integer.class, MyEntity.class);
         MyEntity entity = new MyEntity();
         entity.data = "aaa";
         repIndex.put(entity);
@@ -745,10 +693,8 @@ public class DatabaseOperationTest extends TestBase {
         localStoreConfig.setTransactional(true);
         localStoreConfig.setAllowCreate(true);
         localStoreConfig.setReplicated(false);
-        final EntityStore localStore =
-            new EntityStore(replica, localStoreName, localStoreConfig);
-        final PrimaryIndex<Integer, MyEntity> localIndex =
-            localStore.getPrimaryIndex(Integer.class, MyEntity.class);
+        final EntityStore localStore = new EntityStore(replica, localStoreName, localStoreConfig);
+        final PrimaryIndex<Integer, MyEntity> localIndex = localStore.getPrimaryIndex(Integer.class, MyEntity.class);
         entity = new MyEntity();
         entity.data = "aaa";
         localIndex.put(entity);
@@ -757,8 +703,8 @@ public class DatabaseOperationTest extends TestBase {
         assertNotNull(entity);
         assertEquals(1, entity.key);
         assertEquals("aaa", entity.data);
-        final SecondaryIndex<Integer, Integer, MyEntity> localSecIndex =
-            localStore.getSecondaryIndex(localIndex, Integer.class, "skey");
+        final SecondaryIndex<Integer, Integer, MyEntity> localSecIndex = localStore.getSecondaryIndex(localIndex,
+                Integer.class, "skey");
         entity = localSecIndex.get(1);
         assertNotNull(entity);
         assertEquals(1, entity.key);
@@ -772,8 +718,8 @@ public class DatabaseOperationTest extends TestBase {
 
         /*
          * Check that auto-commit DB name operations can be done using the base
-         * API, which has a special auto-commit mechanism that is different
-         * from the one used in the DPL (tested above).
+         * API, which has a special auto-commit mechanism that is different from
+         * the one used in the DPL (tested above).
          */
         for (String dbName : replica.getDatabaseNames()) {
             if (dbName.startsWith("persist#" + localStoreName)) {
@@ -807,9 +753,7 @@ public class DatabaseOperationTest extends TestBase {
     }
 
     /* Truncate, rename and remove databases on replicators. */
-    private void doMoreDatabaseOperations(ReplicatedEnvironment master,
-                                          RepEnvInfo[] repInfoArray)
-        throws Exception {
+    private void doMoreDatabaseOperations(ReplicatedEnvironment master, RepEnvInfo[] repInfoArray) throws Exception {
 
         for (String dbName : dbNames) {
             truncateDatabases(master, dbName, repInfoArray);
@@ -824,8 +768,7 @@ public class DatabaseOperationTest extends TestBase {
      * Execute a variety of database operations on this node.
      */
     @SuppressWarnings("unchecked")
-    private void execDatabaseOperations(ReplicatedEnvironment env)
-        throws Exception {
+    private void execDatabaseOperations(ReplicatedEnvironment env) throws Exception {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -835,25 +778,20 @@ public class DatabaseOperationTest extends TestBase {
         /* Make a vanilla database and add some records. */
         Database db = env.openDatabase(null, dbNames[0], dbConfig);
         insertData(db);
-        expectedResults.put(dbNames[0],
-                            new TestDb(db.getConfig(), db.count()));
+        expectedResults.put(dbNames[0], new TestDb(db.getConfig(), db.count()));
         db.close();
 
         /* Make a database with comparators */
         dbConfig.setBtreeComparator(new FooComparator());
-        dbConfig.setDuplicateComparator
-            ((Class<Comparator<byte[]>>)
-             Class.forName("com.sleepycat.je.rep." +
-                           "DatabaseOperationTest$BarComparator"));
+        dbConfig.setDuplicateComparator((Class<Comparator<byte[]>>) Class
+                .forName("com.sleepycat.je.rep." + "DatabaseOperationTest$BarComparator"));
         db = env.openDatabase(null, dbNames[1], dbConfig);
-        expectedResults.put(dbNames[1],
-                            new TestDb(db.getConfig(), db.count()));
+        expectedResults.put(dbNames[1], new TestDb(db.getConfig(), db.count()));
         db.close();
     }
 
     /* Insert some data for truncation verfication. */
-    private void insertData(Database db)
-        throws Exception {
+    private void insertData(Database db) throws Exception {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -865,18 +803,15 @@ public class DatabaseOperationTest extends TestBase {
     }
 
     /*
-     * Truncate the database on the master and check whether the db.count
-     * is 0 after truncation.
+     * Truncate the database on the master and check whether the db.count is 0
+     * after truncation.
      */
-    private void truncateDatabases(ReplicatedEnvironment master,
-                                   String dbName,
-                                   RepEnvInfo[] repInfoArray)
-        throws Exception {
+    private void truncateDatabases(ReplicatedEnvironment master, String dbName, RepEnvInfo[] repInfoArray)
+            throws Exception {
 
         /* Check the correction of db.count before truncation. */
         long expectedCount = expectedResults.get(dbName).count;
-        DatabaseConfig dbConfig =
-            expectedResults.get(dbName).dbConfig.cloneConfig();
+        DatabaseConfig dbConfig = expectedResults.get(dbName).dbConfig.cloneConfig();
         checkCount(repInfoArray, dbName, dbConfig, expectedCount);
 
         /* Truncate the database and do the check. */
@@ -888,35 +823,29 @@ public class DatabaseOperationTest extends TestBase {
     }
 
     /* Check that the number of records in the database is correct */
-    private void checkCount(RepEnvInfo[] repInfoArray,
-                            String dbName,
-                            DatabaseConfig dbConfig,
-                            long dbCount)
-        throws Exception {
+    private void checkCount(RepEnvInfo[] repInfoArray, String dbName, DatabaseConfig dbConfig, long dbCount)
+            throws Exception {
 
         for (RepEnvInfo repInfo : repInfoArray) {
-            Database db =
-                repInfo.getEnv().openDatabase(null, dbName, dbConfig);
+            Database db = repInfo.getEnv().openDatabase(null, dbName, dbConfig);
             assertEquals(dbCount, db.count());
             db.close();
         }
     }
 
-    private void checkEquality(RepEnvInfo[] repInfoArray)
-        throws Exception {
+    private void checkEquality(RepEnvInfo[] repInfoArray) throws Exception {
 
-        VLSN vlsn = RepTestUtils.syncGroupToLastCommit(repInfoArray,
-                                                       repInfoArray.length);
+        VLSN vlsn = RepTestUtils.syncGroupToLastCommit(repInfoArray, repInfoArray.length);
         RepTestUtils.checkNodeEquality(vlsn, verbose, repInfoArray);
     }
 
     /**
-     * Keep track of the database name and other characteristics, to
-     * be used in validating data.
+     * Keep track of the database name and other characteristics, to be used in
+     * validating data.
      */
     static class TestDb {
         DatabaseConfig dbConfig;
-        long count;
+        long           count;
 
         TestDb(DatabaseConfig dbConfig, long count) {
             this.dbConfig = dbConfig.cloneConfig();
@@ -929,14 +858,12 @@ public class DatabaseOperationTest extends TestBase {
      * replicate properly.
      */
     @SuppressWarnings("serial")
-    public static class FooComparator implements Comparator<byte[]>,
-                                                 Serializable {
+    public static class FooComparator implements Comparator<byte[]>, Serializable {
 
         public FooComparator() {
         }
 
-        public int compare(@SuppressWarnings("unused") byte[] o1,
-                           @SuppressWarnings("unused") byte[] o2) {
+        public int compare(@SuppressWarnings("unused") byte[] o1, @SuppressWarnings("unused") byte[] o2) {
             /* No need to really fill in. */
             return 0;
         }
@@ -947,13 +874,11 @@ public class DatabaseOperationTest extends TestBase {
      * replicate properly.
      */
     @SuppressWarnings("serial")
-    public static class BarComparator implements Comparator<byte[]>,
-                                                 Serializable {
+    public static class BarComparator implements Comparator<byte[]>, Serializable {
         public BarComparator() {
         }
 
-        public int compare(@SuppressWarnings("unused") byte[] arg0,
-                           @SuppressWarnings("unused") byte[] arg1) {
+        public int compare(@SuppressWarnings("unused") byte[] arg0, @SuppressWarnings("unused") byte[] arg1) {
             /* No need to really fill in. */
             return 0;
         }
@@ -963,13 +888,11 @@ public class DatabaseOperationTest extends TestBase {
     private class ReplicaReadingThread extends Thread {
         private CountDownLatch start;
         private CountDownLatch end;
-        private Database db;
-        private boolean exit = false;
-        private boolean getException = false;
+        private Database       db;
+        private boolean        exit         = false;
+        private boolean        getException = false;
 
-        public ReplicaReadingThread(CountDownLatch start, 
-                                    CountDownLatch end, 
-                                    Database db) {
+        public ReplicaReadingThread(CountDownLatch start, CountDownLatch end, Database db) {
             this.start = start;
             this.end = end;
             this.db = db;
@@ -987,7 +910,7 @@ public class DatabaseOperationTest extends TestBase {
                         } catch (DatabasePreemptedException e) {
 
                             /*
-                             * DatabasePreemptedException is expected if the 
+                             * DatabasePreemptedException is expected if the
                              * db.get() is inovked while JE is preempting this
                              * database.
                              */
@@ -1003,9 +926,7 @@ public class DatabaseOperationTest extends TestBase {
                         }
 
                         if (!getException) {
-                            assertEquals
-                                ("herococo", 
-                                 StringBinding.entryToString(data));
+                            assertEquals("herococo", StringBinding.entryToString(data));
                         }
                     }
 
@@ -1016,7 +937,7 @@ public class DatabaseOperationTest extends TestBase {
                     if (exit && getException) {
                         break;
                     }
-                }    
+                }
             } finally {
                 /* Make the main thread goes on. */
                 end.countDown();

@@ -31,8 +31,7 @@ public class DbCursorDuplicateValidationTest extends DbCursorTestBase {
     }
 
     @Test
-    public void testValidateCursors()
-        throws Throwable {
+    public void testValidateCursors() throws Throwable {
 
         initEnv(true);
         Hashtable dataMap = new Hashtable();
@@ -41,17 +40,15 @@ public class DbCursorDuplicateValidationTest extends DbCursorTestBase {
         Hashtable bins = new Hashtable();
 
         DataWalker dw = new DataWalker(bins) {
-                void perData(String foundKey, String foundData)
-                    throws DatabaseException {
-                    CursorImpl cursorImpl =
-                        DbTestProxy.dbcGetCursorImpl(cursor);
-                    BIN lastBin = cursorImpl.getBIN();
-                    if (rnd.nextInt(10) < 8) {
-                        cursor.delete();
-                    }
-                    dataMap.put(lastBin, lastBin);
+            void perData(String foundKey, String foundData) throws DatabaseException {
+                CursorImpl cursorImpl = DbTestProxy.dbcGetCursorImpl(cursor);
+                BIN lastBin = cursorImpl.getBIN();
+                if (rnd.nextInt(10) < 8) {
+                    cursor.delete();
                 }
-            };
+                dataMap.put(lastBin, lastBin);
+            }
+        };
         dw.setIgnoreDataMap(true);
         dw.walkData();
         dw.close();

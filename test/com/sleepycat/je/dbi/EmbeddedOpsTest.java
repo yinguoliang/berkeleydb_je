@@ -44,20 +44,20 @@ import com.sleepycat.util.test.SharedTestUtils;
 public class EmbeddedOpsTest extends DualTestCase {
 
     /*
-     * N_RECORDS is set to 110 and NODE_MAX_ENTRIES to 100. This results in
-     * a tree with 2 BINs, the first of which has 50 entries.
+     * N_RECORDS is set to 110 and NODE_MAX_ENTRIES to 100. This results in a
+     * tree with 2 BINs, the first of which has 50 entries.
      */
     private static final int N_RECORDS = 110;
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
-    private boolean dups;
+    private final File       envHome;
+    private Environment      env;
+    private Database         db;
+    private boolean          dups;
 
-    EnvironmentConfig envConfig;
-    DatabaseConfig dbConfig;
+    EnvironmentConfig        envConfig;
+    DatabaseConfig           dbConfig;
 
-    private boolean debug = true;
+    private boolean          debug     = true;
 
     public EmbeddedOpsTest() {
 
@@ -69,13 +69,10 @@ public class EmbeddedOpsTest extends DualTestCase {
         envConfig.setDurability(Durability.COMMIT_NO_SYNC);
 
         envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR,
-            "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
         envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-            "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR,
-            "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         envConfig.setConfigParam(EnvironmentConfig.NODE_MAX_ENTRIES, "100");
 
         /*
@@ -109,9 +106,7 @@ public class EmbeddedOpsTest extends DualTestCase {
         /* TREE_MAX_EMBEDDED_LN may be overridden in a je.properties file. */
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         if (envImpl.getMaxEmbeddedLN() != 20) {
-            System.out.println(
-                "Skipping EmbeddedOpsTest because TREE_MAX_EMBEDDED_LN has " +
-                "been overridden.");
+            System.out.println("Skipping EmbeddedOpsTest because TREE_MAX_EMBEDDED_LN has " + "been overridden.");
             close();
             return false;
         }
@@ -148,61 +143,55 @@ public class EmbeddedOpsTest extends DualTestCase {
         /*
          * The BIN split causes full version of both BINs to be logged. After
          * the split is done, 10 more records are inserted in the 2nd BIN, so
-         * that BIN has 10 entries marked dirty. During the checkpoint below,
-         * a delta will be logged for the 2nd BIN, so although after the
+         * that BIN has 10 entries marked dirty. During the checkpoint below, a
+         * delta will be logged for the 2nd BIN, so although after the
          * checkpoint the BIN will be clean, it will still have 10 dirty
          * entries.
          */
         if (debug) {
-            System.out.println(
-                "1. BIN-1 has " + bin1.getNEntries() + " entries");
-            System.out.println(
-                "1. BIN-1 has " + bin1.getNDeltas() + " dirty entries");
-            System.out.println(
-                "1. BIN-2 has " + bin2.getNEntries() + " entries");
-            System.out.println(
-                "1. BIN-2 has " + bin2.getNDeltas() + " dirty entries");
+            System.out.println("1. BIN-1 has " + bin1.getNEntries() + " entries");
+            System.out.println("1. BIN-1 has " + bin1.getNDeltas() + " dirty entries");
+            System.out.println("1. BIN-2 has " + bin2.getNEntries() + " entries");
+            System.out.println("1. BIN-2 has " + bin2.getNDeltas() + " dirty entries");
         }
 
         /* Flush BINs (checkpoint) */
         env.checkpoint(new CheckpointConfig().setForce(true));
 
         /*
-         * Update only enough records in the 1st BIN to make it a delta
-         * when it gets selected for eviction. Specifically, update records
-         * in slots 5 to 15 (inclusive).
+         * Update only enough records in the 1st BIN to make it a delta when it
+         * gets selected for eviction. Specifically, update records in slots 5
+         * to 15 (inclusive).
          */
         writeData(5, N_RECORDS / 10);
 
         if (debug) {
-            System.out.println(
-                "2. BIN-1 has " + bin1.getNDeltas() + " dirty entries");
-            System.out.println(
-                "2. BIN-2 has " + bin2.getNDeltas() + " dirty entries");
+            System.out.println("2. BIN-1 has " + bin1.getNDeltas() + " dirty entries");
+            System.out.println("2. BIN-2 has " + bin2.getNDeltas() + " dirty entries");
         }
 
         assertTrue(!bin1.isBINDelta(false));
         assertTrue(!bin2.isBINDelta(false));
 
         /*
-         * Mutate bin1 to a delta. Make sure all slots have embedded data
-         * and use the compact key rep.
+         * Mutate bin1 to a delta. Make sure all slots have embedded data and
+         * use the compact key rep.
          */
         mutateToDelta(bin1);
         assertEquals(bin1.getNEntries(), bin1.getNumEmbeddedLNs());
         assertTrue(bin1.getKeyVals().accountsForKeyByteMemUsage());
 
         /*
-         * Read keys 12 and 20 directly from the bin delta, using 2 cursors:
-         * one doing an exact search and the other a range search. Make sure no
+         * Read keys 12 and 20 directly from the bin delta, using 2 cursors: one
+         * doing an exact search and the other a range search. Make sure no
          * mutation back to full bin occurs and the embedded data is correct.
          */
         txn = env.beginTransaction(null, TransactionConfig.DEFAULT);
         cursor1 = db.openCursor(txn, null);
         cursor2 = db.openCursor(txn, null);
 
-        searchKey(cursor1, 12, true/*exact*/, true/*exist*/);
-        searchKey(cursor2, 20, false/*range*/, true/*exists*/);
+        searchKey(cursor1, 12, true/* exact */, true/* exist */);
+        searchKey(cursor2, 20, false/* range */, true/* exists */);
 
         assertTrue(bin1.isBINDelta(false));
         assertTrue(bin1.getInListResident());
@@ -239,11 +228,11 @@ public class EmbeddedOpsTest extends DualTestCase {
         confirmCurrentData(cursor1, 25);
 
         /*
-         * Update record 120 in a way that makes it non-embedded. Then update
-         * it again into a zero-data record.
+         * Update record 120 in a way that makes it non-embedded. Then update it
+         * again into a zero-data record.
          */
         putLargeRecord(cursor2, 120, 120);
-        assertEquals(bin2.getNEntries()-1, bin2.getNumEmbeddedLNs());
+        assertEquals(bin2.getNEntries() - 1, bin2.getNumEmbeddedLNs());
 
         env.checkpoint(new CheckpointConfig().setForce(true));
 
@@ -262,10 +251,10 @@ public class EmbeddedOpsTest extends DualTestCase {
 
         cursor1 = db.openCursor(null, null);
 
-        searchKey(cursor1, 12, true/*exact*/, true/*exist*/);
+        searchKey(cursor1, 12, true/* exact */, true/* exist */);
         confirmCurrentData(cursor1, 12);
 
-        searchKey(cursor1, 20, true/*exact*/, true/*exist*/);
+        searchKey(cursor1, 20, true/* exact */, true/* exist */);
         confirmCurrentData(cursor1, 20);
 
         assertEquals(bin1.getNEntries(), bin1.getNumEmbeddedLNs());
@@ -278,15 +267,14 @@ public class EmbeddedOpsTest extends DualTestCase {
 
         cursor1.close();
 
-
         /*
-         * Cause mutation of bin1 to full bin by searching for an existing
-         * key that is not in the delta. Make sure all entries stay embedded
-         * and readable.
+         * Cause mutation of bin1 to full bin by searching for an existing key
+         * that is not in the delta. Make sure all entries stay embedded and
+         * readable.
          */
         cursor1 = db.openCursor(null, null);
 
-        searchKey(cursor1, 0, true/*exactSearch*/, true/*exists*/);
+        searchKey(cursor1, 0, true/* exactSearch */, true/* exists */);
 
         assertTrue(!bin1.isBINDelta(false));
         assertTrue(bin1.getInListResident());
@@ -324,8 +312,8 @@ public class EmbeddedOpsTest extends DualTestCase {
 
         for (int i = startRecord; i < nRecords + startRecord; i += 1) {
 
-            key.setData(TestUtils.getTestArray(2*i, false));
-            data.setData(TestUtils.getTestArray(2*i, false));
+            key.setData(TestUtils.getTestArray(2 * i, false));
+            data.setData(TestUtils.getTestArray(2 * i, false));
 
             assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
         }
@@ -365,11 +353,7 @@ public class EmbeddedOpsTest extends DualTestCase {
         assertEquals(OperationStatus.SUCCESS, cursor.put(key, data));
     }
 
-    private void insertRecord(
-        Cursor cursor,
-        int keyVal,
-        int dataVal,
-        boolean large) {
+    private void insertRecord(Cursor cursor, int keyVal, int dataVal, boolean large) {
 
         OperationStatus status = OperationStatus.SUCCESS;
 
@@ -402,17 +386,12 @@ public class EmbeddedOpsTest extends DualTestCase {
         final DatabaseEntry key = new DatabaseEntry();
         data.setData(null);
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getCurrent(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getCurrent(key, data, null));
 
         assertEquals(dataVal, TestUtils.getTestVal(data.getData()));
     }
 
-    private void searchKey(
-        final Cursor cursor,
-        final int keyVal,
-        boolean exactSearch,
-        boolean exists) {
+    private void searchKey(final Cursor cursor, final int keyVal, boolean exactSearch, boolean exists) {
 
         OperationStatus status = OperationStatus.SUCCESS;
         DatabaseEntry key = new DatabaseEntry();
@@ -431,12 +410,7 @@ public class EmbeddedOpsTest extends DualTestCase {
         }
     }
 
-    private void searchRecord(
-        Cursor cursor,
-        int keyVal,
-        int dataVal,
-        boolean exactSearch,
-        boolean exists) {
+    private void searchRecord(Cursor cursor, int keyVal, int dataVal, boolean exactSearch, boolean exists) {
 
         OperationStatus status = OperationStatus.SUCCESS;
         DatabaseEntry key = new DatabaseEntry();
@@ -444,7 +418,7 @@ public class EmbeddedOpsTest extends DualTestCase {
 
         key.setData(TestUtils.getTestArray(keyVal));
         data.setData(TestUtils.getTestArray(dataVal));
- 
+
         if (exactSearch) {
             if (!exists) {
                 status = OperationStatus.NOTFOUND;
@@ -459,13 +433,11 @@ public class EmbeddedOpsTest extends DualTestCase {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
- 
+
         if (skipDups) {
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNextNoDup(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNextNoDup(key, data, null));
         } else {
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNext(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, null));
         }
     }
 
@@ -475,8 +447,7 @@ public class EmbeddedOpsTest extends DualTestCase {
         final DatabaseEntry data = new DatabaseEntry();
         data.setPartial(true);
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getCurrent(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getCurrent(key, data, null));
 
         assertEquals(keyVal, TestUtils.getTestVal(key.getData()));
 
@@ -488,8 +459,7 @@ public class EmbeddedOpsTest extends DualTestCase {
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry();
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getCurrent(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getCurrent(key, data, null));
 
         assertEquals(dataVal, TestUtils.getTestVal(data.getData()));
 
@@ -508,19 +478,17 @@ public class EmbeddedOpsTest extends DualTestCase {
 
         for (int i = 1; i < nRecords; i += 1) {
 
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNext(key, data, null));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, null));
 
-            assertEquals(2 * i + startKeyVal,
-                         TestUtils.getTestVal(key.getData()));
+            assertEquals(2 * i + startKeyVal, TestUtils.getTestVal(key.getData()));
         }
 
         cursor.close();
     }
 
     /**
-     * Reads first key and returns its BIN. Does not read data to avoid
-     * changing the nNotResident stat.
+     * Reads first key and returns its BIN. Does not read data to avoid changing
+     * the nNotResident stat.
      */
     private BIN getFirstBIN() {
 
@@ -530,8 +498,7 @@ public class EmbeddedOpsTest extends DualTestCase {
 
         final Cursor cursor = db.openCursor(null, null);
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getFirst(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(key, data, null));
 
         final BIN bin = DbInternal.getCursorImpl(cursor).getBIN();
         cursor.close();
@@ -540,8 +507,8 @@ public class EmbeddedOpsTest extends DualTestCase {
     }
 
     /**
-     * Reads last key and returns its BIN. Does not read data to avoid
-     * changing the nNotResident stat.
+     * Reads last key and returns its BIN. Does not read data to avoid changing
+     * the nNotResident stat.
      */
     private BIN getLastBIN() {
 
@@ -551,8 +518,7 @@ public class EmbeddedOpsTest extends DualTestCase {
 
         final Cursor cursor = db.openCursor(null, null);
 
-        assertEquals(OperationStatus.SUCCESS,
-            cursor.getLast(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getLast(key, data, null));
 
         final BIN bin = DbInternal.getCursorImpl(cursor).getBIN();
         cursor.close();
@@ -562,8 +528,7 @@ public class EmbeddedOpsTest extends DualTestCase {
 
     private void mutateToDelta(BIN bin) {
 
-        OffHeapCache ohCache =
-            DbInternal.getNonNullEnvImpl(env).getOffHeapCache();
+        OffHeapCache ohCache = DbInternal.getNonNullEnvImpl(env).getOffHeapCache();
 
         if (!ohCache.isEnabled()) {
             evict(bin, false);
@@ -577,9 +542,9 @@ public class EmbeddedOpsTest extends DualTestCase {
     }
 
     /**
-     * Simulated eviction of the BIN, if it were selected.  This may only do
-     * partial eviction, if LNs are present or it can be mutated to a delta.
-     * We expect that some memory will be reclaimed.
+     * Simulated eviction of the BIN, if it were selected. This may only do
+     * partial eviction, if LNs are present or it can be mutated to a delta. We
+     * expect that some memory will be reclaimed.
      */
     private void evict(BIN bin, boolean force) {
 

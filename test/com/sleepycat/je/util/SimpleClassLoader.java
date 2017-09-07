@@ -18,11 +18,11 @@ import java.io.IOException;
 import java.io.FileInputStream;
 
 /**
- * Simple ClassLoader to load class files from a given directory.  Does not
+ * Simple ClassLoader to load class files from a given directory. Does not
  * support jar files or multiple directories.
  */
 public class SimpleClassLoader extends ClassLoader {
-    
+
     private final File classPath;
 
     public SimpleClassLoader(ClassLoader parentLoader, File classPath) {
@@ -31,8 +31,7 @@ public class SimpleClassLoader extends ClassLoader {
     }
 
     @Override
-    public Class findClass(String className)
-        throws ClassNotFoundException {
+    public Class findClass(String className) throws ClassNotFoundException {
 
         try {
             final String fileName = className.replace('.', '/') + ".class";
@@ -46,9 +45,7 @@ public class SimpleClassLoader extends ClassLoader {
             }
             return defineClass(className, data, 0, data.length);
         } catch (IOException e) {
-            throw new ClassNotFoundException
-                ("Class: " + className + " could not be loaded from: " +
-                 classPath, e);
+            throw new ClassNotFoundException("Class: " + className + " could not be loaded from: " + classPath, e);
         }
     }
 }

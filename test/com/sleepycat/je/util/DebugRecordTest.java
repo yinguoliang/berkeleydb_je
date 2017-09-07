@@ -44,14 +44,14 @@ import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * This test originally ran in dual mode. After changes were made that started
- * making replication recovery run an different path, this expected entries
- * in the log began to differ substantially enough between a replicated
- * and non-replicated environment, and the dual mode version was removed.
- * If more test cases are eventually added to this test, we may want to
- * return to dual mode.
+ * making replication recovery run an different path, this expected entries in
+ * the log began to differ substantially enough between a replicated and
+ * non-replicated environment, and the dual mode version was removed. If more
+ * test cases are eventually added to this test, we may want to return to dual
+ * mode.
  */
 public class DebugRecordTest extends DualTestCase {
-    private File envHome;
+    private File        envHome;
     private Environment env;
 
     public DebugRecordTest() {
@@ -60,8 +60,7 @@ public class DebugRecordTest extends DualTestCase {
     }
 
     @Test
-    public void testDebugLogging()
-        throws DatabaseException, IOException {
+    public void testDebugLogging() throws DatabaseException, IOException {
 
         try {
 
@@ -69,19 +68,17 @@ public class DebugRecordTest extends DualTestCase {
              * Turn on the txt file and db log logging, turn off the console.
              */
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
-            envConfig.setConfigParam
-                (EnvironmentParams.NODE_MAX.getName(), "6");
+            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
             envConfig.setAllowCreate(true);
             /* Disable noisy cleaner DB creation. */
             DbInternal.setCreateUP(envConfig, false);
             DbInternal.setCreateEP(envConfig, false);
             /* Don't run the cleaner without a UtilizationProfile. */
-            envConfig.setConfigParam
-                (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
             envConfig.setTransactional(true);
-        
+
             env = create(envHome, envConfig);
-        
+
             EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
             List<Trace> expectedDbLogRecords = new ArrayList<Trace>();
@@ -91,15 +88,13 @@ public class DebugRecordTest extends DualTestCase {
             Trace.trace(envImpl, "hi there");
             expectedDbLogRecords.add(new Trace("hi there"));
 
-            /* 
+            /*
              * Log an exception. The je.info file defaults to SEVERE, and will
              * only hold exceptions.
              */
             RuntimeException e = new RuntimeException("fake exception");
-            LoggerUtils.traceAndLogException(envImpl, "DebugRecordTest", 
-                                     "testException", "foo", e);
-            Trace exceptionTrace = new Trace("foo\n" + 
-                                             LoggerUtils.getStackTrace(e));
+            LoggerUtils.traceAndLogException(envImpl, "DebugRecordTest", "testException", "foo", e);
+            Trace exceptionTrace = new Trace("foo\n" + LoggerUtils.getStackTrace(e));
             expectedDbLogRecords.add(exceptionTrace);
 
             /* Log a split and flush the log to disk. */
@@ -120,39 +115,31 @@ public class DebugRecordTest extends DualTestCase {
     /**
      * Check what's in the database log.
      */
-    private void checkDatabaseLog(List<Trace> expectedList)
-        throws DatabaseException {
+    private void checkDatabaseLog(List<Trace> expectedList) throws DatabaseException {
 
-        SearchFileReader searcher =
-            new SearchFileReader(DbInternal.getNonNullEnvImpl(env),
-                    1000, true, DbLsn.NULL_LSN,
-                                 DbLsn.NULL_LSN, LogEntryType.LOG_TRACE);
+        SearchFileReader searcher = new SearchFileReader(DbInternal.getNonNullEnvImpl(env), 1000, true, DbLsn.NULL_LSN,
+                DbLsn.NULL_LSN, LogEntryType.LOG_TRACE);
 
         int numSeen = 0;
         while (searcher.readNextEntry()) {
             Trace dRec = (Trace) searcher.getLastObject();
-            assertEquals("Should see this as " + numSeen + " record: ",
-                         expectedList.get(numSeen).getMessage(),
-                         dRec.getMessage());
+            assertEquals("Should see this as " + numSeen + " record: ", expectedList.get(numSeen).getMessage(),
+                    dRec.getMessage());
             numSeen++;
         }
 
-        assertEquals("Should see this many debug records",
-                     expectedList.size(), numSeen);
+        assertEquals("Should see this many debug records", expectedList.size(), numSeen);
     }
 
     /**
      * Check what's in the text file.
      */
-    private void checkTextFile(List<Trace> expectedList)
-        throws IOException {
+    private void checkTextFile(List<Trace> expectedList) throws IOException {
 
         FileReader fr = null;
         BufferedReader br = null;
         try {
-            String textFileName = 
-                DbInternal.getNonNullEnvImpl(env).getEnvironmentHome() +
-                File.separator + "je.info.0";
+            String textFileName = DbInternal.getNonNullEnvImpl(env).getEnvironmentHome() + File.separator + "je.info.0";
             fr = new FileReader(textFileName);
             br = new BufferedReader(fr);
 
@@ -172,41 +159,35 @@ public class DebugRecordTest extends DualTestCase {
                     /* There should be a java.util.logging.level next. */
                     int dateEnd = pp.getIndex();
                     int levelEnd = line.indexOf(" ", dateEnd + 1);
-                    String possibleLevel = line.substring(dateEnd + 1,
-                                                          levelEnd);
+                    String possibleLevel = line.substring(dateEnd + 1, levelEnd);
                     Level.parse(possibleLevel);
 
-                    String expected =
-                        expectedList.get(numSeen).getMessage();
+                    String expected = expectedList.get(numSeen).getMessage();
                     StringBuilder seen = new StringBuilder();
                     seen.append(line.substring(levelEnd + 1));
                     /*
-                     * Assemble the log message by reading the right number
-                     * of lines
+                     * Assemble the log message by reading the right number of
+                     * lines
                      */
-                    StringTokenizer st =
-                        new StringTokenizer(expected,
-                                            Character.toString('\n'), false);
+                    StringTokenizer st = new StringTokenizer(expected, Character.toString('\n'), false);
 
                     for (int i = 1; i < st.countTokens(); i++) {
                         seen.append('\n');
                         String l = br.readLine();
                         seen.append(l);
-                        if (i == (st.countTokens() -1)) {
+                        if (i == (st.countTokens() - 1)) {
                             seen.append('\n');
                         }
                     }
                     /* XXX, diff of multiline stuff isn't right yet. */
-                    
+
                     /*
-                     * The formatters for rep test and non-rep test 
-                     * different, so ignore this check here.
+                     * The formatters for rep test and non-rep test different,
+                     * so ignore this check here.
                      */
                     if (!isReplicatedTest(getClass())) {
                         if (st.countTokens() == 1) {
-                            assertEquals("Line " + numSeen +
-                                         " should be the same",
-                                         expected, seen.toString());
+                            assertEquals("Line " + numSeen + " should be the same", expected, seen.toString());
                         }
                     }
                     numSeen++;
@@ -215,8 +196,7 @@ public class DebugRecordTest extends DualTestCase {
                 }
                 line = br.readLine();
             }
-            assertEquals("Should see this many debug records",
-                         expectedList.size(), numSeen);
+            assertEquals("Should see this many debug records", expectedList.size(), numSeen);
         } finally {
             if (br != null) {
                 br.close();

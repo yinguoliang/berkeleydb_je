@@ -42,29 +42,27 @@ import com.sleepycat.util.test.SharedTestUtils;
 
 public class LockManagerTest extends DualTestCase {
 
-    private Locker txn1;
-    private Locker txn2;
-    private Locker txn3;
-    private Locker txn4;
-    private Long nid;
+    private Locker        txn1;
+    private Locker        txn2;
+    private Locker        txn3;
+    private Locker        txn4;
+    private Long          nid;
     private AtomicInteger sequence;
 
-    private Environment env;
-    private final File envHome;
+    private Environment   env;
+    private final File    envHome;
 
     public LockManagerTest() {
-        envHome =  SharedTestUtils.getTestDir();
+        envHome = SharedTestUtils.getTestDir();
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
-        envConfig.setConfigParam(EnvironmentParams.N_LOCK_TABLES.getName(),
-                                 "11");
+        envConfig.setConfigParam(EnvironmentParams.N_LOCK_TABLES.getName(), "11");
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         env = create(envHome, envConfig);
@@ -73,8 +71,7 @@ public class LockManagerTest extends DualTestCase {
         sequence = new AtomicInteger(0);
     }
 
-    private void initLockers() 
-        throws DatabaseException {
+    private void initLockers() throws DatabaseException {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
@@ -84,8 +81,7 @@ public class LockManagerTest extends DualTestCase {
         txn4 = BasicLocker.createBasicLocker(envImpl);
     }
 
-    private void initTxns(TransactionConfig config, EnvironmentImpl envImpl) 
-        throws DatabaseException {
+    private void initTxns(TransactionConfig config, EnvironmentImpl envImpl) throws DatabaseException {
 
         txn1 = Txn.createLocalTxn(envImpl, config);
         txn2 = Txn.createLocalTxn(envImpl, config);
@@ -93,8 +89,7 @@ public class LockManagerTest extends DualTestCase {
         txn4 = Txn.createLocalTxn(envImpl, config);
     }
 
-    private void closeEnv() 
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         txn1.operationEnd();
         txn2.operationEnd();
@@ -107,24 +102,19 @@ public class LockManagerTest extends DualTestCase {
     /*
      * SR15926 showed a bug where node IDs that are > 0x80000000 produce
      * negative lock table indexes becuase of the modulo arithmetic in
-     * LockManager.getLockTableIndex().
-     *
-     * Since node IDs are no longer used for locking, this test is somewhat
-     * outdated.  However, it is still a good idea to check that we can lock
-     * an LSN value with the sign bit set.
+     * LockManager.getLockTableIndex(). Since node IDs are no longer used for
+     * locking, this test is somewhat outdated. However, it is still a good idea
+     * to check that we can lock an LSN value with the sign bit set.
      */
     @Test
-    public void testSR15926LargeNodeIds()
-        throws Exception {
+    public void testSR15926LargeNodeIds() throws Exception {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
         try {
-            lockManager.lock(0x80000000L, txn1, LockType.WRITE,
-                             0, false, false, null);
+            lockManager.lock(0x80000000L, txn1, LockType.WRITE, 0, false, false, null);
         } catch (Exception e) {
             fail("shouldn't get exception " + e);
         } finally {
@@ -133,13 +123,11 @@ public class LockManagerTest extends DualTestCase {
     }
 
     @Test
-    public void testNegatives()
-        throws Exception {
+    public void testNegatives() throws Exception {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
         try {
             assertFalse(lockManager.isOwner(nid, txn1, LockType.READ));
@@ -149,9 +137,7 @@ public class LockManagerTest extends DualTestCase {
             lockManager.lock(1, txn1, LockType.READ, 0, false, false, null);
 
             /* already holds this lock */
-            assertEquals(LockGrantType.EXISTING,
-                         lockManager.lock(1, txn1, LockType.READ, 0,
-                         false, false, null));
+            assertEquals(LockGrantType.EXISTING, lockManager.lock(1, txn1, LockType.READ, 0, false, false, null));
             assertFalse(lockManager.isOwner(nid, txn2, LockType.READ));
             assertFalse(lockManager.isOwner(nid, txn2, LockType.WRITE));
             assertTrue(lockManager.isLocked(nid));
@@ -181,9 +167,7 @@ public class LockManagerTest extends DualTestCase {
             /* holds write and subsequent request for READ is ok */
             lockManager.lock(1, txn1, LockType.READ, 0, false, false, null);
             /* already holds this lock */
-            assertTrue(lockManager.lock(1, txn1, LockType.WRITE,
-                        0, false, false, null) ==
-                    LockGrantType.EXISTING);
+            assertTrue(lockManager.lock(1, txn1, LockType.WRITE, 0, false, false, null) == LockGrantType.EXISTING);
             assertFalse(lockManager.isWaiter(nid, txn1));
         } catch (Exception e) {
             e.printStackTrace();
@@ -197,76 +181,65 @@ public class LockManagerTest extends DualTestCase {
      * Acquire three read locks and make sure that they share nicely.
      */
     @Test
-    public void testMultipleReaders()
-        throws Throwable {
+    public void testMultipleReaders() throws Throwable {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
-        JUnitThread tester1 =
-            new JUnitThread("testMultipleReaders1") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn1, LockType.READ, 0, 
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                        sequence.incrementAndGet();
-                        while (sequence.get() < 3) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn1);
-                        txn1.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testMultipleReaders1") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn1, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.READ));
+                    sequence.incrementAndGet();
+                    while (sequence.get() < 3) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn1);
+                    txn1.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testMultipleReaders2") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn2, LockType.READ, 0,
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        sequence.incrementAndGet();
-                        while (sequence.get() < 3) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn2);
-                        txn2.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testMultipleReaders2") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn2, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    sequence.incrementAndGet();
+                    while (sequence.get() < 3) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn2);
+                    txn2.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester3 =
-            new JUnitThread("testMultipleReaders3") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn3, LockType.READ, 0,
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn3, LockType.READ));
-                        sequence.incrementAndGet();
-                        while (sequence.get() < 3) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn3);
-                        txn3.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester3 = new JUnitThread("testMultipleReaders3") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn3, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn3, LockType.READ));
+                    sequence.incrementAndGet();
+                    while (sequence.get() < 3) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn3);
+                    txn3.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
@@ -278,82 +251,69 @@ public class LockManagerTest extends DualTestCase {
     }
 
     /**
-     * Grab two read locks, hold them, and make sure that a write lock
-     * waits for them to be released.
+     * Grab two read locks, hold them, and make sure that a write lock waits for
+     * them to be released.
      */
     @Test
-    public void testMultipleReadersSingleWrite1()
-        throws Throwable {
+    public void testMultipleReadersSingleWrite1() throws Throwable {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
-        JUnitThread tester1 =
-            new JUnitThread("testMultipleReaders1") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn1, LockType.READ, 0,
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                        while (lockManager.nWaiters(nid) < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue(lockManager.isWaiter(nid, txn3));
-                        assertFalse(lockManager.isWaiter(nid, txn1));
-                        lockManager.release(1L, txn1);
-                        txn1.removeLock(1L);
-                        assertFalse
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testMultipleReaders1") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn1, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.READ));
+                    while (lockManager.nWaiters(nid) < 1) {
+                        Thread.yield();
                     }
+                    assertTrue(lockManager.isWaiter(nid, txn3));
+                    assertFalse(lockManager.isWaiter(nid, txn1));
+                    lockManager.release(1L, txn1);
+                    txn1.removeLock(1L);
+                    assertFalse(lockManager.isOwner(nid, txn1, LockType.READ));
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testMultipleReaders2") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn2, LockType.READ, 0,
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        while (lockManager.nWaiters(nid) < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue(lockManager.isWaiter(nid, txn3));
-                        lockManager.release(1L, txn2);
-                        txn2.removeLock(1L);
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testMultipleReaders2") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn2, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    while (lockManager.nWaiters(nid) < 1) {
+                        Thread.yield();
                     }
+                    assertTrue(lockManager.isWaiter(nid, txn3));
+                    lockManager.release(1L, txn2);
+                    txn2.removeLock(1L);
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.READ));
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester3 =
-            new JUnitThread("testMultipleReaders3") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.lock(1, txn3, LockType.WRITE, 0,
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn3, LockType.WRITE));
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester3 = new JUnitThread("testMultipleReaders3") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.lock(1, txn3, LockType.WRITE, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn3, LockType.WRITE));
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
@@ -365,108 +325,93 @@ public class LockManagerTest extends DualTestCase {
     }
 
     /**
-     * Acquire two read locks, put a write locker behind the two
-     * read lockers, and then queue a read locker behind the writer.
-     * Ensure that the third reader is not granted until the writer
-     * releases the lock.
+     * Acquire two read locks, put a write locker behind the two read lockers,
+     * and then queue a read locker behind the writer. Ensure that the third
+     * reader is not granted until the writer releases the lock.
      */
     @Test
-    public void testMultipleReadersSingleWrite2()
-        throws Throwable {
+    public void testMultipleReadersSingleWrite2() throws Throwable {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
-        JUnitThread tester1 =
-            new JUnitThread("testMultipleReaders1") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn1, LockType.READ, 0,
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                        while (lockManager.nWaiters(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn1);
-                        txn1.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testMultipleReaders1") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn1, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.READ));
+                    while (lockManager.nWaiters(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn1);
+                    txn1.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testMultipleReaders2") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn2, LockType.READ, 0,
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        while (lockManager.nWaiters(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn2);
-                        txn2.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testMultipleReaders2") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn2, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    while (lockManager.nWaiters(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn2);
+                    txn2.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester3 =
-            new JUnitThread("testMultipleReaders3") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.lock(1, txn3, LockType.WRITE, 0,
-                                false, false, null);
-                        while (lockManager.nWaiters(nid) < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.isOwner(nid, txn3, LockType.WRITE));
-                        lockManager.release(1L, txn3);
-                        txn3.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester3 = new JUnitThread("testMultipleReaders3") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.lock(1, txn3, LockType.WRITE, 0, false, false, null);
+                    while (lockManager.nWaiters(nid) < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.isOwner(nid, txn3, LockType.WRITE));
+                    lockManager.release(1L, txn3);
+                    txn3.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester4 =
-            new JUnitThread("testMultipleReaders4") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nWaiters(nid) < 1) {
-                            Thread.yield();
-                        }
-                        lockManager.lock(1, txn4, LockType.READ, 0,
-                                false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn4, LockType.READ));
-                        lockManager.release(1L, txn4);
-                        txn4.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester4 = new JUnitThread("testMultipleReaders4") {
+            public void testBody() {
+                try {
+                    while (lockManager.nWaiters(nid) < 1) {
+                        Thread.yield();
                     }
+                    lockManager.lock(1, txn4, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn4, LockType.READ));
+                    lockManager.release(1L, txn4);
+                    txn4.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
         tester3.start();
         tester4.start();
-               tester1.finishTest();
+        tester1.finishTest();
         tester2.finishTest();
         tester3.finishTest();
         tester4.finishTest();
@@ -474,83 +419,70 @@ public class LockManagerTest extends DualTestCase {
     }
 
     /**
-     * Acquire two read locks for two transactions, then request a write
-     * lock for a third transaction.  Then request a write lock for one
-     * of the first transactions that already has a read lock (i.e.
-     * request an upgrade lock).  Make sure it butts in front of the
-     * existing wait lock.
+     * Acquire two read locks for two transactions, then request a write lock
+     * for a third transaction. Then request a write lock for one of the first
+     * transactions that already has a read lock (i.e. request an upgrade lock).
+     * Make sure it butts in front of the existing wait lock.
      */
     @Test
-    public void testUpgradeLock()
-        throws Throwable {
+    public void testUpgradeLock() throws Throwable {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
-        JUnitThread tester1 =
-            new JUnitThread("testUpgradeLock1") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn1, LockType.READ, 0,
-                                         false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                        while (lockManager.nWaiters(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn1);
-                        txn1.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testUpgradeLock1") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn1, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.READ));
+                    while (lockManager.nWaiters(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn1);
+                    txn1.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testUpgradeLock2") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn2, LockType.READ, 0,
-                                         false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        while (lockManager.nWaiters(nid) < 1) {
-                            Thread.yield();
-                        }
-                        lockManager.lock(1, txn2, LockType.WRITE, 0,
-                                         false, false, null);
-                        assertTrue(lockManager.nWaiters(nid) == 1);
-                        lockManager.release(1L, txn2);
-                        txn2.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testUpgradeLock2") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn2, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    while (lockManager.nWaiters(nid) < 1) {
+                        Thread.yield();
                     }
+                    lockManager.lock(1, txn2, LockType.WRITE, 0, false, false, null);
+                    assertTrue(lockManager.nWaiters(nid) == 1);
+                    lockManager.release(1L, txn2);
+                    txn2.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester3 =
-            new JUnitThread("testUpgradeLock3") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.lock(1, txn3, LockType.WRITE, 0,
-                                         false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn3, LockType.WRITE));
-                        lockManager.release(1L, txn3);
-                        txn3.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester3 = new JUnitThread("testUpgradeLock3") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.lock(1, txn3, LockType.WRITE, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn3, LockType.WRITE));
+                    lockManager.release(1L, txn3);
+                    txn3.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
@@ -562,76 +494,63 @@ public class LockManagerTest extends DualTestCase {
     }
 
     /**
-     * Acquire a read lock, then request a write lock for a second
-     * transaction in non-blocking mode.  Make sure it fails.
+     * Acquire a read lock, then request a write lock for a second transaction
+     * in non-blocking mode. Make sure it fails.
      */
     @Test
-    public void testNonBlockingLock1()
-        throws Throwable {
+    public void testNonBlockingLock1() throws Throwable {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
-        JUnitThread tester1 =
-            new JUnitThread("testNonBlocking1") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn1, LockType.READ, 0,
-                                         false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn1);
-                        txn1.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testNonBlocking1") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn1, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.READ));
+                    while (sequence.get() < 1) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn1);
+                    txn1.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testNonBlocking2") {
-                public void testBody() {
-                    try {
-                        /* wait for tester1 */
-                        while (lockManager.nOwners(nid) < 1) {
-                            Thread.yield();
-                        }
-                        LockGrantType grant = lockManager.lock
-                            (1, txn2, LockType.WRITE, 0, true, false, null);
-                        assertSame(LockGrantType.DENIED, grant);
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.WRITE));
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        assertTrue(lockManager.nWaiters(nid) == 0);
-                        assertTrue(lockManager.nOwners(nid) == 1);
-                        sequence.incrementAndGet();
-                        /* wait for tester1 to release the lock */
-                        while (lockManager.nOwners(nid) > 0) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.lock(1, txn2, LockType.WRITE, 0,
-                                              false, false, null) ==
-                             LockGrantType.NEW);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.WRITE));
-                        assertTrue(lockManager.nWaiters(nid) == 0);
-                        assertTrue(lockManager.nOwners(nid) == 1);
-                        lockManager.release(1L, txn2);
-                        txn2.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testNonBlocking2") {
+            public void testBody() {
+                try {
+                    /* wait for tester1 */
+                    while (lockManager.nOwners(nid) < 1) {
+                        Thread.yield();
                     }
+                    LockGrantType grant = lockManager.lock(1, txn2, LockType.WRITE, 0, true, false, null);
+                    assertSame(LockGrantType.DENIED, grant);
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.WRITE));
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.READ));
+                    assertTrue(lockManager.nWaiters(nid) == 0);
+                    assertTrue(lockManager.nOwners(nid) == 1);
+                    sequence.incrementAndGet();
+                    /* wait for tester1 to release the lock */
+                    while (lockManager.nOwners(nid) > 0) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.lock(1, txn2, LockType.WRITE, 0, false, false, null) == LockGrantType.NEW);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.WRITE));
+                    assertTrue(lockManager.nWaiters(nid) == 0);
+                    assertTrue(lockManager.nOwners(nid) == 1);
+                    lockManager.release(1L, txn2);
+                    txn2.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
@@ -641,79 +560,65 @@ public class LockManagerTest extends DualTestCase {
     }
 
     /**
-     * Acquire a write lock, then request a read lock for a second
-     * transaction in non-blocking mode.  Make sure it fails.
+     * Acquire a write lock, then request a read lock for a second transaction
+     * in non-blocking mode. Make sure it fails.
      */
     @Test
-    public void testNonBlockingLock2()
-        throws Throwable {
+    public void testNonBlockingLock2() throws Throwable {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
-        JUnitThread tester1 =
-            new JUnitThread("testNonBlocking1") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn1, LockType.WRITE, 0,
-                                         false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.WRITE));
-                        sequence.incrementAndGet();
-                        while (sequence.get() < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn1);
-                        txn1.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testNonBlocking1") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn1, LockType.WRITE, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.WRITE));
+                    sequence.incrementAndGet();
+                    while (sequence.get() < 2) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn1);
+                    txn1.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testNonBlocking2") {
-                public void testBody() {
-                    try {
-                        /* wait for tester1 */
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        LockGrantType grant = lockManager.lock
-                            (1, txn2, LockType.READ, 0, true, false, null);
-                        assertSame(LockGrantType.DENIED, grant);
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.WRITE));
-                        assertTrue(lockManager.nWaiters(nid) == 0);
-                        assertTrue(lockManager.nOwners(nid) == 1);
-                        sequence.incrementAndGet();
-                        /* wait for tester1 to release the lock */
-                        while (lockManager.nOwners(nid) > 0) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.lock(1, txn2, LockType.READ, 0,
-                                              false, false, null) ==
-                             LockGrantType.NEW);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.WRITE));
-                        assertTrue(lockManager.nWaiters(nid) == 0);
-                        assertTrue(lockManager.nOwners(nid) == 1);
-                        lockManager.release(1L, txn2);
-                        txn2.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testNonBlocking2") {
+            public void testBody() {
+                try {
+                    /* wait for tester1 */
+                    while (sequence.get() < 1) {
+                        Thread.yield();
                     }
+                    LockGrantType grant = lockManager.lock(1, txn2, LockType.READ, 0, true, false, null);
+                    assertSame(LockGrantType.DENIED, grant);
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.READ));
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.WRITE));
+                    assertTrue(lockManager.nWaiters(nid) == 0);
+                    assertTrue(lockManager.nOwners(nid) == 1);
+                    sequence.incrementAndGet();
+                    /* wait for tester1 to release the lock */
+                    while (lockManager.nOwners(nid) > 0) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.lock(1, txn2, LockType.READ, 0, false, false, null) == LockGrantType.NEW);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.WRITE));
+                    assertTrue(lockManager.nWaiters(nid) == 0);
+                    assertTrue(lockManager.nOwners(nid) == 1);
+                    lockManager.release(1L, txn2);
+                    txn2.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
@@ -723,84 +628,69 @@ public class LockManagerTest extends DualTestCase {
     }
 
     /**
-     * Acquire a write lock, then request a read lock for a second
-     * transaction in blocking mode.  Make sure it waits.
+     * Acquire a write lock, then request a read lock for a second transaction
+     * in blocking mode. Make sure it waits.
      */
     @Test
-    public void testWaitingLock()
-        throws Throwable {
+    public void testWaitingLock() throws Throwable {
 
         initLockers();
 
-        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).
-            getTxnManager().getLockManager();
+        final LockManager lockManager = DbInternal.getNonNullEnvImpl(env).getTxnManager().getLockManager();
 
-        JUnitThread tester1 =
-            new JUnitThread("testBlocking1") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn1, LockType.WRITE, 0,
-                                         false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.WRITE));
-                        sequence.incrementAndGet();
-                        while (sequence.get() < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn1);
-                        txn1.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testBlocking1") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn1, LockType.WRITE, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.WRITE));
+                    sequence.incrementAndGet();
+                    while (sequence.get() < 2) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn1);
+                    txn1.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testBlocking2") {
-                public void testBody() {
-                    try {
-                        /* wait for tester1 */
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        try {
-                            lockManager.lock(1, txn2, LockType.READ, 500,
-                                             false, false, null);
-                            fail("didn't time out");
-                        } catch (LockConflictException e) {
-                            assertTrue
-                                (TestUtils.skipVersion(e).startsWith("Lock "));
-                        }
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.WRITE));
-                        assertTrue(lockManager.nWaiters(nid) == 0);
-                        assertTrue(lockManager.nOwners(nid) == 1);
-                        sequence.incrementAndGet();
-                        /* wait for tester1 to release the lock */
-                        while (lockManager.nOwners(nid) > 0) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.lock(1, txn2, LockType.READ, 0,
-                                              false, false, null) ==
-                             LockGrantType.NEW);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        assertFalse
-                            (lockManager.isOwner(nid, txn2, LockType.WRITE));
-                        assertTrue(lockManager.nWaiters(nid) == 0);
-                        assertTrue(lockManager.nOwners(nid) == 1);
-                        lockManager.release(1L, txn2);
-                        txn2.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testBlocking2") {
+            public void testBody() {
+                try {
+                    /* wait for tester1 */
+                    while (sequence.get() < 1) {
+                        Thread.yield();
                     }
+                    try {
+                        lockManager.lock(1, txn2, LockType.READ, 500, false, false, null);
+                        fail("didn't time out");
+                    } catch (LockConflictException e) {
+                        assertTrue(TestUtils.skipVersion(e).startsWith("Lock "));
+                    }
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.READ));
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.WRITE));
+                    assertTrue(lockManager.nWaiters(nid) == 0);
+                    assertTrue(lockManager.nOwners(nid) == 1);
+                    sequence.incrementAndGet();
+                    /* wait for tester1 to release the lock */
+                    while (lockManager.nOwners(nid) > 0) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.lock(1, txn2, LockType.READ, 0, false, false, null) == LockGrantType.NEW);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    assertFalse(lockManager.isOwner(nid, txn2, LockType.WRITE));
+                    assertTrue(lockManager.nWaiters(nid) == 0);
+                    assertTrue(lockManager.nOwners(nid) == 1);
+                    lockManager.release(1L, txn2);
+                    txn2.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
@@ -811,24 +701,20 @@ public class LockManagerTest extends DualTestCase {
 
     /**
      * Test that LockConflictException has the correct owners and waiters when
-     * it is thrown due to a timeout.
-     *
-     * Create five threads, the first two of which take a read lock and the
-     * second two of which try for a write lock backed up behind the two
-     * read locks.  Then have a fifth thread try for a read lock which backs
-     * up behind all of them.  The first two threads (read lockers) are owners
-     * and the second two threads are waiters.  When the fifth thread catches
-     * the LockConflictException make sure that it contains the txn ids for the
-     * two readers in the owners array and the txn ids for the two writers
-     * in the waiters array.
+     * it is thrown due to a timeout. Create five threads, the first two of
+     * which take a read lock and the second two of which try for a write lock
+     * backed up behind the two read locks. Then have a fifth thread try for a
+     * read lock which backs up behind all of them. The first two threads (read
+     * lockers) are owners and the second two threads are waiters. When the
+     * fifth thread catches the LockConflictException make sure that it contains
+     * the txn ids for the two readers in the owners array and the txn ids for
+     * the two writers in the waiters array.
      */
     @Test
-    public void testLockConflictInfo()
-        throws Throwable {
+    public void testLockConflictInfo() throws Throwable {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-        final LockManager lockManager = 
-            envImpl.getTxnManager().getLockManager();
+        final LockManager lockManager = envImpl.getTxnManager().getLockManager();
         TransactionConfig config = new TransactionConfig();
 
         initTxns(config, envImpl);
@@ -836,124 +722,260 @@ public class LockManagerTest extends DualTestCase {
         final Txn txn5 = Txn.createLocalTxn(envImpl, config);
 
         sequence.set(0);
-        JUnitThread tester1 =
-            new JUnitThread("testMultipleReaders1") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn1, LockType.READ, 0,
-                                         false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn1);
-                        txn1.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testMultipleReaders1") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn1, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.READ));
+                    while (sequence.get() < 1) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn1);
+                    txn1.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testMultipleReaders2") {
-                public void testBody() {
-                    try {
-                        lockManager.lock(1, txn2, LockType.READ, 0,
-                                         false, false, null);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn2);
-                        txn2.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testMultipleReaders2") {
+            public void testBody() {
+                try {
+                    lockManager.lock(1, txn2, LockType.READ, 0, false, false, null);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    while (sequence.get() < 1) {
+                        Thread.yield();
                     }
+                    lockManager.release(1L, txn2);
+                    txn2.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester3 =
-            new JUnitThread("testMultipleReaders3") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.lock(1, txn3, LockType.WRITE, 0,
-                                         false, false, null);
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.isOwner(nid, txn3, LockType.WRITE));
-                        lockManager.release(1L, txn3);
-                        txn3.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester3 = new JUnitThread("testMultipleReaders3") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.lock(1, txn3, LockType.WRITE, 0, false, false, null);
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.isOwner(nid, txn3, LockType.WRITE));
+                    lockManager.release(1L, txn3);
+                    txn3.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester4 =
-            new JUnitThread("testMultipleReaders4") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.lock(1, txn4, LockType.WRITE, 0,
-                                         false, false, null);
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.isOwner(nid, txn4, LockType.WRITE));
-                        lockManager.release(1L, txn4);
-                        txn4.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester4 = new JUnitThread("testMultipleReaders4") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.lock(1, txn4, LockType.WRITE, 0, false, false, null);
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.isOwner(nid, txn4, LockType.WRITE));
+                    lockManager.release(1L, txn4);
+                    txn4.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester5 =
-            new JUnitThread("testMultipleReaders5") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nWaiters(nid) < 2) {
-                            Thread.yield();
-                        }
-                        lockManager.lock(1, txn5, LockType.READ, 900,
-                                         false, false, null);
-                        fail("expected LockConflictException");
-                    } catch (LockConflictException e) {
-
-                        long[] owners = e.getOwnerTxnIds();
-                        long[] waiters = e.getWaiterTxnIds();
-
-                        assertTrue((owners[0] == txn1.getId() &&
-                                    owners[1] == txn2.getId()) ||
-                                   (owners[1] == txn1.getId() &&
-                                    owners[0] == txn2.getId()));
-
-                        assertTrue((waiters[0] == txn3.getId() &&
-                                    waiters[1] == txn4.getId()) ||
-                                   (waiters[1] == txn3.getId() &&
-                                    waiters[0] == txn4.getId()));
-
-                    } catch (DatabaseException DBE) {
-                        fail("expected LockConflictException");
-                        DBE.printStackTrace(System.out);
+        JUnitThread tester5 = new JUnitThread("testMultipleReaders5") {
+            public void testBody() {
+                try {
+                    while (lockManager.nWaiters(nid) < 2) {
+                        Thread.yield();
                     }
+                    lockManager.lock(1, txn5, LockType.READ, 900, false, false, null);
+                    fail("expected LockConflictException");
+                } catch (LockConflictException e) {
+
+                    long[] owners = e.getOwnerTxnIds();
+                    long[] waiters = e.getWaiterTxnIds();
+
+                    assertTrue((owners[0] == txn1.getId() && owners[1] == txn2.getId())
+                            || (owners[1] == txn1.getId() && owners[0] == txn2.getId()));
+
+                    assertTrue((waiters[0] == txn3.getId() && waiters[1] == txn4.getId())
+                            || (waiters[1] == txn3.getId() && waiters[0] == txn4.getId()));
+
+                } catch (DatabaseException DBE) {
+                    fail("expected LockConflictException");
+                    DBE.printStackTrace(System.out);
+                }
+                sequence.set(1);
+            }
+        };
+
+        tester1.start();
+        tester2.start();
+        tester3.start();
+        tester4.start();
+        tester5.start();
+        tester1.finishTest();
+        tester2.finishTest();
+        tester3.finishTest();
+        tester4.finishTest();
+        tester5.finishTest();
+        ((Txn) txn1).abort(false);
+        ((Txn) txn2).abort(false);
+        ((Txn) txn3).abort(false);
+        ((Txn) txn4).abort(false);
+        txn5.abort(false);
+        closeEnv();
+    }
+
+    /**
+     * Test lock stealing. Create five threads, with the first two taking a read
+     * lock and the second two trying for a write lock backed up behind the two
+     * read locks. Then have a fifth importunate thread try for a write lock
+     * which will flush the first two owners. The first two threads (read
+     * lockers) are owners and the second two threads are waiters. When the
+     * importunate thread steals the lock, make sure that the other two owners
+     * become onlyAbortable.
+     */
+    @Test
+    public void testImportunateTxn1() throws Throwable {
+
+        EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
+
+        /* LockPreemptedException is thrown only if replicated. */
+        if (!envImpl.isReplicated()) {
+            close(env);
+            return;
+        }
+
+        /*
+         * Use an arbitrary DatabaseImpl so that the Txn.lock method can be
+         * called below with a non-null database param. Although this is a
+         * LockManager test, lock preemption requires calling Txn.lock.
+         */
+        final DatabaseImpl dbImpl = envImpl.getDbTree().getDb(DbTree.NAME_DB_ID);
+
+        final LockManager lockManager = envImpl.getTxnManager().getLockManager();
+        TransactionConfig config = new TransactionConfig();
+
+        initTxns(config, envImpl);
+
+        final Txn txn5 = Txn.createLocalTxn(envImpl, config);
+        txn5.setImportunate(true);
+
+        sequence.set(0);
+        JUnitThread tester1 = new JUnitThread("testImportunateTxn1.1") {
+            public void testBody() {
+                try {
+                    txn1.setLockTimeout(0);
+                    txn1.lock(1, LockType.READ, false, dbImpl);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.READ));
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(txn1.isPreempted());
+                    sequence.incrementAndGet();
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
+                }
+            }
+        };
+
+        JUnitThread tester2 = new JUnitThread("testImportunateTxn1.2") {
+            public void testBody() {
+                try {
+                    txn2.setLockTimeout(0);
+                    txn2.lock(1, LockType.READ, false, dbImpl);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(txn1.isPreempted());
+                    sequence.incrementAndGet();
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
+                }
+            }
+        };
+
+        JUnitThread tester3 = new JUnitThread("testImportunateTxn1.3") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 2) {
+                        Thread.yield();
+                    }
+                    txn3.setLockTimeout(0);
+                    txn3.lock(1, LockType.WRITE, false, dbImpl);
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.isOwner(nid, txn3, LockType.WRITE));
+                    lockManager.release(1L, txn3);
+                    txn3.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
+                }
+            }
+        };
+
+        JUnitThread tester4 = new JUnitThread("testImportunateTxn1.4") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 2) {
+                        Thread.yield();
+                    }
+                    txn4.setLockTimeout(0);
+                    txn4.lock(1, LockType.WRITE, false, dbImpl);
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.isOwner(nid, txn4, LockType.WRITE));
+                    lockManager.release(1L, txn4);
+                    txn4.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
+                }
+            }
+        };
+
+        JUnitThread tester5 = new JUnitThread("testImportunateTxn1.5") {
+            public void testBody() {
+                try {
+                    while (lockManager.nWaiters(nid) < 1) {
+                        Thread.yield();
+                    }
+                    txn5.setImportunate(true);
+                    txn5.setLockTimeout(900);
+                    txn5.lock(1, LockType.WRITE, false, dbImpl);
                     sequence.set(1);
+                    while (sequence.get() < 3) {
+                        Thread.yield();
+                    }
+                    lockManager.release(1L, txn5);
+                    txn5.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace(System.out);
+                    fail("unexpected DatabaseException");
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
@@ -974,19 +996,16 @@ public class LockManagerTest extends DualTestCase {
     }
 
     /**
-     * Test lock stealing.
-     *
-     * Create five threads, with the first two taking a read lock and the
-     * second two trying for a write lock backed up behind the two read locks.
-     * Then have a fifth importunate thread try for a write lock which will
-     * flush the first two owners.  The first two threads (read lockers) are
-     * owners and the second two threads are waiters.  When the importunate
-     * thread steals the lock, make sure that the other two owners become
-     * onlyAbortable.
+     * Test lock stealing. Create five threads, with the first two taking a read
+     * lock and the second two trying for a write lock backed up behind the two
+     * read locks. Then have a fifth importunate thread take a read lock and try
+     * for a write lock (upgrade) which will flush the first two read lock
+     * owners. The first two threads (read lockers) are owners and the second
+     * two threads are waiters. When the importunate thread steals the lock,
+     * make sure that the other two owners become onlyAbortable.
      */
     @Test
-    public void testImportunateTxn1()
-        throws Throwable {
+    public void testImportunateTxn2() throws Throwable {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
@@ -998,182 +1017,12 @@ public class LockManagerTest extends DualTestCase {
 
         /*
          * Use an arbitrary DatabaseImpl so that the Txn.lock method can be
-         * called below with a non-null database param.  Although this is a
+         * called below with a non-null database param. Although this is a
          * LockManager test, lock preemption requires calling Txn.lock.
          */
-        final DatabaseImpl dbImpl = 
-            envImpl.getDbTree().getDb(DbTree.NAME_DB_ID);
+        final DatabaseImpl dbImpl = envImpl.getDbTree().getDb(DbTree.NAME_DB_ID);
 
-        final LockManager lockManager = 
-            envImpl.getTxnManager().getLockManager();
-        TransactionConfig config = new TransactionConfig();
-
-        initTxns(config, envImpl);
-        
-        final Txn txn5 = Txn.createLocalTxn(envImpl, config);
-        txn5.setImportunate(true);
-
-        sequence.set(0);
-        JUnitThread tester1 =
-            new JUnitThread("testImportunateTxn1.1") {
-                public void testBody() {
-                    try {
-                        txn1.setLockTimeout(0);
-                        txn1.lock(1, LockType.READ, false, dbImpl);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue(txn1.isPreempted());
-                        sequence.incrementAndGet();
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
-                    }
-                }
-            };
-
-        JUnitThread tester2 =
-            new JUnitThread("testImportunateTxn1.2") {
-                public void testBody() {
-                    try {
-                        txn2.setLockTimeout(0);
-                        txn2.lock(1, LockType.READ, false, dbImpl);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue(txn1.isPreempted());
-                        sequence.incrementAndGet();
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
-                    }
-                }
-            };
-
-        JUnitThread tester3 =
-            new JUnitThread("testImportunateTxn1.3") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 2) {
-                            Thread.yield();
-                        }
-                        txn3.setLockTimeout(0);
-                        txn3.lock(1, LockType.WRITE, false, dbImpl);
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.isOwner(nid, txn3, LockType.WRITE));
-                        lockManager.release(1L, txn3);
-                        txn3.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
-                    }
-                }
-            };
-
-        JUnitThread tester4 =
-            new JUnitThread("testImportunateTxn1.4") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 2) {
-                            Thread.yield();
-                        }
-                        txn4.setLockTimeout(0);
-                        txn4.lock(1, LockType.WRITE, false, dbImpl);
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.isOwner(nid, txn4, LockType.WRITE));
-                        lockManager.release(1L, txn4);
-                        txn4.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
-                    }
-                }
-            };
-
-        JUnitThread tester5 =
-            new JUnitThread("testImportunateTxn1.5") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nWaiters(nid) < 1) {
-                            Thread.yield();
-                        }
-                        txn5.setImportunate(true);
-                        txn5.setLockTimeout(900);
-                        txn5.lock(1, LockType.WRITE, false, dbImpl);
-                        sequence.set(1);
-                        while (sequence.get() < 3) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn5);
-                        txn5.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace(System.out);
-                        fail("unexpected DatabaseException");
-                    }
-                }
-            };
-
-        tester1.start();
-        tester2.start();
-        tester3.start();
-        tester4.start();
-        tester5.start();
-        tester1.finishTest();
-        tester2.finishTest();
-        tester3.finishTest();
-        tester4.finishTest();
-        tester5.finishTest();
-        ((Txn) txn1).abort(false);
-        ((Txn) txn2).abort(false);
-        ((Txn) txn3).abort(false);
-        ((Txn) txn4).abort(false);
-        txn5.abort(false);
-        closeEnv();
-    }
-
-    /**
-     * Test lock stealing.
-     *
-     * Create five threads, with the first two taking a read lock and the
-     * second two trying for a write lock backed up behind the two read locks.
-     * Then have a fifth importunate thread take a read lock and try for a
-     * write lock (upgrade) which will flush the first two read lock owners.
-     * The first two threads (read lockers) are owners and the second two
-     * threads are waiters.  When the importunate thread steals the lock, make
-     * sure that the other two owners become onlyAbortable.
-     */
-    @Test
-    public void testImportunateTxn2()
-        throws Throwable {
-
-        EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-
-        /* LockPreemptedException is thrown only if replicated. */
-        if (!envImpl.isReplicated()) {
-            close(env);
-            return;
-        }
-
-        /*
-         * Use an arbitrary DatabaseImpl so that the Txn.lock method can be
-         * called below with a non-null database param.  Although this is a
-         * LockManager test, lock preemption requires calling Txn.lock.
-         */
-        final DatabaseImpl dbImpl = 
-            envImpl.getDbTree().getDb(DbTree.NAME_DB_ID);
-
-        final LockManager lockManager = 
-            envImpl.getTxnManager().getLockManager();
+        final LockManager lockManager = envImpl.getTxnManager().getLockManager();
         TransactionConfig config = new TransactionConfig();
 
         initTxns(config, envImpl);
@@ -1182,116 +1031,107 @@ public class LockManagerTest extends DualTestCase {
         txn5.setImportunate(true);
 
         sequence.set(0);
-        JUnitThread tester1 =
-            new JUnitThread("testImportunateTxn1.1") {
-                public void testBody() {
-                    try {
-                        txn1.setLockTimeout(0);
-                        txn1.lock(1, LockType.READ, false, dbImpl);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn1, LockType.READ));
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue(txn1.isPreempted());
-                        sequence.incrementAndGet();
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester1 = new JUnitThread("testImportunateTxn1.1") {
+            public void testBody() {
+                try {
+                    txn1.setLockTimeout(0);
+                    txn1.lock(1, LockType.READ, false, dbImpl);
+                    assertTrue(lockManager.isOwner(nid, txn1, LockType.READ));
+                    while (sequence.get() < 1) {
+                        Thread.yield();
                     }
+                    assertTrue(txn1.isPreempted());
+                    sequence.incrementAndGet();
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testImportunateTxn1.2") {
-                public void testBody() {
-                    try {
-                        txn2.setLockTimeout(0);
-                        txn2.lock(1, LockType.READ, false, dbImpl);
-                        assertTrue
-                            (lockManager.isOwner(nid, txn2, LockType.READ));
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue(txn2.isPreempted());
-                        sequence.incrementAndGet();
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester2 = new JUnitThread("testImportunateTxn1.2") {
+            public void testBody() {
+                try {
+                    txn2.setLockTimeout(0);
+                    txn2.lock(1, LockType.READ, false, dbImpl);
+                    assertTrue(lockManager.isOwner(nid, txn2, LockType.READ));
+                    while (sequence.get() < 1) {
+                        Thread.yield();
                     }
+                    assertTrue(txn2.isPreempted());
+                    sequence.incrementAndGet();
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester3 =
-            new JUnitThread("testImportunateTxn1.3") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 3) {
-                            Thread.yield();
-                        }
-                        txn3.setLockTimeout(0);
-                        txn3.lock(1, LockType.WRITE, false, dbImpl);
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.isOwner(nid, txn3, LockType.WRITE));
-                        lockManager.release(1L, txn3);
-                        txn3.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester3 = new JUnitThread("testImportunateTxn1.3") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 3) {
+                        Thread.yield();
                     }
+                    txn3.setLockTimeout(0);
+                    txn3.lock(1, LockType.WRITE, false, dbImpl);
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.isOwner(nid, txn3, LockType.WRITE));
+                    lockManager.release(1L, txn3);
+                    txn3.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester4 =
-            new JUnitThread("testImportunateTxn1.4") {
-                public void testBody() {
-                    try {
-                        while (lockManager.nOwners(nid) < 3) {
-                            Thread.yield();
-                        }
-                        txn4.setLockTimeout(0);
-                        txn4.lock(1, LockType.WRITE, false, dbImpl);
-                        while (sequence.get() < 1) {
-                            Thread.yield();
-                        }
-                        assertTrue
-                            (lockManager.isOwner(nid, txn4, LockType.WRITE));
-                        lockManager.release(1L, txn4);
-                        txn4.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
+        JUnitThread tester4 = new JUnitThread("testImportunateTxn1.4") {
+            public void testBody() {
+                try {
+                    while (lockManager.nOwners(nid) < 3) {
+                        Thread.yield();
                     }
+                    txn4.setLockTimeout(0);
+                    txn4.lock(1, LockType.WRITE, false, dbImpl);
+                    while (sequence.get() < 1) {
+                        Thread.yield();
+                    }
+                    assertTrue(lockManager.isOwner(nid, txn4, LockType.WRITE));
+                    lockManager.release(1L, txn4);
+                    txn4.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester5 =
-            new JUnitThread("testImportunateTxn1.5") {
-                public void testBody() {
-                    try {
-                        txn5.setLockTimeout(0);
-                        txn5.lock(1, LockType.READ, false, dbImpl);
-                        while (lockManager.nWaiters(nid) < 1) {
-                            Thread.yield();
-                        }
-                        txn5.setImportunate(true);
-                        txn5.setLockTimeout(900);
-                        txn5.lock(1, LockType.WRITE, false, dbImpl);
-                        sequence.set(1);
-                        while (sequence.get() < 3) {
-                            Thread.yield();
-                        }
-                        lockManager.release(1L, txn5);
-                        txn5.removeLock(1L);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace(System.out);
-                        fail("unexpected DatabaseException");
+        JUnitThread tester5 = new JUnitThread("testImportunateTxn1.5") {
+            public void testBody() {
+                try {
+                    txn5.setLockTimeout(0);
+                    txn5.lock(1, LockType.READ, false, dbImpl);
+                    while (lockManager.nWaiters(nid) < 1) {
+                        Thread.yield();
                     }
+                    txn5.setImportunate(true);
+                    txn5.setLockTimeout(900);
+                    txn5.lock(1, LockType.WRITE, false, dbImpl);
+                    sequence.set(1);
+                    while (sequence.get() < 3) {
+                        Thread.yield();
+                    }
+                    lockManager.release(1L, txn5);
+                    txn5.removeLock(1L);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace(System.out);
+                    fail("unexpected DatabaseException");
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();

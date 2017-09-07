@@ -44,12 +44,12 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 public class CursorTxnTest extends TestBase {
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database myDb;
-    private int initialEnvReadLocks;
-    private int initialEnvWriteLocks;
-    private boolean noLocking;
+    private Database    myDb;
+    private int         initialEnvReadLocks;
+    private int         initialEnvWriteLocks;
+    private boolean     noLocking;
 
     public CursorTxnTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -57,21 +57,16 @@ public class CursorTxnTest extends TestBase {
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.setLoadPropertyFile(envConfig, false);
         envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
         envConfig.setAllowCreate(true);
         env = new Environment(envHome, envConfig);
 
@@ -88,18 +83,19 @@ public class CursorTxnTest extends TestBase {
     public void tearDown() {
         try {
             myDb.close();
-        } catch (DatabaseException ignored) {}
+        } catch (DatabaseException ignored) {
+        }
         try {
             env.close();
-        } catch (DatabaseException ignored) {}
+        } catch (DatabaseException ignored) {
+        }
     }
 
     /**
      * Create a cursor with a null transaction.
      */
     @Test
-    public void testNullTxnLockRelease()
-        throws DatabaseException {
+    public void testNullTxnLockRelease() throws DatabaseException {
 
         getInitialEnvStats();
         Cursor cursor = myDb.openCursor(null, null);
@@ -135,8 +131,7 @@ public class CursorTxnTest extends TestBase {
         DatabaseEntry foundData = new DatabaseEntry();
 
         /* Check that read locks are held on forward traversal. */
-        OperationStatus status =
-            cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
+        OperationStatus status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
         checkReadWriteLockCounts(cursor, 1, 0);
         int numSeen = 0;
         while (status == OperationStatus.SUCCESS) {
@@ -147,8 +142,7 @@ public class CursorTxnTest extends TestBase {
                 break;
             }
 
-            status = cursor.getCurrent(foundKey, foundData,
-                                       LockMode.DEFAULT);
+            status = cursor.getCurrent(foundKey, foundData, LockMode.DEFAULT);
             checkReadWriteLockCounts(cursor, 1, 0);
         }
         assertEquals(30, numSeen);
@@ -159,9 +153,7 @@ public class CursorTxnTest extends TestBase {
 
         while (status == OperationStatus.SUCCESS) {
             count = cursor.count();
-            assertEquals("For key " +
-                         TestUtils.dumpByteArray(foundKey.getData()),
-                         3, count);
+            assertEquals("For key " + TestUtils.dumpByteArray(foundKey.getData()), 3, count);
             status = cursor.getPrev(foundKey, foundData, LockMode.DEFAULT);
             checkReadWriteLockCounts(cursor, 1, 0);
         }
@@ -169,9 +161,8 @@ public class CursorTxnTest extends TestBase {
         /* Check that delete holds a write lock. */
         status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
         while (status == OperationStatus.SUCCESS) {
-            assertEquals("For key " +
-                         TestUtils.dumpByteArray(foundKey.getData()),
-                         OperationStatus.SUCCESS, cursor.delete());
+            assertEquals("For key " + TestUtils.dumpByteArray(foundKey.getData()), OperationStatus.SUCCESS,
+                    cursor.delete());
             /* Two write locks (old/new LSNs) on deleted LN. */
             checkReadWriteLockCounts(cursor, 0, 2);
             status = cursor.getNext(foundKey, foundData, LockMode.DEFAULT);
@@ -190,10 +181,8 @@ public class CursorTxnTest extends TestBase {
         cursor.close();
     }
 
-    private void checkReadWriteLockCounts(Cursor cursor,
-                                          int expectReadLocks,
-                                          int expectWriteLocks)
-        throws DatabaseException {
+    private void checkReadWriteLockCounts(Cursor cursor, int expectReadLocks, int expectWriteLocks)
+            throws DatabaseException {
 
         if (noLocking) {
             expectReadLocks = expectWriteLocks = 0;
@@ -205,22 +194,18 @@ public class CursorTxnTest extends TestBase {
         assertEquals(expectWriteLocks, cursorStats.getInt(LOCK_WRITE_LOCKS));
 
         EnvironmentStats lockStats = env.getStats(null);
-        assertEquals(initialEnvReadLocks + expectReadLocks,
-                     lockStats.getNReadLocks());
-        assertEquals(initialEnvWriteLocks + expectWriteLocks,
-                     lockStats.getNWriteLocks());
+        assertEquals(initialEnvReadLocks + expectReadLocks, lockStats.getNReadLocks());
+        assertEquals(initialEnvWriteLocks + expectWriteLocks, lockStats.getNWriteLocks());
     }
 
-    private void getInitialEnvStats()
-        throws DatabaseException {
+    private void getInitialEnvStats() throws DatabaseException {
 
         EnvironmentStats lockStats = env.getStats(null);
         initialEnvReadLocks = lockStats.getNReadLocks();
         initialEnvWriteLocks = lockStats.getNWriteLocks();
     }
 
-    private void insertData(Cursor cursor, int numRecords, int dataVal)
-        throws DatabaseException {
+    private void insertData(Cursor cursor, int numRecords, int dataVal) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();

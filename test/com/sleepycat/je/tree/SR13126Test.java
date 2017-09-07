@@ -44,10 +44,10 @@ import org.junit.Test;
  */
 public class SR13126Test extends TestBase {
 
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database db;
-    private long maxMem;
+    private Database    db;
+    private long        maxMem;
 
     public SR13126Test() {
         envHome = SharedTestUtils.getTestDir();
@@ -67,14 +67,12 @@ public class SR13126Test extends TestBase {
         db = null;
     }
 
-    private boolean open()
-        throws DatabaseException {
+    private boolean open() throws DatabaseException {
 
         maxMem = JVMSystemUtils.getRuntimeMaxMemory();
         if (maxMem == -1) {
-            System.out.println
-                ("*** Warning: not able to run this test because the JVM " +
-                 "heap size is not available");
+            System.out
+                    .println("*** Warning: not able to run this test because the JVM " + "heap size is not available");
             return false;
         }
 
@@ -82,14 +80,10 @@ public class SR13126Test extends TestBase {
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         /* Do not run the daemons to avoid timing considerations. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         env = new Environment(envHome, envConfig);
 
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -100,8 +94,7 @@ public class SR13126Test extends TestBase {
         return true;
     }
 
-    private void close()
-        throws DatabaseException {
+    private void close() throws DatabaseException {
 
         db.close();
         db = null;
@@ -111,8 +104,7 @@ public class SR13126Test extends TestBase {
     }
 
     @Test
-    public void testSR13126()
-        throws DatabaseException {
+    public void testSR13126() throws DatabaseException {
 
         if (!open()) {
             return;
@@ -133,23 +125,20 @@ public class SR13126Test extends TestBase {
     }
 
     @Test
-    public void testTransactionRunner()
-        throws Exception {
+    public void testTransactionRunner() throws Exception {
 
         if (!open()) {
             return;
         }
 
-        final CurrentTransaction currentTxn =
-            CurrentTransaction.getInstance(env);
+        final CurrentTransaction currentTxn = CurrentTransaction.getInstance(env);
 
         TransactionRunner runner = new TransactionRunner(env);
         /* Don't print exception stack traces during test runs. */
         DbCompat.TRANSACTION_RUNNER_PRINT_STACK_TRACES = false;
         try {
             runner.run(new TransactionWorker() {
-                public void doWork()
-                    throws Exception {
+                public void doWork() throws Exception {
 
                     insertUntilOutOfMemory(currentTxn.getTransaction());
                 }
@@ -162,16 +151,15 @@ public class SR13126Test extends TestBase {
         }
 
         /*
-         * If TransactionRunner does not abort the transaction, this thread
-         * will be left with a transaction attached.
+         * If TransactionRunner does not abort the transaction, this thread will
+         * be left with a transaction attached.
          */
         assertNull(currentTxn.getTransaction());
 
         verifyDataAndClose();
     }
 
-    private void insertUntilOutOfMemory(Transaction txn)
-        throws DatabaseException, OutOfMemoryError {
+    private void insertUntilOutOfMemory(Transaction txn) throws DatabaseException, OutOfMemoryError {
 
         DatabaseEntry key = new DatabaseEntry(new byte[1]);
         DatabaseEntry data = new DatabaseEntry();
@@ -183,8 +171,8 @@ public class SR13126Test extends TestBase {
         for (int memSize = startMem;; memSize += bumpMem) {
 
             /*
-             * If the memory error occurs when we do "new byte[]" below, this
-             * is not a test of the bug in question.
+             * If the memory error occurs when we do "new byte[]" below, this is
+             * not a test of the bug in question.
              */
             try {
                 data.setData(new byte[memSize]);
@@ -202,16 +190,15 @@ public class SR13126Test extends TestBase {
         }
     }
 
-    private void verifyDataAndClose()
-        throws DatabaseException {
+    private void verifyDataAndClose() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
         /*
          * If a NULL_LSN is present in a BIN entry because of an incomplete
-         * insert, an assertion will fire during the checkpoint when writing
-         * the BIN.
+         * insert, an assertion will fire during the checkpoint when writing the
+         * BIN.
          */
         env.close();
         env = null;
@@ -222,7 +209,8 @@ public class SR13126Test extends TestBase {
          */
         open();
         Cursor c = db.openCursor(null, null);
-        while (c.getNext(key, data, null) == OperationStatus.SUCCESS) {}
+        while (c.getNext(key, data, null) == OperationStatus.SUCCESS) {
+        }
         c.close();
         close();
     }

@@ -48,10 +48,10 @@ import com.sleepycat.util.test.TestBase;
 public class LastFileReaderTest extends TestBase {
 
     private DbConfigManager configManager;
-    private FileManager fileManager;
-    private LogManager logManager;
-    private final File envHome;
-    private Environment env;
+    private FileManager     fileManager;
+    private LogManager      logManager;
+    private final File      envHome;
+    private Environment     env;
 
     public LastFileReaderTest() {
         super();
@@ -63,9 +63,9 @@ public class LastFileReaderTest extends TestBase {
     public void tearDown() {
 
         /*
-         * Pass false to skip checkpoint, since the file manager may hold
-         * an open file that we've trashed in the tests, so we don't want to
-         * write to it here.
+         * Pass false to skip checkpoint, since the file manager may hold an
+         * open file that we've trashed in the tests, so we don't want to write
+         * to it here.
          */
         try {
             EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
@@ -76,32 +76,25 @@ public class LastFileReaderTest extends TestBase {
     }
 
     /* Create an environment, using the default log file size. */
-    private void initEnv()
-        throws Exception {
+    private void initEnv() throws Exception {
 
         initEnv(null);
     }
 
     /* Create an environment, specifying the log file size. */
-    private void initEnv(String logFileSize)
-        throws Exception {
+    private void initEnv(String logFileSize) throws Exception {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
 
         /* Don't run daemons; we do some abrupt shutdowns. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
 
-        envConfig.setConfigParam
-            (EnvironmentParams.NODE_MAX.getName(), "6");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
         if (logFileSize != null) {
             DbInternal.disableParameterValidation(envConfig);
-            envConfig.setConfigParam
-                (EnvironmentParams.LOG_FILE_MAX.getName(), logFileSize);
+            envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), logFileSize);
         }
 
         /* Disable noisy cleaner database usage. */
@@ -124,8 +117,7 @@ public class LastFileReaderTest extends TestBase {
      * Run with an empty file that has a file header but no log entries.
      */
     @Test
-    public void testEmptyAtEnd()
-        throws Throwable {
+    public void testEmptyAtEnd() throws Throwable {
 
         initEnv();
 
@@ -142,12 +134,11 @@ public class LastFileReaderTest extends TestBase {
     }
 
     /**
-     * Run with an empty, 0 length file at the end.  This has caused a
+     * Run with an empty, 0 length file at the end. This has caused a
      * BufferUnderflowException. [#SR 12631]
      */
     @Test
-    public void testLastFileEmpty()
-        throws Throwable {
+    public void testLastFileEmpty() throws Throwable {
 
         initEnv("1000");
         int numIters = 10;
@@ -156,12 +147,12 @@ public class LastFileReaderTest extends TestBase {
         List<Long> testLsns = new ArrayList<Long>();
 
         /*
-         * Create a log with one or more files. Use only Trace objects so we
-         * can iterate through the entire log ... ?
+         * Create a log with one or more files. Use only Trace objects so we can
+         * iterate through the entire log ... ?
          */
         for (int i = 0; i < numIters; i++) {
             /* Add a debug record. */
-            Trace msg = new Trace("Hello there, rec " + (i+1));
+            Trace msg = new Trace("Hello there, rec " + (i + 1));
             testObjs.add(msg);
             testLsns.add(new Long(Trace.trace(envImpl, msg)));
         }
@@ -176,12 +167,9 @@ public class LastFileReaderTest extends TestBase {
          */
         fileManager.syncLogEnd();
         fileManager.clear();
-        String emptyLastFile =
-            fileManager.getFullFileName(lastFileNum+1, FileManager.JE_SUFFIX);
+        String emptyLastFile = fileManager.getFullFileName(lastFileNum + 1, FileManager.JE_SUFFIX);
 
-        RandomAccessFile file =
-            new RandomAccessFile(emptyLastFile, FileManager.FileMode.
-                                 READWRITE_MODE.getModeValue());
+        RandomAccessFile file = new RandomAccessFile(emptyLastFile, FileManager.FileMode.READWRITE_MODE.getModeValue());
         file.close();
 
         assertTrue(fileManager.getAllFileNumbers().length >= 2);
@@ -198,9 +186,8 @@ public class LastFileReaderTest extends TestBase {
          * The reader should be positioned at the last, valid file, skipping
          * this 0 length file.
          */
-        assertEquals("lastValid=" + DbLsn.toString(reader.getLastValidLsn()),
-                     lastFileNum,
-                     DbLsn.getFileNumber(reader.getLastValidLsn()));
+        assertEquals("lastValid=" + DbLsn.toString(reader.getLastValidLsn()), lastFileNum,
+                DbLsn.getFileNumber(reader.getLastValidLsn()));
         assertEquals(lastFileNum, DbLsn.getFileNumber(reader.getEndOfLog()));
     }
 
@@ -208,8 +195,7 @@ public class LastFileReaderTest extends TestBase {
      * Corrupt the file headers of the one and only log file.
      */
     @Test
-    public void testBadFileHeader()
-        throws Throwable {
+    public void testBadFileHeader() throws Throwable {
 
         initEnv();
 
@@ -219,13 +205,9 @@ public class LastFileReaderTest extends TestBase {
          * won't throw away the file because it has data.
          */
         long lastFileNum = fileManager.getLastFileNum().longValue();
-        String lastFile =
-            fileManager.getFullFileName(lastFileNum,
-                                        FileManager.JE_SUFFIX);
+        String lastFile = fileManager.getFullFileName(lastFileNum, FileManager.JE_SUFFIX);
 
-        RandomAccessFile file =
-            new RandomAccessFile(lastFile, FileManager.FileMode.
-                                 READWRITE_MODE.getModeValue());
+        RandomAccessFile file = new RandomAccessFile(lastFile, FileManager.FileMode.READWRITE_MODE.getModeValue());
 
         file.seek(15);
         file.writeBytes("putting more junk in, mess up header");
@@ -240,8 +222,7 @@ public class LastFileReaderTest extends TestBase {
             LastFileReader reader = new LastFileReader(envImpl, 1000);
             fail("Should see exception when creating " + reader);
         } catch (EnvironmentFailureException e) {
-            assertSame(EnvironmentFailureReason.
-                       LOG_CHECKSUM, e.getReason());
+            assertSame(EnvironmentFailureReason.LOG_CHECKSUM, e.getReason());
             /* Eat exception, expected. */
         }
 
@@ -276,8 +257,7 @@ public class LastFileReaderTest extends TestBase {
      * Run with defaults.
      */
     @Test
-    public void testBasic()
-        throws Throwable {
+    public void testBasic() throws Throwable {
 
         initEnv();
         int numIters = 50;
@@ -287,10 +267,8 @@ public class LastFileReaderTest extends TestBase {
         fillLogFile(numIters, testLsns, testObjs);
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-        LastFileReader reader =
-            new LastFileReader(envImpl,
-                               configManager.getInt
-                               (EnvironmentParams.LOG_ITERATOR_READ_SIZE));
+        LastFileReader reader = new LastFileReader(envImpl,
+                configManager.getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE));
 
         checkLogEnd(reader, numIters, testLsns, testObjs);
     }
@@ -299,8 +277,7 @@ public class LastFileReaderTest extends TestBase {
      * Run with very small read buffer.
      */
     @Test
-    public void testSmallBuffers()
-        throws Throwable {
+    public void testSmallBuffers() throws Throwable {
 
         initEnv();
         int numIters = 50;
@@ -317,8 +294,7 @@ public class LastFileReaderTest extends TestBase {
      * Run with medium buffers.
      */
     @Test
-    public void testMedBuffers()
-        throws Throwable {
+    public void testMedBuffers() throws Throwable {
 
         initEnv();
         int numIters = 50;
@@ -335,8 +311,7 @@ public class LastFileReaderTest extends TestBase {
      * Put junk at the end of the file.
      */
     @Test
-    public void testJunk()
-        throws Throwable {
+    public void testJunk() throws Throwable {
 
         initEnv();
 
@@ -347,13 +322,9 @@ public class LastFileReaderTest extends TestBase {
         /* Write junk into the end of the file. */
         fillLogFile(numIters, testLsns, testObjs);
         long lastFileNum = fileManager.getLastFileNum().longValue();
-        String lastFile =
-            fileManager.getFullFileName(lastFileNum,
-                                        FileManager.JE_SUFFIX);
+        String lastFile = fileManager.getFullFileName(lastFileNum, FileManager.JE_SUFFIX);
 
-        RandomAccessFile file =
-            new RandomAccessFile(lastFile, FileManager.FileMode.
-                                 READWRITE_MODE.getModeValue());
+        RandomAccessFile file = new RandomAccessFile(lastFile, FileManager.FileMode.READWRITE_MODE.getModeValue());
         file.seek(file.length());
         file.writeBytes("hello, some junk");
         file.close();
@@ -365,19 +336,17 @@ public class LastFileReaderTest extends TestBase {
     }
 
     /**
-     * Make a log, then make a few extra files at the end, one empty, one with
-     * a bad file header.
+     * Make a log, then make a few extra files at the end, one empty, one with a
+     * bad file header.
      */
     @Test
-    public void testExtraEmpty()
-        throws Throwable {
+    public void testExtraEmpty() throws Throwable {
 
         initEnv();
         int numIters = 50;
         List<Loggable> testObjs = new ArrayList<Loggable>();
         List<Long> testLsns = new ArrayList<Long>();
-        int defaultBufferSize =
-            configManager.getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
+        int defaultBufferSize = configManager.getInt(EnvironmentParams.LOG_ITERATOR_READ_SIZE);
 
         /*
          * Make a valid log with data, then put a couple of extra files after
@@ -405,34 +374,27 @@ public class LastFileReaderTest extends TestBase {
          * file.
          */
         long lastFileNum = fileManager.getLastFileNum().longValue();
-        String lastFile =
-            fileManager.getFullFileName(lastFileNum,
-                                        FileManager.JE_SUFFIX);
-        RandomAccessFile file =
-            new RandomAccessFile(lastFile, FileManager.FileMode.
-                                 READWRITE_MODE.getModeValue());
+        String lastFile = fileManager.getFullFileName(lastFileNum, FileManager.JE_SUFFIX);
+        RandomAccessFile file = new RandomAccessFile(lastFile, FileManager.FileMode.READWRITE_MODE.getModeValue());
         file.getChannel().truncate(10);
         file.close();
         fileManager.clear();
 
         /*
-         * Make a reader, read the log. After the reader returns, we should
-         * only have 2 log files.
+         * Make a reader, read the log. After the reader returns, we should only
+         * have 2 log files.
          */
-        LastFileReader reader = new LastFileReader(envImpl,
-                                                   defaultBufferSize);
+        LastFileReader reader = new LastFileReader(envImpl, defaultBufferSize);
         checkLogEnd(reader, numIters, testLsns, testObjs);
         assertEquals(2, fileManager.getAllFileNumbers().length);
 
         /*
-         * Corrupt the now "last" empty file and try again. This is actually
-         * the first empty file we made.
+         * Corrupt the now "last" empty file and try again. This is actually the
+         * first empty file we made.
          */
         lastFileNum = fileManager.getLastFileNum().longValue();
-        lastFile = fileManager.getFullFileName(lastFileNum,
-                                               FileManager.JE_SUFFIX);
-        file = new RandomAccessFile(lastFile, FileManager.FileMode.
-                                    READWRITE_MODE.getModeValue());
+        lastFile = fileManager.getFullFileName(lastFileNum, FileManager.JE_SUFFIX);
+        file = new RandomAccessFile(lastFile, FileManager.FileMode.READWRITE_MODE.getModeValue());
         file.getChannel().truncate(10);
         file.close();
 
@@ -446,12 +408,11 @@ public class LastFileReaderTest extends TestBase {
     }
 
     /**
-     * Create a marker file that has a RestoreRequired entry, and make
-     * sure that the last file reader detects it.
+     * Create a marker file that has a RestoreRequired entry, and make sure that
+     * the last file reader detects it.
      */
     @Test
-    public void testRestoreMarkerFile()
-        throws Throwable {
+    public void testRestoreMarkerFile() throws Throwable {
 
         initEnv();
 
@@ -462,12 +423,11 @@ public class LastFileReaderTest extends TestBase {
         Properties props = new Properties();
         props.setProperty("prop1", "1");
         props.setProperty("prop1", "2");
-        marker.createMarkerFile(RestoreRequired.FailureType.NETWORK_RESTORE,
-                                props);
+        marker.createMarkerFile(RestoreRequired.FailureType.NETWORK_RESTORE, props);
 
-        /* 
-         * We expect the marker file to have a file header, followed by
-         * the RestoreRequired entry.
+        /*
+         * We expect the marker file to have a file header, followed by the
+         * RestoreRequired entry.
          */
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         LastFileReader reader = new LastFileReader(envImpl, 1000);
@@ -487,10 +447,7 @@ public class LastFileReaderTest extends TestBase {
     /**
      * Write a logfile of entries, then read the end.
      */
-    private void fillLogFile(int numIters,
-                             List<Long> testLsns,
-                             List<Loggable> testObjs)
-        throws Throwable {
+    private void fillLogFile(int numIters, List<Long> testLsns, List<Loggable> testObjs) throws Throwable {
 
         /*
          * Create a log file full of LNs and Debug Records.
@@ -498,19 +455,15 @@ public class LastFileReaderTest extends TestBase {
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         for (int i = 0; i < numIters; i++) {
             /* Add a debug record. */
-            Trace msg = new Trace("Hello there, rec " + (i+1));
+            Trace msg = new Trace("Hello there, rec " + (i + 1));
             testObjs.add(msg);
             testLsns.add(new Long(Trace.trace(envImpl, msg)));
 
             /* Add a txn abort */
-            TxnAbort abort = new TxnAbort(10L, 200L,
-                                          1234567 /* masterNodeId */, 
-                                          1 /* DTVLSN */);
+            TxnAbort abort = new TxnAbort(10L, 200L, 1234567 /* masterNodeId */, 1 /* DTVLSN */);
             final AbortLogEntry entry = new AbortLogEntry(abort);
             testObjs.add(abort);
-            testLsns.add(new Long(logManager.log
-                                  (entry,
-                                   ReplicationContext.NO_REPLICATE)));
+            testLsns.add(new Long(logManager.log(entry, ReplicationContext.NO_REPLICATE)));
         }
 
         /* Flush the log, files. */
@@ -522,11 +475,8 @@ public class LastFileReaderTest extends TestBase {
      * Use the LastFileReader to check this file, see if the log end is set
      * right.
      */
-    private void checkLogEnd(LastFileReader reader,
-                             int numIters,
-                             List<Long> testLsns,
-                             List<Loggable> testObjs)
-        throws Throwable {
+    private void checkLogEnd(LastFileReader reader, int numIters, List<Long> testLsns, List<Loggable> testObjs)
+            throws Throwable {
 
         reader.setTargetType(LogEntryType.LOG_DBTREE);
         reader.setTargetType(LogEntryType.LOG_TXN_COMMIT);
@@ -551,8 +501,7 @@ public class LastFileReaderTest extends TestBase {
          * entries (the extra 4 are the root, debug records, checkpoints and
          * file header written by reocovery.
          */
-        assertEquals("should have seen this many entries", numIters * 2 + 4,
-                     reader.getNumRead());
+        assertEquals("should have seen this many entries", numIters * 2 + 4, reader.getNumRead());
 
         /* Check last used LSN. */
         int numLsns = testLsns.size();
@@ -560,31 +509,25 @@ public class LastFileReaderTest extends TestBase {
         assertEquals("last LSN", lastLsn, reader.getLastLsn());
 
         /* Check last offset. */
-        assertEquals("prev offset", DbLsn.getFileOffset(lastLsn),
-                     reader.getPrevOffset());
+        assertEquals("prev offset", DbLsn.getFileOffset(lastLsn), reader.getPrevOffset());
 
         /* Check next available LSN. */
-        int lastSize =
-            testObjs.get(testObjs.size() - 1).getLogSize();
+        int lastSize = testObjs.get(testObjs.size() - 1).getLogSize();
 
         long entryHeaderSize = LogEntryHeader.MIN_HEADER_SIZE;
         assertEquals("next available",
-                     DbLsn.makeLsn(DbLsn.getFileNumber(lastLsn),
-                     DbLsn.getFileOffset(lastLsn) +
-                     entryHeaderSize + lastSize),
-                     reader.getEndOfLog());
+                DbLsn.makeLsn(DbLsn.getFileNumber(lastLsn), DbLsn.getFileOffset(lastLsn) + entryHeaderSize + lastSize),
+                reader.getEndOfLog());
 
         /* The log should be truncated to just the right size. */
-        FileHandle handle =  fileManager.getFileHandle(0L);
+        FileHandle handle = fileManager.getFileHandle(0L);
         RandomAccessFile file = handle.getFile();
-        assertEquals(DbLsn.getFileOffset(reader.getEndOfLog()),
-                     file.getChannel().size());
+        assertEquals(DbLsn.getFileOffset(reader.getEndOfLog()), file.getChannel().size());
         handle.release();
         fileManager.clear();
 
         /* Check the last tracked LSNs. */
-        assertTrue(reader.getLastSeen(LogEntryType.LOG_DBTREE) !=
-                   DbLsn.NULL_LSN);
+        assertTrue(reader.getLastSeen(LogEntryType.LOG_DBTREE) != DbLsn.NULL_LSN);
         assertTrue(reader.getLastSeen(LogEntryType.LOG_IN) == DbLsn.NULL_LSN);
 
         for (LogEntryType entryType : LogEntryType.getAllTypes()) {
@@ -593,9 +536,7 @@ public class LastFileReaderTest extends TestBase {
             }
         }
 
-        assertEquals(reader.getLastSeen(LogEntryType.LOG_TRACE),
-                     DbLsn.longToLsn(testLsns.get(numLsns - 2)));
-        assertEquals(reader.getLastSeen(LogEntryType.LOG_TXN_ABORT),
-                     lastLsn);
+        assertEquals(reader.getLastSeen(LogEntryType.LOG_TRACE), DbLsn.longToLsn(testLsns.get(numLsns - 2)));
+        assertEquals(reader.getLastSeen(LogEntryType.LOG_TXN_ABORT), lastLsn);
     }
 }

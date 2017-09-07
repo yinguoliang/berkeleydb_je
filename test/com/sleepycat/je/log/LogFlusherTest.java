@@ -53,12 +53,12 @@ import org.junit.Test;
  */
 public class LogFlusherTest extends TestBase {
 
-    private static final String DB_NAME = "testDb";
+    private static final String DB_NAME    = "testDb";
     private static final String DATA_VALUE = "herococo";
 
-    private final File envRoot;
-    private RepEnvInfo[] repEnvInfo;
-    private Environment env;
+    private final File          envRoot;
+    private RepEnvInfo[]        repEnvInfo;
+    private Environment         env;
 
     public LogFlusherTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -66,7 +66,6 @@ public class LogFlusherTest extends TestBase {
 
     /**
      * Tests the basic configuration of LogFlusher, using deprecated HA params.
-     *
      * This is an older test case, added prior to moving the LogFlusher into
      * standalone JE. It continues to use the deprecated params for additional
      * compatibility testing.
@@ -80,16 +79,13 @@ public class LogFlusherTest extends TestBase {
          * LOG_FLUSH_TASK_INTERVAL. The flushNoSync interval will have its
          * default value.
          */
-        EnvironmentConfig envConfig =
-            RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
+        EnvironmentConfig envConfig = RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
 
         ReplicationConfig repConfig = new ReplicationConfig();
 
-        repConfig.setConfigParam(
-            ReplicationMutableConfig.LOG_FLUSH_TASK_INTERVAL, "30 s");
+        repConfig.setConfigParam(ReplicationMutableConfig.LOG_FLUSH_TASK_INTERVAL, "30 s");
 
-        repEnvInfo =
-            RepTestUtils.setupEnvInfos(envRoot, 3, envConfig, repConfig);
+        repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3, envConfig, repConfig);
 
         RepTestUtils.joinGroup(repEnvInfo);
         assertTrue(repEnvInfo[0].isMaster());
@@ -114,8 +110,7 @@ public class LogFlusherTest extends TestBase {
         /*
          * Mutate flushSync interval to 50s using LOG_FLUSH_TASK_INTERVAL.
          */
-        repConfig.setConfigParam(
-            ReplicationMutableConfig.LOG_FLUSH_TASK_INTERVAL, "50 s");
+        repConfig.setConfigParam(ReplicationMutableConfig.LOG_FLUSH_TASK_INTERVAL, "50 s");
 
         for (RepEnvInfo element : repEnvInfo) {
             element.getEnv().setRepMutableConfig(repConfig);
@@ -137,8 +132,7 @@ public class LogFlusherTest extends TestBase {
         /*
          * Disable both intervals using deprecated RUN_LOG_FLUSH_TASK.
          */
-        repConfig.setConfigParam(
-            ReplicationMutableConfig.RUN_LOG_FLUSH_TASK, "false");
+        repConfig.setConfigParam(ReplicationMutableConfig.RUN_LOG_FLUSH_TASK, "false");
 
         for (RepEnvInfo element : repEnvInfo) {
             element.getEnv().setRepMutableConfig(repConfig);
@@ -161,11 +155,9 @@ public class LogFlusherTest extends TestBase {
         /*
          * Open new env using deprecated RUN_LOG_FLUSH_TASK.
          */
-        repConfig.setConfigParam(
-            ReplicationConfig.RUN_LOG_FLUSH_TASK, "false");
+        repConfig.setConfigParam(ReplicationConfig.RUN_LOG_FLUSH_TASK, "false");
 
-        repEnvInfo =
-            RepTestUtils.setupEnvInfos(envRoot, 3, envConfig, repConfig);
+        repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3, envConfig, repConfig);
 
         RepTestUtils.joinGroup(repEnvInfo);
 
@@ -211,17 +203,14 @@ public class LogFlusherTest extends TestBase {
          * HA flush interval param is used, but is illegal when the standalone
          * param is also specified.
          */
-        ReplicationConfig repConfig =
-            new ReplicationConfig().setConfigParam(
-                ReplicationMutableConfig.LOG_FLUSH_TASK_INTERVAL, "7 s");
+        ReplicationConfig repConfig = new ReplicationConfig()
+                .setConfigParam(ReplicationMutableConfig.LOG_FLUSH_TASK_INTERVAL, "7 s");
 
-        EnvironmentConfig envConfig =
-            RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
+        EnvironmentConfig envConfig = RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
 
         checkHAConfig(envConfig, repConfig, 7 * 1000, 5 * 1000);
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FLUSH_SYNC_INTERVAL, "8 ms");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FLUSH_SYNC_INTERVAL, "8 ms");
 
         try {
             checkHAConfig(envConfig, repConfig, 0, 0);
@@ -234,15 +223,13 @@ public class LogFlusherTest extends TestBase {
          * HA flushing param may be set to false and will disable flushing, but
          * is illegal if a standalone param is also specified.
          */
-        repConfig = new ReplicationConfig().setConfigParam(
-            ReplicationMutableConfig.RUN_LOG_FLUSH_TASK, "false");
+        repConfig = new ReplicationConfig().setConfigParam(ReplicationMutableConfig.RUN_LOG_FLUSH_TASK, "false");
 
         envConfig = RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
 
         checkHAConfig(envConfig, repConfig, 0, 0);
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FLUSH_NO_SYNC_INTERVAL, "8 ms");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FLUSH_NO_SYNC_INTERVAL, "8 ms");
 
         try {
             checkHAConfig(envConfig, repConfig, 0, 0);
@@ -253,8 +240,7 @@ public class LogFlusherTest extends TestBase {
 
         envConfig = RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FLUSH_NO_SYNC_INTERVAL, "8 ms");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FLUSH_NO_SYNC_INTERVAL, "8 ms");
 
         try {
             checkHAConfig(envConfig, repConfig, 0, 0);
@@ -264,39 +250,27 @@ public class LogFlusherTest extends TestBase {
         }
     }
 
-    private void checkConfig(
-        String syncParam,
-        String noSyncParam,
-        ReplicationConfig repConfig,
-        int flushSyncInterval,
-        int flushNoSyncInterval)
-        throws IOException {
+    private void checkConfig(String syncParam, String noSyncParam, ReplicationConfig repConfig, int flushSyncInterval,
+                             int flushNoSyncInterval)
+            throws IOException {
 
-        EnvironmentConfig envConfig =
-            RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
+        EnvironmentConfig envConfig = RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
 
         if (syncParam != null) {
-            envConfig.setConfigParam(
-                EnvironmentConfig.LOG_FLUSH_SYNC_INTERVAL, syncParam);
+            envConfig.setConfigParam(EnvironmentConfig.LOG_FLUSH_SYNC_INTERVAL, syncParam);
         }
 
         if (noSyncParam != null) {
-            envConfig.setConfigParam(
-                EnvironmentConfig.LOG_FLUSH_NO_SYNC_INTERVAL, noSyncParam);
+            envConfig.setConfigParam(EnvironmentConfig.LOG_FLUSH_NO_SYNC_INTERVAL, noSyncParam);
         }
 
-        checkStandaloneConfig(
-            envConfig, flushSyncInterval, flushNoSyncInterval);
+        checkStandaloneConfig(envConfig, flushSyncInterval, flushNoSyncInterval);
 
-        checkHAConfig(
-            envConfig, repConfig, flushSyncInterval, flushNoSyncInterval);
+        checkHAConfig(envConfig, repConfig, flushSyncInterval, flushNoSyncInterval);
     }
 
-    private void checkStandaloneConfig(
-        EnvironmentConfig envConfig,
-        int flushSyncInterval,
-        int flushNoSyncInterval)
-        throws IOException {
+    private void checkStandaloneConfig(EnvironmentConfig envConfig, int flushSyncInterval, int flushNoSyncInterval)
+            throws IOException {
 
         env = new Environment(envRoot, envConfig);
 
@@ -306,90 +280,71 @@ public class LogFlusherTest extends TestBase {
         env = null;
     }
 
-    private void checkHAConfig(
-        EnvironmentConfig envConfig,
-        ReplicationConfig repConfig,
-        int flushSyncInterval,
-        int flushNoSyncInterval)
-        throws IOException {
+    private void checkHAConfig(EnvironmentConfig envConfig, ReplicationConfig repConfig, int flushSyncInterval,
+                               int flushNoSyncInterval)
+            throws IOException {
 
         SharedTestUtils.cleanUpTestDir(envRoot);
         RepTestUtils.removeRepEnvironments(envRoot);
 
-        repEnvInfo =
-            RepTestUtils.setupEnvInfos(envRoot, 3, envConfig, repConfig);
+        repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3, envConfig, repConfig);
 
         RepTestUtils.joinGroup(repEnvInfo);
         assertTrue(repEnvInfo[0].isMaster());
 
         for (RepEnvInfo info : repEnvInfo) {
 
-            expectFlushIntervals(
-                info.getEnv(), flushSyncInterval, flushNoSyncInterval);
+            expectFlushIntervals(info.getEnv(), flushSyncInterval, flushNoSyncInterval);
         }
 
         RepTestUtils.shutdownRepEnvs(repEnvInfo);
     }
 
-    private void expectFlushIntervals(
-        Environment env,
-        int flushSyncInterval,
-        int flushNoSyncInterval) {
+    private void expectFlushIntervals(Environment env, int flushSyncInterval, int flushNoSyncInterval) {
 
-        LogFlusher flusher =
-            DbInternal.getEnvironmentImpl(env).getLogFlusher();
+        LogFlusher flusher = DbInternal.getEnvironmentImpl(env).getLogFlusher();
 
         assertNotNull(flusher);
 
-        assertEquals(
-            flushSyncInterval, flusher.getFlushSyncInterval());
+        assertEquals(flushSyncInterval, flusher.getFlushSyncInterval());
 
-        assertEquals(
-            flushNoSyncInterval, flusher.getFlushNoSyncInterval());
+        assertEquals(flushNoSyncInterval, flusher.getFlushNoSyncInterval());
     }
 
     @Test
-    public void testFlushSync()
-        throws IOException, InterruptedException {
+    public void testFlushSync() throws IOException, InterruptedException {
 
-        checkLogFlush(true /*fsync*/, true /*expectFlush*/);
+        checkLogFlush(true /* fsync */, true /* expectFlush */);
     }
 
     @Test
-    public void testNoFlushSync()
-        throws IOException, InterruptedException {
+    public void testNoFlushSync() throws IOException, InterruptedException {
 
-        checkLogFlush(true /*fsync*/, false /*expectFlush*/);
+        checkLogFlush(true /* fsync */, false /* expectFlush */);
     }
 
     @Test
-    public void testFlushNoSync()
-        throws IOException, InterruptedException {
+    public void testFlushNoSync() throws IOException, InterruptedException {
 
-        checkLogFlush(false /*fsync*/, true /*expectFlush*/);
+        checkLogFlush(false /* fsync */, true /* expectFlush */);
     }
 
     @Test
-    public void testNoFlushNoSync()
-        throws IOException, InterruptedException {
+    public void testNoFlushNoSync() throws IOException, InterruptedException {
 
-        checkLogFlush(false /*fsync*/, false /*expectFlush*/);
+        checkLogFlush(false /* fsync */, false /* expectFlush */);
     }
 
     /**
      * @param fsync is true to test the flushSync task, or false to test the
-     * flushNoSync task.
-     *
+     *            flushNoSync task.
      * @param expectFlush If true, checks that the LogFlushTask does flush the
-     * dirty data to the log, and it can be read after crash. If false, checks
-     * that the LogFlushTask does not flush the updates before the crash; no
-     * data may be written to the disk.
+     *            dirty data to the log, and it can be read after crash. If
+     *            false, checks that the LogFlushTask does not flush the updates
+     *            before the crash; no data may be written to the disk.
      */
     @SuppressWarnings("null")
-    private void checkLogFlush(
-        boolean fsync,
-        boolean expectFlush)
-        throws IOException, InterruptedException {
+    private void checkLogFlush(boolean fsync, boolean expectFlush) throws IOException, InterruptedException {
 
         /*
          * When we expect a flush, use a small value for the sync (or noSync)
@@ -432,13 +387,11 @@ public class LogFlusherTest extends TestBase {
 
         for (RepEnvInfo element : repEnvInfo) {
 
-            final long fsyncCount =
-                element.getEnv().getStats(null).getNLogFSyncs();
+            final long fsyncCount = element.getEnv().getStats(null).getNLogFSyncs();
 
             final LogFlusher flusher = element.getRepImpl().getLogFlusher();
 
-            final LogFlusher.FlushTask task = fsync ?
-                flusher.getFlushSyncTask() : flusher.getFlushNoSyncTask();
+            final LogFlusher.FlushTask task = fsync ? flusher.getFlushSyncTask() : flusher.getFlushNoSyncTask();
 
             final int flushCount = task.getFlushCount();
             final long execTime = task.scheduledExecutionTime();
@@ -487,9 +440,9 @@ public class LogFlusherTest extends TestBase {
             } catch (DatabaseNotFoundException e) {
 
                 /*
-                 * If the system crashes before the flush, the database is
-                 * not synced to the disk, so this database can't be found
-                 * at all, it's expected.
+                 * If the system crashes before the flush, the database is not
+                 * synced to the disk, so this database can't be found at all,
+                 * it's expected.
                  */
                 assertFalse(expectFlush);
             }
@@ -501,8 +454,7 @@ public class LogFlusherTest extends TestBase {
                     OperationStatus status = db.get(null, key, data, null);
                     if (expectFlush) {
                         assertSame(OperationStatus.SUCCESS, status);
-                        assertEquals(DATA_VALUE,
-                                     StringBinding.entryToString(data));
+                        assertEquals(DATA_VALUE, StringBinding.entryToString(data));
                     }
                 }
             }
@@ -518,39 +470,28 @@ public class LogFlusherTest extends TestBase {
      * Uses the given interval as the flush interval for the Sync (or NoSync if
      * fsync is false) timer, and disable the NoSync (or Sync) timer.
      */
-    private void createRepEnvInfo(String interval, boolean fsync)
-        throws IOException {
+    private void createRepEnvInfo(String interval, boolean fsync) throws IOException {
 
         /*
-         * Set a large buffer size and disable checkpointing, so the data in
-         * the buffer will only be flushed by the LogFlushTask.
+         * Set a large buffer size and disable checkpointing, so the data in the
+         * buffer will only be flushed by the LogFlushTask.
          */
-        EnvironmentConfig envConfig =
-            RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
+        EnvironmentConfig envConfig = RepTestUtils.createEnvConfig(Durability.COMMIT_NO_SYNC);
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.MAX_MEMORY, "20000000");
+        envConfig.setConfigParam(EnvironmentConfig.MAX_MEMORY, "20000000");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_TOTAL_BUFFER_BYTES, "120000000");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_TOTAL_BUFFER_BYTES, "120000000");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_NUM_BUFFERS, "4");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_NUM_BUFFERS, "4");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
 
         /* Configure the log flush task. */
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FLUSH_SYNC_INTERVAL,
-            fsync ? interval : "0");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FLUSH_SYNC_INTERVAL, fsync ? interval : "0");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FLUSH_NO_SYNC_INTERVAL,
-            fsync ? "0" : interval);
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FLUSH_NO_SYNC_INTERVAL, fsync ? "0" : interval);
 
-        repEnvInfo =
-            RepTestUtils.setupEnvInfos(envRoot, 3, envConfig, null);
+        repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3, envConfig, null);
     }
 }

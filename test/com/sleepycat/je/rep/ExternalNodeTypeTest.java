@@ -35,29 +35,27 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * Unit test to test the EXTERNAL node type
- *
  */
 public class ExternalNodeTypeTest extends RepTestBase {
 
     /* test db */
-    private final String dbName = "SUBSCRIPTION_UNIT_TEST_DB";
-    private final int startKey = 1;
+    private final String        dbName       = "SUBSCRIPTION_UNIT_TEST_DB";
+    private final int           startKey     = 1;
     /* test db with 10k keys */
-    private final int numKeys = 1024*10;
-    private final List<Integer> keys = new ArrayList<>();
+    private final int           numKeys      = 1024 * 10;
+    private final List<Integer> keys         = new ArrayList<>();
 
-    /* a rep group with 1 master, 2 replicas  */
-    private final int numReplicas = 2;
-    private final int numDataNodes = 1 + numReplicas;
-    private final int groupSize = 1 + numReplicas;
-    private Logger logger;
+    /* a rep group with 1 master, 2 replicas */
+    private final int           numReplicas  = 2;
+    private final int           numDataNodes = 1 + numReplicas;
+    private final int           groupSize    = 1 + numReplicas;
+    private Logger              logger;
 
     @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        logger = LoggerUtils.getLoggerFixedPrefix(getClass(),
-                                                  "ExternalNodeTypeTest");
+        logger = LoggerUtils.getLoggerFixedPrefix(getClass(), "ExternalNodeTypeTest");
     }
 
     @Override
@@ -78,8 +76,7 @@ public class ExternalNodeTypeTest extends RepTestBase {
         /* populate some data and verify */
         populateDataAndVerify(masterEnv);
 
-        final MockClientNode mockClientNode =
-            new MockClientNode(NodeType.EXTERNAL, masterEnv, logger);
+        final MockClientNode mockClientNode = new MockClientNode(NodeType.EXTERNAL, masterEnv, logger);
 
         /* handshake with feeder */
         mockClientNode.handshakeWithFeeder();
@@ -92,10 +89,10 @@ public class ExternalNodeTypeTest extends RepTestBase {
 
         /* receive 10K keys */
         mockClientNode.consumeMsgLoop(numKeys);
-        assertTrue("Expect receive " + numKeys + " keys while actually " +
-                   "receiving " + mockClientNode.getReceivedMsgs().size() +
-                   " keys.",
-                   mockClientNode.getReceivedMsgs().size() == numKeys);
+        assertTrue(
+                "Expect receive " + numKeys + " keys while actually " + "receiving "
+                        + mockClientNode.getReceivedMsgs().size() + " keys.",
+                mockClientNode.getReceivedMsgs().size() == numKeys);
 
         mockClientNode.shutdown();
     }
@@ -111,8 +108,7 @@ public class ExternalNodeTypeTest extends RepTestBase {
         /* populate some data and verify */
         populateDataAndVerify(masterEnv);
 
-        final MockClientNode mockClientNode =
-            new MockClientNode(NodeType.EXTERNAL, masterEnv, logger);
+        final MockClientNode mockClientNode = new MockClientNode(NodeType.EXTERNAL, masterEnv, logger);
 
         /* handshake with feeder */
         mockClientNode.handshakeWithFeeder();
@@ -121,26 +117,18 @@ public class ExternalNodeTypeTest extends RepTestBase {
         mockClientNode.syncupWithFeeder(VLSN.FIRST_VLSN);
 
         /* get an instance of rep group admin */
-        final ReplicationNetworkConfig repNetConfig =
-            RepTestUtils.readRepNetConfig();
-        final ReplicationGroupAdmin repGroupAdmin =
-            repNetConfig.getChannelType().isEmpty() ?
-                new ReplicationGroupAdmin(RepTestUtils.TEST_REP_GROUP_NAME,
-                                          masterEnv.getRepConfig()
-                                                   .getHelperSockets())
-                :
-                new ReplicationGroupAdmin(RepTestUtils.TEST_REP_GROUP_NAME,
-                                          masterEnv.getRepConfig()
-                                                   .getHelperSockets(),
-                                          RepTestUtils.readRepNetConfig());
+        final ReplicationNetworkConfig repNetConfig = RepTestUtils.readRepNetConfig();
+        final ReplicationGroupAdmin repGroupAdmin = repNetConfig.getChannelType().isEmpty()
+                ? new ReplicationGroupAdmin(RepTestUtils.TEST_REP_GROUP_NAME,
+                        masterEnv.getRepConfig().getHelperSockets())
+                : new ReplicationGroupAdmin(RepTestUtils.TEST_REP_GROUP_NAME,
+                        masterEnv.getRepConfig().getHelperSockets(), RepTestUtils.readRepNetConfig());
 
-        final RepGroupImpl repGroupImpl = repGroupAdmin.getGroup()
-                                                       .getRepGroupImpl();
+        final RepGroupImpl repGroupImpl = repGroupAdmin.getGroup().getRepGroupImpl();
         final Set<RepNodeImpl> result = repGroupImpl.getExternalMembers();
         assertTrue("Expect only one external node.", result.size() == 1);
         final RepNodeImpl node = result.iterator().next();
-        assertEquals("Node name mismatch", mockClientNode.nodeName,
-                     node.getName());
+        assertEquals("Node name mismatch", mockClientNode.nodeName, node.getName());
         assertEquals("Node type mismatch", NodeType.EXTERNAL, node.getType());
 
         mockClientNode.shutdown();
@@ -151,12 +139,12 @@ public class ExternalNodeTypeTest extends RepTestBase {
 
         createGroup(numDataNodes);
 
-        for (int i=0; i < numDataNodes; i++) {
+        for (int i = 0; i < numDataNodes; i++) {
             final ReplicatedEnvironment env = repEnvInfo[i].getEnv();
             final int targetGroupSize = groupSize;
 
             ReplicationGroup group = null;
-            for (int j=0; j < 100; j++) {
+            for (int j = 0; j < 100; j++) {
                 group = env.getGroup();
                 if (group.getNodes().size() == targetGroupSize) {
                     break;
@@ -169,13 +157,11 @@ public class ExternalNodeTypeTest extends RepTestBase {
             for (int ii = 0; ii < targetGroupSize; ii++) {
                 RepTestUtils.RepEnvInfo rinfo = repEnvInfo[ii];
                 final ReplicationConfig repConfig = rinfo.getRepConfig();
-                ReplicationNode member =
-                    group.getMember(repConfig.getNodeName());
+                ReplicationNode member = group.getMember(repConfig.getNodeName());
                 assertNotNull("Member", member);
                 assertEquals(repConfig.getNodeName(), member.getName());
                 assertEquals(repConfig.getNodeType(), member.getType());
-                assertEquals(repConfig.getNodeSocketAddress(),
-                             member.getSocketAddress());
+                assertEquals(repConfig.getNodeSocketAddress(), member.getSocketAddress());
             }
 
             /* verify data nodes */
@@ -192,9 +178,8 @@ public class ExternalNodeTypeTest extends RepTestBase {
         createTestData();
         populateDB(masterEnv, dbName, keys);
         readDB(masterEnv, dbName, startKey, numKeys);
-        logger.info(numKeys + " records (start key: " +
-                    startKey + ") have been populated into db " +
-                    dbName + " and verified");
+        logger.info(numKeys + " records (start key: " + startKey + ") have been populated into db " + dbName
+                + " and verified");
     }
 
     /* Create a list of (k, v) pairs for testing */

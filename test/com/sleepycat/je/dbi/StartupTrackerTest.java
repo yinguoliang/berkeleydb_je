@@ -40,15 +40,14 @@ import com.sleepycat.util.test.TestBase;
 public class StartupTrackerTest extends TestBase {
 
     private Environment env;
-    private final File envHome;
+    private final File  envHome;
 
     public StartupTrackerTest() {
         envHome = new File(System.getProperty(TestUtils.DEST_DIR));
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         TestUtils.removeLogFiles("Setup", envHome, false);
         super.setUp();
@@ -79,8 +78,7 @@ public class StartupTrackerTest extends TestBase {
     @Test
     public void testEnvRecovery() {
 
-        Logger logger = LoggerUtils.getLoggerFixedPrefix(this.getClass(),
-                                                         "test");
+        Logger logger = LoggerUtils.getLoggerFixedPrefix(this.getClass(), "test");
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             PrintStream p = new PrintStream(baos);
@@ -109,9 +107,8 @@ public class StartupTrackerTest extends TestBase {
             env.close();
             env = null;
         } catch (Exception e) {
-            fail("This test succeeds as long as the printing of the report " +
-                 "does not cause a problem. Any exception is a failure. " );
+            fail("This test succeeds as long as the printing of the report "
+                    + "does not cause a problem. Any exception is a failure. ");
         }
     }
 }
-

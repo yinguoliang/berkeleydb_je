@@ -45,46 +45,37 @@ import com.sleepycat.je.utilint.TestHook;
  */
 public class CheckNewRootTest extends CheckBase {
 
-    private static final boolean DEBUG = false;
-    private static final String DB_NAME = "simpleDB";
+    private static final boolean    DEBUG        = false;
+    private static final String     DB_NAME      = "simpleDB";
 
-    private final boolean useDups = false;
+    private final boolean           useDups      = false;
     private static CheckpointConfig FORCE_CONFIG = new CheckpointConfig();
     static {
         FORCE_CONFIG.setForce(true);
     }
 
     /**
-     * Create a tree, make sure the root changes and is logged
-     * before any checkpointing. The bug found in [#13897] was this:
-     *
-     * 100 BIN a
-     * 110 RootIN b
-     * 120 MapLN points to root IN at 110
-     * 130 RootIN b written as part of compression
-     * 140 ckpt start
-     * 150 ckpt end
-     *
-     * Since the compression was writing a root IN w/out updating the mapLN,
-     * the obsolete root at 110 was recovered instead of newer rootIN at 130.
+     * Create a tree, make sure the root changes and is logged before any
+     * checkpointing. The bug found in [#13897] was this: 100 BIN a 110 RootIN b
+     * 120 MapLN points to root IN at 110 130 RootIN b written as part of
+     * compression 140 ckpt start 150 ckpt end Since the compression was writing
+     * a root IN w/out updating the mapLN, the obsolete root at 110 was
+     * recovered instead of newer rootIN at 130.
      */
     @Test
-    public void testWrittenByCompression()
-        throws Throwable {
+    public void testWrittenByCompression() throws Throwable {
 
         EnvironmentConfig envConfig = setupEnvConfig();
         DatabaseConfig dbConfig = setupDbConfig();
 
         /* Run the full test case w/out truncating the log. */
         testOneCase(DB_NAME, envConfig, dbConfig,
-                    new TestGenerator(true /* generate log description. */){
-                        @Override
-                        void generateData(Database db)
-                            throws DatabaseException {
-                            setupWrittenByCompression(db);
-                        }
-                    },
-                    envConfig, dbConfig);
+                new TestGenerator(true /* generate log description. */) {
+                    @Override
+                    void generateData(Database db) throws DatabaseException {
+                        setupWrittenByCompression(db);
+                    }
+                }, envConfig, dbConfig);
 
         /*
          * Now run the test in a stepwise loop, truncate after each log entry.
@@ -97,15 +88,14 @@ public class CheckNewRootTest extends CheckBase {
     /**
      * Create a populated tree, delete all records, then begin to insert again.
      */
-    private void setupWrittenByCompression(Database db)
-        throws DatabaseException {
+    private void setupWrittenByCompression(Database db) throws DatabaseException {
         setStepwiseStart();
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
         /* Populate a tree so it grows to 2 levels, with 2 BINs. */
-        for (int i = 0; i < 10; i ++) {
+        for (int i = 0; i < 10; i++) {
             IntegerBinding.intToEntry(i, key);
             IntegerBinding.intToEntry(i, data);
             assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
@@ -118,7 +108,7 @@ public class CheckNewRootTest extends CheckBase {
         }
 
         /* Now delete all of 1 BIN. */
-        for (int i = 0; i < 5; i ++) {
+        for (int i = 0; i < 5; i++) {
             IntegerBinding.intToEntry(i, key);
             assertEquals(OperationStatus.SUCCESS, db.delete(null, key));
         }
@@ -135,36 +125,27 @@ public class CheckNewRootTest extends CheckBase {
     }
 
     /**
-     * Create a tree, make sure the root changes and is logged
-     * before any checkpointing. The bug found in [#13897] was this:
-     *
-     * 110 RootIN b
-     * 120 MapLN points to root IN at 110
-     * 130 BINb split
-     * 140 RootIN b written as part of split
-     * 150 ckpt start
-     * 160 ckpt end
-     *
-     * Since the compression was writing a root IN w/out updating the mapLN,
-     * the obsolete root at 110 was recovered instead of newer rootIN at 130.
+     * Create a tree, make sure the root changes and is logged before any
+     * checkpointing. The bug found in [#13897] was this: 110 RootIN b 120 MapLN
+     * points to root IN at 110 130 BINb split 140 RootIN b written as part of
+     * split 150 ckpt start 160 ckpt end Since the compression was writing a
+     * root IN w/out updating the mapLN, the obsolete root at 110 was recovered
+     * instead of newer rootIN at 130.
      */
     @Test
-    public void testWrittenBySplit()
-        throws Throwable {
+    public void testWrittenBySplit() throws Throwable {
 
         EnvironmentConfig envConfig = setupEnvConfig();
         DatabaseConfig dbConfig = setupDbConfig();
 
         /* Run the full test case w/out truncating the log. */
         testOneCase(DB_NAME, envConfig, dbConfig,
-                    new TestGenerator(true /* generate log description. */){
-                        @Override
-                        void generateData(Database db)
-                            throws DatabaseException {
-                            setupWrittenBySplits(db);
-                        }
-                    },
-                    envConfig, dbConfig);
+                new TestGenerator(true /* generate log description. */) {
+                    @Override
+                    void generateData(Database db) throws DatabaseException {
+                        setupWrittenBySplits(db);
+                    }
+                }, envConfig, dbConfig);
 
         /*
          * Now run the test in a stepwise loop, truncate after each log entry.
@@ -176,8 +157,7 @@ public class CheckNewRootTest extends CheckBase {
 
     /**
      */
-    private void setupWrittenBySplits(Database db)
-        throws DatabaseException {
+    private void setupWrittenBySplits(Database db) throws DatabaseException {
         setStepwiseStart();
 
         DatabaseEntry key = new DatabaseEntry();
@@ -191,7 +171,7 @@ public class CheckNewRootTest extends CheckBase {
         Trace.trace(DbInternal.getNonNullEnvImpl(env), "After creation");
 
         /* Populate a tree so it splits. */
-        for (int i = 1; i < 6; i ++) {
+        for (int i = 1; i < 6; i++) {
             IntegerBinding.intToEntry(i, key);
             IntegerBinding.intToEntry(i, data);
             assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
@@ -202,40 +182,33 @@ public class CheckNewRootTest extends CheckBase {
     }
 
     /*
-     * Scenario from [#13897]: tree is created. Log looks like this
-     *  provisional BIN
-     *  root IN
-     *  checkpoint start
-     *  LN is logged but not yet attached to BIN
-     *  checkpoint end
-     *  BIN is dirtied, but is not part of checkpoint, because dirtying wasn't
-     *  seen
-     * In this case, getParentForBIN hangs, because there is no root.
-     * This test is for debugging only, because it's not really possible to
-     * run a real checkpoint in the small window when the bin is not dirty.
-     * Attempts to run a checkpoint programmatically result in failing the
-     * assert that no latches are held when the inlist latch is taken.
+     * Scenario from [#13897]: tree is created. Log looks like this provisional
+     * BIN root IN checkpoint start LN is logged but not yet attached to BIN
+     * checkpoint end BIN is dirtied, but is not part of checkpoint, because
+     * dirtying wasn't seen In this case, getParentForBIN hangs, because there
+     * is no root. This test is for debugging only, because it's not really
+     * possible to run a real checkpoint in the small window when the bin is not
+     * dirty. Attempts to run a checkpoint programmatically result in failing
+     * the assert that no latches are held when the inlist latch is taken.
      * Instead, we do this pseudo checkpoint, to make the hang reproduce. But
-     * this test will still fail even with the fixed code because the fix
-     * now causes the rootIN to get re-logged, and the pseudo checkpoint
-     * doesn't do that logging.
+     * this test will still fail even with the fixed code because the fix now
+     * causes the rootIN to get re-logged, and the pseudo checkpoint doesn't do
+     * that logging.
      */
     public void xxtestCreateNewTree() // This test for debugging only
-        throws Throwable {
+            throws Throwable {
 
         EnvironmentConfig envConfig = setupEnvConfig();
         DatabaseConfig dbConfig = setupDbConfig();
 
         /* Run the full test case w/out truncating the log. */
         testOneCase(DB_NAME, envConfig, dbConfig,
-                    new TestGenerator(true /* generate log description. */){
-                        @Override
-                        void generateData(Database db)
-                            throws DatabaseException {
-                            setupCreateNewTree(db);
-                        }
-                    },
-                    envConfig, dbConfig);
+                new TestGenerator(true /* generate log description. */) {
+                    @Override
+                    void generateData(Database db) throws DatabaseException {
+                        setupCreateNewTree(db);
+                    }
+                }, envConfig, dbConfig);
 
         /*
          * Now run the test in a stepwise loop, truncate after each log entry.
@@ -248,8 +221,7 @@ public class CheckNewRootTest extends CheckBase {
     /**
      * Create a populated tree, delete all records, then begin to insert again.
      */
-    private void setupCreateNewTree(Database db)
-        throws DatabaseException {
+    private void setupCreateNewTree(Database db) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -260,8 +232,7 @@ public class CheckNewRootTest extends CheckBase {
         env.checkpoint(FORCE_CONFIG);
 
         /*
-         * Create in the log
-         *  provisional BIN, IN, ckpt start, LN
+         * Create in the log provisional BIN, IN, ckpt start, LN
          */
         IntegerBinding.intToEntry(1, key);
         IntegerBinding.intToEntry(1, data);
@@ -281,33 +252,18 @@ public class CheckNewRootTest extends CheckBase {
 
         public void doHook() {
             try {
-                EnvironmentImpl envImpl =
-                    DbInternal.getNonNullEnvImpl(env);
-                SingleItemEntry<CheckpointStart> startEntry =
-                    SingleItemEntry.create(LogEntryType.LOG_CKPT_START,
-                                           new CheckpointStart(100, "test"));
-                long checkpointStart = envImpl.getLogManager().log
-                    (startEntry,
-                     ReplicationContext.NO_REPLICATE);
-                CheckpointEnd ckptEnd = new CheckpointEnd
-                    ("test",
-                     checkpointStart,
-                     envImpl.getRootLsn(),
-                     envImpl.getTxnManager().getFirstActiveLsn(),
-                     envImpl.getNodeSequence().getLastLocalNodeId(),
-                     envImpl.getNodeSequence().getLastReplicatedNodeId(),
-                     envImpl.getDbTree().getLastLocalDbId(),
-                     envImpl.getDbTree().getLastReplicatedDbId(),
-                     envImpl.getTxnManager().getLastLocalTxnId(),
-                     envImpl.getTxnManager().getLastReplicatedTxnId(),
-                     100,
-                     true /*cleanedFilesToDelete*/);
-                SingleItemEntry<CheckpointEnd> endEntry =
-                    SingleItemEntry.create(LogEntryType.LOG_CKPT_END, ckptEnd);
-                envImpl.getLogManager().logForceFlush
-                    (endEntry,
-                     true, // fsyncRequired
-                     ReplicationContext.NO_REPLICATE);
+                EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
+                SingleItemEntry<CheckpointStart> startEntry = SingleItemEntry.create(LogEntryType.LOG_CKPT_START,
+                        new CheckpointStart(100, "test"));
+                long checkpointStart = envImpl.getLogManager().log(startEntry, ReplicationContext.NO_REPLICATE);
+                CheckpointEnd ckptEnd = new CheckpointEnd("test", checkpointStart, envImpl.getRootLsn(),
+                        envImpl.getTxnManager().getFirstActiveLsn(), envImpl.getNodeSequence().getLastLocalNodeId(),
+                        envImpl.getNodeSequence().getLastReplicatedNodeId(), envImpl.getDbTree().getLastLocalDbId(),
+                        envImpl.getDbTree().getLastReplicatedDbId(), envImpl.getTxnManager().getLastLocalTxnId(),
+                        envImpl.getTxnManager().getLastReplicatedTxnId(), 100, true /* cleanedFilesToDelete */);
+                SingleItemEntry<CheckpointEnd> endEntry = SingleItemEntry.create(LogEntryType.LOG_CKPT_END, ckptEnd);
+                envImpl.getLogManager().logForceFlush(endEntry, true, // fsyncRequired
+                        ReplicationContext.NO_REPLICATE);
             } catch (DatabaseException e) {
                 fail(e.getMessage());
             }
@@ -324,32 +280,30 @@ public class CheckNewRootTest extends CheckBase {
         public void hookSetup() {
             throw new UnsupportedOperationException();
         }
+
         public void doHook(Object obj) {
-            throw new UnsupportedOperationException();            
+            throw new UnsupportedOperationException();
         }
     }
 
     /**
-     * Make sure eviction doesn't evict roots. If it did, we'd need to
-     * log the mapLN to be sure that recovery is correct.
+     * Make sure eviction doesn't evict roots. If it did, we'd need to log the
+     * mapLN to be sure that recovery is correct.
      */
     @Test
-    public void testChangeAndEvictRoot()
-        throws Throwable {
+    public void testChangeAndEvictRoot() throws Throwable {
 
         EnvironmentConfig envConfig = setupEnvConfig();
         DatabaseConfig dbConfig = setupDbConfig();
 
         /* Run the full test case w/out truncating the log. */
         testOneCase(DB_NAME, envConfig, dbConfig,
-                    new TestGenerator(true /* generate log description. */){
-                        @Override
-                        void generateData(Database db)
-                            throws DatabaseException {
-                            setupEvictedRoot(db);
-                        }
-                    },
-                    envConfig, dbConfig);
+                new TestGenerator(true /* generate log description. */) {
+                    @Override
+                    void generateData(Database db) throws DatabaseException {
+                        setupEvictedRoot(db);
+                    }
+                }, envConfig, dbConfig);
 
         /*
          * Now run the test in a stepwise loop, truncate after each log entry.
@@ -362,15 +316,14 @@ public class CheckNewRootTest extends CheckBase {
     /**
      * Create a populated tree, delete all records, then begin to insert again.
      */
-    private void setupEvictedRoot(Database db)
-        throws DatabaseException {
+    private void setupEvictedRoot(Database db) throws DatabaseException {
         setStepwiseStart();
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
         /* Populate a tree so it grows to 2 levels, with 2 BINs. */
-        for (int i = 0; i < 10; i ++) {
+        for (int i = 0; i < 10; i++) {
             IntegerBinding.intToEntry(i, key);
             IntegerBinding.intToEntry(i, data);
             assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
@@ -380,8 +333,8 @@ public class CheckNewRootTest extends CheckBase {
         env.checkpoint(FORCE_CONFIG);
 
         /*
-         * Add another record so that the eviction below will log
-         * a different versions of the IN nodes.
+         * Add another record so that the eviction below will log a different
+         * versions of the IN nodes.
          */
         IntegerBinding.intToEntry(10, key);
         IntegerBinding.intToEntry(10, data);
@@ -389,24 +342,27 @@ public class CheckNewRootTest extends CheckBase {
 
         /* Evict */
         TestHook<Boolean> evictHook = new TestHook<Boolean>() {
-                public void doIOHook() {
-                    throw new UnsupportedOperationException();
-                }
-                public void doHook() {
-                    throw new UnsupportedOperationException();
-                }
-                public Boolean getHookValue() {
-                    return Boolean.TRUE;
-                }
-                public void hookSetup() {
-                    throw new UnsupportedOperationException();
-                }
-                public void doHook(Boolean obj) {
-                    throw new UnsupportedOperationException();
-                }
-            };
-        DbInternal.getNonNullEnvImpl(env).getEvictor().
-                                           setRunnableHook(evictHook);
+            public void doIOHook() {
+                throw new UnsupportedOperationException();
+            }
+
+            public void doHook() {
+                throw new UnsupportedOperationException();
+            }
+
+            public Boolean getHookValue() {
+                return Boolean.TRUE;
+            }
+
+            public void hookSetup() {
+                throw new UnsupportedOperationException();
+            }
+
+            public void doHook(Boolean obj) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        DbInternal.getNonNullEnvImpl(env).getEvictor().setRunnableHook(evictHook);
         env.evictMemory();
 
         /* Checkpoint again. */
@@ -416,8 +372,7 @@ public class CheckNewRootTest extends CheckBase {
     private EnvironmentConfig setupEnvConfig() {
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         turnOffEnvDaemons(envConfig);
-        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                 "4");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "4");
         envConfig.setAllowCreate(true);
         return envConfig;
     }

@@ -37,24 +37,21 @@ public class CommitPointConsistencyPolicyTest extends RepTestBase {
 
     @Override
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         groupSize = 2;
         super.setUp();
 
         /* Add a secondary */
         repEnvInfo = RepTestUtils.setupExtendEnvInfo(repEnvInfo, 1);
-        repEnvInfo[repEnvInfo.length-1].getRepConfig().setNodeType(
-            NodeType.SECONDARY);
+        repEnvInfo[repEnvInfo.length - 1].getRepConfig().setNodeType(NodeType.SECONDARY);
     }
 
     @Test
     public void testCommitPointConsistencyOnOpen() {
         ReplicatedEnvironment menv = repEnvInfo[0].openEnv();
         CommitToken token = populateDB(menv, TEST_DB_NAME, 10);
-        CommitPointConsistencyPolicy cp =
-            new CommitPointConsistencyPolicy(token, 100, TimeUnit.SECONDS);
+        CommitPointConsistencyPolicy cp = new CommitPointConsistencyPolicy(token, 100, TimeUnit.SECONDS);
         for (int i = 1; i < repEnvInfo.length; i++) {
             ReplicatedEnvironment renv = repEnvInfo[i].openEnv(cp);
             /* Verify that the database is available on the replica. */
@@ -64,10 +61,7 @@ public class CommitPointConsistencyPolicyTest extends RepTestBase {
     }
 
     @Test
-    public void testVLSNConsistencyJoinGroup()
-        throws UnknownMasterException,
-               DatabaseException,
-               InterruptedException {
+    public void testVLSNConsistencyJoinGroup() throws UnknownMasterException, DatabaseException, InterruptedException {
 
         createGroup();
         leaveGroupAllButMaster();
@@ -75,8 +69,7 @@ public class CommitPointConsistencyPolicyTest extends RepTestBase {
 
         /* Populate just the master. */
         CommitToken commitToken = populateDB(masterRep, TEST_DB_NAME, 100);
-        CommitPointConsistencyPolicy cp1 =
-            new CommitPointConsistencyPolicy(commitToken, 1, TimeUnit.SECONDS);
+        CommitPointConsistencyPolicy cp1 = new CommitPointConsistencyPolicy(commitToken, 1, TimeUnit.SECONDS);
 
         final int failTimeout = 2000;
         final int passTimeout = 5000;
@@ -92,13 +85,10 @@ public class CommitPointConsistencyPolicyTest extends RepTestBase {
             Transaction txn = replica.beginTransaction(null, tc);
             txn.commit();
 
-            CommitToken futureCommitToken =
-                new CommitToken(commitToken.getRepenvUUID(),
-                                commitToken.getVLSN() + 100);
+            CommitToken futureCommitToken = new CommitToken(commitToken.getRepenvUUID(), commitToken.getVLSN() + 100);
 
             tc.setConsistencyPolicy(
-                new CommitPointConsistencyPolicy(
-                    futureCommitToken, failTimeout, TimeUnit.MILLISECONDS));
+                    new CommitPointConsistencyPolicy(futureCommitToken, failTimeout, TimeUnit.MILLISECONDS));
             long start = System.currentTimeMillis();
             try {
                 txn = null;
@@ -107,10 +97,8 @@ public class CommitPointConsistencyPolicyTest extends RepTestBase {
                 txn.abort();
                 fail("Exception expected");
             } catch (ReplicaConsistencyException rce) {
-                long policyTimeout = rce.getConsistencyPolicy().getTimeout(
-                    TimeUnit.MILLISECONDS);
-                assertTrue(policyTimeout <=
-                           (System.currentTimeMillis() - start));
+                long policyTimeout = rce.getConsistencyPolicy().getTimeout(TimeUnit.MILLISECONDS);
+                assertTrue(policyTimeout <= (System.currentTimeMillis() - start));
             }
 
             // reset statistics
@@ -118,8 +106,7 @@ public class CommitPointConsistencyPolicyTest extends RepTestBase {
 
             // Have a replica transaction actually wait
             tc.setConsistencyPolicy(
-                new CommitPointConsistencyPolicy(
-                    futureCommitToken, passTimeout, TimeUnit.MILLISECONDS));
+                    new CommitPointConsistencyPolicy(futureCommitToken, passTimeout, TimeUnit.MILLISECONDS));
             TxnThread txnThread = new TxnThread(replica, tc);
             txnThreads[i] = txnThread;
             txnThread.start();
@@ -134,8 +121,7 @@ public class CommitPointConsistencyPolicyTest extends RepTestBase {
             TxnThread txnThread = txnThreads[i];
             txnThread.join(passTimeout);
             assertTrue(!txnThread.isAlive());
-            assertNull("i=" + i + ": Exception: " + txnThread.testException,
-                       txnThread.testException);
+            assertNull("i=" + i + ": Exception: " + txnThread.testException, txnThread.testException);
             ReplicatedEnvironmentStats stats = replica.getRepStats(statsConf);
             assertEquals(1, stats.getTrackerVLSNConsistencyWaits());
 
@@ -153,8 +139,8 @@ public class CommitPointConsistencyPolicyTest extends RepTestBase {
 
     class TxnThread extends Thread {
         final ReplicatedEnvironment replicator;
-        final TransactionConfig tc;
-        Exception testException = null;
+        final TransactionConfig     tc;
+        Exception                   testException = null;
 
         TxnThread(ReplicatedEnvironment replicator, TransactionConfig tc) {
             this.replicator = replicator;

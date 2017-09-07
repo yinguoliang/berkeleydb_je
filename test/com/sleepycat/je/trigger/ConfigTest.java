@@ -30,8 +30,7 @@ public class ConfigTest extends TestBase {
     public void testConflictingTypes() {
         DatabaseConfig dc = new DatabaseConfig();
         try {
-            dc.setTriggers(Arrays.asList((Trigger) new DBT("t1"),
-                           (Trigger) new InvokeTest.RDBT("t2")));
+            dc.setTriggers(Arrays.asList((Trigger) new DBT("t1"), (Trigger) new InvokeTest.RDBT("t2")));
             fail("IAE expected");
         } catch (IllegalArgumentException iae) {
             // Expected
@@ -42,8 +41,7 @@ public class ConfigTest extends TestBase {
     public void testConflictingNames() {
         DatabaseConfig dc = new DatabaseConfig();
         try {
-            dc.setTriggers(Arrays.asList((Trigger) new DBT("t1"),
-                           (Trigger) new DBT("t1")));
+            dc.setTriggers(Arrays.asList((Trigger) new DBT("t1"), (Trigger) new DBT("t1")));
             fail("IAE expected");
         } catch (IllegalArgumentException iae) {
             // Expected
@@ -55,8 +53,7 @@ public class ConfigTest extends TestBase {
         SecondaryConfig sc = new SecondaryConfig();
 
         try {
-            sc.setTriggers(Arrays.asList((Trigger) new DBT("t1"),
-                           (Trigger) new DBT("t2")));
+            sc.setTriggers(Arrays.asList((Trigger) new DBT("t1"), (Trigger) new DBT("t2")));
             fail("IAE expected");
         } catch (IllegalArgumentException iae) {
             // Expected
@@ -69,7 +66,7 @@ public class ConfigTest extends TestBase {
             // Expected
         }
 
-        assertEquals(0,sc.getTriggers().size());
+        assertEquals(0, sc.getTriggers().size());
         assertFalse(sc.getOverrideTriggers());
     }
 }

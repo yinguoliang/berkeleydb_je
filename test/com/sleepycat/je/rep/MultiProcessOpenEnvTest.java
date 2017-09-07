@@ -47,45 +47,35 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * Every replication node manages a single replicated JE environment
- * directory. The environment follows the usual regulations governing a JE
- * environment; namely, only a single read/write process can access the
- * environment at a single point in time.
- *
- * In this unit test, exercise the rules by opening a single replicated
- * environment from two processes.  One process will open a
- * ReplicatedEnvironment handle. The other will open a standalone
- * environment. The expected results are:
- *
- * Env handle\Open    Open for write     Open for read
- *=====================   ===============
- * ReplicatedEnvironment  OK.                IllegalArgEx
- *
- * Environment            IllegalArgEx       OK. Verify that we are
- *                                           seeing a snapshot in the presence
- *                                           of ongoing changes (in another
- *                                           process) at a master and Replica
- *                                           and that a reopen of the handle
- *                                           updates the snapshot.
+ * Every replication node manages a single replicated JE environment directory.
+ * The environment follows the usual regulations governing a JE environment;
+ * namely, only a single read/write process can access the environment at a
+ * single point in time. In this unit test, exercise the rules by opening a
+ * single replicated environment from two processes. One process will open a
+ * ReplicatedEnvironment handle. The other will open a standalone environment.
+ * The expected results are: Env handle\Open Open for write Open for read
+ * ===================== =============== ReplicatedEnvironment OK. IllegalArgEx
+ * Environment IllegalArgEx OK. Verify that we are seeing a snapshot in the
+ * presence of ongoing changes (in another process) at a master and Replica and
+ * that a reopen of the handle updates the snapshot.
  */
 public class MultiProcessOpenEnvTest extends TestBase {
-   
-    private final File envRoot; 
-    private final File masterEnvHome;
-    private final File replicaEnvHome;
-    private final File lockFile;
-    private static final int MAX_RETRIES = 20;
-    private static final String sleepInterval = "5000";
-    private static final String DB_NAME = "testDB";
+
+    private final File          envRoot;
+    private final File          masterEnvHome;
+    private final File          replicaEnvHome;
+    private final File          lockFile;
+    private static final int    MAX_RETRIES    = 20;
+    private static final String sleepInterval  = "5000";
+    private static final String DB_NAME        = "testDB";
     private static final String LOCK_FILE_NAME = "filelocks.txt";
-    
+
     /* Name of the process which opens a ReplicatedEnvironment. */
     private static final String repProcessName = "repProcess";
     /* Name of the process which opens a standalone Environment. */
     private static final String envProcessName = "envProcess";
-    
-    public MultiProcessOpenEnvTest() 
-        throws Exception {
+
+    public MultiProcessOpenEnvTest() throws Exception {
 
         envRoot = SharedTestUtils.getTestDir();
         /* Make rep0 as the environment home. */
@@ -96,13 +86,11 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /*
-     * Test the following case:
-     *   1. Start a process, p1, which opens a replicated Environment on 
-     *      envHome, then sleeps.
-     *   2. Start a new process, p2, which opens a r/w standalone Environment 
-     *      on the same envHome.
-     *   3. p2 should get an EnvironmentLockedException and exit with value 4.
-     *   4. p1 should exit with value 0.
+     * Test the following case: 1. Start a process, p1, which opens a replicated
+     * Environment on envHome, then sleeps. 2. Start a new process, p2, which
+     * opens a r/w standalone Environment on the same envHome. 3. p2 should get
+     * an EnvironmentLockedException and exit with value 4. 4. p1 should exit
+     * with value 0.
      */
     @Test
     public void testEnvWriteOnRepEnv() {
@@ -115,51 +103,44 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /*
-     * Test the following case:
-     *   1. Start a process, p1, which opens a replicated Environment on 
-     *      envHome, then sleeps.
-     *   2. Start a new process, p2, which opens a read only standalone 
-     *      Environment on the same envHome.
-     *   3. Both p1 and p2 should exit normally with value 0.
+     * Test the following case: 1. Start a process, p1, which opens a replicated
+     * Environment on envHome, then sleeps. 2. Start a new process, p2, which
+     * opens a read only standalone Environment on the same envHome. 3. Both p1
+     * and p2 should exit normally with value 0.
      */
     @Test
     public void testEnvReadOnRepEnv() {
         JUnitProcessThread repThread = getRepProcess(true);
         JUnitProcessThread envThread = getEnvProcess(true, false);
-        
+
         startThreads(repThread, envThread, 2000);
 
         checkExitVals(repThread, 0, envThread, 0);
     }
 
     /*
-     * Test the following case:
-     *   1. Start a process, p1, which opens a r/w standalone Environment on 
-     *      envHome, then sleeps.
-     *   2. Start a new process, p2, which opens a replicated Environment on
-     *      the same envHome.
-     *   3. p2 should get an EnvironmentLockedException and exit with value 1.
-     *   4. p1 should exit with value 0.
+     * Test the following case: 1. Start a process, p1, which opens a r/w
+     * standalone Environment on envHome, then sleeps. 2. Start a new process,
+     * p2, which opens a replicated Environment on the same envHome. 3. p2
+     * should get an EnvironmentLockedException and exit with value 1. 4. p1
+     * should exit with value 0.
      */
     @Test
     public void testRepEnvOnEnvWrite() {
         JUnitProcessThread repThread = getRepProcess(false);
         JUnitProcessThread envThread = getEnvProcess(false, true);
 
-        startThreads(envThread, repThread, 500);        
+        startThreads(envThread, repThread, 500);
 
         checkExitVals(repThread, 1, envThread, 0);
     }
 
-    /* 
-     * Test the following case:
-     *   1. Start a process, p1, which opens a read only standalone Environment
-     *      on envHome, then sleeps.
-     *   2. Start a new process, p2, which opens a replicated Environment on
-     *      the same envHome.
-     *   3. p2 should get an UnsupportedOperationException and exit with 
-     *      value 2.
-     *   4. p1 should exit with value 0.
+    /*
+     * Test the following case: 1. Start a process, p1, which opens a read only
+     * standalone Environment on envHome, then sleeps. 2. Start a new process,
+     * p2, which opens a replicated Environment on the same envHome. 3. p2
+     * should get an UnsupportedOperationException and exit with value 2. 4. p1
+     * should exit with value 0.
      */
     @Test
     public void testRepEnvOnEnvRead() {
@@ -174,13 +155,11 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /*
-     * Test the following case:
-     *   1. Start a process, p1, which opens a replicated Environment on 
-     *      envHome, then sleeps.
-     *   2. Start a new process, p2, which opens a replicated Environment on 
-     *      the same envHome.
-     *   3. p2 should get an EnvironmentLockedException and exit with value 1.
-     *   4. p1 should exit with value 0.
+     * Test the following case: 1. Start a process, p1, which opens a replicated
+     * Environment on envHome, then sleeps. 2. Start a new process, p2, which
+     * opens a replicated Environment on the same envHome. 3. p2 should get an
+     * EnvironmentLockedException and exit with value 1. 4. p1 should exit with
+     * value 0.
      */
     @Test
     public void testRepEnvOnRepEnv() {
@@ -193,14 +172,12 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /*
-     * Test the following case:
-     *   1. Start a process, p1, which opens a r/w standalone Environment on
-     *      envHome, then sleeps.
-     *   2. Start a new process, p2, which opens a r/w standalone Environment 
-     *      on the same envHome.
-     *   3. p2 should get an EnvironmentLockedException and exit with value 4.
-     *   4. p1 should exit with value 0.
-     */ 
+     * Test the following case: 1. Start a process, p1, which opens a r/w
+     * standalone Environment on envHome, then sleeps. 2. Start a new process,
+     * p2, which opens a r/w standalone Environment on the same envHome. 3. p2
+     * should get an EnvironmentLockedException and exit with value 4. 4. p1
+     * should exit with value 0.
+     */
     @Test
     public void testEnvWriteOnEnvWrite() {
         JUnitProcessThread envThread1 = getEnvProcess(false, true);
@@ -212,12 +189,10 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /*
-     * Test the following case:
-     *   1. Start a process, p1, which opens a r/w standalone Environment on
-     *      envHome, then sleeps.
-     *   2. Start a new process, p2, which opens a read only standalone 
-     *      Environment on the same envHome.
-     *   3. Both p1 and p2 should exit with value 0.
+     * Test the following case: 1. Start a process, p1, which opens a r/w
+     * standalone Environment on envHome, then sleeps. 2. Start a new process,
+     * p2, which opens a read only standalone Environment on the same envHome.
+     * 3. Both p1 and p2 should exit with value 0.
      */
     @Test
     public void testEnvWriteOnEnvRead() {
@@ -230,16 +205,13 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /*
-     * Test the following case:
-     *   1. Start a process, p1, which opens a read only standalone Environment 
-     *      on envHome, then sleeps.
-     *   2. Start a new process, p2, which opens a read only standalone 
-     *      Environment on the same envHome.
-     *   3. Both p1 and p2 should exit with value 0.
+     * Test the following case: 1. Start a process, p1, which opens a read only
+     * standalone Environment on envHome, then sleeps. 2. Start a new process,
+     * p2, which opens a read only standalone Environment on the same envHome.
+     * 3. Both p1 and p2 should exit with value 0.
      */
     @Test
-    public void testEnvReadOnEnvRead() 
-        throws Throwable {
+    public void testEnvReadOnEnvRead() throws Throwable {
 
         if (readPreserveRecordVersionProperty()) {
             return;
@@ -261,75 +233,55 @@ public class MultiProcessOpenEnvTest extends TestBase {
         checkExitVals(envThread1, 0, envThread2, 0);
     }
 
-    private boolean readPreserveRecordVersionProperty() 
-        throws Exception {
+    private boolean readPreserveRecordVersionProperty() throws Exception {
 
-        FileInputStream fis = 
-            new FileInputStream(new File(envRoot, "je.properties"));
+        FileInputStream fis = new FileInputStream(new File(envRoot, "je.properties"));
         Properties jeProperties = new Properties();
         jeProperties.load(fis);
 
-        return new Boolean(jeProperties.getProperty
-            (RepParams.PRESERVE_RECORD_VERSION.getName()));
+        return new Boolean(jeProperties.getProperty(RepParams.PRESERVE_RECORD_VERSION.getName()));
     }
 
-    /* 
-     * Test the following case:
-     *   1. Start process p1:
-     *      1. It will get FileLock A and FileLock C at the begining to make 
-     *         sure it gets theset two locks before p2.
-     *      2. Then it will start a new replication group with two replicas, 
-     *         and do some inserts.
-     *      3. Sync all the nodes and do a node equality check.
-     *      4. Release lock A.
-     *      5. Try to get FileLock B.
-     *   2. Start process p2 right after staring p1:
-     *      1. It will get FileLock B at the begining to make sure p1 gets lock
-     *         B before p1.
-     *      2. Try to get lock A, if it gets A, which means there are some data
-     *         on the replicas, then open two read only standalone Environments
-     *         on the two replicas.
-     *      3. Release lock A and lock B.
-     *      4. Read the records and do a compare between replicas, also check 
-     *         to see if the values are expected.
-     *      5. Try to get FileLock C.
-     *   3. When p1 gets FileLock B, it continues:
-     *      1. When p1 gets FileLock B, it knows p2 has read a snapshot, so it
-     *         can do further updates.
-     *      2. Do updates and make sure the replicas have same data.
-     *      3. Release FileLock C.
-     *      4. Exit the process.
-     *   4. When p2 gets FileLock C, it continues:
-     *      1. When p2 gets FileLock C, it knows p1 has finished updates, then
-     *         it does read on replicas.
-     *      2. Do the compare
-     *      3. Release FileLock C and exit.
-     *   5. The two processes should exit successfully with value 0.
+    /*
+     * Test the following case: 1. Start process p1: 1. It will get FileLock A
+     * and FileLock C at the begining to make sure it gets theset two locks
+     * before p2. 2. Then it will start a new replication group with two
+     * replicas, and do some inserts. 3. Sync all the nodes and do a node
+     * equality check. 4. Release lock A. 5. Try to get FileLock B. 2. Start
+     * process p2 right after staring p1: 1. It will get FileLock B at the
+     * begining to make sure p1 gets lock B before p1. 2. Try to get lock A, if
+     * it gets A, which means there are some data on the replicas, then open two
+     * read only standalone Environments on the two replicas. 3. Release lock A
+     * and lock B. 4. Read the records and do a compare between replicas, also
+     * check to see if the values are expected. 5. Try to get FileLock C. 3.
+     * When p1 gets FileLock B, it continues: 1. When p1 gets FileLock B, it
+     * knows p2 has read a snapshot, so it can do further updates. 2. Do updates
+     * and make sure the replicas have same data. 3. Release FileLock C. 4. Exit
+     * the process. 4. When p2 gets FileLock C, it continues: 1. When p2 gets
+     * FileLock C, it knows p1 has finished updates, then it does read on
+     * replicas. 2. Do the compare 3. Release FileLock C and exit. 5. The two
+     * processes should exit successfully with value 0.
      */
     @Test
     public void testEnvReadSnapshotOnRepEnv() {
         /* Start the process which starts a writing replication group. */
         String[] repCommand = new String[5];
-        repCommand[0] = 
-            "com.sleepycat.je.rep.MultiProcessOpenEnvTest$RepGroupWriteProcess";
+        repCommand[0] = "com.sleepycat.je.rep.MultiProcessOpenEnvTest$RepGroupWriteProcess";
         repCommand[1] = envRoot.getAbsolutePath();
         repCommand[2] = DB_NAME;
         /* Make process sleep for a while to make sure p2 get lock BBB. */
         repCommand[3] = "1000";
         repCommand[4] = lockFile.getAbsolutePath();
-        JUnitProcessThread p1 = 
-            new JUnitProcessThread(repProcessName, repCommand);
+        JUnitProcessThread p1 = new JUnitProcessThread(repProcessName, repCommand);
 
         /* Start the process which starts reading Environments on replicas. */
         String[] envCommand = new String[5];
-        envCommand[0] = "com.sleepycat.je.rep.MultiProcessOpenEnvTest$" +
-                        "EnvReadRepGroupProcess";
+        envCommand[0] = "com.sleepycat.je.rep.MultiProcessOpenEnvTest$" + "EnvReadRepGroupProcess";
         envCommand[1] = masterEnvHome.getAbsolutePath();
         envCommand[2] = replicaEnvHome.getAbsolutePath();
         envCommand[3] = DB_NAME;
         envCommand[4] = lockFile.getAbsolutePath();
-        JUnitProcessThread p2 =
-            new JUnitProcessThread(envProcessName, envCommand);
+        JUnitProcessThread p2 = new JUnitProcessThread(envProcessName, envCommand);
 
         startThreads(p1, p2, 300);
 
@@ -337,9 +289,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /* Start these two processes. */
-    private void startThreads(JUnitProcessThread thread1,
-                              JUnitProcessThread thread2,
-                              long sleepTime) {
+    private void startThreads(JUnitProcessThread thread1, JUnitProcessThread thread2, long sleepTime) {
         thread1.start();
         try {
             Thread.sleep(sleepTime);
@@ -352,8 +302,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
     /* Create a process which opens a replicated Environment. */
     private JUnitProcessThread getRepProcess(boolean sleep) {
         String[] repCommand = new String[3];
-        repCommand[0] = 
-            "com.sleepycat.je.rep.MultiProcessOpenEnvTest$RepEnvProcess";
+        repCommand[0] = "com.sleepycat.je.rep.MultiProcessOpenEnvTest$RepEnvProcess";
         repCommand[1] = masterEnvHome.getAbsolutePath();
         repCommand[2] = (sleep ? sleepInterval : "0");
 
@@ -361,17 +310,13 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /* Create a process which opens a standalone Environment. */
-    private JUnitProcessThread getEnvProcess(boolean readOnly, 
-                                             boolean sleep) {
+    private JUnitProcessThread getEnvProcess(boolean readOnly, boolean sleep) {
         return getEnvProcess(readOnly, sleep, sleepInterval);
     }
 
-    private JUnitProcessThread getEnvProcess(boolean readOnly,
-                                             boolean sleep,
-                                             String sleepTime) {
+    private JUnitProcessThread getEnvProcess(boolean readOnly, boolean sleep, String sleepTime) {
         String[] envCommand = new String[4];
-        envCommand[0] = 
-            "com.sleepycat.je.rep.MultiProcessOpenEnvTest$EnvProcess";
+        envCommand[0] = "com.sleepycat.je.rep.MultiProcessOpenEnvTest$EnvProcess";
         envCommand[1] = masterEnvHome.getAbsolutePath();
         envCommand[2] = (readOnly ? "true" : "false");
         envCommand[3] = (sleep ? sleepTime : "0");
@@ -380,10 +325,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /* Check the exit value of processes. */
-    private void checkExitVals(JUnitProcessThread thread1, 
-                               int exitVal1,
-                               JUnitProcessThread thread2,
-                               int exitVal2) {
+    private void checkExitVals(JUnitProcessThread thread1, int exitVal1, JUnitProcessThread thread2, int exitVal2) {
         /* End these threads. */
         try {
             thread1.finishTest();
@@ -403,9 +345,9 @@ public class MultiProcessOpenEnvTest extends TestBase {
     static class RepEnvProcess {
         private final File envHome;
 
-        /* 
+        /*
          * Sleep interval for waiting a ReplicatedEnvironment to open on this
-         * ReplicatedEnvironment. 
+         * ReplicatedEnvironment.
          */
         private final long sleepTime;
         private RepEnvInfo repEnvInfo;
@@ -417,33 +359,27 @@ public class MultiProcessOpenEnvTest extends TestBase {
 
         public void openEnv() {
             try {
-                Durability durability = 
-                    new Durability(Durability.SyncPolicy.WRITE_NO_SYNC,
-                                   Durability.SyncPolicy.WRITE_NO_SYNC,
-                                   Durability.ReplicaAckPolicy.ALL);
-                EnvironmentConfig envConfig = 
-                    RepTestUtils.createEnvConfig(durability);
-                ReplicationConfig repConfig =
-                    RepTestUtils.createRepConfig(1);
-                repEnvInfo = RepTestUtils.setupEnvInfo
-                    (envHome, envConfig, repConfig, null);
+                Durability durability = new Durability(Durability.SyncPolicy.WRITE_NO_SYNC,
+                        Durability.SyncPolicy.WRITE_NO_SYNC, Durability.ReplicaAckPolicy.ALL);
+                EnvironmentConfig envConfig = RepTestUtils.createEnvConfig(durability);
+                ReplicationConfig repConfig = RepTestUtils.createRepConfig(1);
+                repEnvInfo = RepTestUtils.setupEnvInfo(envHome, envConfig, repConfig, null);
                 repEnvInfo.openEnv();
                 Thread.sleep(sleepTime);
             } catch (EnvironmentLockedException e) {
 
-                /* 
+                /*
                  * Exit the process with value 1, don't print out the exception
                  * since it's expected.
                  */
                 System.exit(1);
             } catch (UnsupportedOperationException e) {
 
-                /* 
+                /*
                  * Exit the process with value 2, don't print out the exception
-                 * since it's expected. 
-                 *
-                 * Note: this exception thrown because we can't start a 
-                 * replicated Environment on an existed standalone Environment.
+                 * since it's expected. Note: this exception thrown because we
+                 * can't start a replicated Environment on an existed standalone
+                 * Environment.
                  */
                 System.exit(2);
             } catch (Exception e) {
@@ -458,8 +394,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
         }
 
         public static void main(String args[]) {
-            RepEnvProcess thread = 
-                new RepEnvProcess(new File(args[0]), new Long(args[1]));
+            RepEnvProcess thread = new RepEnvProcess(new File(args[0]), new Long(args[1]));
             thread.openEnv();
         }
     }
@@ -468,15 +403,15 @@ public class MultiProcessOpenEnvTest extends TestBase {
      * Open a standalone Environment, specifying the configuration.
      */
     static class EnvProcess {
-        private final File envHome;
+        private final File    envHome;
         private final boolean readOnly;
 
-        /* 
-         * Sleep interval for waiting a ReplicatedEnvironment to open on this 
-         * Environment. 
+        /*
+         * Sleep interval for waiting a ReplicatedEnvironment to open on this
+         * Environment.
          */
-        private final long sleepTime;
-        private Environment env;
+        private final long    sleepTime;
+        private Environment   env;
 
         public EnvProcess(File envHome, boolean readOnly, long sleepTime) {
             this.envHome = envHome;
@@ -509,9 +444,9 @@ public class MultiProcessOpenEnvTest extends TestBase {
                 }
             } catch (EnvironmentLockedException e) {
 
-                /* 
-                 * Exit the process with value 4, the exception is expected in 
-                 * this casse, don't dump it out. 
+                /*
+                 * Exit the process with value 4, the exception is expected in
+                 * this casse, don't dump it out.
                  */
                 System.exit(4);
             } catch (Exception e) {
@@ -526,9 +461,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
         }
 
         public static void main(String args[]) {
-            EnvProcess process = new EnvProcess(new File(args[0]), 
-                                                new Boolean(args[1]), 
-                                                new Long(args[2]));
+            EnvProcess process = new EnvProcess(new File(args[0]), new Boolean(args[1]), new Long(args[2]));
             process.openEnv();
         }
     }
@@ -545,14 +478,11 @@ public class MultiProcessOpenEnvTest extends TestBase {
     }
 
     /* Get a FileLock with retry. */
-    private static FileLock getLockWithReTry(FileChannel channel, 
-                                             long position, 
-                                             long size) 
-        throws Exception {
+    private static FileLock getLockWithReTry(FileChannel channel, long position, long size) throws Exception {
 
         int retries = 0;
         FileLock lock = channel.tryLock(position, size, false);
-        
+
         while (lock == null && retries <= MAX_RETRIES) {
             Thread.sleep(1000);
             lock = channel.tryLock(position, size, false);
@@ -560,8 +490,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
         }
 
         if (lock == null) {
-            System.err.println("Can't get a FileLock during " + 
-                               MAX_RETRIES + " seconds.");
+            System.err.println("Can't get a FileLock during " + MAX_RETRIES + " seconds.");
             System.exit(6);
         }
 
@@ -572,16 +501,13 @@ public class MultiProcessOpenEnvTest extends TestBase {
      * Open a replication group and do some work.
      */
     static class RepGroupWriteProcess {
-        private final File envRoot;
+        private final File       envRoot;
         private RandomAccessFile lockFile;
-        private final long sleepTime;
-        private final String dbName;
-        private RepEnvInfo[] repEnvInfo;
+        private final long       sleepTime;
+        private final String     dbName;
+        private RepEnvInfo[]     repEnvInfo;
 
-        public RepGroupWriteProcess(File envRoot, 
-                                    String dbName, 
-                                    long sleepTime,
-                                    RandomAccessFile lockFile) {
+        public RepGroupWriteProcess(File envRoot, String dbName, long sleepTime, RandomAccessFile lockFile) {
             this.envRoot = envRoot;
             this.dbName = dbName;
             this.sleepTime = sleepTime;
@@ -621,24 +547,18 @@ public class MultiProcessOpenEnvTest extends TestBase {
         }
 
         /* Start a replication group with 2 nodes and returns the master. */
-        private ReplicatedEnvironment getMaster() 
-            throws Exception {
+        private ReplicatedEnvironment getMaster() throws Exception {
 
-            Durability durability =
-                new Durability(Durability.SyncPolicy.WRITE_NO_SYNC,
-                               Durability.SyncPolicy.WRITE_NO_SYNC,
-                               Durability.ReplicaAckPolicy.ALL);
-            EnvironmentConfig envConfig =
-                RepTestUtils.createEnvConfig(durability);
-            repEnvInfo =
-                RepTestUtils.setupEnvInfos(envRoot, 2, envConfig);
-            
+            Durability durability = new Durability(Durability.SyncPolicy.WRITE_NO_SYNC,
+                    Durability.SyncPolicy.WRITE_NO_SYNC, Durability.ReplicaAckPolicy.ALL);
+            EnvironmentConfig envConfig = RepTestUtils.createEnvConfig(durability);
+            repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 2, envConfig);
+
             return RepTestUtils.joinGroup(repEnvInfo);
         }
 
         /* Insert 100 records begins with the beginKey. */
-        private void doWork(Environment master, String dbName, int beginKey)
-            throws Exception {
+        private void doWork(Environment master, String dbName, int beginKey) throws Exception {
 
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setAllowCreate(true);
@@ -656,23 +576,19 @@ public class MultiProcessOpenEnvTest extends TestBase {
             }
             db.close();
 
-            /* 
-             * Do a sync at the end of the stage to make sure master and 
-             * replica have the same data set.
+            /*
+             * Do a sync at the end of the stage to make sure master and replica
+             * have the same data set.
              */
-            VLSN commitVLSN = 
-                RepTestUtils.syncGroupToLastCommit(repEnvInfo, 
-                                                   repEnvInfo.length);
+            VLSN commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo, repEnvInfo.length);
             RepTestUtils.checkNodeEquality(commitVLSN, false, repEnvInfo);
         }
 
         public static void main(String args[]) {
             try {
-                RandomAccessFile lockFile = 
-                    new RandomAccessFile(args[3], "rw");
-                RepGroupWriteProcess process = 
-                    new RepGroupWriteProcess(new File(args[0]), args[1], 
-                                             new Long(args[2]), lockFile);
+                RandomAccessFile lockFile = new RandomAccessFile(args[3], "rw");
+                RepGroupWriteProcess process = new RepGroupWriteProcess(new File(args[0]), args[1], new Long(args[2]),
+                        lockFile);
                 process.run();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -685,24 +601,18 @@ public class MultiProcessOpenEnvTest extends TestBase {
      * Open a ReplicatedEnvironment depends on the configuration.
      */
     static class EnvReadRepGroupProcess {
-        private final File masterEnvHome;
-        private final File replicaEnvHome;
-        private RandomAccessFile lockFile;
-        private final String dbName;
-        private final ArrayList<TestObject> prevMasterRecords = 
-            new ArrayList<TestObject>();
-        private final ArrayList<TestObject> prevReplicaRecords =
-            new ArrayList<TestObject>();
-        private final ArrayList<TestObject> newMasterRecords =
-            new ArrayList<TestObject>();
-        private final ArrayList<TestObject> newReplicaRecords =
-            new ArrayList<TestObject>();
-        private Environment master;
-        private Environment replica;
+        private final File                  masterEnvHome;
+        private final File                  replicaEnvHome;
+        private RandomAccessFile            lockFile;
+        private final String                dbName;
+        private final ArrayList<TestObject> prevMasterRecords  = new ArrayList<TestObject>();
+        private final ArrayList<TestObject> prevReplicaRecords = new ArrayList<TestObject>();
+        private final ArrayList<TestObject> newMasterRecords   = new ArrayList<TestObject>();
+        private final ArrayList<TestObject> newReplicaRecords  = new ArrayList<TestObject>();
+        private Environment                 master;
+        private Environment                 replica;
 
-        public EnvReadRepGroupProcess(File masterEnvHome,
-                                      File replicaEnvHome, 
-                                      String dbName,
+        public EnvReadRepGroupProcess(File masterEnvHome, File replicaEnvHome, String dbName,
                                       RandomAccessFile lockFile) {
             this.masterEnvHome = masterEnvHome;
             this.replicaEnvHome = replicaEnvHome;
@@ -725,8 +635,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
                 lockA.release();
 
                 /* Read records and check the node equality. */
-                readRecords
-                    (master, prevMasterRecords, replica, prevReplicaRecords);
+                readRecords(master, prevMasterRecords, replica, prevReplicaRecords);
                 doEqualityCompare(prevMasterRecords, prevReplicaRecords, 100);
                 closeEnvironments();
 
@@ -734,8 +643,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
                 FileLock lockC = getLockWithReTry(channel, 3, 1);
                 /* Reopen and read records, then do the compare. */
                 openEnvironments();
-                readRecords
-                    (master, newMasterRecords, replica, newReplicaRecords);
+                readRecords(master, newMasterRecords, replica, newReplicaRecords);
                 doEqualityCompare(newMasterRecords, newReplicaRecords, 200);
 
                 /* Do compare between two snapshots. */
@@ -743,7 +651,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
                 doDiffCompare(prevReplicaRecords, newReplicaRecords);
                 lockC.release();
             } catch (Exception e) {
-                /* Dump exceptions and exit process with value 7.*/
+                /* Dump exceptions and exit process with value 7. */
                 e.printStackTrace();
                 System.exit(9);
             } finally {
@@ -753,8 +661,7 @@ public class MultiProcessOpenEnvTest extends TestBase {
         }
 
         /* Open read only standalone Environment on replicated nodes. */
-        private void openEnvironments()
-            throws Exception {
+        private void openEnvironments() throws Exception {
 
             EnvironmentConfig envConfig = new EnvironmentConfig();
             envConfig.setReadOnly(true);
@@ -775,11 +682,9 @@ public class MultiProcessOpenEnvTest extends TestBase {
         }
 
         /* Read records for these two Environments. */
-        private void readRecords(Environment masterEnv, 
-                                 ArrayList<TestObject> masterData, 
-                                 Environment replicaEnv,
+        private void readRecords(Environment masterEnv, ArrayList<TestObject> masterData, Environment replicaEnv,
                                  ArrayList<TestObject> replicaData)
-            throws Exception {
+                throws Exception {
 
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setAllowCreate(false);
@@ -790,27 +695,21 @@ public class MultiProcessOpenEnvTest extends TestBase {
         }
 
         /* Do the real reading work. */
-        private void doRead(Environment env, 
-                            DatabaseConfig dbConfig,
-                            ArrayList<TestObject> list) 
-            throws Exception {
+        private void doRead(Environment env, DatabaseConfig dbConfig, ArrayList<TestObject> list) throws Exception {
 
             Database db = env.openDatabase(null, dbName, dbConfig);
             Cursor cursor = db.openCursor(null, null);
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
-            while (OperationStatus.SUCCESS == 
-                   cursor.getNext(key, data, null)) {
-                list.add(new TestObject(IntegerBinding.entryToInt(key), 
-                                        StringBinding.entryToString(data)));
+            while (OperationStatus.SUCCESS == cursor.getNext(key, data, null)) {
+                list.add(new TestObject(IntegerBinding.entryToInt(key), StringBinding.entryToString(data)));
             }
             cursor.close();
             db.close();
         }
-        
+
         /* Do compare between master and replica, expected to be the same. */
-        private void doEqualityCompare(ArrayList<TestObject> masterData, 
-                                       ArrayList<TestObject> replicaData,
+        private void doEqualityCompare(ArrayList<TestObject> masterData, ArrayList<TestObject> replicaData,
                                        int expectedSize) {
             assertEquals(masterData.size(), replicaData.size());
             for (int i = 0; i < masterData.size(); i++) {
@@ -825,20 +724,18 @@ public class MultiProcessOpenEnvTest extends TestBase {
         }
 
         /* Do compare between two snapshots, should be different. */
-        private void doDiffCompare(ArrayList<TestObject> prevData,
-                                   ArrayList<TestObject> newData) {
+        private void doDiffCompare(ArrayList<TestObject> prevData, ArrayList<TestObject> newData) {
             assertEquals(newData.size(), prevData.size() * 2);
             for (int i = 0; i < prevData.size(); i++) {
                 assertEquals(prevData.get(i), newData.get(i));
             }
             for (int i = 0; i < prevData.size(); i++) {
-                assertEquals(newData.get(i + 100).getKey() - 100,
-                             prevData.get(i).getKey());
+                assertEquals(newData.get(i + 100).getKey() - 100, prevData.get(i).getKey());
             }
         }
 
         static class TestObject {
-            private final int key;
+            private final int    key;
             private final String name;
 
             public TestObject(int key, String name) {
@@ -867,15 +764,12 @@ public class MultiProcessOpenEnvTest extends TestBase {
                 return false;
             }
         }
- 
+
         public static void main(String args[]) {
             try {
                 RandomAccessFile lockFile = new RandomAccessFile(args[3], "rw");
-                EnvReadRepGroupProcess process = 
-                    new EnvReadRepGroupProcess(new File(args[0]), 
-                                               new File(args[1]), 
-                                               args[2], 
-                                               lockFile);
+                EnvReadRepGroupProcess process = new EnvReadRepGroupProcess(new File(args[0]), new File(args[1]),
+                        args[2], lockFile);
                 process.run();
             } catch (IOException e) {
                 e.printStackTrace();

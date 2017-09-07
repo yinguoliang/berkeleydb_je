@@ -31,7 +31,7 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * Tests log file header versioning.  This test is used in conjunction with
+ * Tests log file header versioning. This test is used in conjunction with
  * MakeLogHeaderVersionData, a main program that was used once to generate two
  * log files with maximum and minimum valued header version numbers.
  *
@@ -53,13 +53,12 @@ public class LogHeaderVersionTest extends TestBase {
 
     /**
      * Tests that an exception is thrown when a log header is read with a newer
-     * version than the current version.  The maxversion.jdb log file is loaded
-     * as a resource by this test and written as a regular log file.  When the
+     * version than the current version. The maxversion.jdb log file is loaded
+     * as a resource by this test and written as a regular log file. When the
      * environment is opened, we expect a VersionMismatchException.
      */
     @Test
-    public void testGreaterVersionNotAllowed()
-        throws IOException {
+    public void testGreaterVersionNotAllowed() throws IOException {
 
         TestUtils.loadLog(getClass(), Utils.MAX_VERSION_NAME, envHome);
 
@@ -71,7 +70,8 @@ public class LogHeaderVersionTest extends TestBase {
             Environment env = new Environment(envHome, envConfig);
             try {
                 env.close();
-            } catch (Exception ignore) {}
+            } catch (Exception ignore) {
+            }
         } catch (VersionMismatchException e) {
             /* Got VersionMismatchException as expected. */
             return;
@@ -81,14 +81,13 @@ public class LogHeaderVersionTest extends TestBase {
 
     /**
      * Tests that when a file is opened with a lesser version than the current
-     * version, a new log file is started for writing new log entries.  This is
+     * version, a new log file is started for writing new log entries. This is
      * important so that the new header version is written even if no new log
-     * file is needed.  If the new version were not written, an older version
-     * of JE would not recognize that there had been a version change.
+     * file is needed. If the new version were not written, an older version of
+     * JE would not recognize that there had been a version change.
      */
     @Test
-    public void testLesserVersionNotUpdated()
-        throws DatabaseException, IOException {
+    public void testLesserVersionNotUpdated() throws DatabaseException, IOException {
 
         TestUtils.loadLog(getClass(), Utils.MIN_VERSION_NAME, envHome);
         File logFile = new File(envHome, TestUtils.LOG_FILE_NAME);

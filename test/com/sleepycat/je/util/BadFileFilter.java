@@ -20,8 +20,7 @@ import java.util.StringTokenizer;
 public class BadFileFilter implements FilenameFilter {
 
     /**
-     * Accept files of this format:
-     * <nnnnnnnn>.bad.<n>
+     * Accept files of this format: <nnnnnnnn>.bad.<n>
      */
     public boolean accept(File dir, String name) {
         boolean ok = false;
@@ -33,8 +32,7 @@ public class BadFileFilter implements FilenameFilter {
             String repeat = tokenizer.nextToken();
 
             /* Check the length and the suffix. */
-            if ((fileNumber.length() == 8) &&
-                (fileSuffix.equals("bad"))) {
+            if ((fileNumber.length() == 8) && (fileSuffix.equals("bad"))) {
 
                 /* The first and third parts should be a numbers. */
                 try {

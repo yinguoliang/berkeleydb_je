@@ -48,9 +48,9 @@ public class CountEstimatorTest extends TestBase {
 
     private static final boolean DEBUG = false;
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
+    private final File           envHome;
+    private Environment          env;
+    private Database             db;
 
     public CountEstimatorTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -102,8 +102,7 @@ public class CountEstimatorTest extends TestBase {
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry();
 
-        final int[] nDupsArray =
-            {1, 2, 3, 20, 50, 500, 5000, 500, 50, 20, 3, 2, 1};
+        final int[] nDupsArray = { 1, 2, 3, 20, 50, 500, 5000, 500, 50, 20, 3, 2, 1 };
 
         long total = 0;
         for (int i = 0; i < nDupsArray.length; i += 1) {
@@ -122,8 +121,7 @@ public class CountEstimatorTest extends TestBase {
         for (int i = 0; i < nDupsArray.length; i += 1) {
             final int nDups = nDupsArray[i];
             IntegerBinding.intToEntry(i, key);
-            final OperationStatus status =
-                cursor.getSearchKey(key, data, null);
+            final OperationStatus status = cursor.getSearchKey(key, data, null);
             assertSame(OperationStatus.SUCCESS, status);
             assertEquals(0, IntegerBinding.entryToInt(data));
             assertEquals(nDups, cursor.count());
@@ -136,7 +134,7 @@ public class CountEstimatorTest extends TestBase {
 
     /**
      * When insertions are non-sequential, the estimate may be off by a factor
-     * of two.  The estimate is accurate, however, for counts less than the
+     * of two. The estimate is accurate, however, for counts less than the
      * nodeMax setting.
      */
     @Test
@@ -147,8 +145,7 @@ public class CountEstimatorTest extends TestBase {
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry();
 
-        final int[] nDupsArray =
-            {1, 2, 3, 20, 50, 500, 5000, 500, 50, 20, 3, 2, 1};
+        final int[] nDupsArray = { 1, 2, 3, 20, 50, 500, 5000, 500, 50, 20, 3, 2, 1 };
 
         long total = 0;
         for (int j = 0;; j += 1) {
@@ -174,8 +171,7 @@ public class CountEstimatorTest extends TestBase {
         for (int i = 0; i < nDupsArray.length; i += 1) {
             final int nDups = nDupsArray[i];
             IntegerBinding.intToEntry(i, key);
-            final OperationStatus status =
-                cursor.getSearchKey(key, data, null);
+            final OperationStatus status = cursor.getSearchKey(key, data, null);
             assertSame(OperationStatus.SUCCESS, status);
             assertEquals(0, IntegerBinding.entryToInt(data));
             assertEquals(nDups, cursor.count());
@@ -186,9 +182,9 @@ public class CountEstimatorTest extends TestBase {
                 assertTrue(est > nDups / 2 && est < nDups * 2);
             }
             /*
-            System.out.println("nDups=" + nDups + " countEstimate=" +
-                               cursor.countEstimate());
-            */
+             * System.out.println("nDups=" + nDups + " countEstimate=" +
+             * cursor.countEstimate());
+             */
         }
         cursor.close();
 
@@ -199,26 +195,24 @@ public class CountEstimatorTest extends TestBase {
     static class MyEntity {
         @PrimaryKey
         int id;
-        @SecondaryKey(relate=Relationship.MANY_TO_ONE)
+        @SecondaryKey(relate = Relationship.MANY_TO_ONE)
         int dept;
     }
 
     /**
-     * EntityIndex.countEstimate simply forwards to Cursor.countEstimate, but
-     * we should still call it once.
+     * EntityIndex.countEstimate simply forwards to Cursor.countEstimate, but we
+     * should still call it once.
      */
     @Test
     public void testDPL() {
         openEnv();
 
-        final EntityStore store = new EntityStore
-            (env, "foo", new StoreConfig().setAllowCreate(true));
+        final EntityStore store = new EntityStore(env, "foo", new StoreConfig().setAllowCreate(true));
 
-        final PrimaryIndex<Integer, MyEntity> priIndex =
-            store.getPrimaryIndex(Integer.class, MyEntity.class);
+        final PrimaryIndex<Integer, MyEntity> priIndex = store.getPrimaryIndex(Integer.class, MyEntity.class);
 
-        final SecondaryIndex<Integer, Integer, MyEntity> secIndex =
-            store.getSecondaryIndex(priIndex, Integer.class, "dept");
+        final SecondaryIndex<Integer, Integer, MyEntity> secIndex = store.getSecondaryIndex(priIndex, Integer.class,
+                "dept");
 
         MyEntity entity = new MyEntity();
         entity.id = 1;

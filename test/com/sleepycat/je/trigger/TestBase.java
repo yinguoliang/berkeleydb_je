@@ -35,49 +35,47 @@ public class TestBase extends DualTestCase {
 
     static class TestState {
 
-        Transaction transaction = null;
-        DatabaseEntry key = null;
-        DatabaseEntry oldData = null;
-        DatabaseEntry newData = null;
+        Transaction   transaction    = null;
+        DatabaseEntry key            = null;
+        DatabaseEntry oldData        = null;
+        DatabaseEntry newData        = null;
 
-        String newName = null;
+        String        newName        = null;
 
-        int nAddTrigger = 0;
-        int nRemoveTrigger = 0;
+        int           nAddTrigger    = 0;
+        int           nRemoveTrigger = 0;
 
-        int nCreate = 0;
-        int nClose = 0;
-        int nOpen = 0;
-        int nRemove = 0;
-        int nTruncate = 0;
-        int nRename = 0;
+        int           nCreate        = 0;
+        int           nClose         = 0;
+        int           nOpen          = 0;
+        int           nRemove        = 0;
+        int           nTruncate      = 0;
+        int           nRename        = 0;
 
-        int nPut = 0;
-        int nDelete = 0;
+        int           nPut           = 0;
+        int           nDelete        = 0;
 
-        int nCommit = 0;
-        int nAbort = 0;
+        int           nCommit        = 0;
+        int           nAbort         = 0;
     }
 
     /*
      * Synchronized since multiple replicas may insert entries at the same time.
      */
-    public static Set<Trigger> invokedTriggers =
-        Collections.synchronizedSet(new HashSet<Trigger>());
+    public static Set<Trigger> invokedTriggers = Collections.synchronizedSet(new HashSet<Trigger>());
 
     /**
      * Transient DBT class. Does not implement PersistentTrigger, for minimal
      * testing of transient triggers, but must implement Serializable since it
      * is the superclass of a serializable class (DBT).
      */
-    public static class TDBT
-        implements Trigger, TransactionTrigger, Serializable {
+    public static class TDBT implements Trigger, TransactionTrigger, Serializable {
 
-        transient TestState ts = new TestState();
+        transient TestState       ts               = new TestState();
 
         private static final long serialVersionUID = 1L;
-        final String name;
-        transient String databaseName = null;
+        final String              name;
+        transient String          databaseName     = null;
 
         public TDBT(String name) {
             super();
@@ -87,7 +85,7 @@ public class TestBase extends DualTestCase {
         public Trigger setDatabaseName(String databaseName) {
             this.databaseName = databaseName;
             if (ts == null) {
-               ts = new TestState();
+                ts = new TestState();
             }
             return this;
         }
@@ -96,9 +94,7 @@ public class TestBase extends DualTestCase {
             return databaseName;
         }
 
-        public void delete(Transaction txn,
-                           DatabaseEntry key,
-                           DatabaseEntry oldData) {
+        public void delete(Transaction txn, DatabaseEntry key, DatabaseEntry oldData) {
             assertTrue(key != null);
             invokedTriggers.add(this);
             ts.transaction = txn;
@@ -107,10 +103,7 @@ public class TestBase extends DualTestCase {
             ts.nDelete++;
         }
 
-        public void put(Transaction txn,
-                        DatabaseEntry key,
-                        DatabaseEntry oldData,
-                        DatabaseEntry newData) {
+        public void put(Transaction txn, DatabaseEntry key, DatabaseEntry oldData, DatabaseEntry newData) {
             invokedTriggers.add(this);
             ts.transaction = txn;
             ts.key = key;
@@ -124,15 +117,15 @@ public class TestBase extends DualTestCase {
         }
 
         public void abort(Transaction txn) {
-           invokedTriggers.add(this);
-           ts.transaction = txn;
-           ts.nAbort++;
+            invokedTriggers.add(this);
+            ts.transaction = txn;
+            ts.nAbort++;
         }
 
         public void commit(Transaction txn) {
-           invokedTriggers.add(this);
-           ts.transaction = txn;
-           ts.nCommit++;
+            invokedTriggers.add(this);
+            ts.transaction = txn;
+            ts.nCommit++;
         }
 
         public void clear() {
@@ -179,9 +172,9 @@ public class TestBase extends DualTestCase {
         }
 
         public void remove(Transaction txn) {
-           invokedTriggers.add(this);
-           ts.transaction = txn;
-           ts.nRemove++;
+            invokedTriggers.add(this);
+            ts.transaction = txn;
+            ts.nRemove++;
         }
 
         public void rename(Transaction txn, String newName) {
@@ -198,17 +191,15 @@ public class TestBase extends DualTestCase {
         }
     }
 
-    protected final File envRoot = SharedTestUtils.getTestDir();
+    protected final File        envRoot   = SharedTestUtils.getTestDir();
     protected EnvironmentConfig envConfig = null;
-    protected DatabaseConfig dbConfig = null;
+    protected DatabaseConfig    dbConfig  = null;
 
     @Before
-    public void setUp()
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         super.setUp();
-        envConfig = RepTestUtils.
-            createEnvConfig(RepTestUtils.SYNC_SYNC_ALL_DURABILITY);
+        envConfig = RepTestUtils.createEnvConfig(RepTestUtils.SYNC_SYNC_ALL_DURABILITY);
 
         dbConfig = getDBConfig();
     }

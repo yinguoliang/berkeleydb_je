@@ -123,8 +123,7 @@ public class SerializeUtils {
     public static Map<String, Object> getSerializedSet() {
 
         /* Create objects for constructing those exceptions and stats. */
-        final StatGroup fakeStats = new StatGroup("SerializeUtils",
-                                                  "For testing");
+        final StatGroup fakeStats = new StatGroup("SerializeUtils", "For testing");
         final String message = "test";
         final DatabaseEntry entry = new DatabaseEntry();
         final Logger logger = Logger.getLogger(message);
@@ -144,19 +143,15 @@ public class SerializeUtils {
         repConfig.setNodeHostPort("localhost:5001");
         repConfig.setHelperHosts("localhost:5001");
 
-        ReplicatedEnvironment repEnv =
-            new ReplicatedEnvironment(envHome, repConfig, envConfig);
+        ReplicatedEnvironment repEnv = new ReplicatedEnvironment(envHome, repConfig, envConfig);
 
         assert repEnv.getState().isMaster();
 
         /* Get the EnvironmentImpl and locker to construct the exceptions. */
         final RepImpl envImpl = RepInternal.getNonNullRepImpl(repEnv);
-        final Locker locker =
-            LockerFactory.getInternalReadOperationLocker(envImpl);
+        final Locker locker = LockerFactory.getInternalReadOperationLocker(envImpl);
         final RepNode repNode = envImpl.getRepNode();
-        final MasterTxn masterTxn =
-            new MasterTxn(envImpl, new TransactionConfig(),
-                          envImpl.getNameIdPair());
+        final MasterTxn masterTxn = new MasterTxn(envImpl, new TransactionConfig(), envImpl.getNameIdPair());
         masterTxn.commit(Durability.COMMIT_NO_SYNC);
 
         /* Collection used to save the serialized objects. */
@@ -164,193 +159,124 @@ public class SerializeUtils {
 
         /* com.sleepycat.je package. */
         infoSet.put("com.sleepycat.je.BtreeStats", new BtreeStats());
-        infoSet.put("com.sleepycat.je.CommitToken",
-                    new CommitToken(new UUID(1, 2), 0));
-        infoSet.put("com.sleepycat.je.DatabaseExistsException",
-                    new DatabaseExistsException(message));
-        infoSet.put("com.sleepycat.je.DatabaseNotFoundException",
-                    new DatabaseNotFoundException(message));
-        infoSet.put("com.sleepycat.je.DeadlockException",
-                    new DeadlockException(locker, message));
+        infoSet.put("com.sleepycat.je.CommitToken", new CommitToken(new UUID(1, 2), 0));
+        infoSet.put("com.sleepycat.je.DatabaseExistsException", new DatabaseExistsException(message));
+        infoSet.put("com.sleepycat.je.DatabaseNotFoundException", new DatabaseNotFoundException(message));
+        infoSet.put("com.sleepycat.je.DeadlockException", new DeadlockException(locker, message));
         infoSet.put("com.sleepycat.je.DeleteConstraintException",
-                    new DeleteConstraintException
-                    (locker, message, message, entry, entry, 0));
-        infoSet.put("com.sleepycat.je.DuplicateDataException",
-                    new DuplicateDataException(message));
+                new DeleteConstraintException(locker, message, message, entry, entry, 0));
+        infoSet.put("com.sleepycat.je.DuplicateDataException", new DuplicateDataException(message));
         infoSet.put("com.sleepycat.je.EnvironmentFailureException",
-                    new EnvironmentFailureException
-                    (envImpl, EnvironmentFailureReason.ENV_LOCKED));
-        infoSet.put("com.sleepycat.je.EnvironmentStats",
-                    new EnvironmentStats());
-        infoSet.put("com.sleepycat.je.EnvironmentLockedException",
-                    new EnvironmentLockedException(envImpl, message));
+                new EnvironmentFailureException(envImpl, EnvironmentFailureReason.ENV_LOCKED));
+        infoSet.put("com.sleepycat.je.EnvironmentStats", new EnvironmentStats());
+        infoSet.put("com.sleepycat.je.EnvironmentLockedException", new EnvironmentLockedException(envImpl, message));
         infoSet.put("com.sleepycat.je.EnvironmentNotFoundException",
-                    new EnvironmentNotFoundException(envImpl, message));
+                new EnvironmentNotFoundException(envImpl, message));
         infoSet.put("com.sleepycat.je.ForeignConstraintException",
-                    new ForeignConstraintException
-                    (locker, message, message, entry, entry, 0));
-        infoSet.put("com.sleepycat.je.LockNotAvailableException",
-                    new LockNotAvailableException(locker, message));
-        infoSet.put("com.sleepycat.je.LockStats",
-                    new LockStats(fakeStats, fakeStats, fakeStats));
-        infoSet.put("com.sleepycat.je.LockTimeoutException",
-                    new LockTimeoutException(locker, message));
-        infoSet.put("com.sleepycat.je.LogWriteException",
-                    new LogWriteException(envImpl, message));
+                new ForeignConstraintException(locker, message, message, entry, entry, 0));
+        infoSet.put("com.sleepycat.je.LockNotAvailableException", new LockNotAvailableException(locker, message));
+        infoSet.put("com.sleepycat.je.LockStats", new LockStats(fakeStats, fakeStats, fakeStats));
+        infoSet.put("com.sleepycat.je.LockTimeoutException", new LockTimeoutException(locker, message));
+        infoSet.put("com.sleepycat.je.LogWriteException", new LogWriteException(envImpl, message));
         infoSet.put("com.sleepycat.je.PreloadStats", new PreloadStats());
-        infoSet.put("com.sleepycat.je.PreloadStatus",
-                    new PreloadStatus(message));
+        infoSet.put("com.sleepycat.je.PreloadStatus", new PreloadStatus(message));
         infoSet.put("com.sleepycat.je.SecondaryIntegrityException",
-                    new SecondaryIntegrityException
-                    (locker, message, message, entry, entry, 0));
-        infoSet.put("com.sleepycat.je.SequenceExistsException",
-                    new SequenceExistsException(message));
-        infoSet.put("com.sleepycat.je.SequenceIntegrityException",
-                    new SequenceIntegrityException(message));
-        infoSet.put("com.sleepycat.je.SequenceNotFoundException",
-                    new SequenceNotFoundException(message));
-        infoSet.put("com.sleepycat.je.SequenceOverflowException",
-                    new SequenceOverflowException(message));
-        infoSet.put("com.sleepycat.je.SequenceStats",
-                    new SequenceStats(fakeStats));
+                new SecondaryIntegrityException(locker, message, message, entry, entry, 0));
+        infoSet.put("com.sleepycat.je.SequenceExistsException", new SequenceExistsException(message));
+        infoSet.put("com.sleepycat.je.SequenceIntegrityException", new SequenceIntegrityException(message));
+        infoSet.put("com.sleepycat.je.SequenceNotFoundException", new SequenceNotFoundException(message));
+        infoSet.put("com.sleepycat.je.SequenceOverflowException", new SequenceOverflowException(message));
+        infoSet.put("com.sleepycat.je.SequenceStats", new SequenceStats(fakeStats));
         infoSet.put("com.sleepycat.je.ThreadInterruptedException",
-                    new ThreadInterruptedException(envImpl, new Exception()));
-        infoSet.put("com.sleepycat.je.TransactionStats",
-                    new TransactionStats(fakeStats));
-        infoSet.put("com.sleepycat.je.TransactionStats$Active",
-                    new TransactionStats.Active(message, 0, 0));
-        infoSet.put("com.sleepycat.je.TransactionTimeoutException",
-                    new TransactionTimeoutException(locker, message));
+                new ThreadInterruptedException(envImpl, new Exception()));
+        infoSet.put("com.sleepycat.je.TransactionStats", new TransactionStats(fakeStats));
+        infoSet.put("com.sleepycat.je.TransactionStats$Active", new TransactionStats.Active(message, 0, 0));
+        infoSet.put("com.sleepycat.je.TransactionTimeoutException", new TransactionTimeoutException(locker, message));
         infoSet.put("com.sleepycat.je.UniqueConstraintException",
-                    new UniqueConstraintException
-                    (locker, message, message, entry, entry, 0));
-        infoSet.put("com.sleepycat.je.VersionMismatchException",
-                    new VersionMismatchException(envImpl, message));
-        infoSet.put("com.sleepycat.je.XAFailureException",
-                    new XAFailureException(locker));
+                new UniqueConstraintException(locker, message, message, entry, entry, 0));
+        infoSet.put("com.sleepycat.je.VersionMismatchException", new VersionMismatchException(envImpl, message));
+        infoSet.put("com.sleepycat.je.XAFailureException", new XAFailureException(locker));
 
         /*
-         * com.sleepycat.je.jca.ra package.
-         * And because these classes need j2ee.jar to compile, but we currently
-         * don't have it in CVS, so ignore them now.
+         * com.sleepycat.je.jca.ra package. And because these classes need
+         * j2ee.jar to compile, but we currently don't have it in CVS, so ignore
+         * them now.
          */
         /******
-        infoSet.put("com.sleepycat.je.jca.ra.JEConnectionFactoryImpl",
-                    new JEConnectionFactoryImpl(null, null));
-        infoSet.put("com.sleepycat.je.jca.ra.JEException",
-                    new JEException("test"));
-        infoSet.put("com.sleepycat.je.jca.ra.JEManagedConnectionFactory",
-                    new JEManagedConnectionFactory());
-        ******/
+         * infoSet.put("com.sleepycat.je.jca.ra.JEConnectionFactoryImpl", new
+         * JEConnectionFactoryImpl(null, null));
+         * infoSet.put("com.sleepycat.je.jca.ra.JEException", new
+         * JEException("test"));
+         * infoSet.put("com.sleepycat.je.jca.ra.JEManagedConnectionFactory", new
+         * JEManagedConnectionFactory());
+         ******/
 
         /* com.sleepycat.je.log package. */
-        infoSet.put("com.sleepycat.je.log.ChecksumException",
-                    new ChecksumException("test"));
+        infoSet.put("com.sleepycat.je.log.ChecksumException", new ChecksumException("test"));
 
         /* com.sleepycat.je.rep package. */
         infoSet.put("com.sleepycat.je.rep.DatabasePreemptedException",
-                    new DatabasePreemptedException(message, message, null));
-        infoSet.put("com.sleepycat.je.rep.GroupShutdownException",
-                    new GroupShutdownException(logger, repNode, 0));
+                new DatabasePreemptedException(message, message, null));
+        infoSet.put("com.sleepycat.je.rep.GroupShutdownException", new GroupShutdownException(logger, repNode, 0));
         infoSet.put("com.sleepycat.je.rep.InsufficientAcksException",
-                    new InsufficientAcksException(masterTxn, -1, 0, message));
+                new InsufficientAcksException(masterTxn, -1, 0, message));
         final NameIdPair nid = new NameIdPair("foo");
-        final RepGroupImpl.BarrierState barrierState =
-            new RepGroupImpl.BarrierState(VLSN.FIRST_VLSN, 0l);
-        ReplicationNode rn =
-            new RepNodeImpl(nid, NodeType.ELECTABLE, false, false,
-                            "h", 5000,
-                            barrierState,
-                            0,
-                            JEVersion.CURRENT_VERSION);
+        final RepGroupImpl.BarrierState barrierState = new RepGroupImpl.BarrierState(VLSN.FIRST_VLSN, 0l);
+        ReplicationNode rn = new RepNodeImpl(nid, NodeType.ELECTABLE, false, false, "h", 5000, barrierState, 0,
+                JEVersion.CURRENT_VERSION);
         infoSet.put("com.sleepycat.je.rep.InsufficientLogException",
-                    new InsufficientLogException(envImpl.getRepNode(),
-                                                 VLSN.FIRST_VLSN,
-                                                 Collections.singleton(rn)));
-        infoSet.put
-            ("com.sleepycat.je.rep.InsufficientReplicasException",
-             new InsufficientReplicasException
-             (locker, ReplicaAckPolicy.NONE, -1, new HashSet<String>()));
-        infoSet.put("com.sleepycat.je.rep.LockPreemptedException",
-                    new LockPreemptedException(locker, new Exception()));
-        infoSet.put("com.sleepycat.je.rep.LogOverwriteException",
-                    new LogOverwriteException(message));
-        infoSet.put("com.sleepycat.je.rep.MasterStateException",
-                    new MasterStateException(message));
-        infoSet.put("com.sleepycat.je.rep.MemberNotFoundException",
-                    new MemberNotFoundException(""));
+                new InsufficientLogException(envImpl.getRepNode(), VLSN.FIRST_VLSN, Collections.singleton(rn)));
+        infoSet.put("com.sleepycat.je.rep.InsufficientReplicasException",
+                new InsufficientReplicasException(locker, ReplicaAckPolicy.NONE, -1, new HashSet<String>()));
+        infoSet.put("com.sleepycat.je.rep.LockPreemptedException", new LockPreemptedException(locker, new Exception()));
+        infoSet.put("com.sleepycat.je.rep.LogOverwriteException", new LogOverwriteException(message));
+        infoSet.put("com.sleepycat.je.rep.MasterStateException", new MasterStateException(message));
+        infoSet.put("com.sleepycat.je.rep.MemberNotFoundException", new MemberNotFoundException(""));
         infoSet.put("com.sleepycat.je.rep.MasterReplicaTransitionException",
-                    new MasterReplicaTransitionException
-                    (envImpl, new Exception("test")));
-        infoSet.put("com.sleepycat.je.rep.ReplicaConsistencyException",
-                    new ReplicaConsistencyException(message, null));
-        final StateChangeEvent stateChangeEvent =
-            new StateChangeEvent(State.MASTER, nid);
-        infoSet.put("com.sleepycat.je.rep.ReplicaWriteException",
-                    new ReplicaWriteException(locker, stateChangeEvent));
-        infoSet.put
-            ("com.sleepycat.je.rep.ReplicatedEnvironmentStats",
-             RepInternal.makeReplicatedEnvironmentStats
-             (envImpl, new StatsConfig()));
+                new MasterReplicaTransitionException(envImpl, new Exception("test")));
+        infoSet.put("com.sleepycat.je.rep.ReplicaConsistencyException", new ReplicaConsistencyException(message, null));
+        final StateChangeEvent stateChangeEvent = new StateChangeEvent(State.MASTER, nid);
+        infoSet.put("com.sleepycat.je.rep.ReplicaWriteException", new ReplicaWriteException(locker, stateChangeEvent));
+        infoSet.put("com.sleepycat.je.rep.ReplicatedEnvironmentStats",
+                RepInternal.makeReplicatedEnvironmentStats(envImpl, new StatsConfig()));
         infoSet.put("com.sleepycat.je.rep.RollbackException",
-                    new RollbackException
-                    (envImpl, new VLSN(1),
-                     new MatchpointSearchResults(envImpl)));
+                new RollbackException(envImpl, new VLSN(1), new MatchpointSearchResults(envImpl)));
         infoSet.put("com.sleepycat.je.rep.RollbackProhibitedException",
-                    new RollbackProhibitedException
-                    (envImpl, 0, new VLSN(1),
-                     new MatchpointSearchResults(envImpl)));
-        infoSet.put("com.sleepycat.je.rep.UnknownMasterException",
-                    new UnknownMasterException(message));
+                new RollbackProhibitedException(envImpl, 0, new VLSN(1), new MatchpointSearchResults(envImpl)));
+        infoSet.put("com.sleepycat.je.rep.UnknownMasterException", new UnknownMasterException(message));
 
         /* com.sleepycat.je.rep.util.ldiff package. */
-        infoSet.put
-            ("com.sleepycat.je.rep.util.ldiff.LDiffRecordRequestException",
-             new LDiffRecordRequestException("test"));
-        infoSet.put("com.sleepycat.je.rep.util.ldiff.Block",
-                    new Block(1));
+        infoSet.put("com.sleepycat.je.rep.util.ldiff.LDiffRecordRequestException",
+                new LDiffRecordRequestException("test"));
+        infoSet.put("com.sleepycat.je.rep.util.ldiff.Block", new Block(1));
 
         /* com.sleepycat.je.tree package. */
-        infoSet.put("com.sleepycat.je.tree.CursorsExistException",
-                    new CursorsExistException());
-        infoSet.put("com.sleepycat.je.tree.NodeNotEmptyException",
-                    new NodeNotEmptyException());
+        infoSet.put("com.sleepycat.je.tree.CursorsExistException", new CursorsExistException());
+        infoSet.put("com.sleepycat.je.tree.NodeNotEmptyException", new NodeNotEmptyException());
 
         /* com.sleepycat.je.util package. */
-        infoSet.put("com.sleepycat.je.util.LogVerificationException",
-                    new LogVerificationException(message));
+        infoSet.put("com.sleepycat.je.util.LogVerificationException", new LogVerificationException(message));
 
         /* com.sleepycat.je.utilint package. */
-        infoSet.put("com.sleepycat.je.utilint.InternalException",
-                    new InternalException());
-        infoSet.put("com.sleepycat.je.utilint.VLSN",
-                    new VLSN(1));
-        infoSet.put("com.sleepycat.je.utilint.Timestamp",
-                    new Timestamp(1));
+        infoSet.put("com.sleepycat.je.utilint.InternalException", new InternalException());
+        infoSet.put("com.sleepycat.je.utilint.VLSN", new VLSN(1));
+        infoSet.put("com.sleepycat.je.utilint.Timestamp", new Timestamp(1));
 
         /* com.sleepycat.persist package. */
-        infoSet.put("com.sleepycat.persist.IndexNotAvailableException",
-                    new IndexNotAvailableException(message));
-        infoSet.put("com.sleepycat.persist.StoreExistsException",
-                    new StoreExistsException(message));
-        infoSet.put("com.sleepycat.persist.StoreNotFoundException",
-                    new StoreNotFoundException(message));
+        infoSet.put("com.sleepycat.persist.IndexNotAvailableException", new IndexNotAvailableException(message));
+        infoSet.put("com.sleepycat.persist.StoreExistsException", new StoreExistsException(message));
+        infoSet.put("com.sleepycat.persist.StoreNotFoundException", new StoreNotFoundException(message));
 
         /* com.sleepycat.persist.evolve package. */
-        infoSet.put("com.sleepycat.persist.evolve.DeletedClassException",
-                    new DeletedClassException(message));
-        infoSet.put("com.sleepycat.persist.evolve.IncompatibleClassException",
-                    new IncompatibleClassException(message));
+        infoSet.put("com.sleepycat.persist.evolve.DeletedClassException", new DeletedClassException(message));
+        infoSet.put("com.sleepycat.persist.evolve.IncompatibleClassException", new IncompatibleClassException(message));
 
         /* com.sleepycat.util package. */
-        infoSet.put("com.sleepycat.util.IOExceptionWrapper",
-                    new IOExceptionWrapper(new Throwable()));
-        infoSet.put("com.sleepycat.util.RuntimeExceptionWrapper",
-                    new RuntimeExceptionWrapper(new Throwable()));
+        infoSet.put("com.sleepycat.util.IOExceptionWrapper", new IOExceptionWrapper(new Throwable()));
+        infoSet.put("com.sleepycat.util.RuntimeExceptionWrapper", new RuntimeExceptionWrapper(new Throwable()));
 
         /* com.sleepycat.util.keyrange package. */
-        infoSet.put("com.sleepycat.util.keyrange.KeyRangeException",
-                    new KeyRangeException(message));
+        infoSet.put("com.sleepycat.util.keyrange.KeyRangeException", new KeyRangeException(message));
 
         /* Release the locker, close Environment and delete log files. */
         locker.operationEnd(true);

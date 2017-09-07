@@ -47,27 +47,25 @@ import com.sleepycat.util.test.SharedTestUtils;
  */
 public class DeleteUpdateWithoutReadTest extends DualTestCase {
 
-    private static final int NUM_RECORDS = 5;
-    private static final String DB_NAME = "foo";
+    private static final int         NUM_RECORDS = 5;
+    private static final String      DB_NAME     = "foo";
     private static final StatsConfig CLEAR_STATS;
     static {
         CLEAR_STATS = new StatsConfig();
         CLEAR_STATS.setClear(true);
     }
-    private final File envHome;
-    private boolean dups;
-    private Environment env;
-    private Database db;
-    private final boolean isSerializable =
-        "serializable".equals(System.getProperty("isolationLevel"));
+    private final File    envHome;
+    private boolean       dups;
+    private Environment   env;
+    private Database      db;
+    private final boolean isSerializable = "serializable".equals(System.getProperty("isolationLevel"));
 
     public DeleteUpdateWithoutReadTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
 
         try {
             super.tearDown();
@@ -95,13 +93,13 @@ public class DeleteUpdateWithoutReadTest extends DualTestCase {
         EnvironmentStats stats;
 
         /* Insert */
-        writeData(false, false /*update*/);
+        writeData(false, false /* update */);
         stats = env.getStats(CLEAR_STATS);
         assertEquals(0, TestUtils.getNLNsLoaded(stats));
         assertEquals(0, stats.getNLNsFetch());
 
         /* Update */
-        writeData(true, false /*update*/);
+        writeData(true, false /* update */);
         stats = env.getStats(CLEAR_STATS);
         assertEquals(0, TestUtils.getNLNsLoaded(stats));
         assertEquals(0, stats.getNLNsFetch());
@@ -129,12 +127,11 @@ public class DeleteUpdateWithoutReadTest extends DualTestCase {
         close();
     }
 
-    /* 
+    /*
      * Test the cases where updates and deletes are required to fetch.
      */
     @Test
-    public void testFetch()
-        throws Throwable {
+    public void testFetch() throws Throwable {
 
         open(false);
         env.getStats(CLEAR_STATS);
@@ -175,9 +172,8 @@ public class DeleteUpdateWithoutReadTest extends DualTestCase {
         dbConfig.setAllowCreate(true);
         dbConfig.setSortedDuplicates(dups);
         if (useTriggers) {
-            List<Trigger> triggers =
-                new LinkedList<Trigger>(Arrays.asList((Trigger) new DBT("t1"),
-                                        (Trigger) new DBT("t2")));
+            List<Trigger> triggers = new LinkedList<Trigger>(
+                    Arrays.asList((Trigger) new DBT("t1"), (Trigger) new DBT("t2")));
             dbConfig.setTriggers(triggers);
             dbConfig.setOverrideTriggers(true);
         }

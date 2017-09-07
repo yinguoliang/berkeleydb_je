@@ -43,12 +43,11 @@ public class CheckpointActivationTest extends TestBase {
     }
 
     /**
-     * Write elements to the log, check that the right number of
-     * checkpoints ran.
+     * Write elements to the log, check that the right number of checkpoints
+     * ran.
      */
     @Test
-    public void testLogSizeBasedCheckpoints()
-        throws Exception {
+    public void testLogSizeBasedCheckpoints() throws Exception {
 
         final int CKPT_INTERVAL = 5000;
         final int TRACER_OVERHEAD = 26;
@@ -70,47 +69,41 @@ public class CheckpointActivationTest extends TestBase {
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setAllowCreate(true);
-            envConfig.setConfigParam(EnvironmentParams.
-                                     CHECKPOINTER_BYTES_INTERVAL.getName(),
-                                     String.valueOf(CKPT_INTERVAL));
+            envConfig.setConfigParam(EnvironmentParams.CHECKPOINTER_BYTES_INTERVAL.getName(),
+                    String.valueOf(CKPT_INTERVAL));
 
             /*
-             * This test needs to control exactly how much goes into the log,
-             * so disable daemons.
+             * This test needs to control exactly how much goes into the log, so
+             * disable daemons.
              */
-            envConfig.setConfigParam(EnvironmentParams.
-                                     ENV_RUN_EVICTOR.getName(), "false");
-            envConfig.setConfigParam(EnvironmentParams.
-                                     ENV_RUN_INCOMPRESSOR.getName(), "false");
-            envConfig.setConfigParam(EnvironmentParams.
-                                     ENV_RUN_CLEANER.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
             env = new Environment(envHome, envConfig);
 
             /*
-             * Get a first reading on number of checkpoints run. Read once
-             * to clear, then read again.
+             * Get a first reading on number of checkpoints run. Read once to
+             * clear, then read again.
              */
             StatsConfig statsConfig = new StatsConfig();
             statsConfig.setFast(true);
             statsConfig.setClear(true);
             EnvironmentStats stats = env.getStats(statsConfig); // clear stats
 
-            stats = env.getStats(statsConfig);  // read again
+            stats = env.getStats(statsConfig); // read again
             assertEquals(0, stats.getNCheckpoints());
             long lastCkptEnd = stats.getLastCheckpointEnd();
 
-            EnvironmentImpl envImpl =
-                DbInternal.getNonNullEnvImpl(env);
+            EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
             Thread ckptThread = envImpl.getCheckpointer().getThread();
 
-            /* Run several checkpoints to ensure they occur as expected.  */
+            /* Run several checkpoints to ensure they occur as expected. */
             for (int i = 0; i < N_CHECKPOINTS; i += 1) {
 
                 /* Wait for checkpointer thread to go to wait state. */
                 while (true) {
                     Thread.State state = ckptThread.getState();
-                    if (state == Thread.State.WAITING ||
-                        state == Thread.State.TIMED_WAITING) {
+                    if (state == Thread.State.WAITING || state == Thread.State.TIMED_WAITING) {
                         break;
                     }
                 }
@@ -118,27 +111,23 @@ public class CheckpointActivationTest extends TestBase {
                 env.getStats(statsConfig); // Clear stats
 
                 /*
-                 * Write enough to prompt a checkpoint.  20% extra bytes are
+                 * Write enough to prompt a checkpoint. 20% extra bytes are
                  * written to be sure that we exceed the checkpoint interval.
                  */
                 long lastLsn = envImpl.getFileManager().getNextLsn();
-                while (DbLsn.getNoCleaningDistance
-                        (lastLsn, envImpl.getFileManager().getNextLsn(),
-                         FILE_SIZE) < CKPT_INTERVAL + 
-                                      ((CKPT_INTERVAL * 2)/10)) {
+                while (DbLsn.getNoCleaningDistance(lastLsn, envImpl.getFileManager().getNextLsn(),
+                        FILE_SIZE) < CKPT_INTERVAL + ((CKPT_INTERVAL * 2) / 10)) {
                     Trace.trace(envImpl, traceMsg);
                 }
 
                 /*
                  * Wait for a checkpoint to start (if the test succeeds it will
-                 * start right away).  We take advantage of the fact that the
+                 * start right away). We take advantage of the fact that the
                  * NCheckpoints stat is set at the start of a checkpoint.
                  */
-                 long startTime = System.currentTimeMillis();
-                 boolean started = false;
-                 while (!started &&
-                        (System.currentTimeMillis() - startTime <
-                         WAIT_FOR_CHECKPOINT_SECS * 1000)) {
+                long startTime = System.currentTimeMillis();
+                boolean started = false;
+                while (!started && (System.currentTimeMillis() - startTime < WAIT_FOR_CHECKPOINT_SECS * 1000)) {
                     Thread.yield();
                     Thread.sleep(1);
                     stats = env.getStats(statsConfig);
@@ -146,17 +135,15 @@ public class CheckpointActivationTest extends TestBase {
                         started = true;
                     }
                 }
-                assertTrue("Checkpoint " + i + " did not start after " +
-                           WAIT_FOR_CHECKPOINT_SECS + " seconds",
-                           started);
+                assertTrue("Checkpoint " + i + " did not start after " + WAIT_FOR_CHECKPOINT_SECS + " seconds",
+                        started);
 
                 /*
-                 * Wait for the checkpointer daemon to do its work.  We do not
+                 * Wait for the checkpointer daemon to do its work. We do not
                  * want to continue writing until the checkpoint is complete,
                  * because the amount of data we write is calculated to be the
-                 * correct amount in between checkpoints.  We know the
-                 * checkpoint is finished when the LastCheckpointEnd LSN
-                 * changes.
+                 * correct amount in between checkpoints. We know the checkpoint
+                 * is finished when the LastCheckpointEnd LSN changes.
                  */
                 while (true) {
                     Thread.yield();
@@ -171,8 +158,8 @@ public class CheckpointActivationTest extends TestBase {
         } catch (Exception e) {
 
             /*
-             * print stack trace now, else it gets subsumed in exceptions
-             * caused by difficulty in removing log files.
+             * print stack trace now, else it gets subsumed in exceptions caused
+             * by difficulty in removing log files.
              */
             e.printStackTrace();
             throw e;
@@ -185,45 +172,38 @@ public class CheckpointActivationTest extends TestBase {
 
     /* Test programmatic call to checkpoint. */
     @Test
-    public void testApiCalls()
-        throws Exception {
+    public void testApiCalls() throws Exception {
 
         Environment env = null;
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setAllowCreate(true);
-            envConfig.setConfigParam(EnvironmentParams.
-                                     CHECKPOINTER_BYTES_INTERVAL.getName(),
-                                     "1000");
+            envConfig.setConfigParam(EnvironmentParams.CHECKPOINTER_BYTES_INTERVAL.getName(), "1000");
 
             /*
-             * Try disabling stat capture thread to see if erroneous failures
-             * go away.  We're doing a checkpoint, yet the nCheckoints stat is
-             * sometimes returned as zero.  See comment on stat capture below.
+             * Try disabling stat capture thread to see if erroneous failures go
+             * away. We're doing a checkpoint, yet the nCheckoints stat is
+             * sometimes returned as zero. See comment on stat capture below.
              */
             envConfig.setConfigParam(EnvironmentConfig.STATS_COLLECT, "false");
 
             /* Disable all daemons */
-            envConfig.setConfigParam(EnvironmentParams.
-                                     ENV_RUN_EVICTOR.getName(), "false");
-            envConfig.setConfigParam(EnvironmentParams.
-                                     ENV_RUN_INCOMPRESSOR.getName(), "false");
-            envConfig.setConfigParam(EnvironmentParams.
-                                     ENV_RUN_CLEANER.getName(), "false");
-            envConfig.setConfigParam(EnvironmentParams.
-                                     ENV_RUN_CHECKPOINTER.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
             env = new Environment(envHome, envConfig);
 
             /*
-             * Get a first reading on number of checkpoints run. Read once
-             * to clear, then read again.
+             * Get a first reading on number of checkpoints run. Read once to
+             * clear, then read again.
              */
             StatsConfig statsConfig = new StatsConfig();
             statsConfig.setFast(true);
             statsConfig.setClear(true);
             EnvironmentStats stats = env.getStats(statsConfig); // clear stats
 
-            stats = env.getStats(statsConfig);  // read again
+            stats = env.getStats(statsConfig); // read again
             assertEquals(0, stats.getNCheckpoints());
 
             /*
@@ -236,7 +216,7 @@ public class CheckpointActivationTest extends TestBase {
             /* Should not cause a checkpoint, too little growth. */
             checkpointConfig.setKBytes(1);
             env.checkpoint(checkpointConfig);
-            stats = env.getStats(statsConfig);  // read again
+            stats = env.getStats(statsConfig); // read again
             assertEquals(0, stats.getNCheckpoints());
 
             /* Fill up the log, there should be a checkpoint. */
@@ -246,7 +226,7 @@ public class CheckpointActivationTest extends TestBase {
                 Trace.trace(envImpl, filler);
             }
             env.checkpoint(checkpointConfig);
-            stats = env.getStats(statsConfig);  // read again
+            stats = env.getStats(statsConfig); // read again
             /* Following is sometimes 0. Try disabling stat capture above. */
             assertEquals(1, stats.getNCheckpoints());
 
@@ -254,7 +234,7 @@ public class CheckpointActivationTest extends TestBase {
             checkpointConfig.setKBytes(0);
             checkpointConfig.setMinutes(1);
             env.checkpoint(checkpointConfig);
-            stats = env.getStats(statsConfig);  // read again
+            stats = env.getStats(statsConfig); // read again
             assertEquals(0, stats.getNCheckpoints());
 
             /*
@@ -263,21 +243,21 @@ public class CheckpointActivationTest extends TestBase {
              */
             Thread.sleep(1000);
             env.checkpoint(checkpointConfig);
-            stats = env.getStats(statsConfig);  // read again
+            stats = env.getStats(statsConfig); // read again
             assertEquals(0, stats.getNCheckpoints());
 
             /* Log something, now try a checkpoint. */
             Trace.trace(envImpl, filler);
             env.checkpoint(checkpointConfig);
-            stats = env.getStats(statsConfig);  // read again
+            stats = env.getStats(statsConfig); // read again
             // TODO: make this test more timing independent. Sometimes
             // the assertion will fail.
             // assertEquals(1, stats.getNCheckpoints());
 
         } catch (Exception e) {
             /*
-             * print stack trace now, else it gets subsumed in exceptions
-             * caused by difficulty in removing log files.
+             * print stack trace now, else it gets subsumed in exceptions caused
+             * by difficulty in removing log files.
              */
             e.printStackTrace();
             throw e;

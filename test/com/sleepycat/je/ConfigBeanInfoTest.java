@@ -32,40 +32,23 @@ import com.sleepycat.util.test.TestBase;
 public class ConfigBeanInfoTest extends TestBase {
 
     /*
-     * The list of all the config classes. If you create a new config class,
-     * you will need to add it into this list.
+     * The list of all the config classes. If you create a new config class, you
+     * will need to add it into this list.
      */
-    private static String[] configClasses = {
-        "com.sleepycat.je.CheckpointConfig",
-        "com.sleepycat.je.CursorConfig",
-        "com.sleepycat.je.DatabaseConfig",
-        "com.sleepycat.je.DiskOrderedCursorConfig",
-        "com.sleepycat.je.EnvironmentConfig",
-        "com.sleepycat.je.EnvironmentMutableConfig",
-        "com.sleepycat.je.JoinConfig",
-        "com.sleepycat.je.PreloadConfig",
-        "com.sleepycat.je.SecondaryConfig",
-        "com.sleepycat.je.SequenceConfig",
-        "com.sleepycat.je.StatsConfig",
-        "com.sleepycat.je.TransactionConfig",
-        "com.sleepycat.je.VerifyConfig",
-        "com.sleepycat.je.dbi.ReplicatedDatabaseConfig",
-        "com.sleepycat.je.rep.NetworkRestoreConfig",
-        "com.sleepycat.je.rep.ReplicationBasicConfig",
-        "com.sleepycat.je.rep.ReplicationConfig",
-        "com.sleepycat.je.rep.ReplicationMutableConfig",
-        "com.sleepycat.je.rep.ReplicationNetworkConfig",
-        "com.sleepycat.je.rep.ReplicationSSLConfig",
-        "com.sleepycat.je.rep.util.ldiff.LDiffConfig",
-        "com.sleepycat.persist.evolve.EvolveConfig",
-        "com.sleepycat.persist.StoreConfig",
-        "com.sleepycat.je.rep.monitor.MonitorConfig",
-    };
-    
+    private static String[] configClasses = { "com.sleepycat.je.CheckpointConfig", "com.sleepycat.je.CursorConfig",
+            "com.sleepycat.je.DatabaseConfig", "com.sleepycat.je.DiskOrderedCursorConfig",
+            "com.sleepycat.je.EnvironmentConfig", "com.sleepycat.je.EnvironmentMutableConfig",
+            "com.sleepycat.je.JoinConfig", "com.sleepycat.je.PreloadConfig", "com.sleepycat.je.SecondaryConfig",
+            "com.sleepycat.je.SequenceConfig", "com.sleepycat.je.StatsConfig", "com.sleepycat.je.TransactionConfig",
+            "com.sleepycat.je.VerifyConfig", "com.sleepycat.je.dbi.ReplicatedDatabaseConfig",
+            "com.sleepycat.je.rep.NetworkRestoreConfig", "com.sleepycat.je.rep.ReplicationBasicConfig",
+            "com.sleepycat.je.rep.ReplicationConfig", "com.sleepycat.je.rep.ReplicationMutableConfig",
+            "com.sleepycat.je.rep.ReplicationNetworkConfig", "com.sleepycat.je.rep.ReplicationSSLConfig",
+            "com.sleepycat.je.rep.util.ldiff.LDiffConfig", "com.sleepycat.persist.evolve.EvolveConfig",
+            "com.sleepycat.persist.StoreConfig", "com.sleepycat.je.rep.monitor.MonitorConfig", };
+
     /* The methods which are not included in the tests. */
-    private static String[] ignoreMethods = {
-        "com.sleepycat.je.DiskOrderedCursorConfig.setMaxSeedTestHook",
-    };
+    private static String[] ignoreMethods = { "com.sleepycat.je.DiskOrderedCursorConfig.setMaxSeedTestHook", };
 
     /*
      * Test if a FooConfig.java has a related FooCongigBeanInfo.java, which
@@ -94,9 +77,9 @@ public class ConfigBeanInfoTest extends TestBase {
 
                             /*
                              * Check if there is a corresponding getter method.
-                             * This getter method cannot contain any
-                             * parameters, which is consistent to the design
-                             * patterns for properties in javabeans.If not,
+                             * This getter method cannot contain any parameters,
+                             * which is consistent to the design patterns for
+                             * properties in javabeans.If not,
                              * NoSuchMethodException will be thrown and caught.
                              */
                             Method getter = configClass.getMethod(getterName);
@@ -108,36 +91,31 @@ public class ConfigBeanInfoTest extends TestBase {
                              * of the parameter is the same as the return type
                              * of the getter method.
                              */
-                            if (methods[j].getParameterTypes().length != 1 ||
-                                !methods[j].getParameterTypes()[0].
-                                    equals(getter.getReturnType())) {
+                            if (methods[j].getParameterTypes().length != 1
+                                    || !methods[j].getParameterTypes()[0].equals(getter.getReturnType())) {
                                 break;
                             }
 
                             /*
                              * If the property has setter and getter methods,
-                             * then we need to add a FooConfigBeanInfo class
-                             *for this FooConfig class. If the return type of
-                             * the setter method is not a void, we will need to
-                             * add a setter method called setPropertyNameVoid
-                             * method with a void return type.
+                             * then we need to add a FooConfigBeanInfo class for
+                             * this FooConfig class. If the return type of the
+                             * setter method is not a void, we will need to add
+                             * a setter method called setPropertyNameVoid method
+                             * with a void return type.
                              */
                             try {
-                                Class beanInfoClass = Class.forName(
-                                        configClasses[i] + "BeanInfo");
+                                Class beanInfoClass = Class.forName(configClasses[i] + "BeanInfo");
                             } catch (ClassNotFoundException e) {
 
                                 /* If no FooConfigBeanInfo class exists. */
-                                fail("Have not defined beanInfo class: " +
-                                     configClasses[i] + "BeanInfo");
+                                fail("Have not defined beanInfo class: " + configClasses[i] + "BeanInfo");
                             } catch (SecurityException e) {
                                 e.printStackTrace();
                             }
                             try {
-                                BeanInfo info = Introspector.
-                                    getBeanInfo(configClass);
-                                PropertyDescriptor[] descriptors =
-                                    info.getPropertyDescriptors();
+                                BeanInfo info = Introspector.getBeanInfo(configClass);
+                                PropertyDescriptor[] descriptors = info.getPropertyDescriptors();
 
                                 boolean ifFound = false;
 
@@ -146,24 +124,20 @@ public class ConfigBeanInfoTest extends TestBase {
                                  * has been defined in the beaninfo class.
                                  */
                                 for (int k = 0; k < descriptors.length; ++k) {
-                                    String methodName = descriptors[k].
-                                        getWriteMethod().getName();
+                                    String methodName = descriptors[k].getWriteMethod().getName();
 
                                     /*
                                      * The name of the setter method can be
                                      * setPropertyName or setPropertyNameVoid.
                                      */
-                                    if (methodName.equals(name) ||
-                                        methodName.equals(name + "Void")) {
+                                    if (methodName.equals(name) || methodName.equals(name + "Void")) {
                                         ifFound = true;
                                         break;
                                     }
                                 }
 
                                 if (!ifFound) {
-                                    fail("No setter method " + name +
-                                         "[Void] for " + configClasses[i] +
-                                         "BeanInfo");
+                                    fail("No setter method " + name + "[Void] for " + configClasses[i] + "BeanInfo");
                                 }
                             } catch (IntrospectionException e) {
                                 e.printStackTrace();
@@ -205,8 +179,7 @@ public class ConfigBeanInfoTest extends TestBase {
 
                     /* If it is a setter method. */
                     if (subName.equals("set")) {
-                        if (isIgnoreMethods(configClasses[i] + "." + 
-                                            methodName)) {
+                        if (isIgnoreMethods(configClasses[i] + "." + methodName)) {
                             continue;
                         }
                         String getterName = "get" + propertyName;
@@ -214,9 +187,9 @@ public class ConfigBeanInfoTest extends TestBase {
 
                             /*
                              * Check if there is a corresponding getter method.
-                             * This getter method cannot contain any
-                             * parameters, which is consistent to the design
-                             * patterns for properties in javabeans If not,
+                             * This getter method cannot contain any parameters,
+                             * which is consistent to the design patterns for
+                             * properties in javabeans If not,
                              * NoSuchMethodException will be thrown and caught.
                              */
                             Method getter = configClass.getMethod(getterName);
@@ -228,9 +201,8 @@ public class ConfigBeanInfoTest extends TestBase {
                              * of the parameter is the same as the return type
                              * of the getter method.
                              */
-                            if (methods[j].getParameterTypes().length != 1 ||
-                                !methods[j].getParameterTypes()[0].
-                                    equals(getter.getReturnType())) {
+                            if (methods[j].getParameterTypes().length != 1
+                                    || !methods[j].getParameterTypes()[0].equals(getter.getReturnType())) {
                                 break;
                             }
 
@@ -238,10 +210,9 @@ public class ConfigBeanInfoTest extends TestBase {
                              * The setter method setPropertyName should return
                              * "this".
                              */
-                            assert returnType.isAssignableFrom(configClass) :
-                                   "The setter method" +
-                                   configClass.getName() + "." + methodName +
-                                   " should return " + configClass.getName();
+                            assert returnType.isAssignableFrom(configClass) : "The setter method"
+                                    + configClass.getName() + "." + methodName + " should return "
+                                    + configClass.getName();
 
                             /*
                              * Check if there is a corresponding setter method,
@@ -249,28 +220,22 @@ public class ConfigBeanInfoTest extends TestBase {
                              */
                             String setterVoidName = methodName + "Void";
                             try {
-                                Method setterVoid =
-                                    configClass.getMethod(setterVoidName,
+                                Method setterVoid = configClass.getMethod(setterVoidName,
                                         methods[j].getParameterTypes());
                                 returnType = setterVoid.getReturnType();
-                                assert returnType.toString().equals("void") :
-                                       "The setter method" +
-                                       configClass.getName() + "." +
-                                       setterVoidName + " should return " +
-                                       "void";
+                                assert returnType.toString().equals("void") : "The setter method"
+                                        + configClass.getName() + "." + setterVoidName + " should return " + "void";
                             } catch (NoSuchMethodException e) {
-                                fail("There should be a setter method " +
-                                     setterVoidName +
-                                     ", which should return void");
+                                fail("There should be a setter method " + setterVoidName
+                                        + ", which should return void");
                             }
                         } catch (NoSuchMethodException e) {
 
                             /*
                              * If there is no corresponding getter method for
                              * this property, then we do not regard this
-                             * property as a valid property, which is
-                             * consistent to javabeans' design patterns. So we
-                             * do nothing.
+                             * property as a valid property, which is consistent
+                             * to javabeans' design patterns. So we do nothing.
                              */
                         }
                     }
@@ -280,7 +245,7 @@ public class ConfigBeanInfoTest extends TestBase {
             }
         }
     }
-    
+
     private boolean isIgnoreMethods(String methodName) {
         for (int i = 0; i < ignoreMethods.length; i++) {
             if (ignoreMethods[i].equals(methodName)) {

@@ -27,15 +27,13 @@ import com.sleepycat.je.utilint.LoggerUtils;
 public abstract class TestAction extends Thread {
 
     /** Logger for this class. */
-    protected final Logger logger =
-        LoggerUtils.getLoggerFixedPrefix(getClass(), "Test");
+    protected final Logger    logger = LoggerUtils.getLoggerFixedPrefix(getClass(), "Test");
 
     /** The exception thrown by the action or null. */
     public volatile Throwable exception;
 
     /** The action */
-    protected abstract void action()
-        throws Exception;
+    protected abstract void action() throws Exception;
 
     /**
      * Assert that the action completed, either by succeeding or throwing an
@@ -44,27 +42,24 @@ public abstract class TestAction extends Thread {
      * @param timeout the number of milliseconds to wait
      * @throws InterruptedException if waiting is interrupted
      */
-    public void assertCompleted(final long timeout)
-        throws InterruptedException {
+    public void assertCompleted(final long timeout) throws InterruptedException {
 
         join(timeout);
         assertTrue("Thread should have completed", !isAlive());
     }
 
     /**
-     * Assert that the action completed successfully within the specified
-     * number of milliseconds.
+     * Assert that the action completed successfully within the specified number
+     * of milliseconds.
      *
      * @param timeout the number of milliseconds to wait
      * @throws InterruptedException if waiting is interrupted
      */
-    public void assertSucceeded(final long timeout)
-        throws InterruptedException {
+    public void assertSucceeded(final long timeout) throws InterruptedException {
 
         assertCompleted(timeout);
         if (exception != null) {
-            final AssertionError err =
-                new AssertionError("Unexpected exception: " + exception);
+            final AssertionError err = new AssertionError("Unexpected exception: " + exception);
             err.initCause(exception);
             throw err;
         }
@@ -78,16 +73,13 @@ public abstract class TestAction extends Thread {
      * @param exceptionClass the exception class
      * @throws InterruptedException if waiting is interrupted
      */
-    public void assertException(
-        final long timeout,
-        final Class<? extends Throwable> exceptionClass)
-        throws InterruptedException {
+    public void assertException(final long timeout, final Class<? extends Throwable> exceptionClass)
+            throws InterruptedException {
 
         assertCompleted(timeout);
         assertNotNull("Expected exception", exception);
         if (!exceptionClass.isInstance(exception)) {
-            final AssertionError err =
-                new AssertionError("Unexpected exception: " + exception);
+            final AssertionError err = new AssertionError("Unexpected exception: " + exception);
             err.initCause(exception);
             throw err;
         }

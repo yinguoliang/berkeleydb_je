@@ -53,7 +53,7 @@ public class EnvironmentTest extends DualTestCase {
     private Environment env1;
     private Environment env2;
     private Environment env3;
-    private final File envHome;
+    private final File  envHome;
 
     public EnvironmentTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -64,35 +64,28 @@ public class EnvironmentTest extends DualTestCase {
      */
     @Test
     public void testDisplayJavaVersion() {
-        System.out.println(
-            "Java version: " + System.getProperty("java.version") +
-            " Vendor: " + System.getProperty("java.vendor"));
+        System.out.println("Java version: " + System.getProperty("java.version") + " Vendor: "
+                + System.getProperty("java.vendor"));
     }
 
     /**
      * Test open and close of an environment.
      */
     @Test
-    public void testBasic()
-        throws Throwable {
+    public void testBasic() throws Throwable {
 
         try {
-            assertEquals("Checking version", "7.4.5",
-                         JEVersion.CURRENT_VERSION.getVersionString());
+            assertEquals("Checking version", "7.4.5", JEVersion.CURRENT_VERSION.getVersionString());
 
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setTransactional(true);
             envConfig.setCacheSize(MemoryBudget.MIN_MAX_MEMORY_SIZE);
             /* Don't track detail with a tiny cache size. */
-            envConfig.setConfigParam
-                (EnvironmentParams.CLEANER_TRACK_DETAIL.getName(), "false");
-            envConfig.setConfigParam
-                (EnvironmentParams.NODE_MAX.getName(), "6");
-            envConfig.setConfigParam
-                (EnvironmentParams.LOG_MEM_SIZE.getName(),
-                 EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
-            envConfig.setConfigParam
-                (EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
+            envConfig.setConfigParam(EnvironmentParams.CLEANER_TRACK_DETAIL.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
+            envConfig.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(),
+                    EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
+            envConfig.setConfigParam(EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
             envConfig.setAllowCreate(true);
             env1 = create(envHome, envConfig);
 
@@ -112,8 +105,7 @@ public class EnvironmentTest extends DualTestCase {
      * Test creation of a reserved name fails.
      */
     @Test
-    public void testNoCreateReservedNameDB()
-        throws Throwable {
+    public void testNoCreateReservedNameDB() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -125,10 +117,8 @@ public class EnvironmentTest extends DualTestCase {
             dbConfig.setAllowCreate(true);
             dbConfig.setTransactional(true);
             try {
-                env1.openDatabase(null, DbType.VLSN_MAP.getInternalName(),
-                                  dbConfig);
-                fail("expected DatabaseException since Environment not " +
-                     "transactional");
+                env1.openDatabase(null, DbType.VLSN_MAP.getInternalName(), dbConfig);
+                fail("expected DatabaseException since Environment not " + "transactional");
             } catch (IllegalArgumentException IAE) {
             }
 
@@ -148,8 +138,7 @@ public class EnvironmentTest extends DualTestCase {
      * Test environment reference counting.
      */
     @Test
-    public void testReferenceCounting()
-        throws Throwable {
+    public void testReferenceCounting() throws Throwable {
 
         try {
 
@@ -158,23 +147,17 @@ public class EnvironmentTest extends DualTestCase {
             envConfig.setTransactional(true);
             envConfig.setCacheSize(MemoryBudget.MIN_MAX_MEMORY_SIZE);
             /* Don't track detail with a tiny cache size. */
-            envConfig.setConfigParam
-                (EnvironmentParams.CLEANER_TRACK_DETAIL.getName(), "false");
-            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                     "6");
-            envConfig.setConfigParam
-            (EnvironmentParams.LOG_MEM_SIZE.getName(),
+            envConfig.setConfigParam(EnvironmentParams.CLEANER_TRACK_DETAIL.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
+            envConfig.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(),
                     EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
-            envConfig.setConfigParam
-            (EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
+            envConfig.setConfigParam(EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
             envConfig.setAllowCreate(true);
             env1 = create(envHome, envConfig);
             envConfig.setAllowCreate(false);
             env2 = create(envHome, envConfig);
 
-            assertEquals("DbEnvironments should be equal",
-                         env1.getNonNullEnvImpl(),
-                         env2.getNonNullEnvImpl());
+            assertEquals("DbEnvironments should be equal", env1.getNonNullEnvImpl(), env2.getNonNullEnvImpl());
 
             /* Try to close one of them twice */
             EnvironmentImpl dbenv1 = env1.getNonNullEnvImpl();
@@ -182,8 +165,7 @@ public class EnvironmentTest extends DualTestCase {
             try {
                 close(env1);
             } catch (DatabaseException DENOE) {
-                fail("Caught DatabaseException while re-closing " +
-                     "an Environment.");
+                fail("Caught DatabaseException while re-closing " + "an Environment.");
             }
 
             /*
@@ -192,13 +174,11 @@ public class EnvironmentTest extends DualTestCase {
              */
             close(env2);
             env1 = create(envHome, envConfig);
-            assertTrue("EnvironmentImpl did not change",
-                       dbenv1 != env1.getNonNullEnvImpl());
+            assertTrue("EnvironmentImpl did not change", dbenv1 != env1.getNonNullEnvImpl());
             try {
                 close(env2);
             } catch (DatabaseException DENOE) {
-                fail("Caught DatabaseException while re-closing " +
-                     "an Environment.");
+                fail("Caught DatabaseException while re-closing " + "an Environment.");
             }
             close(env1);
         } catch (Throwable t) {
@@ -208,8 +188,7 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testTransactional()
-        throws Throwable {
+    public void testTransactional() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -218,8 +197,7 @@ public class EnvironmentTest extends DualTestCase {
 
             try {
                 env1.beginTransaction(null, null);
-                fail("should have thrown exception for non transactional "+
-                     " environment");
+                fail("should have thrown exception for non transactional " + " environment");
             } catch (UnsupportedOperationException expected) {
             }
 
@@ -229,8 +207,7 @@ public class EnvironmentTest extends DualTestCase {
             dbConfig.setTransactional(true);
             try {
                 env1.openDatabase(null, databaseName, dbConfig);
-                fail("expected IllegalArgumentException since Environment " +
-                     " not transactional");
+                fail("expected IllegalArgumentException since Environment " + " not transactional");
             } catch (IllegalArgumentException expected) {
             }
 
@@ -253,8 +230,7 @@ public class EnvironmentTest extends DualTestCase {
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         envConfig.setDurability(Durability.COMMIT_NO_SYNC);
-        envConfig.setConfigParam(EnvironmentConfig.LOG_USE_WRITE_QUEUE,
-                                 "true");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_USE_WRITE_QUEUE, "true");
         env1 = create(envHome, envConfig);
         EnvironmentImpl envImpl = env1.getNonNullEnvImpl();
         final boolean isReplicated = envImpl.isReplicated();
@@ -284,9 +260,9 @@ public class EnvironmentTest extends DualTestCase {
         }
 
         /* Flush. */
-        env1.flushLog(false /*fsync*/);
+        env1.flushLog(false /* fsync */);
         assertFalse(envImpl.getFileManager().hasQueuedWrites());
-        env1.flushLog(true /*fsync*/);
+        env1.flushLog(true /* fsync */);
 
         /* Crash, re-open and check. */
         abnormalClose(env1);
@@ -313,8 +289,7 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testReadOnly()
-        throws Throwable {
+    public void testReadOnly() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -328,8 +303,7 @@ public class EnvironmentTest extends DualTestCase {
             String databaseName = "simpleDb";
             try {
                 env1.openDatabase(null, databaseName, dbConfig);
-                fail("expected DatabaseException since Environment is " +
-                     "readonly");
+                fail("expected DatabaseException since Environment is " + "readonly");
             } catch (IllegalArgumentException expected) {
             }
 
@@ -341,8 +315,7 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testReadOnlyDbNameOps()
-        throws DatabaseException {
+    public void testReadOnlyDbNameOps() throws DatabaseException {
 
         final EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
@@ -358,7 +331,7 @@ public class EnvironmentTest extends DualTestCase {
             Database db1 = envRW.openDatabase(null, "db1", dbConfig);
             final DatabaseEntry dk = new DatabaseEntry(new byte[10]);
             final DatabaseEntry dv = new DatabaseEntry(new byte[10]);
-            db1.put(null, dk,dv);
+            db1.put(null, dk, dv);
             assertEquals(1, db1.count());
             db1.close();
             close(envRW);
@@ -400,14 +373,12 @@ public class EnvironmentTest extends DualTestCase {
      * Tests memOnly mode with a home dir that does not exist. [#15255]
      */
     @Test
-    public void testMemOnly()
-        throws Throwable {
+    public void testMemOnly() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_MEMORY_ONLY.getName(), "true");
+        envConfig.setConfigParam(EnvironmentParams.LOG_MEMORY_ONLY.getName(), "true");
 
         File noHome = new File("fileDoesNotExist");
         assertTrue(!noHome.exists());
@@ -430,12 +401,11 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     /**
-     * Tests that opening an environment after a clean close does not add to
-     * the log.
+     * Tests that opening an environment after a clean close does not add to the
+     * log.
      */
     @Test
-    public void testOpenWithoutCheckpoint()
-        throws Throwable {
+    public void testOpenWithoutCheckpoint() throws Throwable {
 
         /* Open, close, open. */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -457,8 +427,7 @@ public class EnvironmentTest extends DualTestCase {
      */
     @Test
     @SuppressWarnings("deprecation")
-    public void testConfig()
-        throws Throwable {
+    public void testConfig() throws Throwable {
 
         /* This tests assumes these props are immutable. */
         assertTrue(!isMutableConfig("je.lock.timeout"));
@@ -477,8 +446,8 @@ public class EnvironmentTest extends DualTestCase {
             env1 = create(envHome, envConfig);
 
             /*
-             * Change the environment config object, make sure the
-             * environment cloned a copy when it was opened.
+             * Change the environment config object, make sure the environment
+             * cloned a copy when it was opened.
              */
             envConfig.setReadOnly(false);
             EnvironmentConfig retrievedConfig1 = env1.getConfig();
@@ -486,12 +455,11 @@ public class EnvironmentTest extends DualTestCase {
             assertEquals(true, retrievedConfig1.getReadOnly());
             assertEquals(true, retrievedConfig1.getAllowCreate());
             assertEquals(7000, retrievedConfig1.getLockTimeout());
-            assertEquals
-                (7, retrievedConfig1.getLockTimeout(TimeUnit.MILLISECONDS));
+            assertEquals(7, retrievedConfig1.getLockTimeout(TimeUnit.MILLISECONDS));
 
             /*
-             * Make sure that the environment returns a cloned config
-             * object when you call Environment.getConfig.
+             * Make sure that the environment returns a cloned config object
+             * when you call Environment.getConfig.
              */
             retrievedConfig1.setReadOnly(false);
             EnvironmentConfig retrievedConfig2 = env1.getConfig();
@@ -499,8 +467,8 @@ public class EnvironmentTest extends DualTestCase {
             assertTrue(retrievedConfig1 != retrievedConfig2);
 
             /*
-             * Open a second environment handle, check that its attributes
-             * are available.
+             * Open a second environment handle, check that its attributes are
+             * available.
              */
             env2 = create(envHome, null);
             EnvironmentConfig retrievedConfig3 = env2.getConfig();
@@ -529,16 +497,13 @@ public class EnvironmentTest extends DualTestCase {
             /*
              * Ditto for the mutable attributes.
              */
-            EnvironmentMutableConfig mutableConfig =
-                new EnvironmentMutableConfig();
+            EnvironmentMutableConfig mutableConfig = new EnvironmentMutableConfig();
             mutableConfig.setTxnNoSync(true);
             env1.setMutableConfig(mutableConfig);
-            EnvironmentMutableConfig retrievedMutableConfig1 =
-                env1.getMutableConfig();
+            EnvironmentMutableConfig retrievedMutableConfig1 = env1.getMutableConfig();
             assertTrue(mutableConfig != retrievedMutableConfig1);
             retrievedMutableConfig1.setTxnNoSync(false);
-            EnvironmentMutableConfig retrievedMutableConfig2 =
-                env1.getMutableConfig();
+            EnvironmentMutableConfig retrievedMutableConfig2 = env1.getMutableConfig();
             assertEquals(true, retrievedMutableConfig2.getTxnNoSync());
             assertTrue(retrievedMutableConfig1 != retrievedMutableConfig2);
 
@@ -557,8 +522,7 @@ public class EnvironmentTest extends DualTestCase {
             assertEquals(false, envConfig3.getTxnNoSync());
             envConfig3.setTxnNoSync(true);
             env3 = create(envHome, envConfig3);
-            EnvironmentMutableConfig retrievedMutableConfig3 =
-                env3.getMutableConfig();
+            EnvironmentMutableConfig retrievedMutableConfig3 = env3.getMutableConfig();
             assertNotSame(envConfig3, retrievedMutableConfig3);
             assertEquals(true, retrievedMutableConfig3.getTxnNoSync());
             close(env1);
@@ -577,12 +541,11 @@ public class EnvironmentTest extends DualTestCase {
      * Test the semantics of env-wide mutable config properties.
      */
     @Test
-    public void testMutableConfig()
-        throws DatabaseException {
+    public void testMutableConfig() throws DatabaseException {
 
         /*
-         * Note that during unit testing the shared je.properties is expected
-         * to be empty, so we don't test the application of je.properties here.
+         * Note that during unit testing the shared je.properties is expected to
+         * be empty, so we don't test the application of je.properties here.
          */
         final String P1 = EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName();
         final String P2 = EnvironmentParams.ENV_RUN_CLEANER.getName();
@@ -596,10 +559,8 @@ public class EnvironmentTest extends DualTestCase {
         EnvironmentMutableConfig mconfig;
 
         /*
-         * Create env1, first handle.
-         * P1 defaults to true.
-         * P2 is set to true (the default).
-         * P3 is set to false (not the default).
+         * Create env1, first handle. P1 defaults to true. P2 is set to true
+         * (the default). P3 is set to false (not the default).
          */
         config = TestUtils.initEnvConfig();
         config.setAllowCreate(true);
@@ -614,10 +575,8 @@ public class EnvironmentTest extends DualTestCase {
 
         /*
          * Open env2, second handle, test that no mutable params can be
-         * overridden.
-         * P1 is set to false.
-         * P2 is set to false.
-         * P3 is set to true.
+         * overridden. P1 is set to false. P2 is set to false. P3 is set to
+         * true.
          */
         config = TestUtils.initEnvConfig();
         config.setConfigParam(P1, "false");
@@ -648,8 +607,7 @@ public class EnvironmentTest extends DualTestCase {
      * Checks that je.txn.deadlockStackTrace is mutable and takes effect.
      */
     @Test
-    public void testTxnDeadlockStackTrace()
-        throws DatabaseException {
+    public void testTxnDeadlockStackTrace() throws DatabaseException {
 
         String name = EnvironmentParams.TXN_DEADLOCK_STACK_TRACE.getName();
         assertTrue(isMutableConfig(name));
@@ -677,11 +635,8 @@ public class EnvironmentTest extends DualTestCase {
     /**
      * Checks three config parameter values.
      */
-    private void check3Params(Environment env,
-                              String p1, String v1,
-                              String p2, String v2,
-                              String p3, String v3)
-        throws DatabaseException {
+    private void check3Params(Environment env, String p1, String v1, String p2, String v2, String p3, String v3)
+            throws DatabaseException {
 
         EnvironmentConfig config = env.getConfig();
 
@@ -712,8 +667,7 @@ public class EnvironmentTest extends DualTestCase {
 
         private int count = 0;
 
-        public void envConfigUpdate(DbConfigManager mgr,
-                EnvironmentMutableConfig ignore) {
+        public void envConfigUpdate(DbConfigManager mgr, EnvironmentMutableConfig ignore) {
             count += 1;
         }
 
@@ -728,8 +682,7 @@ public class EnvironmentTest extends DualTestCase {
      * Make sure that config param loading follows the right precedence.
      */
     @Test
-    public void testParamLoading()
-        throws Throwable {
+    public void testParamLoading() throws Throwable {
 
         File testEnvHome = null;
         try {
@@ -743,52 +696,39 @@ public class EnvironmentTest extends DualTestCase {
             testPropsEnv.append(File.separatorChar);
             testPropsEnv.append("propTest");
             testEnvHome = new File(testPropsEnv.toString());
-            TestUtils.removeLogFiles("testParamLoading start",
-                                     testEnvHome, false);
+            TestUtils.removeLogFiles("testParamLoading start", testEnvHome, false);
 
             /*
-             * Set some configuration params programatically.  Do not use
+             * Set some configuration params programatically. Do not use
              * TestUtils.initEnvConfig since we're counting properties.
              */
             EnvironmentConfig appConfig = new EnvironmentConfig();
             appConfig.setConfigParam("je.log.numBuffers", "88");
-            appConfig.setConfigParam
-            ("je.log.totalBufferBytes",
-                    EnvironmentParams.LOG_MEM_SIZE_MIN_STRING + 10);
-            appConfig.setConfigParam("je.txn.durability",
-                                     "sync,sync,simple_majority");
+            appConfig.setConfigParam("je.log.totalBufferBytes", EnvironmentParams.LOG_MEM_SIZE_MIN_STRING + 10);
+            appConfig.setConfigParam("je.txn.durability", "sync,sync,simple_majority");
             appConfig.setAllowCreate(true);
 
             Environment appEnv = create(testEnvHome, appConfig);
             EnvironmentConfig envConfig = appEnv.getConfig();
 
             assertEquals(4, envConfig.getNumExplicitlySetParams());
-            assertEquals("false",
-                         envConfig.getConfigParam("je.env.recovery"));
-            assertEquals("7001",
-                         envConfig.getConfigParam("je.log.totalBufferBytes"));
-            assertEquals("200",
-                         envConfig.getConfigParam("je.log.numBuffers"));
-            assertEquals("NO_SYNC,NO_SYNC,NONE",
-                         envConfig.getConfigParam("je.txn.durability"));
-            assertEquals(new Durability(SyncPolicy.NO_SYNC,
-                                        SyncPolicy.NO_SYNC,
-                                        ReplicaAckPolicy.NONE),
-                         envConfig.getDurability());
+            assertEquals("false", envConfig.getConfigParam("je.env.recovery"));
+            assertEquals("7001", envConfig.getConfigParam("je.log.totalBufferBytes"));
+            assertEquals("200", envConfig.getConfigParam("je.log.numBuffers"));
+            assertEquals("NO_SYNC,NO_SYNC,NONE", envConfig.getConfigParam("je.txn.durability"));
+            assertEquals(new Durability(SyncPolicy.NO_SYNC, SyncPolicy.NO_SYNC, ReplicaAckPolicy.NONE),
+                    envConfig.getDurability());
             appEnv.close();
         } catch (Throwable t) {
             t.printStackTrace();
             throw t;
-        }
-        finally {
-            TestUtils.removeLogFiles("testParamLoadingEnd",
-                                     testEnvHome, false);
+        } finally {
+            TestUtils.removeLogFiles("testParamLoadingEnd", testEnvHome, false);
         }
     }
 
     @Test
-    public void testDbRename()
-        throws Throwable {
+    public void testDbRename() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -811,8 +751,7 @@ public class EnvironmentTest extends DualTestCase {
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setAllowCreate(true);
             dbConfig.setTransactional(true);
-            Database exampleDb = env1.openDatabase(null, databaseName,
-                    dbConfig);
+            Database exampleDb = env1.openDatabase(null, databaseName, dbConfig);
 
             Transaction txn = env1.beginTransaction(null, null);
             Cursor cursor = exampleDb.openCursor(txn, null);
@@ -855,8 +794,7 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testDbRenameCommit()
-        throws Throwable {
+    public void testDbRenameCommit() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -871,8 +809,7 @@ public class EnvironmentTest extends DualTestCase {
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setTransactional(true);
             dbConfig.setAllowCreate(true);
-            Database exampleDb = env1.openDatabase(txn, databaseName,
-                    dbConfig);
+            Database exampleDb = env1.openDatabase(txn, databaseName, dbConfig);
 
             Cursor cursor = exampleDb.openCursor(txn, null);
             doSimpleCursorPutAndDelete(cursor, false);
@@ -912,8 +849,7 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testDbRenameAbort()
-        throws Throwable {
+    public void testDbRenameAbort() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -928,8 +864,7 @@ public class EnvironmentTest extends DualTestCase {
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setTransactional(true);
             dbConfig.setAllowCreate(true);
-            Database exampleDb =
-                env1.openDatabase(txn, databaseName, dbConfig);
+            Database exampleDb = env1.openDatabase(txn, databaseName, dbConfig);
 
             /* Put some data in, close the database, commit. */
             Cursor cursor = exampleDb.openCursor(txn, null);
@@ -939,8 +874,8 @@ public class EnvironmentTest extends DualTestCase {
             txn.commit();
 
             /*
-             * Rename under another txn, shouldn't be able to open under the
-             * old name.
+             * Rename under another txn, shouldn't be able to open under the old
+             * name.
              */
             txn = env1.beginTransaction(null, null);
             env1.renameDatabase(txn, databaseName, newDatabaseName);
@@ -966,8 +901,7 @@ public class EnvironmentTest extends DualTestCase {
                 exampleDb = env1.openDatabase(null, databaseName, null);
                 exampleDb.close();
             } catch (DatabaseException dbe) {
-                fail("caught DatabaseException opening old name: " +
-                     dbe.getMessage());
+                fail("caught DatabaseException opening old name: " + dbe.getMessage());
             }
 
             /* Shouldn't be able to open under the new name. */
@@ -985,28 +919,24 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testDbRemove()
-        throws Throwable {
+    public void testDbRemove() throws Throwable {
 
         doDbRemove(true, false);
     }
 
     @Test
-    public void testDbRemoveReadCommitted()
-        throws Throwable {
+    public void testDbRemoveReadCommitted() throws Throwable {
 
         doDbRemove(true, true);
     }
 
     @Test
-    public void testDbRemoveNonTxnl()
-        throws Throwable {
+    public void testDbRemoveNonTxnl() throws Throwable {
 
         doDbRemove(false, false);
     }
 
-    private void doDbRemove(boolean txnl, boolean readCommitted)
-        throws Throwable {
+    private void doDbRemove(boolean txnl, boolean readCommitted) throws Throwable {
 
         try {
             /* Set up an environment. */
@@ -1037,8 +967,7 @@ public class EnvironmentTest extends DualTestCase {
                 txnConfig.setReadCommitted(true);
                 txn = env1.beginTransaction(null, txnConfig);
             }
-            Database exampleDb =
-                env1.openDatabase(txn, databaseName, dbConfig);
+            Database exampleDb = env1.openDatabase(txn, databaseName, dbConfig);
             if (txn != null) {
                 txn.commit();
             }
@@ -1078,8 +1007,7 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testDbRemoveCommit()
-        throws Throwable {
+    public void testDbRemoveCommit() throws Throwable {
 
         try {
             /* Set up an environment. */
@@ -1094,8 +1022,7 @@ public class EnvironmentTest extends DualTestCase {
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setTransactional(true);
             dbConfig.setAllowCreate(true);
-            Database exampleDb =
-                env1.openDatabase(txn, databaseName, dbConfig);
+            Database exampleDb = env1.openDatabase(txn, databaseName, dbConfig);
 
             /* Insert and delete data in it. */
             Cursor cursor = exampleDb.openCursor(txn, null);
@@ -1103,8 +1030,8 @@ public class EnvironmentTest extends DualTestCase {
             cursor.close();
 
             /*
-             * Try a remove without closing the open Database handle.  Should
-             * get an exception.
+             * Try a remove without closing the open Database handle. Should get
+             * an exception.
              */
             try {
                 env1.removeDatabase(txn, databaseName);
@@ -1137,8 +1064,7 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testDbRemoveAbort()
-        throws Throwable {
+    public void testDbRemoveAbort() throws Throwable {
 
         try {
             /* Set up an environment. */
@@ -1153,8 +1079,7 @@ public class EnvironmentTest extends DualTestCase {
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setTransactional(true);
             dbConfig.setAllowCreate(true);
-            Database exampleDb =
-                env1.openDatabase(txn, databaseName, dbConfig);
+            Database exampleDb = env1.openDatabase(txn, databaseName, dbConfig);
             txn.commit();
 
             /* Start a new txn and put some data in the created db. */
@@ -1164,8 +1089,7 @@ public class EnvironmentTest extends DualTestCase {
             cursor.close();
 
             /*
-             * Try to remove, we should get an exception because the db is
-             * open.
+             * Try to remove, we should get an exception because the db is open.
              */
             try {
                 env1.removeDatabase(txn, databaseName);
@@ -1209,20 +1133,18 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     /**
-     * Provides general testing of getDatabaseNames.  Additionally verifies a
-     * fix for a bug that occurred when the first DB (lowest valued name) was
-     * removed or renamed prior to calling getDatabaseNames.  A NPE occurred
-     * in this case if the compressor had not yet deleted the BIN entry for
-     * the removed/renamed name. [#13377]
+     * Provides general testing of getDatabaseNames. Additionally verifies a fix
+     * for a bug that occurred when the first DB (lowest valued name) was
+     * removed or renamed prior to calling getDatabaseNames. A NPE occurred in
+     * this case if the compressor had not yet deleted the BIN entry for the
+     * removed/renamed name. [#13377]
      */
     @Test
-    public void testGetDatabaseNames()
-        throws DatabaseException {
+    public void testGetDatabaseNames() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -1273,7 +1195,7 @@ public class EnvironmentTest extends DualTestCase {
 
     /**
      * Checks that the expected set of names equals the list of names returned
-     * from getDatabaseNames.  A list can't be directly compared to a set using
+     * from getDatabaseNames. A list can't be directly compared to a set using
      * equals().
      */
     private void checkDbNames(Set<String> expected, List<String> actual) {
@@ -1287,32 +1209,25 @@ public class EnvironmentTest extends DualTestCase {
      * tested elsewhere.
      */
     @Test
-    public void testDaemonManualInvocation()
-        throws Throwable {
+    public void testDaemonManualInvocation() throws Throwable {
 
         try {
             /* Set up an environment. */
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setTransactional(true);
             String testPropVal = "120000000";
-            envConfig.setConfigParam
-                (EnvironmentParams.COMPRESSOR_WAKEUP_INTERVAL.getName(),
-                 testPropVal);
-            envConfig.setConfigParam
-                (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.COMPRESSOR_WAKEUP_INTERVAL.getName(), testPropVal);
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
             envConfig.setAllowCreate(true);
-            envConfig.setConfigParam
-            (EnvironmentParams.LOG_MEM_SIZE.getName(), "20000");
-            envConfig.setConfigParam
-            (EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
+            envConfig.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(), "20000");
+            envConfig.setConfigParam(EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
             env1 = create(envHome, envConfig);
 
             String databaseName = "simpleDb";
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setTransactional(true);
             dbConfig.setAllowCreate(true);
-            Database exampleDb =
-                env1.openDatabase(null, databaseName, dbConfig);
+            Database exampleDb = env1.openDatabase(null, databaseName, dbConfig);
 
             Transaction txn = env1.beginTransaction(null, null);
             Cursor cursor = exampleDb.openCursor(txn, null);
@@ -1324,13 +1239,8 @@ public class EnvironmentTest extends DualTestCase {
             env1.compress();
 
             envStats = env1.getStats(TestUtils.FAST_STATS);
-            long compressorTotal =
-                envStats.getSplitBins() +
-                envStats.getDbClosedBins() +
-                envStats.getCursorsBins() +
-                envStats.getNonEmptyBins() +
-                envStats.getProcessedBins() +
-                envStats.getInCompQueueSize();
+            long compressorTotal = envStats.getSplitBins() + envStats.getDbClosedBins() + envStats.getCursorsBins()
+                    + envStats.getNonEmptyBins() + envStats.getProcessedBins() + envStats.getInCompQueueSize();
             assertTrue(compressorTotal > 0);
 
             close(env1);
@@ -1344,66 +1254,40 @@ public class EnvironmentTest extends DualTestCase {
      * Tests that each daemon can be turned on and off dynamically.
      */
     @Test
-    public void testDaemonRunPause()
-        throws DatabaseException, InterruptedException {
+    public void testDaemonRunPause() throws DatabaseException, InterruptedException {
 
-        final String[] runProps = {
-            EnvironmentParams.ENV_RUN_CLEANER.getName(),
-            EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(),
-            EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(),
-        };
+        final String[] runProps = { EnvironmentParams.ENV_RUN_CLEANER.getName(),
+                EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), };
 
         EnvironmentConfig config = TestUtils.initEnvConfig();
         config.setAllowCreate(true);
 
-        config.setConfigParam
-            (EnvironmentParams.MAX_MEMORY.getName(),
-             MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
+        config.setConfigParam(EnvironmentParams.MAX_MEMORY.getName(), MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
         /* Don't track detail with a tiny cache size. */
-        config.setConfigParam
-            (EnvironmentParams.CLEANER_TRACK_DETAIL.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.CLEANER_BYTES_INTERVAL.getName(),
-             "100");
-        config.setConfigParam
-            (EnvironmentParams.CHECKPOINTER_BYTES_INTERVAL.getName(),
-             "100");
-        config.setConfigParam
-            (EnvironmentParams.COMPRESSOR_WAKEUP_INTERVAL.getName(),
-             "1000000");
-        config.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(),
-                              EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
-        config.setConfigParam
-            (EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
-        setBoolConfigParams(config, runProps,
-                            new boolean[] { false, false, false, false });
+        config.setConfigParam(EnvironmentParams.CLEANER_TRACK_DETAIL.getName(), "false");
+        config.setConfigParam(EnvironmentParams.CLEANER_BYTES_INTERVAL.getName(), "100");
+        config.setConfigParam(EnvironmentParams.CHECKPOINTER_BYTES_INTERVAL.getName(), "100");
+        config.setConfigParam(EnvironmentParams.COMPRESSOR_WAKEUP_INTERVAL.getName(), "1000000");
+        config.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(), EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
+        config.setConfigParam(EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
+        setBoolConfigParams(config, runProps, new boolean[] { false, false, false, false });
 
         env1 = create(envHome, config);
         EnvironmentImpl envImpl = env1.getNonNullEnvImpl();
 
-        final DaemonRunner[] daemons = {
-            envImpl.getCleaner(),
-            envImpl.getCheckpointer(),
-            envImpl.getINCompressor(),
-        };
+        final DaemonRunner[] daemons = { envImpl.getCleaner(), envImpl.getCheckpointer(), envImpl.getINCompressor(), };
 
         //*
-        doTestDaemonRunPause(env1, daemons, runProps,
-                             new boolean[] { false, false, false, false });
-        doTestDaemonRunPause(env1, daemons, runProps,
-                             new boolean[] { true,  false, false, false });
+        doTestDaemonRunPause(env1, daemons, runProps, new boolean[] { false, false, false, false });
+        doTestDaemonRunPause(env1, daemons, runProps, new boolean[] { true, false, false, false });
         if (!envImpl.isNoLocking()) {
-            doTestDaemonRunPause(env1, daemons, runProps,
-                    new boolean[] { false, true,  false, false });
+            doTestDaemonRunPause(env1, daemons, runProps, new boolean[] { false, true, false, false });
         }
         //*/
-        doTestDaemonRunPause(env1, daemons, runProps,
-                             new boolean[] { false, false, true,  false });
+        doTestDaemonRunPause(env1, daemons, runProps, new boolean[] { false, false, true, false });
         //*
-        doTestDaemonRunPause(env1, daemons, runProps,
-                             new boolean[] { false, false, false, true  });
-        doTestDaemonRunPause(env1, daemons, runProps,
-                             new boolean[] { false, false, false, false });
+        doTestDaemonRunPause(env1, daemons, runProps, new boolean[] { false, false, false, true });
+        doTestDaemonRunPause(env1, daemons, runProps, new boolean[] { false, false, false, false });
 
         //*/
         close(env1);
@@ -1413,11 +1297,8 @@ public class EnvironmentTest extends DualTestCase {
     /**
      * Tests a set of daemon on/off settings.
      */
-    private void doTestDaemonRunPause(Environment env,
-                                      DaemonRunner[] daemons,
-                                      String[] runProps,
-                                      boolean[] runValues)
-        throws DatabaseException, InterruptedException {
+    private void doTestDaemonRunPause(Environment env, DaemonRunner[] daemons, String[] runProps, boolean[] runValues)
+            throws DatabaseException, InterruptedException {
 
         /* Set daemon run properties. */
         EnvironmentMutableConfig config = env.getMutableConfig();
@@ -1454,26 +1335,20 @@ public class EnvironmentTest extends DualTestCase {
         for (int i = 0; i < prevCounts.length; i += 1) {
             int currNWakeups = daemons[i].getNWakeupRequests();
             boolean woken = prevCounts[i] < currNWakeups;
-            assertEquals(daemons[i].getClass().getName() +
-                         " prevNWakeups=" + prevCounts[i] +
-                         " currNWakeups=" + currNWakeups,
-                         runValues[i], woken);
+            assertEquals(daemons[i].getClass().getName() + " prevNWakeups=" + prevCounts[i] + " currNWakeups="
+                    + currNWakeups, runValues[i], woken);
         }
     }
 
-    private void setBoolConfigParams(EnvironmentMutableConfig config,
-                                     String[] names,
-                                     boolean[] values) {
+    private void setBoolConfigParams(EnvironmentMutableConfig config, String[] names, boolean[] values) {
         for (int i = 0; i < names.length; i += 1) {
-            config.setConfigParam(names[i],
-                                  Boolean.valueOf(values[i]).toString());
+            config.setConfigParam(names[i], Boolean.valueOf(values[i]).toString());
         }
     }
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testExceptions()
-        throws Throwable {
+    public void testExceptions() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -1599,7 +1474,7 @@ public class EnvironmentTest extends DualTestCase {
             }
 
             try {
-                env1.verify(null,null);
+                env1.verify(null, null);
                 fail("Expected IllegalStateException for op on closed env");
             } catch (IllegalStateException expected) {
             }
@@ -1628,8 +1503,7 @@ public class EnvironmentTest extends DualTestCase {
     }
 
     @Test
-    public void testClose()
-        throws Throwable {
+    public void testClose() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -1652,8 +1526,7 @@ public class EnvironmentTest extends DualTestCase {
             try {
                 close(env1);
             } catch (DatabaseException DENOE) {
-                fail("Caught DatabaseException while re-closing " +
-                     "an Environment.");
+                fail("Caught DatabaseException while re-closing " + "an Environment.");
             }
 
             env1 = create(envHome, envConfig);
@@ -1672,8 +1545,7 @@ public class EnvironmentTest extends DualTestCase {
             try {
                 close(env1);
             } catch (Exception e) {
-                fail("Caught DatabaseException while re-closing " +
-                     "an Environment.");
+                fail("Caught DatabaseException while re-closing " + "an Environment.");
             }
         } catch (Throwable t) {
             t.printStackTrace();
@@ -1681,16 +1553,12 @@ public class EnvironmentTest extends DualTestCase {
         }
     }
 
-    protected String[] simpleKeyStrings = {
-        "foo", "bar", "baz", "aaa", "fubar",
-        "foobar", "quux", "mumble", "froboy" };
+    protected String[] simpleKeyStrings  = { "foo", "bar", "baz", "aaa", "fubar", "foobar", "quux", "mumble",
+            "froboy" };
 
-    protected String[] simpleDataStrings = {
-        "one", "two", "three", "four", "five",
-        "six", "seven", "eight", "nine" };
+    protected String[] simpleDataStrings = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
 
-    protected void doSimpleCursorPutAndDelete(Cursor cursor, boolean extras)
-        throws DatabaseException {
+    protected void doSimpleCursorPutAndDelete(Cursor cursor, boolean extras) throws DatabaseException {
 
         StringDbt foundKey = new StringDbt();
         StringDbt foundData = new StringDbt();
@@ -1698,8 +1566,7 @@ public class EnvironmentTest extends DualTestCase {
         for (int i = 0; i < simpleKeyStrings.length; i++) {
             foundKey.setString(simpleKeyStrings[i]);
             foundData.setString(simpleDataStrings[i]);
-            OperationStatus status =
-                cursor.putNoOverwrite(foundKey, foundData);
+            OperationStatus status = cursor.putNoOverwrite(foundKey, foundData);
             if (status != OperationStatus.SUCCESS) {
                 fail("non-success return " + status);
             }
@@ -1715,8 +1582,7 @@ public class EnvironmentTest extends DualTestCase {
             }
         }
 
-        OperationStatus status =
-            cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
+        OperationStatus status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
 
         while (status == OperationStatus.SUCCESS) {
             cursor.delete();
@@ -1724,15 +1590,13 @@ public class EnvironmentTest extends DualTestCase {
         }
     }
 
-    protected void doSimpleVerification(Cursor cursor)
-        throws DatabaseException {
+    protected void doSimpleVerification(Cursor cursor) throws DatabaseException {
 
         StringDbt foundKey = new StringDbt();
         StringDbt foundData = new StringDbt();
 
         int count = 0;
-        OperationStatus status = cursor.getFirst(foundKey, foundData,
-                                                 LockMode.DEFAULT);
+        OperationStatus status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
 
         while (status == OperationStatus.SUCCESS) {
             count++;
@@ -1743,28 +1607,24 @@ public class EnvironmentTest extends DualTestCase {
 
     /**
      * Test that a latch timeout occurs. We manually confirm that full stack
-     * trace appears in the je.info log.
-     *
-     * This test is here rather than in LatchTest only because an
-     * EnvironmentImpl is needed to create a thread dump.
+     * trace appears in the je.info log. This test is here rather than in
+     * LatchTest only because an EnvironmentImpl is needed to create a thread
+     * dump.
      */
     @Test
-    public void testLatchTimeout()
-        throws Throwable {
+    public void testLatchTimeout() throws Throwable {
 
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setAllowCreate(true);
             envConfig.setTransactional(true);
-            envConfig.setConfigParam(
-                EnvironmentParams.ENV_LATCH_TIMEOUT.getName(), "1 ms");
+            envConfig.setConfigParam(EnvironmentParams.ENV_LATCH_TIMEOUT.getName(), "1 ms");
 
             env1 = create(envHome, envConfig);
 
             EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env1);
 
-            final Latch latch = LatchFactory.createExclusiveLatch(
-                envImpl, "test", false);
+            final Latch latch = LatchFactory.createExclusiveLatch(envImpl, "test", false);
 
             final CountDownLatch latched = new CountDownLatch(1);
 
@@ -1788,8 +1648,7 @@ public class EnvironmentTest extends DualTestCase {
                 latch.acquireExclusive();
                 fail("Expected latch timeout");
             } catch (EnvironmentFailureException e) {
-                assertTrue(
-                    e.getMessage(), e.getMessage().contains("Latch timeout"));
+                assertTrue(e.getMessage(), e.getMessage().contains("Latch timeout"));
             } finally {
                 thread.interrupt();
             }

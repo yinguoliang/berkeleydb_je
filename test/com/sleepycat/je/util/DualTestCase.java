@@ -29,19 +29,17 @@ public abstract class DualTestCase extends TestBase {
     private EnvTestWrapper envWrapper;
 
     /* Helps determine whether setUp()and tearDown() were invoked as a pair */
-    private boolean setUpInvoked = false;
+    private boolean        setUpInvoked = false;
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         setUpInvoked = true;
         if (DualTestCase.isReplicatedTest(getClass())) {
             try {
                 /* Load the class dynamically to avoid a dependency */
-                Class<?> cl =
-                    Class.forName("com.sleepycat.je.rep.util.RepEnvWrapper");
+                Class<?> cl = Class.forName("com.sleepycat.je.rep.util.RepEnvWrapper");
                 envWrapper = (EnvTestWrapper) cl.newInstance();
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
@@ -56,13 +54,11 @@ public abstract class DualTestCase extends TestBase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
-        
+    public void tearDown() throws Exception {
+
         if (!setUpInvoked) {
-            throw new IllegalStateException
-                ("DualTestCase.tearDown was invoked without a corresponding " +
-                 "DualTestCase.setUp() call");
+            throw new IllegalStateException(
+                    "DualTestCase.tearDown was invoked without a corresponding " + "DualTestCase.setUp() call");
         }
     }
 
@@ -71,9 +67,7 @@ public abstract class DualTestCase extends TestBase {
      * already exists on disk, it reuses it. If not, it creates a new
      * environment and returns it.
      */
-    protected Environment create(File envHome,
-                                 EnvironmentConfig envConfig)
-        throws DatabaseException {
+    protected Environment create(File envHome, EnvironmentConfig envConfig) throws DatabaseException {
 
         return envWrapper.create(envHome, envConfig);
     }
@@ -82,11 +76,9 @@ public abstract class DualTestCase extends TestBase {
      * Closes the environment.
      *
      * @param environment the environment to be closed.
-     *
      * @throws DatabaseException
      */
-    protected void close(Environment environment)
-        throws DatabaseException {
+    protected void close(Environment environment) throws DatabaseException {
 
         envWrapper.close(environment);
     }
@@ -99,11 +91,9 @@ public abstract class DualTestCase extends TestBase {
      * Closes the environment without a checkpoint.
      *
      * @param environment the environment to be closed.
-     *
      * @throws DatabaseException
      */
-    protected void closeNoCheckpoint(Environment environment)
-        throws DatabaseException {
+    protected void closeNoCheckpoint(Environment environment) throws DatabaseException {
 
         envWrapper.closeNoCheckpoint(environment);
     }
@@ -111,8 +101,7 @@ public abstract class DualTestCase extends TestBase {
     /**
      * Simulate a crash.
      */
-    protected void abnormalClose(Environment environment)
-        throws DatabaseException {
+    protected void abnormalClose(Environment environment) throws DatabaseException {
 
         envWrapper.abnormalClose(environment);
     }
@@ -123,19 +112,17 @@ public abstract class DualTestCase extends TestBase {
      *
      * @throws Exception
      */
-    protected void destroy()
-        throws Exception {
+    protected void destroy() throws Exception {
 
         envWrapper.destroy();
     }
 
     /**
      * Determines whether this test is to be run with a replicated environment.
-     * If the test is in the "rep" package it assumes that the test is to be
-     * run in a replicated environment.
-     *
-     * It's used to bypass the specifics of tests that may not be suitable for
-     * replication, e.g. non-transactional mode testing.
+     * If the test is in the "rep" package it assumes that the test is to be run
+     * in a replicated environment. It's used to bypass the specifics of tests
+     * that may not be suitable for replication, e.g. non-transactional mode
+     * testing.
      *
      * @param testCaseClass the test case class
      * @return true if the test uses a replicated environment, false otherwise.

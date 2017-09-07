@@ -31,44 +31,42 @@ import com.sleepycat.je.tree.FileSummaryLN;
 import com.sleepycat.utilint.StringUtils;
 
 /**
- * Tests that a FileSummaryLN with an old style string key can be read.  When
- * we relied solely on log entry version to determine whether an LN had a
- * string key, we could fail when an old style LN was migrated by the cleaner.
- * In that case the key was still a string key but the log entry version was
- * updated to something greater than zero.  See FileSummaryLN.hasStringKey for
- * details of how we now guard against this.
+ * Tests that a FileSummaryLN with an old style string key can be read. When we
+ * relied solely on log entry version to determine whether an LN had a string
+ * key, we could fail when an old style LN was migrated by the cleaner. In that
+ * case the key was still a string key but the log entry version was updated to
+ * something greater than zero. See FileSummaryLN.hasStringKey for details of
+ * how we now guard against this.
  */
 @RunWith(Parameterized.class)
 public class SR13061Test extends CleanerTestBase {
 
     public SR13061Test(boolean multiSubDir) {
         envMultiSubDir = multiSubDir;
-        customName = envMultiSubDir ? "multi-sub-dir" : null ;
+        customName = envMultiSubDir ? "multi-sub-dir" : null;
     }
-    
+
     @Parameters
     public static List<Object[]> genParams() {
-        
-        return getEnv(new boolean[] {false, true});
+
+        return getEnv(new boolean[] { false, true });
     }
 
     @Test
-    public void testSR13061()
-        throws DatabaseException {
+    public void testSR13061() throws DatabaseException {
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
 
         FileSummaryLN ln = new FileSummaryLN(new FileSummary());
 
         /*
-         * All of these tests failed before checking that the byte array must
-         * be eight bytes for integer keys.
+         * All of these tests failed before checking that the byte array must be
+         * eight bytes for integer keys.
          */
         assertTrue(ln.hasStringKey(stringKey(0)));
         assertTrue(ln.hasStringKey(stringKey(1)));

@@ -41,44 +41,42 @@ import com.sleepycat.util.test.TestBase;
 public class SerializeReadObjectsTest extends TestBase {
 
     /* Used to identify the two versions is compatible. */
-    private boolean serializedSuccess = true;
+    private boolean             serializedSuccess = true;
 
     /* The directory where serialized files saved. */
-    private File outputDir;
+    private File                outputDir;
 
     /* The directory where outputDir saved. */
-    private static final String parentDir =
-        "test/com/sleepycat/je/serializecompatibility";
+    private static final String parentDir         = "test/com/sleepycat/je/serializecompatibility";
 
     /**
      * Test whether the latest version is compatible with 4.0.0.
+     * 
      * @throws ClassNotFoundException when the test is enabled
      */
     @Test
-    public void test_4_0_0() 
-        throws ClassNotFoundException, IOException {
+    public void test_4_0_0() throws ClassNotFoundException, IOException {
 
         doTest(new JEVersion("4.0.106"));
     }
 
     /**
      * Test whether the latest version is compatible with 4.1.0.
+     * 
      * @throws ClassNotFoundException when the test is enabled
      */
     @Test
-    public void test_4_1_0()
-        throws ClassNotFoundException, IOException {
+    public void test_4_1_0() throws ClassNotFoundException, IOException {
 
         doTest(new JEVersion("4.1.6"));
     }
-      
+
     /*
-     * Read these serialized files and convert it.  If it's compatible, it
-     * won't throw the InvalidClassException; if not, it would throw out the
+     * Read these serialized files and convert it. If it's compatible, it won't
+     * throw the InvalidClassException; if not, it would throw out the
      * exception, serializedSuccess is false.
      */
-    public void doTest(JEVersion version)
-        throws ClassNotFoundException, IOException {
+    public void doTest(JEVersion version) throws ClassNotFoundException, IOException {
 
         outputDir = new File(parentDir, version.getNumericVersionString());
         if (!outputDir.exists()) {
@@ -88,26 +86,22 @@ public class SerializeReadObjectsTest extends TestBase {
 
         try {
             ObjectInputStream in;
-            for (Map.Entry<String, Object> entry : 
-                 SerializeUtils.getSerializedSet().entrySet()) {
+            for (Map.Entry<String, Object> entry : SerializeUtils.getSerializedSet().entrySet()) {
 
                 /*
-                 * Do the check when the latest version larger than the
-                 * assigned version.
+                 * Do the check when the latest version larger than the assigned
+                 * version.
                  */
                 if (JEVersion.CURRENT_VERSION.compareTo(version) >= 0) {
-                    in = new ObjectInputStream
-                        (new FileInputStream
-                            (outputDir.getPath() +
-                             System.getProperty("file.separator") +
-                             entry.getKey() + ".out"));
+                    in = new ObjectInputStream(new FileInputStream(
+                            outputDir.getPath() + System.getProperty("file.separator") + entry.getKey() + ".out"));
                     /* Check that we can read the object successfully. */
                     in.readObject();
                     in.close();
                 }
             }
         } catch (InvalidClassException e) {
-            /* Reading serialized output failed.*/
+            /* Reading serialized output failed. */
             serializedSuccess = false;
         } catch (FileNotFoundException fnfe) {
             /* A class doesn't exist in the former version, do nothing. */

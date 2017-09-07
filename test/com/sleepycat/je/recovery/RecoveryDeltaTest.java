@@ -52,38 +52,33 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
     @Override
     public void setExtraProperties() {
         /* Always run with delta logging cranked up. */
-        envConfig.setConfigParam
-            (EnvironmentParams.BIN_DELTA_PERCENT.getName(), "75");
+        envConfig.setConfigParam(EnvironmentParams.BIN_DELTA_PERCENT.getName(), "75");
 
         /*
-         * Make sure that the environments in this unit test always
-         * run with checkpointing off, so we can call it explicitly.
+         * Make sure that the environments in this unit test always run with
+         * checkpointing off, so we can call it explicitly.
          */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
 
         /*
-         * Make sure that the environments in this unit test always
-         * run with the compressor off, so we get known results
+         * Make sure that the environments in this unit test always run with the
+         * compressor off, so we get known results
          */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
     }
 
     /**
-     * Test the interaction of compression and deltas. After a compress,
-     * the next entry must be a full one.
+     * Test the interaction of compression and deltas. After a compress, the
+     * next entry must be a full one.
      */
     @Test
-    public void testCompress()
-        throws Throwable {
+    public void testCompress() throws Throwable {
 
         createEnvAndDbs(1 << 20, true, NUM_DBS);
         int numRecs = 20;
         try {
             /* Set up an repository of expected data */
-            Map<TestData, Set<TestData>> expectedData =
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             /* insert all the data */
             Transaction txn = env.beginTransaction(null, null);
@@ -116,8 +111,7 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
      * Test a recovery that processes deltas.
      */
     @Test
-    public void testRecoveryDelta()
-        throws Throwable {
+    public void testRecoveryDelta() throws Throwable {
 
         treeFanout = 16;
 
@@ -125,12 +119,11 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
 
         try {
             /* Set up a repository of expected data */
-            Map<TestData, Set<TestData>> expectedData =
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             /*
-             * Force a checkpoint, to flush a full version of the BIN
-             * to disk, so the next checkpoint can cause deltas
+             * Force a checkpoint, to flush a full version of the BIN to disk,
+             * so the next checkpoint can cause deltas
              */
             env.checkpoint(forceConfig);
 
@@ -172,25 +165,22 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
     }
 
     /**
-     * This test checks that reconstituting the bin deals properly with
-     * the knownDeleted flag
-     * insert key1, abort, checkpoint,  -- after abort, childref KD = true;
-     * insert key1, commit,             -- after commit, childref KD = false
-     * delete key1, abort,              -- BinDelta should have KD = false
-     * checkpoint to write deltas,
-     * recover. verify key1 is present. -- reconstituteBIN should make KD=false
+     * This test checks that reconstituting the bin deals properly with the
+     * knownDeleted flag insert key1, abort, checkpoint, -- after abort,
+     * childref KD = true; insert key1, commit, -- after commit, childref KD =
+     * false delete key1, abort, -- BinDelta should have KD = false checkpoint
+     * to write deltas, recover. verify key1 is present. -- reconstituteBIN
+     * should make KD=false
      */
     @Test
-    public void testKnownDeleted()
-        throws Throwable {
+    public void testKnownDeleted() throws Throwable {
 
         createEnvAndDbs(1 << 20, true, NUM_DBS);
         int numRecs = 20;
         try {
 
             /* Set up a repository of expected data */
-            Map<TestData, Set<TestData>> expectedData =
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             /* Insert data and abort. */
             Transaction txn = env.beginTransaction(null, null);
@@ -205,9 +195,9 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
             txn.abort();
 
             /*
-             * Force a checkpoint, to flush a full version of the BIN
-             * to disk, so the next checkpoint can cause deltas.
-             * These checkpointed BINS have known deleted flags set.
+             * Force a checkpoint, to flush a full version of the BIN to disk,
+             * so the next checkpoint can cause deltas. These checkpointed BINS
+             * have known deleted flags set.
              */
             env.checkpoint(forceConfig);
             removeCursors(cursors);
@@ -217,8 +207,7 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
              * false.
              */
             txn = env.beginTransaction(null, null);
-            insertData(txn, 0, numRecs - 1, expectedData, 1,
-                       true,  true, NUM_DBS);
+            insertData(txn, 0, numRecs - 1, expectedData, 1, true, true, NUM_DBS);
             txn.commit();
 
             /* Delete data and abort, keeps known delete flag true */
@@ -227,7 +216,7 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
             txn.abort();
 
             /* This checkpoint should write deltas. */
-            cursors = new Cursor[NUM_DBS][numRecs/2];
+            cursors = new Cursor[NUM_DBS][numRecs / 2];
             addCursors(cursors);
             env.getStats(new StatsConfig().setClear(true));
             env.checkpoint(forceConfig);
@@ -250,31 +239,28 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
      * applied properly by recovery.
      */
     @Test
-    public void testEvictedDelta()
-        throws Throwable {
+    public void testEvictedDelta() throws Throwable {
 
-        createEnv(1 << 20, false /*runCheckpointerDaemon*/);
+        createEnv(1 << 20, false /* runCheckpointerDaemon */);
         int numRecs = 200;
         int numDbs = 30;
         try {
             /* Set up a repository of expected data */
-            Map<TestData, Set<TestData>> expectedData =
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             env.checkpoint(forceConfig);
 
-            createDbs(null /*txn*/, numDbs);
+            createDbs(null /* txn */, numDbs);
 
             /*
-             * Force eviction to write out non-provisional MapLN deltas.  Must
-             * close DBs in order to evict MapLNs.  We verified manually that
+             * Force eviction to write out non-provisional MapLN deltas. Must
+             * close DBs in order to evict MapLNs. We verified manually that
              * MapLN deltas are written by evictAllBins. [#21401]
              */
             closeDbs();
-            evictAllBins(DbInternal.getNonNullEnvImpl(env).
-                         getDbTree().getIdDatabaseImpl());
+            evictAllBins(DbInternal.getNonNullEnvImpl(env).getDbTree().getIdDatabaseImpl());
 
-            createDbs(null /*txn*/, numDbs);
+            createDbs(null /* txn */, numDbs);
 
             /* Insert data. */
             Transaction txn = env.beginTransaction(null, null);
@@ -283,8 +269,8 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
 
             /*
              * Force eviction to write out non-provisional deltas for app DBs.
-             * We verified manually that the deltas are written by
-             * evictAllBins.  [#21401]
+             * We verified manually that the deltas are written by evictAllBins.
+             * [#21401]
              */
             for (Database db : dbs) {
                 evictAllBins(db);
@@ -311,8 +297,7 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
     }
 
     private void evictAllBins(DatabaseImpl dbImpl) {
-        final BasicLocker locker =
-            BasicLocker.createBasicLocker(DbInternal.getNonNullEnvImpl(env));
+        final BasicLocker locker = BasicLocker.createBasicLocker(DbInternal.getNonNullEnvImpl(env));
         final Cursor cursor = DbInternal.makeCursor(dbImpl, locker, null);
         final List<BIN> bins = collectAllBins(cursor);
         cursor.close();
@@ -329,8 +314,7 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
         data.setPartial(0, 0, true);
         final List<BIN> bins = new ArrayList<BIN>();
         BIN prevBin = null;
-        while (cursor.getNext(key, data, LockMode.READ_UNCOMMITTED) ==
-               OperationStatus.SUCCESS) {
+        while (cursor.getNext(key, data, LockMode.READ_UNCOMMITTED) == OperationStatus.SUCCESS) {
             final BIN thisBin = DbInternal.getCursorImpl(cursor).getBIN();
             if (prevBin != thisBin) {
                 prevBin = thisBin;
@@ -342,13 +326,11 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
 
     private void evictBin(BIN bin) {
         bin.latch(CacheMode.UNCHANGED);
-        DbInternal.getNonNullEnvImpl(env).getEvictor().doTestEvict
-            (bin, EvictionSource.CACHEMODE);
+        DbInternal.getNonNullEnvImpl(env).getEvictor().doTestEvict(bin, EvictionSource.CACHEMODE);
     }
 
     /* Add cursors on each value to prevent compression. */
-    private void addCursors(Cursor[][] cursors)
-        throws DatabaseException {
+    private void addCursors(Cursor[][] cursors) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -359,17 +341,14 @@ public class RecoveryDeltaTest extends RecoveryTestBase {
                 cursors[d][i] = dbs[d].openCursor(null, null);
 
                 for (int j = 0; j < i; j++) {
-                    OperationStatus status =
-                        cursors[d][i].getNext(key, data,
-                                              LockMode.READ_UNCOMMITTED);
+                    OperationStatus status = cursors[d][i].getNext(key, data, LockMode.READ_UNCOMMITTED);
                     assertEquals(OperationStatus.SUCCESS, status);
                 }
             }
         }
     }
 
-    private void removeCursors(Cursor[][] cursors)
-        throws DatabaseException {
+    private void removeCursors(Cursor[][] cursors) throws DatabaseException {
         for (int d = 0; d < NUM_DBS; d++) {
             for (int i = 0; i < cursors[d].length; i++) {
                 cursors[d][i].close();

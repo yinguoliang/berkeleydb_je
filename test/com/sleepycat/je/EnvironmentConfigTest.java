@@ -50,29 +50,28 @@ public class EnvironmentConfigTest extends TestBase {
          */
         Properties props = new Properties();
         props.setProperty(EnvironmentConfig.TXN_TIMEOUT, "10000");
-        props.setProperty(EnvironmentConfig.TXN_DEADLOCK_STACK_TRACE, 
-                          "true");
+        props.setProperty(EnvironmentConfig.TXN_DEADLOCK_STACK_TRACE, "true");
         new EnvironmentConfig(props); // Just instantiate a config object.
 
         /*
-         * Should fail: we should throw because leftover.param is not
-         * a valid parameter.
+         * Should fail: we should throw because leftover.param is not a valid
+         * parameter.
          */
         props.clear();
         props.setProperty("leftover.param", "foo");
         checkEnvironmentConfigValidation(props);
 
         /*
-         * Should fail: we should throw because FileHandlerLimit
-         * is less than its minimum
+         * Should fail: we should throw because FileHandlerLimit is less than
+         * its minimum
          */
         props.clear();
         props.setProperty(EnvironmentConfig.LOCK_N_LOCK_TABLES, "0");
         checkEnvironmentConfigValidation(props);
 
         /*
-         * Should fail: we should throw because FileHandler.on is not
-         * a valid value.
+         * Should fail: we should throw because FileHandler.on is not a valid
+         * value.
          */
         props.clear();
         props.setProperty(EnvironmentConfig.TXN_DEADLOCK_STACK_TRACE, "xxx");
@@ -83,8 +82,7 @@ public class EnvironmentConfigTest extends TestBase {
      * Test single parameter setting.
      */
     @Test
-    public void testSingleParam()
-        throws Exception {
+    public void testSingleParam() throws Exception {
 
         try {
             EnvironmentConfig config = new EnvironmentConfig();
@@ -95,18 +93,16 @@ public class EnvironmentConfigTest extends TestBase {
         }
 
         EnvironmentConfig config = new EnvironmentConfig();
-        config.setConfigParam(EnvironmentParams.MAX_MEMORY_PERCENT.getName(),
-                              "81");
+        config.setConfigParam(EnvironmentParams.MAX_MEMORY_PERCENT.getName(), "81");
         assertEquals(81, config.getCachePercent());
     }
 
-    /* 
-     * Test that replicated config param is wrongly set on a standalone 
-     * Environment. 
+    /*
+     * Test that replicated config param is wrongly set on a standalone
+     * Environment.
      */
     @Test
-    public void testRepParam() 
-        throws Exception {
+    public void testRepParam() throws Exception {
 
         /* The replicated property name and value. */
         final String propName = "je.rep.maxMessageSize";
@@ -127,8 +123,7 @@ public class EnvironmentConfigTest extends TestBase {
         }
 
         /* Read the je.properties. */
-        ArrayList<String> formerLines = TestUtils.readWriteJEProperties
-            (envHome, propName + "=" + propValue + "\n");
+        ArrayList<String> formerLines = TestUtils.readWriteJEProperties(envHome, propName + "=" + propValue + "\n");
 
         /* Check this behavior is valid. */
         Environment env = null;
@@ -139,9 +134,9 @@ public class EnvironmentConfigTest extends TestBase {
             fail("Unexpected exception: " + e);
         }
 
-        /* 
-         * Check that getting the value for je.rep.maxMessageSize will throw 
-         * exception. 
+        /*
+         * Check that getting the value for je.rep.maxMessageSize will throw
+         * exception.
          */
         try {
             EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
@@ -161,8 +156,7 @@ public class EnvironmentConfigTest extends TestBase {
     }
 
     @Test
-    public void testSerialize()
-        throws Exception {
+    public void testSerialize() throws Exception {
 
         final String nodeName = "env1";
 
@@ -176,8 +170,7 @@ public class EnvironmentConfigTest extends TestBase {
         envConfig.setTransactional(true);
         envConfig.setTxnNoSync(true);
         envConfig.setCacheSize(100000);
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-                                 "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
         envConfig.setCacheMode(CacheMode.DEFAULT);
         /* Test the transient fields in the EnvironmentMutableConfig. */
         envConfig.setLoadPropertyFile(true);
@@ -186,39 +179,30 @@ public class EnvironmentConfigTest extends TestBase {
             }
         });
 
-        EnvironmentConfig newConfig = (EnvironmentConfig) 
-            TestUtils.serializeAndReadObject(envHome, envConfig);
-        
+        EnvironmentConfig newConfig = (EnvironmentConfig) TestUtils.serializeAndReadObject(envHome, envConfig);
+
         assertTrue(newConfig != envConfig);
         /* Check the serialized fields of EnvironmentConfig. */
         assertEquals(newConfig.getAllowCreate(), envConfig.getAllowCreate());
         assertEquals(newConfig.getNodeName(), nodeName);
         /* Check the transient fields of EnvironmentConfig. */
         assertFalse(newConfig.getCreateUP() == envConfig.getCreateUP());
-        assertNotSame
-            (newConfig.getCheckpointUP(), envConfig.getCheckpointUP());
-        assertNotSame
-            (newConfig.getTxnReadCommitted(), envConfig.getTxnReadCommitted());
+        assertNotSame(newConfig.getCheckpointUP(), envConfig.getCheckpointUP());
+        assertNotSame(newConfig.getTxnReadCommitted(), envConfig.getTxnReadCommitted());
         /* Check the serialized fields of EnvironmentMutableConfig. */
-        assertEquals
-            (newConfig.getTransactional(), envConfig.getTransactional());
+        assertEquals(newConfig.getTransactional(), envConfig.getTransactional());
         assertEquals(newConfig.getTxnNoSync(), envConfig.getTxnNoSync());
         assertEquals(newConfig.getCacheSize(), envConfig.getCacheSize());
-        assertEquals(new DbConfigManager(newConfig).
-                     get(EnvironmentConfig.ENV_RUN_CLEANER), 
-                     "false");
+        assertEquals(new DbConfigManager(newConfig).get(EnvironmentConfig.ENV_RUN_CLEANER), "false");
         assertEquals(newConfig.getCacheMode(), envConfig.getCacheMode());
         /* Check the transient fields of EnvironmentMutableConfig. */
-        assertFalse(newConfig.getLoadPropertyFile() == 
-                    envConfig.getLoadPropertyFile());
-        assertFalse
-            (newConfig.getValidateParams() == envConfig.getValidateParams());
+        assertFalse(newConfig.getLoadPropertyFile() == envConfig.getLoadPropertyFile());
+        assertFalse(newConfig.getValidateParams() == envConfig.getValidateParams());
         assertEquals(newConfig.getExceptionListener(), null);
     }
 
     @Test
-    public void testInconsistentParams()
-        throws Exception {
+    public void testInconsistentParams() throws Exception {
 
         try {
             EnvironmentConfig config = new EnvironmentConfig();

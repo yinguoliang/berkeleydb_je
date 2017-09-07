@@ -43,16 +43,15 @@ import com.sleepycat.utilint.StringUtils;
 public class IOExceptionTest extends TestBase {
 
     private Environment env;
-    private Database db;
-    private final File envHome;
+    private Database    db;
+    private final File  envHome;
 
     public IOExceptionTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @After
-    public void tearDown()
-        throws DatabaseException {
+    public void tearDown() throws DatabaseException {
 
         if (db != null) {
             db.close();
@@ -99,16 +98,11 @@ public class IOExceptionTest extends TestBase {
             db = env.openDatabase(null, databaseName, dbConfig);
 
             Transaction txn = env.beginTransaction(null, null);
-            DatabaseEntry oneKey =
-                (dupes ?
-                 new DatabaseEntry(StringUtils.toUTF8("2")) :
-                 new DatabaseEntry(StringUtils.toUTF8("1")));
-            DatabaseEntry oneData =
-                new DatabaseEntry(new byte[10]);
-            DatabaseEntry twoKey =
-                new DatabaseEntry(StringUtils.toUTF8("2"));
-            DatabaseEntry twoData =
-                new DatabaseEntry(new byte[100000]);
+            DatabaseEntry oneKey = (dupes ? new DatabaseEntry(StringUtils.toUTF8("2"))
+                    : new DatabaseEntry(StringUtils.toUTF8("1")));
+            DatabaseEntry oneData = new DatabaseEntry(new byte[10]);
+            DatabaseEntry twoKey = new DatabaseEntry(StringUtils.toUTF8("2"));
+            DatabaseEntry twoData = new DatabaseEntry(new byte[100000]);
             if (dupes) {
                 DatabaseEntry temp = oneKey;
                 oneKey = oneData;
@@ -119,8 +113,7 @@ public class IOExceptionTest extends TestBase {
             }
 
             try {
-                assertTrue(db.put(txn, oneKey, oneData) ==
-                           OperationStatus.SUCCESS);
+                assertTrue(db.put(txn, oneKey, oneData) == OperationStatus.SUCCESS);
                 db.put(txn, twoKey, twoData);
             } catch (DatabaseException DE) {
                 fail("unexpected DatabaseException");
@@ -128,16 +121,14 @@ public class IOExceptionTest extends TestBase {
 
             /* Read back the data and make sure it all looks ok. */
             try {
-                assertTrue(db.get(txn, oneKey, oneData, null) ==
-                           OperationStatus.SUCCESS);
+                assertTrue(db.get(txn, oneKey, oneData, null) == OperationStatus.SUCCESS);
                 assertTrue(oneData.getData().length == (dupes ? 1 : 10));
             } catch (DatabaseException DE) {
                 fail("unexpected DatabaseException");
             }
 
             try {
-                assertTrue(db.get(txn, twoKey, twoData, null) ==
-                           OperationStatus.SUCCESS);
+                assertTrue(db.get(txn, twoKey, twoData, null) == OperationStatus.SUCCESS);
             } catch (DatabaseException DE) {
                 fail("unexpected DatabaseException");
             }
@@ -154,20 +145,16 @@ public class IOExceptionTest extends TestBase {
 
             /* Read back the data and make sure it all looks ok. */
             try {
-                assertTrue(db.get(null, oneKey, oneData, null) ==
-                           (abort ?
-                            OperationStatus.NOTFOUND :
-                            OperationStatus.SUCCESS));
+                assertTrue(db.get(null, oneKey, oneData,
+                        null) == (abort ? OperationStatus.NOTFOUND : OperationStatus.SUCCESS));
                 assertTrue(oneData.getData().length == (dupes ? 1 : 10));
             } catch (DatabaseException DE) {
                 fail("unexpected DatabaseException");
             }
 
             try {
-                assertTrue(db.get(null, twoKey, twoData, null) ==
-                           (abort ?
-                            OperationStatus.NOTFOUND :
-                            OperationStatus.SUCCESS));
+                assertTrue(db.get(null, twoKey, twoData,
+                        null) == (abort ? OperationStatus.NOTFOUND : OperationStatus.SUCCESS));
             } catch (DatabaseException DE) {
                 fail("unexpected DatabaseException");
             }
@@ -182,8 +169,7 @@ public class IOExceptionTest extends TestBase {
         doIOExceptionDuringFileFlippingWrite(8, 33, 2);
     }
 
-    private void doIOExceptionDuringFileFlippingWrite(int numIterations,
-                                                      int exceptionStartWrite,
+    private void doIOExceptionDuringFileFlippingWrite(int numIterations, int exceptionStartWrite,
                                                       int exceptionWriteCount) {
         try {
             EnvironmentConfig envConfig = new EnvironmentConfig();
@@ -230,20 +216,16 @@ public class IOExceptionTest extends TestBase {
                          * On the last iteration, write a record that is large
                          * enough to force a file flip (i.e. an fsync which
                          * succeeds) followed by the large write (which doesn't
-                         * succeed due to an IOException).  In [#15754] the
-                         * large write fails on Out Of Disk Space, rolling back
-                         * the savedLSN to the previous file, even though the
-                         * file has flipped.  The subsequent write ends up in
-                         * the flipped file, but at the offset of the older
-                         * file (leaving a hole in the new flipped file).
+                         * succeed due to an IOException). In [#15754] the large
+                         * write fails on Out Of Disk Space, rolling back the
+                         * savedLSN to the previous file, even though the file
+                         * has flipped. The subsequent write ends up in the
+                         * flipped file, but at the offset of the older file
+                         * (leaving a hole in the new flipped file).
                          */
-                        Trace.trace(envImpl,
-                                    i + "/" + FileManager.WRITE_COUNT +
-                                    " " + new String(new byte[2000]));
+                        Trace.trace(envImpl, i + "/" + FileManager.WRITE_COUNT + " " + new String(new byte[2000]));
                     } else {
-                        Trace.trace(envImpl,
-                                        i + "/" + FileManager.WRITE_COUNT +
-                                        " " + "xx");
+                        Trace.trace(envImpl, i + "/" + FileManager.WRITE_COUNT + " " + "xx");
                     }
                 } catch (IllegalStateException ISE) {
                     /* Eat exception thrown by TraceLogHandler. */
@@ -252,8 +234,8 @@ public class IOExceptionTest extends TestBase {
                 /*
                  * Generate a forced record by calling commit. Since RMW
                  * transactions that didn't actually do a write won't log a
-                 * commit record, do an addLogInfo to trick the txn into
-                 * logging a commit.
+                 * commit record, do an addLogInfo to trick the txn into logging
+                 * a commit.
                  */
                 Transaction txn = env.beginTransaction(null, null);
                 db.get(txn, key, data, LockMode.RMW);
@@ -265,17 +247,14 @@ public class IOExceptionTest extends TestBase {
             /*
              * Verify that the log files are ok and have no checksum errors.
              */
-            FileReader reader =
-                new FileReader(DbInternal.getNonNullEnvImpl(env),
-                               4096, true, 0, null, DbLsn.NULL_LSN,
-                               DbLsn.NULL_LSN) {
-                    @Override
-            protected boolean processEntry(ByteBuffer entryBuffer) {
-                        entryBuffer.position(entryBuffer.position() +
-                                             currentEntryHeader.getItemSize());
-                        return true;
-                    }
-                };
+            FileReader reader = new FileReader(DbInternal.getNonNullEnvImpl(env), 4096, true, 0, null, DbLsn.NULL_LSN,
+                    DbLsn.NULL_LSN) {
+                @Override
+                protected boolean processEntry(ByteBuffer entryBuffer) {
+                    entryBuffer.position(entryBuffer.position() + currentEntryHeader.getItemSize());
+                    return true;
+                }
+            };
 
             DbInternal.getNonNullEnvImpl(env).getLogManager().flushSync();
 
@@ -283,8 +262,7 @@ public class IOExceptionTest extends TestBase {
             }
 
             /* Make sure the reader really did scan the files. */
-            assert (DbLsn.getFileNumber(reader.getLastLsn()) == 3) :
-                DbLsn.toString(reader.getLastLsn());
+            assert (DbLsn.getFileNumber(reader.getLastLsn()) == 3) : DbLsn.toString(reader.getLastLsn());
 
             env.close();
             env = null;

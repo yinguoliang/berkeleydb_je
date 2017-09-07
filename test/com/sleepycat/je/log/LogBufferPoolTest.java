@@ -48,12 +48,12 @@ import com.sleepycat.util.test.TestBase;
 
 public class LogBufferPoolTest extends TestBase {
 
-    Environment env;
-    Database db;
+    Environment     env;
+    Database        db;
     EnvironmentImpl envImpl;
-    FileManager fileManager;
-    File envHome;
-    LogBufferPool bufPool;
+    FileManager     fileManager;
+    File            envHome;
+    LogBufferPool   bufPool;
 
     public LogBufferPoolTest() {
         super();
@@ -61,8 +61,7 @@ public class LogBufferPoolTest extends TestBase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         bufPool = null;
         if (fileManager != null) {
@@ -75,15 +74,14 @@ public class LogBufferPoolTest extends TestBase {
      * Make sure that we'll add more buffers as needed.
      */
     @Test
-    public void testGrowBuffers()
-        throws Throwable {
+    public void testGrowBuffers() throws Throwable {
 
         try {
 
             setupEnv(true, true);
 
             /*
-             * Each buffer can only hold 2 items.  Put enough test items in to
+             * Each buffer can only hold 2 items. Put enough test items in to
              * get seven buffers.
              */
             List<Long> lsns = new ArrayList<Long>();
@@ -110,14 +108,13 @@ public class LogBufferPoolTest extends TestBase {
 
                 /* Here's the expected data. */
                 byte[] expected = new byte[10];
-                Arrays.fill(expected, (byte)(i+1));
+                Arrays.fill(expected, (byte) (i + 1));
 
                 /* Here's the data in the log buffer. */
                 byte[] logData = new byte[10];
                 b = logBuf.getDataBuffer();
                 long firstLsnInBuf = logBuf.getFirstLsn();
-                b.position((int) (DbLsn.getFileOffset(testLsn) -
-                                  DbLsn.getFileOffset(firstLsnInBuf)));
+                b.position((int) (DbLsn.getFileOffset(testLsn) - DbLsn.getFileOffset(firstLsnInBuf)));
                 logBuf.getDataBuffer().get(logData);
 
                 /* They'd better be equal. */
@@ -126,17 +123,16 @@ public class LogBufferPoolTest extends TestBase {
             }
 
             /*
-             * This LSN shouldn't be in the buffers, it's less than any
-             * buffered item.
+             * This LSN shouldn't be in the buffers, it's less than any buffered
+             * item.
              */
-            assertNull(bufPool.getReadBufferByLsn(DbLsn.makeLsn(0,10)));
+            assertNull(bufPool.getReadBufferByLsn(DbLsn.makeLsn(0, 10)));
 
             /*
              * This LSN is illegal to ask for, it's greater than any registered
              * LSN.
              */
-            assertNull("LSN too big",
-                       bufPool.getReadBufferByLsn(DbLsn.makeLsn(10, 141)));
+            assertNull("LSN too big", bufPool.getReadBufferByLsn(DbLsn.makeLsn(10, 141)));
         } catch (Throwable t) {
             t.printStackTrace();
             throw t;
@@ -145,11 +141,10 @@ public class LogBufferPoolTest extends TestBase {
 
     /**
      * Helper to insert fake data.
+     * 
      * @return LSN registered for this fake data
      */
-    private long insertData(LogBufferPool bufPool,
-                            byte value)
-        throws IOException, DatabaseException {
+    private long insertData(LogBufferPool bufPool, byte value) throws IOException, DatabaseException {
 
         byte[] data = new byte[10];
         Arrays.fill(data, value);
@@ -169,8 +164,7 @@ public class LogBufferPoolTest extends TestBase {
      * Test buffer flushes.
      */
     @Test
-    public void testBufferFlush()
-        throws Throwable {
+    public void testBufferFlush() throws Throwable {
 
         try {
             setupEnv(false, false);
@@ -183,37 +177,34 @@ public class LogBufferPoolTest extends TestBase {
              * get five buffers.
              */
             for (int i = 0; i < 9; i++) {
-                insertData(bufPool, (byte) (i+1));
+                insertData(bufPool, (byte) (i + 1));
             }
             fileManager.syncLogEnd();
 
             /* We should see two files exist. */
-            String[] fileNames =
-                fileManager.listFileNames(FileManager.JE_SUFFIXES);
+            String[] fileNames = fileManager.listFileNames(FileManager.JE_SUFFIXES);
             assertEquals("Should be 2 files", 2, fileNames.length);
 
             /* Read the files. */
             if (false) {
-            ByteBuffer dataBuffer = ByteBuffer.allocate(100);
-            FileHandle file0 = fileManager.getFileHandle(0L);
-            RandomAccessFile file = file0.getFile();
-            FileChannel channel = file.getChannel();
-            int bytesRead = channel.read(dataBuffer,
-                                         FileManager.firstLogEntryOffset());
-            dataBuffer.flip();
-            assertEquals("Check bytes read", 50, bytesRead);
-            assertEquals("Check size of file", 50, dataBuffer.limit());
-            file.close();
-            FileHandle file1 = fileManager.getFileHandle(1L);
-            file = file1.getFile();
-            channel = file.getChannel();
-            bytesRead = channel.read(dataBuffer,
-                                     FileManager.firstLogEntryOffset());
-            dataBuffer.flip();
-            assertEquals("Check bytes read", 40, bytesRead);
-            assertEquals("Check size of file", 40, dataBuffer.limit());
-            file0.release();
-            file1.release();
+                ByteBuffer dataBuffer = ByteBuffer.allocate(100);
+                FileHandle file0 = fileManager.getFileHandle(0L);
+                RandomAccessFile file = file0.getFile();
+                FileChannel channel = file.getChannel();
+                int bytesRead = channel.read(dataBuffer, FileManager.firstLogEntryOffset());
+                dataBuffer.flip();
+                assertEquals("Check bytes read", 50, bytesRead);
+                assertEquals("Check size of file", 50, dataBuffer.limit());
+                file.close();
+                FileHandle file1 = fileManager.getFileHandle(1L);
+                file = file1.getFile();
+                channel = file.getChannel();
+                bytesRead = channel.read(dataBuffer, FileManager.firstLogEntryOffset());
+                dataBuffer.flip();
+                assertEquals("Check bytes read", 40, bytesRead);
+                assertEquals("Check size of file", 40, dataBuffer.limit());
+                file0.release();
+                file1.release();
             }
         } catch (Throwable e) {
             e.printStackTrace();
@@ -222,14 +213,12 @@ public class LogBufferPoolTest extends TestBase {
     }
 
     @Test
-    public void testTemporaryBuffers()
-        throws Exception {
+    public void testTemporaryBuffers() throws Exception {
 
         final int KEY_SIZE = 10;
         final int DATA_SIZE = 1000000;
 
-        tempBufferInitEnvInternal
-            ("0", MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
+        tempBufferInitEnvInternal("0", MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
         DatabaseEntry key = new DatabaseEntry(new byte[KEY_SIZE]);
         DatabaseEntry data = new DatabaseEntry(new byte[DATA_SIZE]);
         db.put(null, key, data);
@@ -237,8 +226,7 @@ public class LogBufferPoolTest extends TestBase {
         env.close();
     }
 
-    private void tempBufferInitEnvInternal(String buffSize, String cacheSize)
-        throws DatabaseException {
+    private void tempBufferInitEnvInternal(String buffSize, String cacheSize) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
@@ -259,31 +247,23 @@ public class LogBufferPoolTest extends TestBase {
         db = env.openDatabase(null, "InsertAndDelete", dbConfig);
     }
 
-    private void setupEnv(boolean inMemory, boolean detectLogDelete)
-        throws Exception {
+    private void setupEnv(boolean inMemory, boolean detectLogDelete) throws Exception {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
 
         DbInternal.disableParameterValidation(envConfig);
-        envConfig.setConfigParam(
-            EnvironmentParams.LOG_MEM_SIZE.getName(),
-            EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
-        envConfig.setConfigParam(
-            EnvironmentParams.LOG_FILE_MAX.getName(), "90");
-        envConfig.setConfigParam(
-            EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
+        envConfig.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(), EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), "90");
+        envConfig.setConfigParam(EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
         envConfig.setAllowCreate(true);
         if (inMemory) {
             /* Make the bufPool grow some buffers. Disable writing. */
-            envConfig.setConfigParam(
-                EnvironmentParams.LOG_MEMORY_ONLY.getName(), "true");
+            envConfig.setConfigParam(EnvironmentParams.LOG_MEMORY_ONLY.getName(), "true");
         }
 
         if (!detectLogDelete) {
-            envConfig.setConfigParam(
-                EnvironmentParams.LOG_DETECT_FILE_DELETE.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.LOG_DETECT_FILE_DELETE.getName(), "false");
         }
-        
 
         env = new Environment(envHome, envConfig);
         envImpl = DbInternal.getNonNullEnvImpl(env);
@@ -295,9 +275,9 @@ public class LogBufferPoolTest extends TestBase {
         bufPool = new LogBufferPool(fileManager, envImpl);
 
         /*
-         * Remove any files after the environment is created again!  We want to
-         * remove the files made by recovery, so we can test the file manager
-         * in controlled cases.
+         * Remove any files after the environment is created again! We want to
+         * remove the files made by recovery, so we can test the file manager in
+         * controlled cases.
          */
         TestUtils.removeFiles("Setup", envHome, FileManager.JE_SUFFIX);
     }

@@ -41,94 +41,72 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * Test that the rollback periods in a log are correctly created.  This test
- * should not be dual mode, because it sets up very specific cases, and does
- * not create a replication stream at all.
- *
- * The test infrastructure can take the declaration of a pseudo log, and then
- * process it accordingly. Each test case is therefore a mini-log excerpt.
- *
+ * Test that the rollback periods in a log are correctly created. This test
+ * should not be dual mode, because it sets up very specific cases, and does not
+ * create a replication stream at all. The test infrastructure can take the
+ * declaration of a pseudo log, and then process it accordingly. Each test case
+ * is therefore a mini-log excerpt.
  */
 
-/* To add:             ---    ----------  ------------- 
-   new VisibleLN  (100L),
-   new VisibleLN  (200L),
-   new RBStart    (300L,  200L),
-   new InvisibleLN(310L),
-   new RBEnd      (400L,  200L,        300L)
-*/
+/*
+ * To add: --- ---------- ------------- new VisibleLN (100L), new VisibleLN
+ * (200L), new RBStart (300L, 200L), new InvisibleLN(310L), new RBEnd (400L,
+ * 200L, 300L)
+ */
 
 public class RollbackTrackerTest extends TestBase {
     private static boolean verbose = Boolean.getBoolean("verbose");
 
-    private final File envHome;
+    private final File     envHome;
 
     public RollbackTrackerTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
-    /** 
-     * This valid log has a four level nested rollback period 
+    /**
+     * This valid log has a four level nested rollback period
      */
     @Test
     public void testGoodNestedLogs() {
 
         LogRecord[] testLog = new LogRecord[] {
-            /*            
-             * This is a pseudo log.
-             *              lsn  txn  match  rollback
-             *                   id   point  start    
-             *------------   --- ---  ----- -----       */
-            new VisibleLN  (10, -500              ),
-            new Commit     (11, -500              ),
-            new VisibleLN  (12, -501              ),                        
+                /*
+                 * This is a pseudo log. lsn txn match rollback id point start
+                 * ------------ --- --- ----- -----
+                 */
+                new VisibleLN(10, -500), new Commit(11, -500), new VisibleLN(12, -501),
 
-            /* rollback period from lsn 20 -> 22 */
-            new Abort      (20, -503              ),                        
-            new InvisibleLN(21, -504              ),                        
-            new RBStart    (22,       20          ),              
+                /* rollback period from lsn 20 -> 22 */
+                new Abort(20, -503), new InvisibleLN(21, -504), new RBStart(22, 20),
 
-            new VisibleLN  (30, -504              ),
-            new VisibleLN  (31, -504              ),
+                new VisibleLN(30, -504), new VisibleLN(31, -504),
 
-            /* A: second nested rollback period from lsn x -> y */
-            /* B: second nested rollback period from lsn x -> y */
-            new Abort      (40, -505              ),                  
-            new InvisibleLN(41, -506              ), 
-            /* C: third nested rollback period from lsn x -> y */
-            new Abort      (42, -600              ),                  
-            /* D: most nested rollback period from lsn 43 -> 45 */
-            new Abort      (43, -600              ),                  
-            new InvisibleLN(44, -506              ), 
-            new RBStart    (45,       43          ),
-            new RBEnd      (46,       43,     45  ),    // D
+                /* A: second nested rollback period from lsn x -> y */
+                /* B: second nested rollback period from lsn x -> y */
+                new Abort(40, -505), new InvisibleLN(41, -506),
+                /* C: third nested rollback period from lsn x -> y */
+                new Abort(42, -600),
+                /* D: most nested rollback period from lsn 43 -> 45 */
+                new Abort(43, -600), new InvisibleLN(44, -506), new RBStart(45, 43), new RBEnd(46, 43, 45), // D
 
-            new InvisibleLN(47, -507              ), 
-            new RBStart    (48,       42          ),    // C
-            new InvisibleLN(49, -508              ), 
-            new RBStart    (50,       40          ),    // B
-            new InvisibleLN(51, -509              ), 
-            new RBStart    (52,       40          ),
-            new RBEnd      (53,       40,     52  ),    // A
+                new InvisibleLN(47, -507), new RBStart(48, 42), // C
+                new InvisibleLN(49, -508), new RBStart(50, 40), // B
+                new InvisibleLN(51, -509), new RBStart(52, 40), new RBEnd(53, 40, 52), // A
 
-            /* rollback period from lsn 70 -> 92 */
-            new Commit     (70, -504              ),
-            new InvisibleLN(71, -600              ),
-            new InvisibleLN(72, -600              ),
-            new RBStart    (73,        70         ),              
-            new RBEnd      (74,        70,   73   )
-        };
+                /* rollback period from lsn 70 -> 92 */
+                new Commit(70, -504), new InvisibleLN(71, -600), new InvisibleLN(72, -600), new RBStart(73, 70),
+                new RBEnd(74, 70, 73) };
 
-        /* 
-         * Each RollbackStart should have a set of txn ids that were
-         * active when the rollback started.
+        /*
+         * Each RollbackStart should have a set of txn ids that were active when
+         * the rollback started.
          */
-        ((RBStart) testLog[5]).addActiveTxnIds(new Long[] {-504L});
-        ((RBStart) testLog[13]).addActiveTxnIds(new Long[] {-506L});
-        ((RBStart) testLog[16]).addActiveTxnIds(new Long[] {-507L});
-        ((RBStart) testLog[18]).addActiveTxnIds(new Long[] {-506L, -508L});
-        ((RBStart) testLog[20]).addActiveTxnIds(new Long[] {-509L});
-        ((RBStart) testLog[25]).addActiveTxnIds(new Long[] {-600L});
+        ((RBStart) testLog[5]).addActiveTxnIds(new Long[] { -504L });
+        ((RBStart) testLog[13]).addActiveTxnIds(new Long[] { -506L });
+        ((RBStart) testLog[16]).addActiveTxnIds(new Long[] { -507L });
+        ((RBStart) testLog[18]).addActiveTxnIds(new Long[] { -506L, -508L });
+        ((RBStart) testLog[20]).addActiveTxnIds(new Long[] { -509L });
+        ((RBStart) testLog[25]).addActiveTxnIds(new Long[] { -600L });
 
         /* This is what we expect to be in the tracker. */
         List<RollbackPeriod> expected = new ArrayList<RollbackPeriod>();
@@ -140,7 +118,7 @@ public class RollbackTrackerTest extends TestBase {
         runTest(testLog, expected, 9 /* checkpoint start */);
     }
 
-    /** 
+    /**
      * This valid log has multiple rollback periods and rollback periods with
      * and without rollback end.
      */
@@ -148,48 +126,36 @@ public class RollbackTrackerTest extends TestBase {
     public void testGoodLogs() {
 
         LogRecord[] testLog = new LogRecord[] {
-            /*            
-             * This is a pseudo log.
-             *              lsn  txn  match  rollback
-             *                   id   point  start    
-             *------------   --- ---  ----- -----       */
-            new VisibleLN  (10, -500              ),
+                /*
+                 * This is a pseudo log. lsn txn match rollback id point start
+                 * ------------ --- --- ----- -----
+                 */
+                new VisibleLN(10, -500),
 
-            /* rollback period from lsn 20 -> 22 */
-            new Abort      (20  -500              ),                  
-            new InvisibleLN(21, -501              ), 
-            new RBStart    (22,       20          ),
-            new RBEnd      (23,       20,     22  ),   
+                /* rollback period from lsn 20 -> 22 */
+                new Abort(20 - 500), new InvisibleLN(21, -501), new RBStart(22, 20), new RBEnd(23, 20, 22),
 
-            new VisibleLN  (30, -502              ),
+                new VisibleLN(30, -502),
 
-            /* rollback period from lsn 40 -> 48 */
-            new Commit     (40, -502              ),
-            new VisibleLN  (45, -503              ),                        
-            new Abort      (46, -503              ),                        
-            new InvisibleLN(47, -504              ),                        
-            new RBStart    (48,       40          ),              
+                /* rollback period from lsn 40 -> 48 */
+                new Commit(40, -502), new VisibleLN(45, -503), new Abort(46, -503), new InvisibleLN(47, -504),
+                new RBStart(48, 40),
 
-            new VisibleLN  (50, -504              ),
-            new VisibleLN  (60, -504              ),
+                new VisibleLN(50, -504), new VisibleLN(60, -504),
 
-            /* rollback period from lsn 70 -> 92 */
-            new Commit     (70, -504              ),
-            new InvisibleLN(72, -505              ),
+                /* rollback period from lsn 70 -> 92 */
+                new Commit(70, -504), new InvisibleLN(72, -505),
 
-            /* rest of rollback period from lsn 70 -> 92 */
-            new InvisibleLN(90, -506              ),
-            new RBStart    (92,        70         ),              
-            new RBEnd      (94,        70,   92   )
-        };
+                /* rest of rollback period from lsn 70 -> 92 */
+                new InvisibleLN(90, -506), new RBStart(92, 70), new RBEnd(94, 70, 92) };
 
-        /* 
-         * Each RollbackStart should have a set of txn ids that were
-         * active when the rollback started.
+        /*
+         * Each RollbackStart should have a set of txn ids that were active when
+         * the rollback started.
          */
-        ((RBStart) testLog[3]).addActiveTxnIds(new Long[] {-501L});
-        ((RBStart) testLog[10]).addActiveTxnIds(new Long[] {-504L});
-        ((RBStart) testLog[16]).addActiveTxnIds(new Long[] {-505L, -506L});
+        ((RBStart) testLog[3]).addActiveTxnIds(new Long[] { -501L });
+        ((RBStart) testLog[10]).addActiveTxnIds(new Long[] { -504L });
+        ((RBStart) testLog[16]).addActiveTxnIds(new Long[] { -505L, -506L });
 
         /* This is what we expect to be in the tracker. */
         List<RollbackPeriod> expected = new ArrayList<RollbackPeriod>();
@@ -200,33 +166,28 @@ public class RollbackTrackerTest extends TestBase {
         runTest(testLog, expected, 9 /* checkpoint start */);
     }
 
-    /** 
+    /**
      * This valid log has rollback periods before checkpoint start.
      */
     @Test
     public void testGoodCkptStart() {
 
         LogRecord[] testLog = new LogRecord[] {
-            /*            
-             * This is a pseudo log.
-             *              lsn  txn  match  rollback
-             *                   id   point  start    
-             *------------   --- ---  ----- -----       */
-            new VisibleLN   (10, -500              ),
+                /*
+                 * This is a pseudo log. lsn txn match rollback id point start
+                 * ------------ --- --- ----- -----
+                 */
+                new VisibleLN(10, -500),
 
-            /* rollback period from lsn 20 -> 22 */
-            new Abort       (20  -500              ),                  
-            new AlreadyRBLN(21, -501              ), 
-            new RBStart     (22,       20          ),
-            new RBEnd       (23,       20,     22  ),   
-            new VisibleLN   (30, -502              )
-        };
+                /* rollback period from lsn 20 -> 22 */
+                new Abort(20 - 500), new AlreadyRBLN(21, -501), new RBStart(22, 20), new RBEnd(23, 20, 22),
+                new VisibleLN(30, -502) };
 
-        /* 
-         * Each RollbackStart should have a set of txn ids that were
-         * active when the rollback started.
+        /*
+         * Each RollbackStart should have a set of txn ids that were active when
+         * the rollback started.
          */
-        ((RBStart) testLog[3]).addActiveTxnIds(new Long[] {-501L});
+        ((RBStart) testLog[3]).addActiveTxnIds(new Long[] { -501L });
 
         /* This is what we expect to be in the tracker. */
         List<RollbackPeriod> expected = new ArrayList<RollbackPeriod>();
@@ -237,25 +198,20 @@ public class RollbackTrackerTest extends TestBase {
 
         /* Change the log so that the rollback period has no rollback end */
         testLog = new LogRecord[] {
-            /*            
-             * This is a pseudo log.
-             *              lsn  txn  match  rollback
-             *                   id   point  start    
-             *------------   --- ---  ----- -----       */
-            new VisibleLN   (10, -500              ),
+                /*
+                 * This is a pseudo log. lsn txn match rollback id point start
+                 * ------------ --- --- ----- -----
+                 */
+                new VisibleLN(10, -500),
 
-            /* rollback period from lsn 20 -> 22 */
-            new Abort       (20  -500              ),                  
-            new InvisibleLN (21, -501              ), 
-            new RBStart     (22,       20          ),
-            new VisibleLN   (30, -502              )
-        };
+                /* rollback period from lsn 20 -> 22 */
+                new Abort(20 - 500), new InvisibleLN(21, -501), new RBStart(22, 20), new VisibleLN(30, -502) };
 
-        /* 
-         * Each RollbackStart should have a set of txn ids that were
-         * active when the rollback started.
+        /*
+         * Each RollbackStart should have a set of txn ids that were active when
+         * the rollback started.
          */
-        ((RBStart) testLog[3]).addActiveTxnIds(new Long[] {-501L});
+        ((RBStart) testLog[3]).addActiveTxnIds(new Long[] { -501L });
 
         /* This is what we expect to be in the tracker. */
         expected = new ArrayList<RollbackPeriod>();
@@ -265,54 +221,40 @@ public class RollbackTrackerTest extends TestBase {
         runTest(testLog, expected, 40L /* checkpoint start. */);
     }
 
-    /** 
+    /**
      * Bad log - two rollback periods intersect.
      */
     @Test
     public void testBadIntersection() {
 
         LogRecord[] testLog = new LogRecord[] {
-            /*    
-             *              lsn  txn  match  rollback
-             *                   id   point  start    
-             *------------   --- ---  ----- -----       */
-            new VisibleLN  (10, -500),
-            new Abort      (11, -500),                
-            new InvisibleLN(12, -501),
-            new Commit     (13, -501),                
-            new InvisibleLN(14, -502),
-            new RBStart    (15,  11),
-            new RBEnd      (16,  11,        15L),
-            new InvisibleLN(17, -503),
-            new RBStart    (18,  13),
-            new VisibleLN  (19),
-        };
-        ((RBStart) testLog[5]).addActiveTxnIds(new Long[] {-501L, -502L});
-        ((RBStart) testLog[8]).addActiveTxnIds(new Long[] {-502L, -503L});
+                /*
+                 * lsn txn match rollback id point start ------------ --- ---
+                 * ----- -----
+                 */
+                new VisibleLN(10, -500), new Abort(11, -500), new InvisibleLN(12, -501), new Commit(13, -501),
+                new InvisibleLN(14, -502), new RBStart(15, 11), new RBEnd(16, 11, 15L), new InvisibleLN(17, -503),
+                new RBStart(18, 13), new VisibleLN(19), };
+        ((RBStart) testLog[5]).addActiveTxnIds(new Long[] { -501L, -502L });
+        ((RBStart) testLog[8]).addActiveTxnIds(new Long[] { -502L, -503L });
         expectConstructionFailure(testLog);
     }
 
-    /** 
+    /**
      * Bad log - a commit entry is in the rollback period.
      */
     @Test
     public void testBadCommitInRollbackPeriod() {
 
         LogRecord[] testLog = new LogRecord[] {
-            /*    
-             *              lsn  txn  match  rollback
-             *                   id   point  start    
-             *------------   --- ---  ----- -----       */
-            new VisibleLN  (10, -500),
-            new Abort      (11, -501),                
-            new InvisibleLN(12, -500),
-            new Commit     (13, -502),                
-            new InvisibleLN(14, -503),
-            new RBStart    (15,  11),
-            new RBEnd      (16,  11,        15L),
-        };
+                /*
+                 * lsn txn match rollback id point start ------------ --- ---
+                 * ----- -----
+                 */
+                new VisibleLN(10, -500), new Abort(11, -501), new InvisibleLN(12, -500), new Commit(13, -502),
+                new InvisibleLN(14, -503), new RBStart(15, 11), new RBEnd(16, 11, 15L), };
 
-        ((RBStart) testLog[5]).addActiveTxnIds(new Long[] {-500L, -503L});
+        ((RBStart) testLog[5]).addActiveTxnIds(new Long[] { -500L, -503L });
         expectConstructionFailure(testLog);
     }
 
@@ -322,23 +264,18 @@ public class RollbackTrackerTest extends TestBase {
 
     // TBW
 
-
     /**********************************************************************
-          Methods for processing test data
+     * Methods for processing test data
      *********************************************************************/
 
-    /** 
-     * All test logs are exercised in a way to mimic recovery. The log is
-     * - read backwards and constructed (undoLNs w/MapLNs)
-     * - then read forwards (redoLN)
-     * - then read backwards (undoLN for non-mapLNs)
+    /**
+     * All test logs are exercised in a way to mimic recovery. The log is - read
+     * backwards and constructed (undoLNs w/MapLNs) - then read forwards
+     * (redoLN) - then read backwards (undoLN for non-mapLNs)
      */
-    private void runTest(LogRecord[] testLog, 
-                         List<RollbackPeriod> expected,
-                         long checkpointStart) {
+    private void runTest(LogRecord[] testLog, List<RollbackPeriod> expected, long checkpointStart) {
         Environment env = createEnvironment();
-        RollbackTracker tracker = 
-            new RollbackTracker(DbInternal.getNonNullEnvImpl(env));
+        RollbackTracker tracker = new RollbackTracker(DbInternal.getNonNullEnvImpl(env));
         tracker.setCheckpointStart(checkpointStart);
         try {
             firstConstructionPass(tracker, testLog);
@@ -357,19 +294,17 @@ public class RollbackTrackerTest extends TestBase {
      */
     private void expectConstructionFailure(LogRecord[] testLog) {
         Environment env = createEnvironment();
-        RollbackTracker tracker = 
-            new RollbackTracker(DbInternal.getNonNullEnvImpl(env));
+        RollbackTracker tracker = new RollbackTracker(DbInternal.getNonNullEnvImpl(env));
         try {
             firstConstructionPass(tracker, testLog);
             fail("Should have failed");
-        } catch(EnvironmentFailureException expected) {
-            assertEquals(EnvironmentFailureReason.LOG_INTEGRITY,
-                         expected.getReason());
+        } catch (EnvironmentFailureException expected) {
+            assertEquals(EnvironmentFailureReason.LOG_INTEGRITY, expected.getReason());
             if (verbose) {
                 expected.printStackTrace();
             }
         } finally {
-          env.close();
+            env.close();
         }
     }
 
@@ -379,13 +314,12 @@ public class RollbackTrackerTest extends TestBase {
         return new Environment(envHome, envConfig);
     }
 
-    /* 
-     * Mimic the first recovery pass, where we scan the log backwards 
-     * and create the rollback tracker.
+    /*
+     * Mimic the first recovery pass, where we scan the log backwards and create
+     * the rollback tracker.
      */
-    private void firstConstructionPass(RollbackTracker tracker,
-                                       LogRecord[] testData) {
-    
+    private void firstConstructionPass(RollbackTracker tracker, LogRecord[] testData) {
+
         tracker.setFirstPass(true);
         RollbackTracker.Scanner scanner = tracker.getScanner();
         for (int i = testData.length - 1; i >= 0; i--) {
@@ -399,9 +333,8 @@ public class RollbackTrackerTest extends TestBase {
     }
 
     /* Mimic a later backward scan, after the rollback tracker is created. */
-    private void backwardPass(RollbackTracker tracker,
-                              LogRecord[] testData) {
-    
+    private void backwardPass(RollbackTracker tracker, LogRecord[] testData) {
+
         tracker.setFirstPass(false);
         RollbackTracker.Scanner scanner = tracker.getScanner();
         for (int i = testData.length - 1; i >= 0; i--) {
@@ -414,38 +347,35 @@ public class RollbackTrackerTest extends TestBase {
     }
 
     /*************************************************************
-     * LogRecords and their subclasses represent the log entries that will
-     * be passed to the RollbackTracker in recovery.
+     * LogRecords and their subclasses represent the log entries that will be
+     * passed to the RollbackTracker in recovery.
      *************************************************************/
-    
+
     abstract static class LogRecord {
         final long ownLSN;
-    
+
         LogRecord(long ownLSN) {
             this.ownLSN = ownLSN;
         }
 
         void doConstructionStep(RollbackTracker tracker) {
-            /* 
+            /*
              * Nothing to do, by default, most log records are not registered
              * with the tracker.
              */
         }
 
-        void checkContains(RollbackTracker.Scanner scanner,
-                           RollbackTracker tracker) {
+        void checkContains(RollbackTracker.Scanner scanner, RollbackTracker tracker) {
             /* do nothing, containment is only checked for LNs. */
         }
 
-        void checkNeedsRollback(RollbackTracker.Scanner scanner,
-                           RollbackTracker tracker) {
+        void checkNeedsRollback(RollbackTracker.Scanner scanner, RollbackTracker tracker) {
             /* do nothing, rollback checking is only checked for LNs. */
         }
 
         @Override
         public String toString() {
-            return getName() + " at lsn " + ownLSN + "[" +
-                DbLsn.getNoFormatString(ownLSN) + "]";
+            return getName() + " at lsn " + ownLSN + "[" + DbLsn.getNoFormatString(ownLSN) + "]";
         }
 
         abstract String getName();
@@ -459,9 +389,9 @@ public class RollbackTrackerTest extends TestBase {
             this.txnId = txnId;
         }
 
-        /* 
-         * Don't bother with a txn, this test data is meant to fail before
-         * a txn id is needed. Saves on spec'ing the test data.
+        /*
+         * Don't bother with a txn, this test data is meant to fail before a txn
+         * id is needed. Saves on spec'ing the test data.
          */
         TxnLogRecord(long lsn) {
             super(lsn);
@@ -486,10 +416,9 @@ public class RollbackTrackerTest extends TestBase {
         }
 
         @Override
-        void checkContains(RollbackTracker.Scanner scanner,
-                           RollbackTracker tracker) {
+        void checkContains(RollbackTracker.Scanner scanner, RollbackTracker tracker) {
             assertFalse("contains check for " + this + "\n tracker=" + tracker,
-                       scanner.positionAndCheck(ownLSN, txnId));
+                    scanner.positionAndCheck(ownLSN, txnId));
         }
 
         @Override
@@ -509,12 +438,9 @@ public class RollbackTrackerTest extends TestBase {
         }
 
         @Override
-        void checkContains(RollbackTracker.Scanner scanner,
-                           RollbackTracker tracker) {
-            assertTrue("contains check for " + this + "\n tracker=" + tracker,
-                        scanner.positionAndCheck(ownLSN, txnId));
-            assertTrue("needsRollback check for " + this + "\n tracker=" + 
-                        tracker, scanner.needsRollback());
+        void checkContains(RollbackTracker.Scanner scanner, RollbackTracker tracker) {
+            assertTrue("contains check for " + this + "\n tracker=" + tracker, scanner.positionAndCheck(ownLSN, txnId));
+            assertTrue("needsRollback check for " + this + "\n tracker=" + tracker, scanner.needsRollback());
         }
 
         @Override
@@ -536,15 +462,11 @@ public class RollbackTrackerTest extends TestBase {
             super(ownLSN);
         }
 
-
         @Override
-        void checkContains(RollbackTracker.Scanner scanner,
-                           RollbackTracker tracker) {
-            assertTrue("contains check for " + this + "\n tracker=" + tracker,
-                        scanner.positionAndCheck(ownLSN, txnId));
-            assertFalse("needsRollback check for " + this + "\n tracker=" + 
-                        tracker, scanner.needsRollback());
-        }    
+        void checkContains(RollbackTracker.Scanner scanner, RollbackTracker tracker) {
+            assertTrue("contains check for " + this + "\n tracker=" + tracker, scanner.positionAndCheck(ownLSN, txnId));
+            assertFalse("needsRollback check for " + this + "\n tracker=" + tracker, scanner.needsRollback());
+        }
 
         @Override
         String getName() {
@@ -577,7 +499,7 @@ public class RollbackTrackerTest extends TestBase {
         }
 
         @Override
-            void doConstructionStep(RollbackTracker tracker) {
+        void doConstructionStep(RollbackTracker tracker) {
             tracker.checkCommit(ownLSN, txnId);
         }
 
@@ -590,7 +512,7 @@ public class RollbackTrackerTest extends TestBase {
     /** A RollbackStart */
     static class RBStart extends LogRecord {
         final long matchpointLSN;
-        Set<Long> activeTxnIds;
+        Set<Long>  activeTxnIds;
 
         RBStart(long ownLSN, long matchpointLSN) {
             super(ownLSN);
@@ -603,12 +525,10 @@ public class RollbackTrackerTest extends TestBase {
                 activeTxnIds.add(id);
             }
         }
-        
+
         @Override
         void doConstructionStep(RollbackTracker tracker) {
-            tracker.register(new RollbackStart(NULL_VLSN, matchpointLSN,
-                                               activeTxnIds),
-                             ownLSN);
+            tracker.register(new RollbackStart(NULL_VLSN, matchpointLSN, activeTxnIds), ownLSN);
         }
 
         @Override
@@ -630,8 +550,7 @@ public class RollbackTrackerTest extends TestBase {
 
         @Override
         void doConstructionStep(RollbackTracker tracker) {
-            tracker.register(new RollbackEnd(matchpointLSN, rollbackStartLSN),
-                             ownLSN);
+            tracker.register(new RollbackEnd(matchpointLSN, rollbackStartLSN), ownLSN);
         }
 
         @Override
@@ -640,4 +559,3 @@ public class RollbackTrackerTest extends TestBase {
         }
     }
 }
-

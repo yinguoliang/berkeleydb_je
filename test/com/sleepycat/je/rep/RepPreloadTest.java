@@ -52,52 +52,45 @@ import com.sleepycat.je.utilint.LoggerUtils;
 
 /**
  * Test using the {@link Environment#preload} method with a replicated
- * environment.  Because preload acquires an exclusive latch on the btree for
+ * environment. Because preload acquires an exclusive latch on the btree for
  * every database, it prevents the replay operation on the replica from making
- * progress, causing the heartbeat to be delayed and, depending on the length
- * of the delay, resulting in the replica being dropped from the replication
- * group.
+ * progress, causing the heartbeat to be delayed and, depending on the length of
+ * the delay, resulting in the replica being dropped from the replication group.
  */
 public class RepPreloadTest extends RepTestBase {
 
     /**
-     * The number of entries in the database.  Use a larger value to produce a
+     * The number of entries in the database. Use a larger value to produce a
      * preload time longer than the feeder timeout, to test that the preload
-     * disrupts the feeder in that case.  The value 400000 works for this
-     * purpose on some platforms.
+     * disrupts the feeder in that case. The value 400000 works for this purpose
+     * on some platforms.
      */
-    private static final int NUM_ENTRIES =
-        Integer.getInteger("test.num_entries", 100000);
+    private static final int    NUM_ENTRIES                  = Integer.getInteger("test.num_entries", 100000);
 
     /**
-     * The feeder timeout.  Use a shorter value to permit the preload time to
-     * be longer than the feeder timeout.  2000 is the minimum, and is a good
-     * choice for this purpose.
+     * The feeder timeout. Use a shorter value to permit the preload time to be
+     * longer than the feeder timeout. 2000 is the minimum, and is a good choice
+     * for this purpose.
      */
-    private static final long FEEDER_TIMEOUT_MS =
-        Long.getLong("test.feeder_timeout_ms", 10000);
+    private static final long   FEEDER_TIMEOUT_MS            = Long.getLong("test.feeder_timeout_ms", 10000);
 
     /**
-     * The preload timeout.  Increase this time to allow the preload time to
+     * The preload timeout. Increase this time to allow the preload time to
      * exceed the feeder timeout.
      */
-    private static final long PRELOAD_TIMEOUT_MS =
-        Long.getLong("test.preload_timeout_ms", 5000);
+    private static final long   PRELOAD_TIMEOUT_MS           = Long.getLong("test.preload_timeout_ms", 5000);
 
     /** The timeout for the replica to sync up. */
-    private static final long REPLICA_SYNCUP_MS =
-        Long.getLong("test.replica_syncup_ms", 120000);
+    private static final long   REPLICA_SYNCUP_MS            = Long.getLong("test.replica_syncup_ms", 120000);
 
     /** The timeout to wait for events. */
-    private static final long EVENT_TIMEOUT_MS =
-        Long.getLong("test.event_timeout_ms", 10000);
+    private static final long   EVENT_TIMEOUT_MS             = Long.getLong("test.event_timeout_ms", 10000);
 
     /** The timeout to wait for replication to begin. */
-    private static final long REPLICATION_START_TIMEOUT_MS =
-        Long.getLong("test.replication_start_timeout_ms", 60000);
+    private static final long   REPLICATION_START_TIMEOUT_MS = Long.getLong("test.replication_start_timeout_ms", 60000);
 
-    private static final Logger logger =
-        LoggerUtils.getLoggerFixedPrefix(RepPreloadTest.class, "Test");
+    private static final Logger logger                       = LoggerUtils.getLoggerFixedPrefix(RepPreloadTest.class,
+            "Test");
 
     /**
      * Test that preloading on a replica causes the feeder to timeout.
@@ -105,21 +98,15 @@ public class RepPreloadTest extends RepTestBase {
     @Test
     public void testPreloadEnvironmentReplica() throws Exception {
 
-        logger.info("Parameters:" +
-                    "\n  test.num_entries=" + NUM_ENTRIES +
-                    "\n  test.feeder_timeout_ms=" + FEEDER_TIMEOUT_MS +
-                    "\n  test.preload_timeout_ms=" + PRELOAD_TIMEOUT_MS +
-                    "\n  test.replica_syncup_ms=" + REPLICA_SYNCUP_MS +
-                    "\n  test.event_timeout_ms=" + EVENT_TIMEOUT_MS +
-                    "\n  test.replication_start_timeout_ms=" +
-                    REPLICATION_START_TIMEOUT_MS);
+        logger.info("Parameters:" + "\n  test.num_entries=" + NUM_ENTRIES + "\n  test.feeder_timeout_ms="
+                + FEEDER_TIMEOUT_MS + "\n  test.preload_timeout_ms=" + PRELOAD_TIMEOUT_MS
+                + "\n  test.replica_syncup_ms=" + REPLICA_SYNCUP_MS + "\n  test.event_timeout_ms=" + EVENT_TIMEOUT_MS
+                + "\n  test.replication_start_timeout_ms=" + REPLICATION_START_TIMEOUT_MS);
 
         logger.info("Setting feeder timeout");
 
         for (final RepEnvInfo info : repEnvInfo) {
-            info.getRepConfig().setConfigParam(
-                ReplicationConfig.FEEDER_TIMEOUT,
-                FEEDER_TIMEOUT_MS + " ms");
+            info.getRepConfig().setConfigParam(ReplicationConfig.FEEDER_TIMEOUT, FEEDER_TIMEOUT_MS + " ms");
         }
 
         createGroup(3);
@@ -136,11 +123,8 @@ public class RepPreloadTest extends RepTestBase {
 
         logger.info("Wait for replica to sync up");
 
-        Transaction txn = replica.getEnv().beginTransaction(
-            null,
-            new TransactionConfig().setConsistencyPolicy(
-                new CommitPointConsistencyPolicy(
-                    populateToken, REPLICA_SYNCUP_MS, MILLISECONDS)));
+        Transaction txn = replica.getEnv().beginTransaction(null, new TransactionConfig().setConsistencyPolicy(
+                new CommitPointConsistencyPolicy(populateToken, REPLICA_SYNCUP_MS, MILLISECONDS)));
 
         txn.commit();
 
@@ -149,7 +133,7 @@ public class RepPreloadTest extends RepTestBase {
         logger.info("Closed replica");
 
         /*
-         * Update existing entries in the database.  This creates a replication
+         * Update existing entries in the database. This creates a replication
          * stream, but also means that the preload will have plenty of data to
          * load from the existing entries.
          */
@@ -158,15 +142,12 @@ public class RepPreloadTest extends RepTestBase {
         final Thread updateThread = new Thread() {
             @Override
             public void run() {
-                final Database db = master.getEnv().openDatabase(
-                    null, TEST_DB_NAME, dbconfig);
+                final Database db = master.getEnv().openDatabase(null, TEST_DB_NAME, dbconfig);
                 try {
                     int i = 0;
                     logger.info("Starting updates");
                     while (!done.get()) {
-                        final Transaction txn2 =
-                            master.getEnv().beginTransaction(
-                                null, RepTestUtils.SYNC_SYNC_NONE_TC);
+                        final Transaction txn2 = master.getEnv().beginTransaction(null, RepTestUtils.SYNC_SYNC_NONE_TC);
                         IntegerBinding.intToEntry(i % NUM_ENTRIES, key);
                         LongBinding.longToEntry(i, data);
                         db.put(txn2, key, data);
@@ -183,18 +164,15 @@ public class RepPreloadTest extends RepTestBase {
         /*
          * Don't wait for consistency, to make sure the preload has work to do.
          */
-        final ReplicatedEnvironment replicaEnv =
-            replica.openEnv(NoConsistencyRequiredPolicy.NO_CONSISTENCY);
+        final ReplicatedEnvironment replicaEnv = replica.openEnv(NoConsistencyRequiredPolicy.NO_CONSISTENCY);
         logger.info("Opened replica");
 
         /* Track node state changes */
-        final TestStateChangeListener[] listeners =
-            new TestStateChangeListener[3];
+        final TestStateChangeListener[] listeners = new TestStateChangeListener[3];
 
         for (int i = 0; i < 3; i++) {
             final RepEnvInfo info = repEnvInfo[i];
-            final TestStateChangeListener listener =
-                new TestStateChangeListener(info.getEnv().getNodeName());
+            final TestStateChangeListener listener = new TestStateChangeListener(info.getEnv().getNodeName());
             listeners[i] = listener;
             info.getEnv().setStateChangeListener(listener);
         }
@@ -207,16 +185,14 @@ public class RepPreloadTest extends RepTestBase {
         /* Track replication */
         final CountDownLatch started = new CountDownLatch(1);
 
-        final StatsConfig statsConfig =
-            new StatsConfig().setFast(true).setClear(true);
+        final StatsConfig statsConfig = new StatsConfig().setFast(true).setClear(true);
 
         final Thread statsThread = new Thread() {
             @Override
             public void run() {
                 while (true) {
                     try {
-                        final ReplicatedEnvironmentStats stats =
-                            replicaEnv.getRepStats(statsConfig);
+                        final ReplicatedEnvironmentStats stats = replicaEnv.getRepStats(statsConfig);
                         if (stats == null) {
                             break;
                         }
@@ -239,15 +215,12 @@ public class RepPreloadTest extends RepTestBase {
         Database db = null;
         try {
             logger.info("Opening replica DB");
-            txn = replicaEnv.beginTransaction(
-                null,
-                /*
-                 * Don't wait for consistency, to make sure the preload has
-                 * work to do
-                 */
-                new TransactionConfig()
-                .setConsistencyPolicy(
-                    NoConsistencyRequiredPolicy.NO_CONSISTENCY));
+            txn = replicaEnv.beginTransaction(null,
+                    /*
+                     * Don't wait for consistency, to make sure the preload has
+                     * work to do
+                     */
+                    new TransactionConfig().setConsistencyPolicy(NoConsistencyRequiredPolicy.NO_CONSISTENCY));
             db = replicaEnv.openDatabase(txn, TEST_DB_NAME, dbconfig);
             txn.commit();
 
@@ -255,43 +228,35 @@ public class RepPreloadTest extends RepTestBase {
             logger.info("Replication started");
 
             logger.info("Starting preload");
-            final PreloadConfig preloadConfig =
-                new PreloadConfig()
-                /* Loading the LNs takes more time -- good! */
-                .setLoadLNs(true)
-                /* Specify timeout */
-                .setMaxMillisecs(PRELOAD_TIMEOUT_MS);
+            final PreloadConfig preloadConfig = new PreloadConfig()
+                    /* Loading the LNs takes more time -- good! */
+                    .setLoadLNs(true)
+                    /* Specify timeout */
+                    .setMaxMillisecs(PRELOAD_TIMEOUT_MS);
             final long startPreload = System.currentTimeMillis();
-            final PreloadStats preloadStats =
-                replicaEnv.preload(new Database[] { db }, preloadConfig);
+            final PreloadStats preloadStats = replicaEnv.preload(new Database[] { db }, preloadConfig);
             final long preloadTime = System.currentTimeMillis() - startPreload;
 
             assertEquals(PreloadStatus.SUCCESS, preloadStats.getStatus());
 
-            EnvironmentImpl envImpl =
-                DbInternal.getNonNullEnvImpl(master.getEnv());
+            EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(master.getEnv());
             boolean embeddedLNs = (envImpl.getMaxEmbeddedLN() >= 4);
 
             if (embeddedLNs) {
-                assertTrue("nEmbeddedLNs > " + NUM_ENTRIES/2,
-                           preloadStats.getNEmbeddedLNs() > NUM_ENTRIES/2);
+                assertTrue("nEmbeddedLNs > " + NUM_ENTRIES / 2, preloadStats.getNEmbeddedLNs() > NUM_ENTRIES / 2);
             } else {
-                assertTrue("nLNsLoaded > " + NUM_ENTRIES/2,
-                           preloadStats.getNLNsLoaded() > NUM_ENTRIES/2);
+                assertTrue("nLNsLoaded > " + NUM_ENTRIES / 2, preloadStats.getNLNsLoaded() > NUM_ENTRIES / 2);
             }
 
-            logger.info("Finished preload in " + preloadTime + " ms: " +
-                        preloadStats);
+            logger.info("Finished preload in " + preloadTime + " ms: " + preloadStats);
 
             /*
              * If the preload took longer than the feeder timeout, then the
              * preload should cause the feeder to timeout and disconnect the
-             * replica.  Otherwise, there should be no disruption to the
-             * feeder.
+             * replica. Otherwise, there should be no disruption to the feeder.
              */
             if (preloadTime > FEEDER_TIMEOUT_MS) {
-                listeners[2].awaitState(
-                    UNKNOWN, EVENT_TIMEOUT_MS, MILLISECONDS);
+                listeners[2].awaitState(UNKNOWN, EVENT_TIMEOUT_MS, MILLISECONDS);
                 logger.info("Received expected event with state " + UNKNOWN);
             } else {
                 listeners[2].awaitNoEvent(EVENT_TIMEOUT_MS, MILLISECONDS);
@@ -308,13 +273,11 @@ public class RepPreloadTest extends RepTestBase {
     }
 
     /** A listener that queues and prints events. */
-    private static class TestStateChangeListener
-            implements StateChangeListener {
+    private static class TestStateChangeListener implements StateChangeListener {
 
-        private final String node;
+        private final String                  node;
 
-        final BlockingQueue<StateChangeEvent> events =
-            new LinkedBlockingQueue<StateChangeEvent>();
+        final BlockingQueue<StateChangeEvent> events = new LinkedBlockingQueue<StateChangeEvent>();
 
         TestStateChangeListener(final String node) {
             this.node = node;
@@ -329,27 +292,21 @@ public class RepPreloadTest extends RepTestBase {
             } catch (IllegalStateException e) {
                 master = "(none)";
             }
-            logger.info("State change event: " +
-                        "node:" + node +
-                        ", master:" + master +
-                        ", state:" + stateChangeEvent.getState());
+            logger.info("State change event: " + "node:" + node + ", master:" + master + ", state:"
+                    + stateChangeEvent.getState());
         }
 
         /** Wait for an event with the specified state. */
-        void awaitState(final ReplicatedEnvironment.State state,
-                        final long time,
-                        final TimeUnit timeUnit)
-            throws InterruptedException {
+        void awaitState(final ReplicatedEnvironment.State state, final long time, final TimeUnit timeUnit)
+                throws InterruptedException {
 
             final StateChangeEvent event = events.poll(time, timeUnit);
-            assertNotNull("Expected state " + state + ", but got no event",
-                          event);
+            assertNotNull("Expected state " + state + ", but got no event", event);
             assertEquals(state, event.getState());
         }
 
         /** Wait to confirm that no event is delivered. */
-        void awaitNoEvent(final long time, final TimeUnit timeUnit)
-            throws InterruptedException {
+        void awaitNoEvent(final long time, final TimeUnit timeUnit) throws InterruptedException {
 
             final StateChangeEvent event = events.poll(time, timeUnit);
             assertNull("Expected no event", event);

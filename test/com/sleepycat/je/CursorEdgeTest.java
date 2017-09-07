@@ -37,40 +37,35 @@ import com.sleepycat.util.test.SharedTestUtils;
 public class CursorEdgeTest extends DualTestCase {
 
     private static final boolean DEBUG = false;
-    private Environment env;
-    private final File envHome;
-    private boolean operationStarted;
+    private Environment          env;
+    private final File           envHome;
+    private boolean              operationStarted;
 
     public CursorEdgeTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
-    public void initEnv()
-        throws DatabaseException {
+    public void initEnv() throws DatabaseException {
 
         /*
-         * Create an environment w/transactions and a max node size of 6.
-         * Be sure to disable the compressor, we want some holes in the
-         * tree.
+         * Create an environment w/transactions and a max node size of 6. Be
+         * sure to disable the compressor, we want some holes in the tree.
          */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
         envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.
-                                 getName(),
-                                 "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         envConfig.setAllowCreate(true);
         env = create(envHome, envConfig);
     }
 
     /**
-     * Insert a number of duplicates, making sure that the duplicate tree
-     * has multiple bins. Make sure that we can skip over the duplicates and
-     * find the right value.
+     * Insert a number of duplicates, making sure that the duplicate tree has
+     * multiple bins. Make sure that we can skip over the duplicates and find
+     * the right value.
      */
     @Test
-    public void testSearchOnDuplicatesWithDeletions()
-        throws Throwable {
+    public void testSearchOnDuplicatesWithDeletions() throws Throwable {
 
         initEnv();
 
@@ -87,19 +82,18 @@ public class CursorEdgeTest extends DualTestCase {
             /*
              * Insert k1/d1, then a duplicate range of k2/d1 -> k2/d15, then
              * k3/d1. Now delete the beginning part of the duplicate range,
-             * trying to get more than a whole bin's worth (k2/d1 ->
-             * k2/d7). Because the compressor is not enabled, there will be a
-             * hole in the k2 range. While we're at it, delete k2/d10 - k2/d13
-             * too, make sure we can traverse a hole in the middle of the
-             * duplicate range.
+             * trying to get more than a whole bin's worth (k2/d1 -> k2/d7).
+             * Because the compressor is not enabled, there will be a hole in
+             * the k2 range. While we're at it, delete k2/d10 - k2/d13 too, make
+             * sure we can traverse a hole in the middle of the duplicate range.
              */
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
             key.setData(TestUtils.getTestArray(1));
             data.setData(TestUtils.getTestArray(1));
-            myDb.put(null, key, data);          // k1/d1
+            myDb.put(null, key, data); // k1/d1
             key.setData(TestUtils.getTestArray(3));
-            myDb.put(null, key, data);          // k3/d1
+            myDb.put(null, key, data); // k3/d1
 
             /* insert k2 range */
             key.setData(TestUtils.getTestArray(2));
@@ -109,37 +103,28 @@ public class CursorEdgeTest extends DualTestCase {
             }
 
             /* Now delete k2/d1 -> k2/d7 */
-            Transaction txn =
-                env.beginTransaction(null, TransactionConfig.DEFAULT);
+            Transaction txn = env.beginTransaction(null, TransactionConfig.DEFAULT);
             cursor = myDb.openCursor(txn, CursorConfig.DEFAULT);
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getSearchKey(key, data, LockMode.DEFAULT));
-            for (int i = 0; i < 7; i ++) {
+            assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(key, data, LockMode.DEFAULT));
+            for (int i = 0; i < 7; i++) {
                 assertEquals(OperationStatus.SUCCESS, cursor.delete());
-                assertEquals(OperationStatus.SUCCESS,
-                             cursor.getNext(key, data, LockMode.DEFAULT));
+                assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, LockMode.DEFAULT));
             }
 
             /* Also delete k2/d10 - k2/d13 */
             data.setData(TestUtils.getTestArray(10));
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getSearchBoth(key, data, LockMode.DEFAULT));
-            for (int i = 0; i < 3; i ++) {
+            assertEquals(OperationStatus.SUCCESS, cursor.getSearchBoth(key, data, LockMode.DEFAULT));
+            for (int i = 0; i < 3; i++) {
                 assertEquals(OperationStatus.SUCCESS, cursor.delete());
-                assertEquals(OperationStatus.SUCCESS,
-                             cursor.getNext(key, data, LockMode.DEFAULT));
+                assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, LockMode.DEFAULT));
             }
 
             /* Double check what's in the tree */
             if (DEBUG) {
-                Cursor checkCursor = myDb.openCursor(txn,
-                                                     CursorConfig.DEFAULT);
-                while (checkCursor.getNext(key, data, LockMode.DEFAULT) ==
-                       OperationStatus.SUCCESS) {
-                    System.out.println("key=" +
-                                       TestUtils.getTestVal(key.getData()) +
-                                       " data=" +
-                                       TestUtils.getTestVal(data.getData()));
+                Cursor checkCursor = myDb.openCursor(txn, CursorConfig.DEFAULT);
+                while (checkCursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
+                    System.out.println("key=" + TestUtils.getTestVal(key.getData()) + " data="
+                            + TestUtils.getTestVal(data.getData()));
                 }
                 checkCursor.close();
             }
@@ -158,39 +143,30 @@ public class CursorEdgeTest extends DualTestCase {
             key.setData(TestUtils.getTestArray(2));
 
             /* Use key search */
-            assertEquals(OperationStatus.SUCCESS,
-                         readCursor.getSearchKey(key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, readCursor.getSearchKey(key, data, LockMode.DEFAULT));
             assertEquals(2, TestUtils.getTestVal(key.getData()));
             assertEquals(8, TestUtils.getTestVal(data.getData()));
 
             /* Use range search */
-            assertEquals(OperationStatus.SUCCESS,
-                         readCursor.getSearchKeyRange(key, data,
-                                                      LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, readCursor.getSearchKeyRange(key, data, LockMode.DEFAULT));
             assertEquals(2, TestUtils.getTestVal(key.getData()));
             assertEquals(8, TestUtils.getTestVal(data.getData()));
 
             /* Use search both */
             data.setData(TestUtils.getTestArray(8));
-            assertEquals(OperationStatus.SUCCESS,
-                         readCursor.getSearchBoth(key, data,
-                                                  LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, readCursor.getSearchBoth(key, data, LockMode.DEFAULT));
             assertEquals(2, TestUtils.getTestVal(key.getData()));
             assertEquals(8, TestUtils.getTestVal(data.getData()));
 
             /* Use search both range, starting data at 8 */
             data.setData(TestUtils.getTestArray(8));
-            assertEquals(OperationStatus.SUCCESS,
-                         readCursor.getSearchBothRange(key, data,
-                                                       LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, readCursor.getSearchBothRange(key, data, LockMode.DEFAULT));
             assertEquals(2, TestUtils.getTestVal(key.getData()));
             assertEquals(8, TestUtils.getTestVal(data.getData()));
 
             /* Use search both range, starting at 1 */
             data.setData(TestUtils.getTestArray(1));
-            assertEquals(OperationStatus.SUCCESS,
-                         readCursor.getSearchBothRange(key, data,
-                                                       LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, readCursor.getSearchBothRange(key, data, LockMode.DEFAULT));
             assertEquals(2, TestUtils.getTestVal(key.getData()));
             assertEquals(8, TestUtils.getTestVal(data.getData()));
 
@@ -208,30 +184,19 @@ public class CursorEdgeTest extends DualTestCase {
                 data.setData(TestUtils.getTestArray(i));
                 myDb.put(null, key, data);
             }
-            myDb.delete(null, key);  // delete all k5's
+            myDb.delete(null, key); // delete all k5's
 
             /* All searches on key 5 should fail */
-            assertFalse(readCursor.getSearchKey(key, data, LockMode.DEFAULT) ==
-                        OperationStatus.SUCCESS);
-            assertFalse(readCursor.getSearchKeyRange(key, data,
-                                                     LockMode.DEFAULT) ==
-                        OperationStatus.SUCCESS);
+            assertFalse(readCursor.getSearchKey(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS);
+            assertFalse(readCursor.getSearchKeyRange(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS);
             data.setData(TestUtils.getTestArray(0));
-            assertFalse(readCursor.getSearchBoth(key, data,
-                                                 LockMode.DEFAULT) ==
-                        OperationStatus.SUCCESS);
-            assertFalse(readCursor.getSearchBothRange(key, data,
-                                                      LockMode.DEFAULT) ==
-                        OperationStatus.SUCCESS);
+            assertFalse(readCursor.getSearchBoth(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS);
+            assertFalse(readCursor.getSearchBothRange(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS);
 
             /* All ranges on key 4 should also fail. */
             key.setData(TestUtils.getTestArray(4));
-            assertFalse(readCursor.getSearchKeyRange(key, data,
-                                                     LockMode.DEFAULT) ==
-                        OperationStatus.SUCCESS);
-            assertFalse(readCursor.getSearchBothRange(key, data,
-                                                      LockMode.DEFAULT) ==
-                        OperationStatus.SUCCESS);
+            assertFalse(readCursor.getSearchKeyRange(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS);
+            assertFalse(readCursor.getSearchBothRange(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS);
 
             readCursor.close();
         } catch (Throwable t) {
@@ -248,15 +213,14 @@ public class CursorEdgeTest extends DualTestCase {
 
     /**
      * Test the case where we allow duplicates in the database, but don't
-     * actually insert a duplicate.  So we have a key/value pair and do a
+     * actually insert a duplicate. So we have a key/value pair and do a
      * getSearchBothRange using key and data-1 (i.e. we land on the key, but
      * just before the data in the dup set (which isn't a dup set since there's
-     * only one).  getSearchBothRange should land on the key/value pair in this
-     * case.  See SR #9248.
+     * only one). getSearchBothRange should land on the key/value pair in this
+     * case. See SR #9248.
      */
     @Test
-    public void testSearchBothWithOneDuplicate()
-        throws Throwable {
+    public void testSearchBothWithOneDuplicate() throws Throwable {
 
         initEnv();
 
@@ -284,8 +248,7 @@ public class CursorEdgeTest extends DualTestCase {
             key.setData(TestUtils.getTestArray(1));
             data.setData(TestUtils.getTestArray(0));
             cursor = myDb.openCursor(null, CursorConfig.DEFAULT);
-            OperationStatus status =
-                cursor.getSearchBothRange(key, data, LockMode.DEFAULT);
+            OperationStatus status = cursor.getSearchBothRange(key, data, LockMode.DEFAULT);
             assertSame(status, OperationStatus.SUCCESS);
             assertEquals(1, TestUtils.getTestVal(key.getData()));
             assertEquals(1, TestUtils.getTestVal(data.getData()));
@@ -302,20 +265,15 @@ public class CursorEdgeTest extends DualTestCase {
     }
 
     /**
-     * Tests a bug fix to CursorImpl.fetchCurrent [#11195].
-     *
-     * T1 inserts K1-D1 and holds WRITE on K1-D1 (no dup tree yet)
-     * T2 calls getFirst and waits for READ on K1-D1
-     * T1 inserts K1-D2 which creates the dup tree
-     * T1 commits, allowing T2 to proceed
-     *
-     * T2 is in the middle of CursorImpl.fetchCurrent, and assumes incorrectly
-     * that it has a lock on an LN in BIN; actually the LN was replaced by a
-     * DIN and a ClassCastException occurs.
+     * Tests a bug fix to CursorImpl.fetchCurrent [#11195]. T1 inserts K1-D1 and
+     * holds WRITE on K1-D1 (no dup tree yet) T2 calls getFirst and waits for
+     * READ on K1-D1 T1 inserts K1-D2 which creates the dup tree T1 commits,
+     * allowing T2 to proceed T2 is in the middle of CursorImpl.fetchCurrent,
+     * and assumes incorrectly that it has a lock on an LN in BIN; actually the
+     * LN was replaced by a DIN and a ClassCastException occurs.
      */
     @Test
-    public void testGetCurrentDuringDupTreeCreation()
-        throws Throwable {
+    public void testGetCurrentDuringDupTreeCreation() throws Throwable {
 
         initEnv();
 
@@ -337,8 +295,7 @@ public class CursorEdgeTest extends DualTestCase {
         /* T2 calls getFirst. */
         JUnitThread thread = new JUnitThread("getFirst") {
             @Override
-            public void testBody()
-                throws DatabaseException {
+            public void testBody() throws DatabaseException {
                 DatabaseEntry key = new DatabaseEntry();
                 DatabaseEntry data = new DatabaseEntry();
                 Transaction t2 = env.beginTransaction(null, null);
@@ -379,8 +336,7 @@ public class CursorEdgeTest extends DualTestCase {
      * ArrayIndexOutOfBoundsException.
      */
     @Test
-    public void testGetPrevNoDupWithEmptyTree()
-        throws Throwable {
+    public void testGetPrevNoDupWithEmptyTree() throws Throwable {
 
         initEnv();
 
@@ -416,15 +372,14 @@ public class CursorEdgeTest extends DualTestCase {
          * Delete all duplicates with a cursor.
          */
         Cursor cursor = myDb.openCursor(null, null);
-        while ((status = cursor.getNext(key, data, null)) ==
-                OperationStatus.SUCCESS) {
+        while ((status = cursor.getNext(key, data, null)) == OperationStatus.SUCCESS) {
             cursor.delete();
         }
 
         /*
-         * Compress to empty the two DBINs.  The BIN will not be deleted
-         * because a cursor is attached to it.  This causes a cursor to be
-         * positioned on an empty DBIN, which brings out the bug.
+         * Compress to empty the two DBINs. The BIN will not be deleted because
+         * a cursor is attached to it. This causes a cursor to be positioned on
+         * an empty DBIN, which brings out the bug.
          */
         env.compress();
 
@@ -442,12 +397,11 @@ public class CursorEdgeTest extends DualTestCase {
     }
 
     /*
-     * Check that non transactional cursors can't do update operations against
-     * a transactional database.
+     * Check that non transactional cursors can't do update operations against a
+     * transactional database.
      */
     @Test
-    public void testNonTxnalCursorNoUpdates()
-        throws Throwable {
+    public void testNonTxnalCursorNoUpdates() throws Throwable {
 
         initEnv();
 
@@ -466,8 +420,7 @@ public class CursorEdgeTest extends DualTestCase {
             secConfig.setTransactional(true);
             secConfig.setAllowCreate(true);
             secConfig.setKeyCreator(new KeyCreator());
-            mySecDb = env.openSecondaryDatabase(null, "fooSecDb", myDb,
-                                                secConfig);
+            mySecDb = env.openSecondaryDatabase(null, "fooSecDb", myDb, secConfig);
 
             /* Insert something. */
             DatabaseEntry key = new DatabaseEntry(new byte[1]);
@@ -480,16 +433,14 @@ public class CursorEdgeTest extends DualTestCase {
             /* Open a non-txnal cursor on the primary database. */
             cursor = myDb.openCursor(null, null);
             DatabaseEntry data = new DatabaseEntry();
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNext(key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, LockMode.DEFAULT));
 
             /* All updates should be prohibited. */
             updatesShouldBeProhibited(cursor);
 
             /* Open a secondary non-txnal cursor. */
             secCursor = mySecDb.openSecondaryCursor(null, null);
-            assertEquals(OperationStatus.SUCCESS,
-                         secCursor.getNext(key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, secCursor.getNext(key, data, LockMode.DEFAULT));
 
             /* All updates should be prohibited. */
             updatesShouldBeProhibited(secCursor);
@@ -555,8 +506,7 @@ public class CursorEdgeTest extends DualTestCase {
         }
     }
 
-    private void checkForCursorUpdateException(boolean isSecUpdateError,
-                                               RuntimeException e) {
+    private void checkForCursorUpdateException(boolean isSecUpdateError, RuntimeException e) {
 
         /*
          * Check that it's a transaction or secondary problem. Crude, but since
@@ -564,18 +514,15 @@ public class CursorEdgeTest extends DualTestCase {
          */
         String msg = e.getMessage();
         if (isSecUpdateError) {
-            assertTrue(
-                msg, msg.startsWith("Operation not allowed on a secondary"));
+            assertTrue(msg, msg.startsWith("Operation not allowed on a secondary"));
         } else {
             assertTrue(msg, msg.contains("a Transaction was not supplied"));
         }
     }
 
     private static class KeyCreator implements SecondaryKeyCreator {
-        public boolean createSecondaryKey(SecondaryDatabase secondaryDb,
-                                          DatabaseEntry keyEntry,
-                                          DatabaseEntry dataEntry,
-                                          DatabaseEntry resultEntry) {
+        public boolean createSecondaryKey(SecondaryDatabase secondaryDb, DatabaseEntry keyEntry,
+                                          DatabaseEntry dataEntry, DatabaseEntry resultEntry) {
             resultEntry.setData(dataEntry.getData());
             return true;
         }
@@ -583,18 +530,17 @@ public class CursorEdgeTest extends DualTestCase {
 
     /**
      * Tests that when a LockNotAvailableException is thrown as the result of a
-     * cursor operation, all latches are released properly.  There are two
-     * cases corresponding to the two methods in CursorImpl --
-     * lockLNDeletedAllowed and lockDupCountLN, which lock leaf LNs and dup
-     * count LNs, respectively -- that handle locking and latching.  These
-     * methods optimize by not releasing latches while obtaining a non-blocking
-     * lock.  Prior to the fix for [#15142], these methods did not release
-     * latches when LockNotAvailableException, which can occur when a
-     * transaction is configured for "no wait".
+     * cursor operation, all latches are released properly. There are two cases
+     * corresponding to the two methods in CursorImpl -- lockLNDeletedAllowed
+     * and lockDupCountLN, which lock leaf LNs and dup count LNs, respectively
+     * -- that handle locking and latching. These methods optimize by not
+     * releasing latches while obtaining a non-blocking lock. Prior to the fix
+     * for [#15142], these methods did not release latches when
+     * LockNotAvailableException, which can occur when a transaction is
+     * configured for "no wait".
      */
     @Test
-    public void testNoWaitLatchRelease()
-        throws Throwable {
+    public void testNoWaitLatchRelease() throws Throwable {
 
         initEnv();
 
@@ -641,9 +587,9 @@ public class CursorEdgeTest extends DualTestCase {
         }
 
         /*
-         * Before the [#15142] bug fix, this could have failed.  However, that
+         * Before the [#15142] bug fix, this could have failed. However, that
          * failure was not reproducible because all callers of
-         * lockLNDeletedAllowed redundantly release the BIN latches.  So this is
+         * lockLNDeletedAllowed redundantly release the BIN latches. So this is
          * just an extra check to ensure such a bug is never introduced.
          */
         assertEquals(0, LatchSupport.nBtreeLatchesHeld());
@@ -666,12 +612,11 @@ public class CursorEdgeTest extends DualTestCase {
 
     /**
      * Checks that an uncommitted deleted record will cause other txns that
-     * access it to block.  This reproduces a bug [#22892] where other txns
+     * access it to block. This reproduces a bug [#22892] where other txns
      * accessing the record would return NOTFOUND rather than blocking.
      */
     @Test
-    public void testReadDeletedUncommitted()
-        throws Throwable {
+    public void testReadDeletedUncommitted() throws Throwable {
 
         initEnv();
 
@@ -688,13 +633,13 @@ public class CursorEdgeTest extends DualTestCase {
         data.setData(TestUtils.getTestArray(1));
         db.put(null, key, data);
 
-        /* Use txn1 to delete record 1.  Leave txn1 open. */
+        /* Use txn1 to delete record 1. Leave txn1 open. */
         final Transaction txn1 = env.beginTransaction(null, null);
         key.setData(TestUtils.getTestArray(1));
         OperationStatus status = db.delete(txn1, key);
         assertSame(status, OperationStatus.SUCCESS);
 
-        /* Try to read record 1 with no-wait txn2.  Should fail. */
+        /* Try to read record 1 with no-wait txn2. Should fail. */
         final TransactionConfig txn2Config = new TransactionConfig();
         txn2Config.setNoWait(true);
         final Transaction txn2 = env.beginTransaction(null, txn2Config);
@@ -712,7 +657,7 @@ public class CursorEdgeTest extends DualTestCase {
         } catch (LockNotAvailableException expected) {
         }
 
-        /* Commit txn1.  Then expect NOTFOUND when reading. */
+        /* Commit txn1. Then expect NOTFOUND when reading. */
         txn1.commit();
         key.setData(TestUtils.getTestArray(1));
         status = db.get(txn2, key, data, null);

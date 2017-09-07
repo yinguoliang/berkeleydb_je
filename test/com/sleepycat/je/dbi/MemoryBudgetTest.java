@@ -37,8 +37,7 @@ public class MemoryBudgetTest extends TestBase {
     }
 
     @Test
-    public void testDefaults()
-        throws Exception {
+    public void testDefaults() throws Exception {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -47,30 +46,29 @@ public class MemoryBudgetTest extends TestBase {
         MemoryBudget testBudget = envImpl.getMemoryBudget();
 
         /*
-        System.out.println("max=    " + testBudget.getMaxMemory());
-        System.out.println("log=    " + testBudget.getLogBufferBudget());
-        System.out.println("thresh= " + testBudget.getEvictorCheckThreshold());
-        */
+         * System.out.println("max=    " + testBudget.getMaxMemory());
+         * System.out.println("log=    " + testBudget.getLogBufferBudget());
+         * System.out.println("thresh= " +
+         * testBudget.getEvictorCheckThreshold());
+         */
 
         assertTrue(testBudget.getMaxMemory() > 0);
         assertTrue(testBudget.getLogBufferBudget() > 0);
 
-        assertTrue(testBudget.getMaxMemory() <=
-                   JVMSystemUtils.getRuntimeMaxMemory());
+        assertTrue(testBudget.getMaxMemory() <= JVMSystemUtils.getRuntimeMaxMemory());
 
         env.close();
     }
 
     /* Verify that the proportionally based setting works. */
     @Test
-    public void testCacheSizing()
-        throws Exception {
+    public void testCacheSizing() throws Exception {
 
         long jvmMemory = JVMSystemUtils.getRuntimeMaxMemory();
 
         /*
-         * Runtime.maxMemory() may return Long.MAX_VALUE if there is no
-         * inherent limit.
+         * Runtime.maxMemory() may return Long.MAX_VALUE if there is no inherent
+         * limit.
          */
         if (jvmMemory == Long.MAX_VALUE) {
             jvmMemory = 1 << 26;
@@ -81,8 +79,7 @@ public class MemoryBudgetTest extends TestBase {
         envConfig.setAllowCreate(true);
         Environment env = new Environment(envHome, envConfig);
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-        long percentConfig = envImpl.getConfigManager().
-            getInt(EnvironmentParams.MAX_MEMORY_PERCENT);
+        long percentConfig = envImpl.getConfigManager().getInt(EnvironmentParams.MAX_MEMORY_PERCENT);
 
         EnvironmentConfig c = env.getConfig();
         long expectedMem = (jvmMemory * percentConfig) / 100;
@@ -90,7 +87,7 @@ public class MemoryBudgetTest extends TestBase {
         assertEquals(expectedMem, envImpl.getMemoryBudget().getMaxMemory());
         env.close();
 
-        /* Try setting the percentage.*/
+        /* Try setting the percentage. */
         expectedMem = (jvmMemory * 30) / 100;
         envConfig = TestUtils.initEnvConfig();
         envConfig.setCachePercent(30);
@@ -108,8 +105,7 @@ public class MemoryBudgetTest extends TestBase {
         envImpl = DbInternal.getNonNullEnvImpl(env);
         c = env.getConfig();
         assertEquals(MemoryBudget.MIN_MAX_MEMORY_SIZE + 10, c.getCacheSize());
-        assertEquals(MemoryBudget.MIN_MAX_MEMORY_SIZE + 10,
-                     envImpl.getMemoryBudget().getMaxMemory());
+        assertEquals(MemoryBudget.MIN_MAX_MEMORY_SIZE + 10, envImpl.getMemoryBudget().getMaxMemory());
         env.close();
     }
 }

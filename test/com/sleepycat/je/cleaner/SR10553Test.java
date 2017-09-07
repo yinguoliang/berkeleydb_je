@@ -39,7 +39,7 @@ import com.sleepycat.je.util.TestUtils;
 @RunWith(Parameterized.class)
 public class SR10553Test extends CleanerTestBase {
 
-    private static final String DB_NAME = "foo";
+    private static final String           DB_NAME     = "foo";
 
     private static final CheckpointConfig forceConfig = new CheckpointConfig();
     static {
@@ -50,49 +50,39 @@ public class SR10553Test extends CleanerTestBase {
 
     public SR10553Test(boolean multiSubDir) {
         envMultiSubDir = multiSubDir;
-        customName = envMultiSubDir ? "multi-sub-dir" : null ;
+        customName = envMultiSubDir ? "multi-sub-dir" : null;
     }
 
     @Parameters
     public static List<Object[]> genParams() {
-        
-        return getEnv(new boolean[] {false, true});
+
+        return getEnv(new boolean[] { false, true });
     }
+
     /**
      * Opens the environment and database.
      */
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig config = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(config);
         config.setAllowCreate(true);
         /* Do not run the daemons. */
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         /* Use a small log file size to make cleaning more frequent. */
-        config.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                              Integer.toString(1024));
+        config.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(1024));
         /* Use a small memory size to force eviction. */
-        config.setConfigParam(EnvironmentParams.MAX_MEMORY.getName(),
-                              Integer.toString(1024 * 96));
+        config.setConfigParam(EnvironmentParams.MAX_MEMORY.getName(), Integer.toString(1024 * 96));
         /* Don't track detail with a tiny cache size. */
-        config.setConfigParam
-            (EnvironmentParams.CLEANER_TRACK_DETAIL.getName(), "false");
-        config.setConfigParam(EnvironmentParams.NUM_LOG_BUFFERS.getName(),
-                              Integer.toString(2));
+        config.setConfigParam(EnvironmentParams.CLEANER_TRACK_DETAIL.getName(), "false");
+        config.setConfigParam(EnvironmentParams.NUM_LOG_BUFFERS.getName(), Integer.toString(2));
         /* Set log buffers large enough for trace messages. */
-        config.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(),
-                              Integer.toString(7000));
+        config.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(), Integer.toString(7000));
         if (envMultiSubDir) {
-            config.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                  DATA_DIRS + "");
+            config.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, config);
@@ -103,8 +93,7 @@ public class SR10553Test extends CleanerTestBase {
     /**
      * Opens that database.
      */
-    private void openDb()
-        throws DatabaseException {
+    private void openDb() throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -115,8 +104,7 @@ public class SR10553Test extends CleanerTestBase {
     /**
      * Closes the environment and database.
      */
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (db != null) {
             db.close();
@@ -131,8 +119,7 @@ public class SR10553Test extends CleanerTestBase {
     /**
      */
     @Test
-    public void testSR10553()
-        throws DatabaseException {
+    public void testSR10553() throws DatabaseException {
 
         openEnv();
 
@@ -145,12 +132,11 @@ public class SR10553Test extends CleanerTestBase {
             db.put(null, key, data);
         }
         Cursor cursor = db.openCursor(null, null);
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getSearchKey(key, data, null));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(key, data, null));
         assertEquals(COUNT, cursor.count());
         cursor.close();
 
-        /* Delete everything.  Do not compress. */
+        /* Delete everything. Do not compress. */
         db.delete(null, key);
 
         /* Checkpoint and clean. */
@@ -163,16 +149,15 @@ public class SR10553Test extends CleanerTestBase {
 
         /* Scan all values. */
         cursor = db.openCursor(null, null);
-        for (OperationStatus status = cursor.getFirst(key, data, null);
-                             status == OperationStatus.SUCCESS;
-                             status = cursor.getNext(key, data, null)) {
+        for (OperationStatus status = cursor.getFirst(key, data,
+                null); status == OperationStatus.SUCCESS; status = cursor.getNext(key, data, null)) {
         }
         cursor.close();
 
         /*
          * Before the fix to 10553, while scanning over deleted records, a
          * LogFileNotFoundException would occur when faulting in a deleted
-         * record, if the log file had been cleaned.  This was because the
+         * record, if the log file had been cleaned. This was because the
          * cleaner was not setting knownDeleted for deleted records.
          */
         closeEnv();

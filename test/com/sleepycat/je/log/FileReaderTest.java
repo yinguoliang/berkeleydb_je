@@ -49,14 +49,13 @@ public class FileReaderTest extends DualTestCase {
     }
 
     /*
-     * Check that we can handle the case when we are reading forward
-     * with other than the LastFileReader, and the last file exists but is
-     * 0 length. This case came up when a run of MemoryStress was killed off,
-     * and we then attempted to read it with DbPrintLog.
+     * Check that we can handle the case when we are reading forward with other
+     * than the LastFileReader, and the last file exists but is 0 length. This
+     * case came up when a run of MemoryStress was killed off, and we then
+     * attempted to read it with DbPrintLog.
      */
     @Test
-    public void testEmptyExtraFile()
-        throws Throwable {
+    public void testEmptyExtraFile() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -73,14 +72,8 @@ public class FileReaderTest extends DualTestCase {
             File newFile = new File(envHome, "00000001.jdb");
             newFile.createNewFile();
 
-            INFileReader reader = new INFileReader(envImpl,
-                                                   1000,
-                                                   DbLsn.NULL_LSN,
-                                                   DbLsn.NULL_LSN,
-                                                   false,
-                                                   DbLsn.NULL_LSN,
-                                                   DbLsn.NULL_LSN,
-                                                   null);
+            INFileReader reader = new INFileReader(envImpl, 1000, DbLsn.NULL_LSN, DbLsn.NULL_LSN, false, DbLsn.NULL_LSN,
+                    DbLsn.NULL_LSN, null);
             while (reader.readNextEntry()) {
             }
 
@@ -95,12 +88,12 @@ public class FileReaderTest extends DualTestCase {
     /**
      * Check that we can read a log with various non-default parameters set.
      * (This test is currently only exercising one, je.log.checksumRead)
+     * 
      * @throws DatabaseException
      * @throws EnvironmentLockedException
      */
     @Test
-    public void testNonDefaultParams()
-        throws Throwable {
+    public void testNonDefaultParams() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -119,14 +112,12 @@ public class FileReaderTest extends DualTestCase {
             DatabaseEntry entry = new DatabaseEntry();
             for (int i = 0; i < 10; i++) {
                 IntegerBinding.intToEntry(i, entry);
-                assertEquals(OperationStatus.SUCCESS,
-                             db.put(null, entry, entry));
+                assertEquals(OperationStatus.SUCCESS, db.put(null, entry, entry));
             }
 
             env.sync();
 
-            TestReader reader =
-                new TestReader(DbInternal.getNonNullEnvImpl(env));
+            TestReader reader = new TestReader(DbInternal.getNonNullEnvImpl(env));
             while (reader.readNextEntry()) {
             }
         } catch (Throwable t) {
@@ -142,22 +133,17 @@ public class FileReaderTest extends DualTestCase {
 
     private static class TestReader extends FileReader {
 
-        public TestReader(EnvironmentImpl envImpl)
-                throws Exception {
+        public TestReader(EnvironmentImpl envImpl) throws Exception {
 
-            super(envImpl, 1024 /* readBufferSize*/, true /* forward */,
-                  0L, null /* singleFileNumber */,
-                  DbLsn.NULL_LSN /* endOfFileLsn */,
-                  DbLsn.NULL_LSN /* finishLsn */);
+            super(envImpl, 1024 /* readBufferSize */, true /* forward */, 0L, null /* singleFileNumber */,
+                    DbLsn.NULL_LSN /* endOfFileLsn */, DbLsn.NULL_LSN /* finishLsn */);
 
         }
 
         @Override
-        protected boolean processEntry(ByteBuffer entryBuffer)
-                throws DatabaseException {
+        protected boolean processEntry(ByteBuffer entryBuffer) throws DatabaseException {
 
-            LogEntryType type =
-                LogEntryType.findType(currentEntryHeader.getType());
+            LogEntryType type = LogEntryType.findType(currentEntryHeader.getType());
             LogEntry entry = type.getSharedLogEntry();
             entry.readEntry(envImpl, currentEntryHeader, entryBuffer);
             return true;

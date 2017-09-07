@@ -40,20 +40,18 @@ import com.sleepycat.je.dbi.TriggerManager.MapOver;
 
 public class InvokeTest extends TestBase {
 
-    Environment env;
-    Database db1 = null;
-    int triggerCount = -1;
+    Environment   env;
+    Database      db1          = null;
+    int           triggerCount = -1;
     /* The number of nodes. it's > 1 if this is a replicated environment. */
-    protected int nNodes = 1;
+    protected int nNodes       = 1;
 
     protected List<Trigger> getTriggers() {
-        return new LinkedList<Trigger>(Arrays.asList((Trigger) new DBT("t1"),
-                             (Trigger) new DBT("t2")));
+        return new LinkedList<Trigger>(Arrays.asList((Trigger) new DBT("t1"), (Trigger) new DBT("t2")));
     }
 
     protected List<Trigger> getTransientTriggers() {
-        return new LinkedList<Trigger>(Arrays.asList((Trigger) new TDBT("tt1"),
-                             (Trigger) new TDBT("tt2")));
+        return new LinkedList<Trigger>(Arrays.asList((Trigger) new TDBT("tt1"), (Trigger) new TDBT("tt2")));
     }
 
     protected List<Trigger> getTriggersPlusOne() {
@@ -67,9 +65,8 @@ public class InvokeTest extends TestBase {
     }
 
     @Before
-    public void setUp() 
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         super.setUp();
         List<Trigger> triggers = getTriggers();
         triggerCount = triggers.size();
@@ -78,8 +75,7 @@ public class InvokeTest extends TestBase {
         dbConfig.setOverrideTriggers(true);
 
         env = create(envRoot, envConfig);
-        Transaction transaction =
-            env.beginTransaction(null, getTransactionConfig());
+        Transaction transaction = env.beginTransaction(null, getTransactionConfig());
         db1 = env.openDatabase(transaction, "db1", dbConfig);
         transaction.commit();
         dbConfig.setOverrideTriggers(false);
@@ -87,9 +83,8 @@ public class InvokeTest extends TestBase {
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
-        
+    public void tearDown() throws Exception {
+
         db1.close();
         close(env);
         super.tearDown();
@@ -97,8 +92,7 @@ public class InvokeTest extends TestBase {
 
     @Test
     public void testAddRemoveTriggerExistindDbTrans() {
-        Transaction transaction =
-            env.beginTransaction(null, getTransactionConfig());
+        Transaction transaction = env.beginTransaction(null, getTransactionConfig());
         addRemoveTriggerExistingDb(transaction);
         transaction.commit();
     }
@@ -141,7 +135,7 @@ public class InvokeTest extends TestBase {
 
     /**
      * Simply verifies that transient triggers are indeed transient, i.e., not
-     * stored in the DatabaseImpl.  Also checks that a transient trigger can be
+     * stored in the DatabaseImpl. Also checks that a transient trigger can be
      * added when setOverrideTriggers(true) is not called.
      */
     @Test
@@ -163,8 +157,8 @@ public class InvokeTest extends TestBase {
 
         /* Test simple transctional put(). */
         Transaction transaction = env.beginTransaction(null, null);
-        DatabaseEntry key = new DatabaseEntry(new byte[] {1});
-        DatabaseEntry data = new DatabaseEntry(new byte[] {2});
+        DatabaseEntry key = new DatabaseEntry(new byte[] { 1 });
+        DatabaseEntry data = new DatabaseEntry(new byte[] { 2 });
         dbc.put(transaction, key, data);
         verifyPut(1, key, data, null);
         transaction.commit();
@@ -224,7 +218,7 @@ public class InvokeTest extends TestBase {
         dbConfig.setOverrideTriggers(true);
         tdbConfig.setTriggers(tgs);
         verifyOpen(0, 0);
-        Database dbc = env.openDatabase(transaction, "dbc", tdbConfig );
+        Database dbc = env.openDatabase(transaction, "dbc", tdbConfig);
 
         for (Trigger trigger : dbc.getConfig().getTriggers()) {
             assertEquals("dbc", trigger.getDatabaseName());
@@ -241,7 +235,7 @@ public class InvokeTest extends TestBase {
         checkTriggerCount(1);
         resetTriggers();
         dbc = env.openDatabase(transaction, "dbc", dbConfig);
-        verifyOpen(0,1);
+        verifyOpen(0, 1);
         verifyAddTrigger(0);
         /* Not a new database no create and consequently commit triggers. */
         verifyCommit(0);
@@ -258,8 +252,7 @@ public class InvokeTest extends TestBase {
 
     @Test
     public void testCreateTrans() {
-        Transaction transaction =
-            env.beginTransaction(null, getTransactionConfig());
+        Transaction transaction = env.beginTransaction(null, getTransactionConfig());
         create(transaction);
         transaction.commit();
     }
@@ -271,8 +264,7 @@ public class InvokeTest extends TestBase {
 
     @Test
     public void testOpenTrans() {
-        Transaction transaction =
-            env.beginTransaction(null, getTransactionConfig());
+        Transaction transaction = env.beginTransaction(null, getTransactionConfig());
         open(transaction);
         transaction.commit();
     }
@@ -282,7 +274,7 @@ public class InvokeTest extends TestBase {
         resetTriggers();
         /* read/write open. */
         db1 = env.openDatabase(transaction, "db1", dbConfig);
-        verifyOpen(0,1);
+        verifyOpen(0, 1);
         checkNullOpenTriggerCount(1);
         db1.close();
         resetTriggers();
@@ -290,13 +282,13 @@ public class InvokeTest extends TestBase {
         DatabaseConfig config = getDBConfig();
         config.setReadOnly(true);
         db1 = env.openDatabase(transaction, "db1", config);
-        verifyOpen(0,0);
+        verifyOpen(0, 0);
         checkTriggerCount(0);
         resetTriggers();
 
         config.setReadOnly(false);
         Database db11 = env.openDatabase(transaction, "db1", config);
-        verifyOpen(0,1);
+        verifyOpen(0, 1);
         checkNullOpenTriggerCount(1);
         db11.close();
         resetTriggers();
@@ -364,8 +356,8 @@ public class InvokeTest extends TestBase {
         transaction.commit();
 
         /*
-         * Truncate does a rename under the covers so make sure the triggers
-         * are present on the new empty database.
+         * Truncate does a rename under the covers so make sure the triggers are
+         * present on the new empty database.
          */
         db1 = env.openDatabase(null, "db1", dbConfig);
         verifyDB1Triggers();
@@ -422,9 +414,9 @@ public class InvokeTest extends TestBase {
     private void KVOps(Transaction transaction) {
 
         DatabaseEntry key = new DatabaseEntry();
-        key.setData(new byte[]{1});
+        key.setData(new byte[] { 1 });
         DatabaseEntry data1 = new DatabaseEntry();
-        data1.setData(new byte[]{2});
+        data1.setData(new byte[] { 2 });
         verifyPut(0, null, null, null);
 
         db1.put(transaction, key, data1);
@@ -432,7 +424,7 @@ public class InvokeTest extends TestBase {
         checkTriggerCount(1);
         resetTriggers();
         DatabaseEntry data2 = new DatabaseEntry();
-        data2.setData(new byte[]{3});
+        data2.setData(new byte[] { 3 });
         db1.put(transaction, key, data2);
         verifyPut(1, key, data2, data1);
         checkTriggerCount(1);
@@ -453,9 +445,9 @@ public class InvokeTest extends TestBase {
     }
 
     /**
-     * Ensure recovery replay of MapLNs executes properly.  This tests a fix
-     * for an NPE that occurred during DatabaseImpl.readFromLog, which was
-     * calling DatabaseImpl.getName prior to instantiation of DbTree.
+     * Ensure recovery replay of MapLNs executes properly. This tests a fix for
+     * an NPE that occurred during DatabaseImpl.readFromLog, which was calling
+     * DatabaseImpl.getName prior to instantiation of DbTree.
      */
     @Test
     public void testBasicRecovery() {
@@ -471,20 +463,18 @@ public class InvokeTest extends TestBase {
 
     private void resetTriggers() {
         for (Trigger t : TestBase.invokedTriggers) {
-            ((TDBT)t).clear();
+            ((TDBT) t).clear();
         }
         TestBase.invokedTriggers.clear();
     }
 
-    protected void verifyDelete(final int nDelete,
-                                final DatabaseEntry key,
-                                final DatabaseEntry oldData) {
+    protected void verifyDelete(final int nDelete, final DatabaseEntry key, final DatabaseEntry oldData) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                final TDBT dbt = (TDBT)e;
+                final TDBT dbt = (TDBT) e;
                 assertEquals(nDelete, dbt.ts.nDelete);
                 assertEquals(key, dbt.ts.key);
                 assertEquals(oldData, dbt.ts.oldData);
@@ -494,16 +484,15 @@ public class InvokeTest extends TestBase {
         }.run();
     }
 
-    protected void verifyPut(final int nPut,
-                             final DatabaseEntry key,
-                             final DatabaseEntry newData,
-                             final DatabaseEntry oldData) {;
+    protected void verifyPut(final int nPut, final DatabaseEntry key, final DatabaseEntry newData,
+                             final DatabaseEntry oldData) {
+        ;
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                final TDBT dbt = (TDBT)e;
+                final TDBT dbt = (TDBT) e;
                 assertEquals(nPut, dbt.ts.nPut);
                 dbt.ts.nPut = 0;
                 assertEquals(key, dbt.ts.key);
@@ -516,14 +505,14 @@ public class InvokeTest extends TestBase {
 
     protected void verifyOpen(final int nCreate, final int nOpen) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                assertEquals(nOpen, ((TDBT)e).ts.nOpen);
-                assertEquals(nCreate, ((TDBT)e).ts.nCreate);
-                ((TDBT)e).ts.nCreate = 0;
-                ((TDBT)e).ts.nOpen = 0;
+                assertEquals(nOpen, ((TDBT) e).ts.nOpen);
+                assertEquals(nCreate, ((TDBT) e).ts.nCreate);
+                ((TDBT) e).ts.nCreate = 0;
+                ((TDBT) e).ts.nOpen = 0;
                 return e;
             }
         }.run();
@@ -531,12 +520,12 @@ public class InvokeTest extends TestBase {
 
     protected void verifyClose(final int nClose) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                assertEquals(nClose, ((TDBT)e).ts.nClose);
-                ((TDBT)e).ts.nClose = 0;
+                assertEquals(nClose, ((TDBT) e).ts.nClose);
+                ((TDBT) e).ts.nClose = 0;
                 return e;
             }
         }.run();
@@ -544,33 +533,30 @@ public class InvokeTest extends TestBase {
 
     /* The triggers should have been executed on all nodes. */
     protected void checkTriggerCount(final int count) {
-        assertEquals((count * nNodes * triggerCount),
-                     TestBase.invokedTriggers.size());
+        assertEquals((count * nNodes * triggerCount), TestBase.invokedTriggers.size());
     }
 
     /* Transient triggers are only executed on the node they're configured. */
     protected void checkTransientTriggerCount(final int count) {
-        assertEquals((count * triggerCount),
-                     TestBase.invokedTriggers.size());
+        assertEquals((count * triggerCount), TestBase.invokedTriggers.size());
     }
 
     /*
-     * Null open triggers, ones where the db is opened for writes,
-     * but no writes are actually done, will not fire on replica nodes.
+     * Null open triggers, ones where the db is opened for writes, but no writes
+     * are actually done, will not fire on replica nodes.
      */
     protected void checkNullOpenTriggerCount(final int count) {
-        assertEquals((count * triggerCount),
-                     TestBase.invokedTriggers.size());
+        assertEquals((count * triggerCount), TestBase.invokedTriggers.size());
     }
 
     protected void verifyRemove(final int nRemove) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                assertEquals(nRemove, ((DBT)e).ts.nRemove);
-                ((DBT)e).ts.nRemove = 0;
+                assertEquals(nRemove, ((DBT) e).ts.nRemove);
+                ((DBT) e).ts.nRemove = 0;
                 return e;
             }
         }.run();
@@ -578,25 +564,24 @@ public class InvokeTest extends TestBase {
 
     protected void verifyTruncate(final int nTruncate) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                assertEquals(nTruncate, ((DBT)e).ts.nTruncate);
-                ((DBT)e).ts.nTruncate = 0;
+                assertEquals(nTruncate, ((DBT) e).ts.nTruncate);
+                ((DBT) e).ts.nTruncate = 0;
                 return e;
             }
         }.run();
     }
 
-    protected void verifyRename(final String newName,
-                                final int nRename) {
+    protected void verifyRename(final String newName, final int nRename) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                final DBT dbt = (DBT)e;
+                final DBT dbt = (DBT) e;
                 assertEquals(nRename, dbt.ts.nRename);
                 newName.equals(dbt.ts.newName);
                 dbt.ts.nRename = 0;
@@ -608,12 +593,12 @@ public class InvokeTest extends TestBase {
 
     protected void verifyCommit(final int nCommit) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                assertEquals(nCommit, ((TDBT)e).ts.nCommit);
-                ((TDBT)e).ts.nCommit = 0;
+                assertEquals(nCommit, ((TDBT) e).ts.nCommit);
+                ((TDBT) e).ts.nCommit = 0;
                 return e;
             }
         }.run();
@@ -621,12 +606,12 @@ public class InvokeTest extends TestBase {
 
     protected void verifyAbort(final int nAbort) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                assertEquals(nAbort, ((TDBT)e).ts.nAbort);
-                ((TDBT)e).ts.nAbort = 0;
+                assertEquals(nAbort, ((TDBT) e).ts.nAbort);
+                ((TDBT) e).ts.nAbort = 0;
                 return e;
             }
         }.run();
@@ -634,12 +619,12 @@ public class InvokeTest extends TestBase {
 
     protected void verifyRemoveTrigger(final int nRemoveTrigger) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                assertEquals(nRemoveTrigger, ((TDBT)e).ts.nRemoveTrigger);
-                ((TDBT)e).ts.nRemoveTrigger = 0;
+                assertEquals(nRemoveTrigger, ((TDBT) e).ts.nRemoveTrigger);
+                ((TDBT) e).ts.nRemoveTrigger = 0;
                 return e;
             }
         }.run();
@@ -647,12 +632,12 @@ public class InvokeTest extends TestBase {
 
     protected void verifyAddTrigger(final int nAddTrigger) {
 
-        new MapOver<Trigger,Trigger>(TestBase.invokedTriggers) {
+        new MapOver<Trigger, Trigger>(TestBase.invokedTriggers) {
 
             @Override
             protected Trigger fun(Trigger e) {
-                assertEquals(nAddTrigger, ((TDBT)e).ts.nAddTrigger);
-                ((TDBT)e).ts.nAddTrigger = 0;
+                assertEquals(nAddTrigger, ((TDBT) e).ts.nAddTrigger);
+                ((TDBT) e).ts.nAddTrigger = 0;
                 return e;
             }
         }.run();

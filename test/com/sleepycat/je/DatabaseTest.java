@@ -65,20 +65,19 @@ import org.junit.Test;
  * Basic database operations, excluding configuration testing.
  */
 public class DatabaseTest extends DualTestCase {
-    private static final boolean DEBUG = false;
-    private static final int NUM_RECS = 257;
-    private static final int NUM_DUPS = 10;
+    private static final boolean DEBUG    = false;
+    private static final int     NUM_RECS = 257;
+    private static final int     NUM_DUPS = 10;
 
-    private final File envHome;
-    private Environment env;
+    private final File           envHome;
+    private Environment          env;
 
     public DatabaseTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         if (env != null) {
             try {
@@ -95,8 +94,7 @@ public class DatabaseTest extends DualTestCase {
      * database.
      */
     @Test
-    public void testCursor()
-        throws Exception {
+    public void testCursor() throws Exception {
 
         Environment txnalEnv = null;
         Database nonTxnalDb = null;
@@ -142,8 +140,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testWackyLocalesSR18504()
-        throws Throwable {
+    public void testWackyLocalesSR18504() throws Throwable {
 
         Locale currentLocale = Locale.getDefault();
         Database myDb = null;
@@ -161,8 +158,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPutExisting()
-        throws Throwable {
+    public void testPutExisting() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, false, null);
@@ -211,8 +207,7 @@ public class DatabaseTest extends DualTestCase {
      * Test that zero length data always returns the same (static) byte[].
      */
     @Test
-    public void testZeroLengthData()
-        throws Throwable {
+    public void testZeroLengthData() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, false, null);
@@ -224,15 +219,11 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(appZLBA);
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.get(txn, key, getData, LockMode.DEFAULT));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.get(txn, key, getData, LockMode.DEFAULT));
                 assertFalse(getData.getData() == appZLBA);
-                assertTrue(getData.getData() ==
-                           LogUtils.ZERO_LENGTH_BYTE_ARRAY);
-                assertEquals(0, Key.compareKeys(data.getData(),
-                                                getData.getData(), null));
+                assertTrue(getData.getData() == LogUtils.ZERO_LENGTH_BYTE_ARRAY);
+                assertEquals(0, Key.compareKeys(data.getData(), getData.getData(), null));
             }
             txn.commit();
             myDb.close();
@@ -249,10 +240,8 @@ public class DatabaseTest extends DualTestCase {
             txn = env.beginTransaction(null, null);
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.get(txn, key, getData, LockMode.DEFAULT));
-                assertTrue(getData.getData() ==
-                           LogUtils.ZERO_LENGTH_BYTE_ARRAY);
+                assertEquals(OperationStatus.SUCCESS, myDb.get(txn, key, getData, LockMode.DEFAULT));
+                assertTrue(getData.getData() == LogUtils.ZERO_LENGTH_BYTE_ARRAY);
             }
             txn.commit();
             myDb.close();
@@ -264,8 +253,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDeleteAbort()
-        throws Throwable {
+    public void testDeleteAbort() throws Throwable {
 
         try {
             /* Init the Environment. */
@@ -289,24 +277,21 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
             }
             txn.commit();
-            int delkey = NUM_RECS/2;
+            int delkey = NUM_RECS / 2;
             DeleteIt deleteIt = new DeleteIt(delkey, env, myDb);
             txn = env.beginTransaction(null, null);
             key.setData(TestUtils.getTestArray(delkey));
             data.setData(TestUtils.getTestArray(delkey));
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb.delete(txn, key));
+            assertEquals(OperationStatus.SUCCESS, myDb.delete(txn, key));
             Thread t1 = new Thread(deleteIt);
             t1.start();
             Thread.sleep(1000);
             txn.abort();
             t1.join();
-            assertEquals(OperationStatus.SUCCESS,
-                         deleteIt.getResult());
+            assertEquals(OperationStatus.SUCCESS, deleteIt.getResult());
             myDb.close();
             close(env);
         } catch (Throwable t) {
@@ -315,10 +300,8 @@ public class DatabaseTest extends DualTestCase {
         }
     }
 
-
     @Test
-    public void testDeleteNonDup()
-        throws Throwable {
+    public void testDeleteNonDup() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, false, null);
@@ -329,23 +312,18 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
             }
 
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.delete(txn, key));
-                OperationStatus status =
-                    myDb.get(txn, key, getData, LockMode.DEFAULT);
-                if (status != OperationStatus.KEYEMPTY &&
-                    status != OperationStatus.NOTFOUND) {
+                assertEquals(OperationStatus.SUCCESS, myDb.delete(txn, key));
+                OperationStatus status = myDb.get(txn, key, getData, LockMode.DEFAULT);
+                if (status != OperationStatus.KEYEMPTY && status != OperationStatus.NOTFOUND) {
                     fail("invalid Database.get return: " + status);
                 }
-                assertEquals(OperationStatus.NOTFOUND,
-                             myDb.delete(txn, key));
+                assertEquals(OperationStatus.NOTFOUND, myDb.delete(txn, key));
             }
             txn.commit();
             myDb.close();
@@ -357,8 +335,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDeleteDup()
-        throws Throwable {
+    public void testDeleteDup() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, true, true, false, null);
@@ -369,12 +346,10 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
                 for (int j = 0; j < NUM_DUPS; j++) {
                     data.setData(TestUtils.getTestArray(i + j));
-                    assertEquals(OperationStatus.SUCCESS,
-                                 myDb.put(txn, key, data));
+                    assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
                 }
             }
             txn.commit();
@@ -383,10 +358,8 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.delete(txn, key));
-                OperationStatus status =
-                    myDb.get(txn, key, getData, LockMode.DEFAULT);
+                assertEquals(OperationStatus.SUCCESS, myDb.delete(txn, key));
+                OperationStatus status = myDb.get(txn, key, getData, LockMode.DEFAULT);
                 assertEquals(OperationStatus.NOTFOUND, status);
                 assertEquals(OperationStatus.NOTFOUND, myDb.delete(txn, key));
             }
@@ -400,101 +373,48 @@ public class DatabaseTest extends DualTestCase {
         }
     }
 
-    /* Remove until 14264 is resolved.
-    public void XXtestDeleteDupWithData()
-        throws Throwable {
-
-        try {
-            Database myDb = initEnvAndDb(true, true, true, false, null);
-            DatabaseEntry key = new DatabaseEntry();
-            DatabaseEntry data = new DatabaseEntry();
-            DatabaseEntry getData = new DatabaseEntry();
-            Transaction txn = env.beginTransaction(null, null);
-            for (int i = NUM_RECS; i > 0; i--) {
-                key.setData(TestUtils.getTestArray(i));
-                data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
-                for (int j = 0; j < NUM_DUPS; j++) {
-                    data.setData(TestUtils.getTestArray(i + j));
-                    assertEquals(OperationStatus.SUCCESS,
-                                 myDb.put(txn, key, data));
-                }
-            }
-            txn.commit();
-
-            txn = env.beginTransaction(null, null);
-            for (int i = NUM_RECS; i > 0; i--) {
-                key.setData(TestUtils.getTestArray(i));
-                for (int j = 0; j < NUM_DUPS; j++) {
-                    data.setData(TestUtils.getTestArray(i + j));
-                    assertEquals(OperationStatus.SUCCESS,
-                                 myDb.delete(txn, key, data));
-                    OperationStatus status =
-                        myDb.getSearchBoth(txn, key, data, LockMode.DEFAULT);
-                    if (status != OperationStatus.KEYEMPTY &&
-                        status != OperationStatus.NOTFOUND) {
-                        fail("invalid Database.get return");
-                    }
-                    assertEquals(OperationStatus.NOTFOUND,
-                                 myDb.delete(txn, key, data));
-                }
-            }
-            txn.commit();
-            myDb.close();
-            env.close();
-
-        } catch (Throwable t) {
-            t.printStackTrace();
-            throw t;
-        }
-    }
-
-    public void XXtestDeleteDupWithSingleRecord()
-        throws Throwable {
-
-        try {
-            Database myDb = initEnvAndDb(true, true, true, false, null);
-            DatabaseEntry key = new DatabaseEntry();
-            DatabaseEntry data = new DatabaseEntry();
-            DatabaseEntry getData = new DatabaseEntry();
-            Transaction txn = env.beginTransaction(null, null);
-            for (int i = NUM_RECS; i > 0; i--) {
-                key.setData(TestUtils.getTestArray(i));
-                data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
-            }
-            txn.commit();
-
-            txn = env.beginTransaction(null, null);
-            for (int i = NUM_RECS; i > 0; i--) {
-                key.setData(TestUtils.getTestArray(i));
-                data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.delete(txn, key, data));
-                OperationStatus status =
-                    myDb.getSearchBoth(txn, key, data, LockMode.DEFAULT);
-                if (status != OperationStatus.KEYEMPTY &&
-                    status != OperationStatus.NOTFOUND) {
-                    fail("invalid Database.get return");
-                }
-                assertEquals(OperationStatus.NOTFOUND,
-                             myDb.delete(txn, key, data));
-            }
-            txn.commit();
-            myDb.close();
-            env.close();
-
-        } catch (Throwable t) {
-            t.printStackTrace();
-            throw t;
-        }
-    }
-    */
+    /*
+     * Remove until 14264 is resolved. public void XXtestDeleteDupWithData()
+     * throws Throwable { try { Database myDb = initEnvAndDb(true, true, true,
+     * false, null); DatabaseEntry key = new DatabaseEntry(); DatabaseEntry data
+     * = new DatabaseEntry(); DatabaseEntry getData = new DatabaseEntry();
+     * Transaction txn = env.beginTransaction(null, null); for (int i =
+     * NUM_RECS; i > 0; i--) { key.setData(TestUtils.getTestArray(i));
+     * data.setData(TestUtils.getTestArray(i));
+     * assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data)); for (int
+     * j = 0; j < NUM_DUPS; j++) { data.setData(TestUtils.getTestArray(i + j));
+     * assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data)); } }
+     * txn.commit(); txn = env.beginTransaction(null, null); for (int i =
+     * NUM_RECS; i > 0; i--) { key.setData(TestUtils.getTestArray(i)); for (int
+     * j = 0; j < NUM_DUPS; j++) { data.setData(TestUtils.getTestArray(i + j));
+     * assertEquals(OperationStatus.SUCCESS, myDb.delete(txn, key, data));
+     * OperationStatus status = myDb.getSearchBoth(txn, key, data,
+     * LockMode.DEFAULT); if (status != OperationStatus.KEYEMPTY && status !=
+     * OperationStatus.NOTFOUND) { fail("invalid Database.get return"); }
+     * assertEquals(OperationStatus.NOTFOUND, myDb.delete(txn, key, data)); } }
+     * txn.commit(); myDb.close(); env.close(); } catch (Throwable t) {
+     * t.printStackTrace(); throw t; } } public void
+     * XXtestDeleteDupWithSingleRecord() throws Throwable { try { Database myDb
+     * = initEnvAndDb(true, true, true, false, null); DatabaseEntry key = new
+     * DatabaseEntry(); DatabaseEntry data = new DatabaseEntry(); DatabaseEntry
+     * getData = new DatabaseEntry(); Transaction txn =
+     * env.beginTransaction(null, null); for (int i = NUM_RECS; i > 0; i--) {
+     * key.setData(TestUtils.getTestArray(i));
+     * data.setData(TestUtils.getTestArray(i));
+     * assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data)); }
+     * txn.commit(); txn = env.beginTransaction(null, null); for (int i =
+     * NUM_RECS; i > 0; i--) { key.setData(TestUtils.getTestArray(i));
+     * data.setData(TestUtils.getTestArray(i));
+     * assertEquals(OperationStatus.SUCCESS, myDb.delete(txn, key, data));
+     * OperationStatus status = myDb.getSearchBoth(txn, key, data,
+     * LockMode.DEFAULT); if (status != OperationStatus.KEYEMPTY && status !=
+     * OperationStatus.NOTFOUND) { fail("invalid Database.get return"); }
+     * assertEquals(OperationStatus.NOTFOUND, myDb.delete(txn, key, data)); }
+     * txn.commit(); myDb.close(); env.close(); } catch (Throwable t) {
+     * t.printStackTrace(); throw t; } }
+     */
     @Test
-    public void testPutDuplicate()
-        throws Throwable {
+    public void testPutDuplicate() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, true, true, false, null);
@@ -504,11 +424,9 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
                 data.setData(TestUtils.getTestArray(i * 2));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
             }
             txn.commit();
             myDb.close();
@@ -520,8 +438,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPutNoDupData()
-        throws Throwable {
+    public void testPutNoDupData() throws Throwable {
         try {
             Database myDb = initEnvAndDb(true, true, true, true, false, null);
             DatabaseEntry key = new DatabaseEntry();
@@ -530,13 +447,10 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.putNoDupData(txn, key, data));
-                assertEquals(OperationStatus.KEYEXIST,
-                             myDb.putNoDupData(txn, key, data));
-                data.setData(TestUtils.getTestArray(i+1));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.putNoDupData(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.putNoDupData(txn, key, data));
+                assertEquals(OperationStatus.KEYEXIST, myDb.putNoDupData(txn, key, data));
+                data.setData(TestUtils.getTestArray(i + 1));
+                assertEquals(OperationStatus.SUCCESS, myDb.putNoDupData(txn, key, data));
             }
             txn.commit();
             myDb.close();
@@ -548,8 +462,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPutNoOverwriteInANoDupDb()
-        throws Throwable {
+    public void testPutNoOverwriteInANoDupDb() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, false, null);
@@ -559,10 +472,8 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.putNoOverwrite(txn, key, data));
-                assertEquals(OperationStatus.KEYEXIST,
-                             myDb.putNoOverwrite(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.putNoOverwrite(txn, key, data));
+                assertEquals(OperationStatus.KEYEXIST, myDb.putNoOverwrite(txn, key, data));
             }
             txn.commit();
             myDb.close();
@@ -574,8 +485,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPutNoOverwriteInADupDbTxn()
-        throws Throwable {
+    public void testPutNoOverwriteInADupDbTxn() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, true, true, false, null);
@@ -585,20 +495,14 @@ public class DatabaseTest extends DualTestCase {
                 Transaction txn1 = env.beginTransaction(null, null);
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.putNoOverwrite(txn1, key, data));
-                assertEquals(OperationStatus.KEYEXIST,
-                             myDb.putNoOverwrite(txn1, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.putNoOverwrite(txn1, key, data));
+                assertEquals(OperationStatus.KEYEXIST, myDb.putNoOverwrite(txn1, key, data));
                 data.setData(TestUtils.getTestArray(i << 1));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn1, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn1, key, data));
                 data.setData(TestUtils.getTestArray(i << 2));
-                assertEquals(OperationStatus.KEYEXIST,
-                    myDb.putNoOverwrite(txn1, key, data));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.delete(txn1, key));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.putNoOverwrite(txn1, key, data));
+                assertEquals(OperationStatus.KEYEXIST, myDb.putNoOverwrite(txn1, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.delete(txn1, key));
+                assertEquals(OperationStatus.SUCCESS, myDb.putNoOverwrite(txn1, key, data));
                 txn1.commit();
             }
             myDb.close();
@@ -610,8 +514,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPutNoOverwriteInADupDbNoTxn()
-        throws Throwable {
+    public void testPutNoOverwriteInADupDbNoTxn() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, true, false, false, null);
@@ -620,20 +523,14 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.putNoOverwrite(null, key, data));
-                assertEquals(OperationStatus.KEYEXIST,
-                             myDb.putNoOverwrite(null, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.putNoOverwrite(null, key, data));
+                assertEquals(OperationStatus.KEYEXIST, myDb.putNoOverwrite(null, key, data));
                 data.setData(TestUtils.getTestArray(i << 1));
-                assertEquals(OperationStatus.SUCCESS,
-                    myDb.put(null, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(null, key, data));
                 data.setData(TestUtils.getTestArray(i << 2));
-                assertEquals(OperationStatus.KEYEXIST,
-                             myDb.putNoOverwrite(null, key, data));
-                assertEquals(OperationStatus.SUCCESS,
-                    myDb.delete(null, key));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.putNoOverwrite(null, key, data));
+                assertEquals(OperationStatus.KEYEXIST, myDb.putNoOverwrite(null, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.delete(null, key));
+                assertEquals(OperationStatus.SUCCESS, myDb.putNoOverwrite(null, key, data));
             }
             myDb.close();
             close(env);
@@ -644,8 +541,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDatabaseCount()
-        throws Throwable {
+    public void testDatabaseCount() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, false, null);
@@ -655,8 +551,7 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
             }
 
             long count = myDb.count();
@@ -672,8 +567,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDeferredWriteDatabaseCount()
-        throws Throwable {
+    public void testDeferredWriteDatabaseCount() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, true, null);
@@ -682,8 +576,7 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(null, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(null, key, data));
             }
 
             long count = myDb.count();
@@ -698,8 +591,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testStat()
-        throws Throwable {
+    public void testStat() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, false, null);
@@ -709,12 +601,10 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
             }
 
-            BtreeStats stat = (BtreeStats)
-                myDb.getStats(TestUtils.FAST_STATS);
+            BtreeStats stat = (BtreeStats) myDb.getStats(TestUtils.FAST_STATS);
 
             assertEquals(0, stat.getInternalNodeCount());
             assertEquals(0, stat.getBottomInternalNodeCount());
@@ -738,8 +628,7 @@ public class DatabaseTest extends DualTestCase {
             assertEquals(0, stat.getDeletedLeafNodeCount());
             assertEquals(4, stat.getMainTreeMaxDepth());
 
-            long[] levelsTest = new long[]{ 12, 23, 34, 45, 56,
-                                            67, 78, 89, 90, 0 };
+            long[] levelsTest = new long[] { 12, 23, 34, 45, 56, 67, 78, 89, 90, 0 };
 
             StatGroup group1 = new StatGroup("test1", "test1");
             LongStat stat1 = new LongStat(group1, BTREE_BIN_COUNT, 20);
@@ -791,8 +680,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDatabaseCountEmptyDB()
-        throws Throwable {
+    public void testDatabaseCountEmptyDB() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, false, null);
@@ -809,8 +697,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDatabaseCountWithDeletedEntries()
-        throws Throwable {
+    public void testDatabaseCountWithDeletedEntries() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, false, true, false, null);
@@ -821,8 +708,7 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
                 if ((i % 5) == 0) {
                     myDb.delete(txn, key);
                     deletedCount++;
@@ -842,8 +728,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testStatDups()
-        throws Throwable {
+    public void testStatDups() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, true, true, false, null);
@@ -853,17 +738,14 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
                 for (int j = 0; j < 10; j++) {
                     data.setData(TestUtils.getTestArray(i + j));
-                    assertEquals(OperationStatus.SUCCESS,
-                                 myDb.put(txn, key, data));
+                    assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
                 }
             }
 
-            BtreeStats stat = (BtreeStats)
-                myDb.getStats(TestUtils.FAST_STATS);
+            BtreeStats stat = (BtreeStats) myDb.getStats(TestUtils.FAST_STATS);
 
             assertEquals(0, stat.getInternalNodeCount());
             assertEquals(0, stat.getDuplicateInternalNodeCount());
@@ -909,8 +791,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDatabaseCountDups()
-        throws Throwable {
+    public void testDatabaseCountDups() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, true, true, false, null);
@@ -920,12 +801,10 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
                 for (int j = 0; j < 10; j++) {
                     data.setData(TestUtils.getTestArray(i + j));
-                    assertEquals(OperationStatus.SUCCESS,
-                                 myDb.put(txn, key, data));
+                    assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
                 }
             }
 
@@ -943,8 +822,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDeferredWriteDatabaseCountDups()
-        throws Throwable {
+    public void testDeferredWriteDatabaseCountDups() throws Throwable {
 
         try {
             Database myDb = initEnvAndDb(true, true, true, true, true, null);
@@ -953,12 +831,10 @@ public class DatabaseTest extends DualTestCase {
             for (int i = NUM_RECS; i > 0; i--) {
                 key.setData(TestUtils.getTestArray(i));
                 data.setData(TestUtils.getTestArray(i));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(null, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(null, key, data));
                 for (int j = 0; j < 10; j++) {
                     data.setData(TestUtils.getTestArray(i + j));
-                    assertEquals(OperationStatus.SUCCESS,
-                                 myDb.put(null, key, data));
+                    assertEquals(OperationStatus.SUCCESS, myDb.put(null, key, data));
                 }
             }
 
@@ -975,8 +851,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testStatDeletes()
-        throws Throwable {
+    public void testStatDeletes() throws Throwable {
 
         deleteTestInternal(1, 2, 0, 2);
         tearDown();
@@ -987,11 +862,8 @@ public class DatabaseTest extends DualTestCase {
         deleteTestInternal(11, 2, 10, 12);
     }
 
-    private void deleteTestInternal(int numRecs,
-                                    int numDupRecs,
-                                    int expectedLNs,
-                                    int expectedDeletedLNs)
-        throws Throwable {
+    private void deleteTestInternal(int numRecs, int numDupRecs, int expectedLNs, int expectedDeletedLNs)
+            throws Throwable {
 
         TestUtils.removeLogFiles("Setup", envHome, false);
         Database myDb = initEnvAndDb(true, true, true, true, false, null);
@@ -1002,15 +874,13 @@ public class DatabaseTest extends DualTestCase {
             key.setData(TestUtils.getTestArray(i));
             for (int j = 0; j < numDupRecs; j++) {
                 data.setData(TestUtils.getTestArray(i + j));
-                assertEquals(OperationStatus.SUCCESS,
-                             myDb.put(txn, key, data));
+                assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
             }
         }
 
         for (int i = numRecs; i > 0; i -= 2) {
             key.setData(TestUtils.getTestArray(i));
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb.delete(txn, key));
+            assertEquals(OperationStatus.SUCCESS, myDb.delete(txn, key));
         }
 
         txn.commit();
@@ -1029,8 +899,7 @@ public class DatabaseTest extends DualTestCase {
      * Test preload of all records into the main cache.
      */
     @Test
-    public void testPreloadAllInCache()
-        throws Throwable {
+    public void testPreloadAllInCache() throws Throwable {
 
         doPreloadAllInCache(false);
     }
@@ -1039,46 +908,29 @@ public class DatabaseTest extends DualTestCase {
      * Test preload of all records into cache, using an off-heap cache.
      */
     @Test
-    public void testPreloadAllInCacheOffHeap()
-        throws Throwable {
+    public void testPreloadAllInCacheOffHeap() throws Throwable {
 
         Assume.assumeTrue(!JVMSystemUtils.ZING_JVM);
 
         System.out.println("testPreloadAllInCacheOffHeap disabled [#25594]");
 
-//        doPreloadAllInCache(true);
+        //        doPreloadAllInCache(true);
     }
 
     /**
-     * Inserts and preloads 100,000 records with key size 100, data size 100,
-     * no dups. LNs are not embedded.
-     *
-     * DbCacheSize requires:
-     *  3,158,477 env overhead
-     *
-     * 1. java DbCacheSize -records 100000 -key 100 -data 100
-     *
-     * 14,567,896  Internal nodes only
-     * 29,584,536  Internal nodes and leaf nodes
-     *
-     * 2. java DbCacheSize -records 100000 -key 100 -data 100 \
-     *                     -offheap -maincache 6558477
-     *
-     *  6,558,477 = 3,400,000 + 3,158,477
-     *
-     *  3,400,000  Internal nodes only: MAIN cache
-     *  8,828,128  Internal nodes only: OFF-HEAP cache
-     *  3,400,000  Internal nodes and leaf nodes: MAIN cache
-     * 21,671,816  Internal nodes and leaf nodes: OFF-HEAP cache
-     *
-     * 3. java -XX:-UseCompressedOops DbCacheSize \  # for Zing
-     *       -records 100000 -key 100 -data 100
-     *
-     * 16,157,464  Internal nodes only
-     * 33,368,152  Internal nodes and leaf nodes
+     * Inserts and preloads 100,000 records with key size 100, data size 100, no
+     * dups. LNs are not embedded. DbCacheSize requires: 3,158,477 env overhead
+     * 1. java DbCacheSize -records 100000 -key 100 -data 100 14,567,896
+     * Internal nodes only 29,584,536 Internal nodes and leaf nodes 2. java
+     * DbCacheSize -records 100000 -key 100 -data 100 \ -offheap -maincache
+     * 6558477 6,558,477 = 3,400,000 + 3,158,477 3,400,000 Internal nodes only:
+     * MAIN cache 8,828,128 Internal nodes only: OFF-HEAP cache 3,400,000
+     * Internal nodes and leaf nodes: MAIN cache 21,671,816 Internal nodes and
+     * leaf nodes: OFF-HEAP cache 3. java -XX:-UseCompressedOops DbCacheSize \ #
+     * for Zing -records 100000 -key 100 -data 100 16,157,464 Internal nodes
+     * only 33,368,152 Internal nodes and leaf nodes
      */
-    private void doPreloadAllInCache(final boolean useOffHeapCache)
-        throws Throwable {
+    private void doPreloadAllInCache(final boolean useOffHeapCache) throws Throwable {
 
         final int nRecs = 100000;
         final long mainDataSize;
@@ -1107,16 +959,11 @@ public class DatabaseTest extends DualTestCase {
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
         envConfig.setOffHeapCacheSize(offHeapDataSize);
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.STATS_COLLECT, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.STATS_COLLECT, "false");
 
         env = new Environment(envHome, envConfig);
 
@@ -1161,17 +1008,17 @@ public class DatabaseTest extends DualTestCase {
         expectCachedLNsAndBINs(db, nRecs, nBins);
 
         /* Strip LNs and repeat preload. */
-        mutateBINs(db, false /*mutateToDelta*/, true /*stripLNs*/);
+        mutateBINs(db, false /* mutateToDelta */, true /* stripLNs */);
         db.preload(preConfig);
         expectCachedLNsAndBINs(db, nRecs, nBins);
 
         /* Mutate BINs to BIN-deltas and repeat preload. */
-        mutateBINs(db, true /*mutateToDelta*/, false /*stripLNs*/);
+        mutateBINs(db, true /* mutateToDelta */, false /* stripLNs */);
         db.preload(preConfig);
         expectCachedLNsAndBINs(db, nRecs, nBins);
 
         /* Both mutate and strip LNs, and repeat preload. */
-        mutateBINs(db, true /*mutateToDelta*/, true /*stripLNs*/);
+        mutateBINs(db, true /* mutateToDelta */, true /* stripLNs */);
         db.preload(preConfig);
         expectCachedLNsAndBINs(db, nRecs, nBins);
 
@@ -1210,7 +1057,7 @@ public class DatabaseTest extends DualTestCase {
         expectCachedLNsAndBINs(db, 0, nBins);
 
         /* Mutate BINs to BIN-deltas and repeat preload. */
-        mutateBINs(db, true /*mutateToDelta*/, false /*stripLNs*/);
+        mutateBINs(db, true /* mutateToDelta */, false /* stripLNs */);
         db.preload(preConfig);
         expectCachedLNsAndBINs(db, 0, nBins);
 
@@ -1247,8 +1094,8 @@ public class DatabaseTest extends DualTestCase {
         final DatabaseEntry data = new DatabaseEntry();
         /*
          * Count BINs as we insert. Using the nCachedBINs stats to count the
-         * BINs is unreliable because the LRU will cause some cold level 2
-         * INs to be evicted from main, along with their off-heap children.
+         * BINs is unreliable because the LRU will cause some cold level 2 INs
+         * to be evicted from main, along with their off-heap children.
          */
         final Cursor cursor = db.openCursor(null, null);
         BIN prevBin = null;
@@ -1257,8 +1104,7 @@ public class DatabaseTest extends DualTestCase {
             final byte[] array = get100ByteTestArray(i);
             key.setData(array);
             data.setData(array);
-            final OperationResult result = cursor.put(
-                key, data, Put.NO_OVERWRITE, null);
+            final OperationResult result = cursor.put(key, data, Put.NO_OVERWRITE, null);
             assertNotNull(result);
             final BIN bin = DbInternal.getCursorImpl(cursor).getBIN();
             if (prevBin != bin) {
@@ -1275,8 +1121,7 @@ public class DatabaseTest extends DualTestCase {
         final DatabaseEntry data = new DatabaseEntry();
         final Cursor cursor = db.openCursor(null, null);
         for (int i = 0; i < nRecs; i += 1) {
-            final OperationResult result =
-                cursor.get(key, data, Get.NEXT, null);
+            final OperationResult result = cursor.get(key, data, Get.NEXT, null);
             assertNotNull(result);
             final byte[] array = get100ByteTestArray(i);
             assertTrue(Arrays.equals(array, key.getData()));
@@ -1292,9 +1137,7 @@ public class DatabaseTest extends DualTestCase {
         return array;
     }
 
-    private void mutateBINs(Database db,
-                            boolean mutateToDelta,
-                            boolean stripLNs) {
+    private void mutateBINs(Database db, boolean mutateToDelta, boolean stripLNs) {
 
         final DatabaseImpl dbImpl = DbInternal.getDbImpl(db);
         final OffHeapCache ohCache = dbImpl.getEnv().getOffHeapCache();
@@ -1332,10 +1175,7 @@ public class DatabaseTest extends DualTestCase {
         }
     }
 
-    private void expectCachedLNsAndBINs(
-        final Database db,
-        final int nExpectedLNs,
-        final int nExpectedBINs) {
+    private void expectCachedLNsAndBINs(final Database db, final int nExpectedLNs, final int nExpectedBINs) {
 
         final DatabaseImpl dbImpl = DbInternal.getDbImpl(db);
         final EnvironmentImpl envImpl = dbImpl.getEnv();
@@ -1458,22 +1298,13 @@ public class DatabaseTest extends DualTestCase {
                     }
                 }
             }
-//            System.out.println(in2.getClass().getName());
+            //            System.out.println(in2.getClass().getName());
         }
 
-        final String msg = "Cache contents" +
-            " nL2INs=" + nL2INs +
-            " nL2INs2=" + nL2INs2 +
-            " mainBINs=" + nMainBINs +
-            " mainBINDeltas=" + nMainBINDeltas +
-            " mainBINs2=" + nMainBINs2 +
-            " mainBINDeltas2=" + nMainBINDeltas2 +
-            " offHeapBINs=" + nOhBINs +
-            " offHeapBINDeltas=" + nOhBINDeltas +
-            " offHeapBINs2=" + nOhBINs2 +
-            " offHeapBINDeltas2=" + nOhBINDeltas2 +
-            " mainLNs=" + nMainLNs +
-            " offHeapLNs=" + nOhLNs;
+        final String msg = "Cache contents" + " nL2INs=" + nL2INs + " nL2INs2=" + nL2INs2 + " mainBINs=" + nMainBINs
+                + " mainBINDeltas=" + nMainBINDeltas + " mainBINs2=" + nMainBINs2 + " mainBINDeltas2=" + nMainBINDeltas2
+                + " offHeapBINs=" + nOhBINs + " offHeapBINDeltas=" + nOhBINDeltas + " offHeapBINs2=" + nOhBINs2
+                + " offHeapBINDeltas2=" + nOhBINDeltas2 + " mainLNs=" + nMainLNs + " offHeapLNs=" + nOhLNs;
 
         EnvironmentStats stats = env.getStats(null);
         try {
@@ -1500,8 +1331,7 @@ public class DatabaseTest extends DualTestCase {
      * Test the cache memory limit.
      */
     @Test
-    public void testPreloadCacheMemoryLimit()
-        throws Throwable {
+    public void testPreloadCacheMemoryLimit() throws Throwable {
 
         /* Set up a test db */
         Database myDb = initEnvAndDb(false, true, false, true, false, null);
@@ -1511,8 +1341,7 @@ public class DatabaseTest extends DualTestCase {
         for (int i = 2500; i > 0; i--) {
             key.setData(TestUtils.getTestArray(i));
             data.setData(TestUtils.getTestArray(i));
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb.put(txn, key, data));
+            assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
         }
 
         /* Recover the database, restart w/no evictor. */
@@ -1522,14 +1351,11 @@ public class DatabaseTest extends DualTestCase {
         txn.commit();
         myDb.close();
         close(env);
-        myDb = initEnvAndDb(
-            true, true, false, true, false,
-            MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
+        myDb = initEnvAndDb(true, true, false, true, false, MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
 
         /*
-         * Do two evictions, because the first eviction will only strip
-         * LNs. We need to actually evict BINS because preload only pulls in
-         * IN/BINs
+         * Do two evictions, because the first eviction will only strip LNs. We
+         * need to actually evict BINS because preload only pulls in IN/BINs
          */
         env.evictMemory(); // first eviction strips LNS.
         env.evictMemory(); // second one will evict BINS
@@ -1541,8 +1367,8 @@ public class DatabaseTest extends DualTestCase {
         /* Now preload, but not up to the full size of the db */
         PreloadConfig conf = new PreloadConfig();
         conf.setMaxBytes(92000);
-        PreloadStats stats =
-            myDb.preload(conf); /* Cache size is currently 92160. */
+        PreloadStats stats = myDb
+                .preload(conf); /* Cache size is currently 92160. */
 
         assertEquals(PreloadStatus.FILLED_CACHE, stats.getStatus());
 
@@ -1566,23 +1392,17 @@ public class DatabaseTest extends DualTestCase {
             System.out.println("postCreateMemUsage: " + postCreateMemUsage);
             System.out.println("postEvictMemUsage: " + postEvictMemUsage);
             System.out.println("postPreloadMemUsage: " + postPreloadMemUsage);
-            System.out.println("postIterationMemUsage: " +
-                               postIterationMemUsage);
-            System.out.println("postEvictResidentNodes: " +
-                               postEvictResidentNodes);
-            System.out.println("postPreloadResidentNodes: " +
-                               postPreloadResidentNodes);
-            System.out.println("postIterationResidentNodes: " +
-                               postIterationResidentNodes);
-            System.out.println("postCreateResidentNodes: " +
-                               postCreateResidentNodes);
+            System.out.println("postIterationMemUsage: " + postIterationMemUsage);
+            System.out.println("postEvictResidentNodes: " + postEvictResidentNodes);
+            System.out.println("postPreloadResidentNodes: " + postPreloadResidentNodes);
+            System.out.println("postIterationResidentNodes: " + postIterationResidentNodes);
+            System.out.println("postCreateResidentNodes: " + postCreateResidentNodes);
         }
 
         assertTrue(postEvictMemUsage < postCreateMemUsage);
         assertTrue(postEvictMemUsage < postPreloadMemUsage);
-        assertTrue("postPreloadMemUsage=" + postPreloadMemUsage +
-                " postIterationMemUsage=" + postIterationMemUsage,
-            postPreloadMemUsage < postIterationMemUsage);
+        assertTrue("postPreloadMemUsage=" + postPreloadMemUsage + " postIterationMemUsage=" + postIterationMemUsage,
+                postPreloadMemUsage < postIterationMemUsage);
         assertTrue(postIterationMemUsage <= postCreateMemUsage);
         assertTrue(postEvictResidentNodes < postPreloadResidentNodes);
         //assertEquals(postCreateResidentNodes, postIterationResidentNodes);
@@ -1599,8 +1419,7 @@ public class DatabaseTest extends DualTestCase {
         assertEquals(true, vcfg.getPropagateExceptions());
         assertEquals(false, vcfg.getAggressive());
         assertEquals(true, vcfg.getPrintInfo());
-        assertEquals(System.out.getClass(),
-                     vcfg.getShowProgressStream().getClass());
+        assertEquals(System.out.getClass(), vcfg.getShowProgressStream().getClass());
         assertEquals(5, vcfg.getShowProgressInterval());
         vcfg.toString();
 
@@ -1612,8 +1431,7 @@ public class DatabaseTest extends DualTestCase {
      * Test the internal memory limit.
      */
     @Test
-    public void testPreloadInternalMemoryLimit()
-        throws Throwable {
+    public void testPreloadInternalMemoryLimit() throws Throwable {
 
         /* Set up a test db */
         Database myDb = initEnvAndDb(false, true, false, true, false, null);
@@ -1642,30 +1460,26 @@ public class DatabaseTest extends DualTestCase {
         close(env);
 
         /*
-         * Don't run the cleaner if embedded LNs. Otherwise, the cleaner
-         * admin overhead will tip the mem usage over the cache size, a
-         * situation that cannot be rectified by the env.evictMemory() calls
-         * below. As a result, the preload will become a noop and the assertion
-         * at the end of this test will fail. 
+         * Don't run the cleaner if embedded LNs. Otherwise, the cleaner admin
+         * overhead will tip the mem usage over the cache size, a situation that
+         * cannot be rectified by the env.evictMemory() calls below. As a
+         * result, the preload will become a noop and the assertion at the end
+         * of this test will fail.
          */
-        myDb = initEnvAndDb(
-            true, !embeddedLNs /*runCleaner*/, false, true, false,
-            MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
+        myDb = initEnvAndDb(true, !embeddedLNs /* runCleaner */, false, true, false,
+                MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
 
         long postReopenMemUsage = env.getMemoryUsage();
         inlist = env.getNonNullEnvImpl().getInMemoryINs(); // re-get inList
         long postReopenResidentNodes = inlist.getSize();
 
         // 26,624
-        long minTreeMemUsage =
-        env.getNonNullEnvImpl().getMemoryBudget().getMinTreeMemoryUsage();
-        long currTreeMemUsage = 
-        env.getNonNullEnvImpl().getMemoryBudget().getTreeMemoryUsage();
+        long minTreeMemUsage = env.getNonNullEnvImpl().getMemoryBudget().getMinTreeMemoryUsage();
+        long currTreeMemUsage = env.getNonNullEnvImpl().getMemoryBudget().getTreeMemoryUsage();
 
         /*
-         * Do two evictions, because the first eviction will only strip
-         * LNs. We need to actually evict BINS because preload only pulls in
-         * IN/BINs
+         * Do two evictions, because the first eviction will only strip LNs. We
+         * need to actually evict BINS because preload only pulls in IN/BINs
          */
         env.evictMemory(); // first eviction strips LNS.
         env.evictMemory(); // second one will evict BINS
@@ -1678,35 +1492,27 @@ public class DatabaseTest extends DualTestCase {
         PreloadConfig conf = new PreloadConfig();
         conf.setInternalMemoryLimit(9200);
 
-        PreloadStats stats = myDb.preload(conf); /* Cache size is currently 92160. */
+        PreloadStats stats = myDb
+                .preload(conf); /* Cache size is currently 92160. */
 
         if (DEBUG) {
             System.out.println();
-            System.out.println("postCreateResidentNodes   = " +
-                               postCreateResidentNodes);
-            System.out.println("postCreateMemUsage        = " +
-                               postCreateMemUsage);
+            System.out.println("postCreateResidentNodes   = " + postCreateResidentNodes);
+            System.out.println("postCreateMemUsage        = " + postCreateMemUsage);
 
             System.out.println();
-            System.out.println("postReopenResidentNodes   = " +
-                               postReopenResidentNodes);
-            System.out.println("postReopenMemUsage        = " +
-                               postReopenMemUsage);
+            System.out.println("postReopenResidentNodes   = " + postReopenResidentNodes);
+            System.out.println("postReopenMemUsage        = " + postReopenMemUsage);
 
             System.out.println();
-            System.out.println("postReopenMinTreeMemUsage = " +
-                               minTreeMemUsage);
-            System.out.println("postReopenTreeMemUsage    = " +
-                               currTreeMemUsage);
+            System.out.println("postReopenMinTreeMemUsage = " + minTreeMemUsage);
+            System.out.println("postReopenTreeMemUsage    = " + currTreeMemUsage);
 
             System.out.println();
-            System.out.println("postEvictResidentNodes    = " +
-                               postEvictResidentNodes);
-            System.out.println("postEvictMemUsage         = " +
-                               postEvictMemUsage);
+            System.out.println("postEvictResidentNodes    = " + postEvictResidentNodes);
+            System.out.println("postEvictMemUsage         = " + postEvictMemUsage);
 
-            System.out.println("NCountMemoryExceeded = " +
-                               stats.getNCountMemoryExceeded());
+            System.out.println("NCountMemoryExceeded = " + stats.getNCountMemoryExceeded());
             System.out.println("Stats : " + stats);
         }
 
@@ -1717,8 +1523,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPreloadTimeLimit()
-        throws Throwable {
+    public void testPreloadTimeLimit() throws Throwable {
 
         /* Set up a test db */
         Database myDb = initEnvAndDb(false, true, false, true, false, null);
@@ -1728,8 +1533,7 @@ public class DatabaseTest extends DualTestCase {
         for (int i = 25000; i > 0; i--) {
             key.setData(TestUtils.getTestArray(i));
             data.setData(new byte[1]);
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb.put(txn, key, data));
+            assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
         }
 
         /* Recover the database, restart w/no evictor. */
@@ -1742,9 +1546,8 @@ public class DatabaseTest extends DualTestCase {
         myDb = initEnvAndDb(true, true, false, true, false, null);
 
         /*
-         * Do two evictions, because the first eviction will only strip
-         * LNs. We need to actually evict BINS because preload only pulls in
-         * IN/BINs
+         * Do two evictions, because the first eviction will only strip LNs. We
+         * need to actually evict BINS because preload only pulls in IN/BINs
          */
         env.evictMemory(); // first eviction strips LNS.
         env.evictMemory(); // second one will evict BINS
@@ -1779,23 +1582,17 @@ public class DatabaseTest extends DualTestCase {
             System.out.println("postCreateMemUsage: " + postCreateMemUsage);
             System.out.println("postEvictMemUsage: " + postEvictMemUsage);
             System.out.println("postPreloadMemUsage: " + postPreloadMemUsage);
-            System.out.println("postIterationMemUsage: " +
-                               postIterationMemUsage);
-            System.out.println("postEvictResidentNodes: " +
-                               postEvictResidentNodes);
-            System.out.println("postPreloadResidentNodes: " +
-                               postPreloadResidentNodes);
-            System.out.println("postIterationResidentNodes: " +
-                               postIterationResidentNodes);
-            System.out.println("postCreateResidentNodes: " +
-                               postCreateResidentNodes);
+            System.out.println("postIterationMemUsage: " + postIterationMemUsage);
+            System.out.println("postEvictResidentNodes: " + postEvictResidentNodes);
+            System.out.println("postPreloadResidentNodes: " + postPreloadResidentNodes);
+            System.out.println("postIterationResidentNodes: " + postIterationResidentNodes);
+            System.out.println("postCreateResidentNodes: " + postCreateResidentNodes);
         }
 
         assertTrue(postEvictMemUsage < postCreateMemUsage);
         assertTrue(postEvictMemUsage < postPreloadMemUsage);
-        assertTrue("postPreloadMemUsage=" + postPreloadMemUsage +
-                   " postIterationMemUsage=" + postIterationMemUsage,
-                   postPreloadMemUsage < postIterationMemUsage);
+        assertTrue("postPreloadMemUsage=" + postPreloadMemUsage + " postIterationMemUsage=" + postIterationMemUsage,
+                postPreloadMemUsage < postIterationMemUsage);
         assertTrue(postIterationMemUsage <= postCreateMemUsage);
         assertTrue(postEvictResidentNodes < postPreloadResidentNodes);
         //assertEquals(postCreateResidentNodes, postIterationResidentNodes);
@@ -1806,8 +1603,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPreloadMultipleDatabases()
-        throws Throwable {
+    public void testPreloadMultipleDatabases() throws Throwable {
 
         /* Set up a test db */
         Database myDb1 = initEnvAndDb(false, true, false, true, false, null);
@@ -1824,10 +1620,8 @@ public class DatabaseTest extends DualTestCase {
         for (int i = 25000; i > 0; i--) {
             key.setData(TestUtils.getTestArray(i));
             data.setData(new byte[1]);
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb1.put(txn, key, data));
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb2.put(txn, key, data));
+            assertEquals(OperationStatus.SUCCESS, myDb1.put(txn, key, data));
+            assertEquals(OperationStatus.SUCCESS, myDb2.put(txn, key, data));
         }
 
         /* Recover the database, restart w/no evictor. */
@@ -1847,9 +1641,8 @@ public class DatabaseTest extends DualTestCase {
         myDb2 = env.openDatabase(null, "testDB2", dbConfig);
 
         /*
-         * Do two evictions, because the first eviction will only strip
-         * LNs. We need to actually evict BINS because preload only pulls in
-         * IN/BINs
+         * Do two evictions, because the first eviction will only strip LNs. We
+         * need to actually evict BINS because preload only pulls in IN/BINs
          */
         env.evictMemory(); // first eviction strips LNS.
         env.evictMemory(); // second one will evict BINS
@@ -1894,23 +1687,17 @@ public class DatabaseTest extends DualTestCase {
             System.out.println("postCreateMemUsage: " + postCreateMemUsage);
             System.out.println("postEvictMemUsage: " + postEvictMemUsage);
             System.out.println("postPreloadMemUsage: " + postPreloadMemUsage);
-            System.out.println("postIterationMemUsage: " +
-                               postIterationMemUsage);
-            System.out.println("postEvictResidentNodes: " +
-                               postEvictResidentNodes);
-            System.out.println("postPreloadResidentNodes: " +
-                               postPreloadResidentNodes);
-            System.out.println("postIterationResidentNodes: " +
-                               postIterationResidentNodes);
-            System.out.println("postCreateResidentNodes: " +
-                               postCreateResidentNodes);
+            System.out.println("postIterationMemUsage: " + postIterationMemUsage);
+            System.out.println("postEvictResidentNodes: " + postEvictResidentNodes);
+            System.out.println("postPreloadResidentNodes: " + postPreloadResidentNodes);
+            System.out.println("postIterationResidentNodes: " + postIterationResidentNodes);
+            System.out.println("postCreateResidentNodes: " + postCreateResidentNodes);
         }
 
         assertTrue(postEvictMemUsage < postCreateMemUsage);
         assertTrue(postEvictMemUsage < postPreloadMemUsage);
-        assertTrue("postPreloadMemUsage=" + postPreloadMemUsage +
-                   " postIterationMemUsage=" + postIterationMemUsage,
-                   postPreloadMemUsage == postIterationMemUsage);
+        assertTrue("postPreloadMemUsage=" + postPreloadMemUsage + " postIterationMemUsage=" + postIterationMemUsage,
+                postPreloadMemUsage == postIterationMemUsage);
         assertTrue(postIterationMemUsage <= postCreateMemUsage);
         assertTrue(postEvictResidentNodes < postPreloadResidentNodes);
         //assertEquals(postCreateResidentNodes, postIterationResidentNodes);
@@ -1922,8 +1709,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPreloadWithProgress()
-        throws Throwable {
+    public void testPreloadWithProgress() throws Throwable {
 
         /* Set up a test db */
         Database myDb = initEnvAndDb(false, true, false, true, false, null);
@@ -1935,8 +1721,7 @@ public class DatabaseTest extends DualTestCase {
         for (int i = 2500; i > 0; i--) {
             key.setData(TestUtils.getTestArray(i));
             data.setData(TestUtils.getTestArray(i));
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb.put(txn, key, data));
+            assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
         }
 
         /* Recover the database, restart w/no evictor. */
@@ -1953,20 +1738,18 @@ public class DatabaseTest extends DualTestCase {
         close(env);
 
         /*
-         * Don't run the cleaner if embedded LNs. Otherwise, the cleaner
-         * admin overhead will tip the mem usage over the cache size, a
-         * situation that cannot be rectified by the env.evictMemory() calls
-         * below. As a result, the preload will become a noop and the assertion
-         * at the end of this test will fail. 
+         * Don't run the cleaner if embedded LNs. Otherwise, the cleaner admin
+         * overhead will tip the mem usage over the cache size, a situation that
+         * cannot be rectified by the env.evictMemory() calls below. As a
+         * result, the preload will become a noop and the assertion at the end
+         * of this test will fail.
          */
-        myDb = initEnvAndDb(
-            true, !embeddedLNs/*runCleaner*/, false, true, false,
-            MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
+        myDb = initEnvAndDb(true, !embeddedLNs/* runCleaner */, false, true, false,
+                MemoryBudget.MIN_MAX_MEMORY_SIZE_STRING);
 
         /*
-         * Do two evictions, because the first eviction will only strip
-         * LNs. We need to actually evict BINS because preload only pulls in
-         * IN/BINs
+         * Do two evictions, because the first eviction will only strip LNs. We
+         * need to actually evict BINS because preload only pulls in IN/BINs
          */
         env.evictMemory(); // first eviction strips LNS.
         env.evictMemory(); // second one will evict BINS
@@ -1978,17 +1761,14 @@ public class DatabaseTest extends DualTestCase {
         /* Now preload, but not up to the full size of the db */
         PreloadConfig conf = new PreloadConfig();
 
-        conf.setProgressListener(
-            new ProgressListener<PreloadConfig.Phases>() {
-                public boolean progress(PreloadConfig.Phases operation,
-                                        long n,
-                                        long total) {
-                    if (n % 10 == 0) {
-                        throw new RuntimeException("Stop it");
-                    }
-                    return true;
+        conf.setProgressListener(new ProgressListener<PreloadConfig.Phases>() {
+            public boolean progress(PreloadConfig.Phases operation, long n, long total) {
+                if (n % 10 == 0) {
+                    throw new RuntimeException("Stop it");
                 }
-            });
+                return true;
+            }
+        });
         PreloadStats stats = null;
         try {
             stats = myDb.preload(conf);
@@ -1998,15 +1778,13 @@ public class DatabaseTest extends DualTestCase {
         }
 
         conf.setProgressListener(new ProgressListener<PreloadConfig.Phases>() {
-                public boolean progress(PreloadConfig.Phases operation,
-                                        long n,
-                                        long total) {
-                    if (n % 10 == 0) {
-                        return false;
-                    }
-                    return true;
+            public boolean progress(PreloadConfig.Phases operation, long n, long total) {
+                if (n % 10 == 0) {
+                    return false;
                 }
-            });
+                return true;
+            }
+        });
         try {
             stats = myDb.preload(conf);
         } catch (RuntimeException RE) {
@@ -2023,8 +1801,7 @@ public class DatabaseTest extends DualTestCase {
      * Load the entire database with preload.
      */
     @Test
-    public void testPreloadEntireDatabase()
-        throws Throwable {
+    public void testPreloadEntireDatabase() throws Throwable {
 
         /* Create a test db with one record */
         Database myDb = initEnvAndDb(false, true, false, false, false, null);
@@ -2040,7 +1817,7 @@ public class DatabaseTest extends DualTestCase {
         myDb = initEnvAndDb(false, true, false, false, false, null);
 
         /*
-         * Preload the entire database.  In JE 2.0.54 this would cause a
+         * Preload the entire database. In JE 2.0.54 this would cause a
          * NullPointerException.
          */
         PreloadConfig conf = new PreloadConfig();
@@ -2055,12 +1832,10 @@ public class DatabaseTest extends DualTestCase {
      * Test preload(N, 0) where N > cache size (throws IllArgException).
      */
     @Test
-    public void testPreloadBytesExceedsCache()
-        throws Throwable {
+    public void testPreloadBytesExceedsCache() throws Throwable {
 
         /* Create a test db with one record */
-        Database myDb =
-            initEnvAndDb(false, true, false, false, false, "100000");
+        Database myDb = initEnvAndDb(false, true, false, false, false, "100000");
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         key.setData(TestUtils.getTestArray(0));
@@ -2072,7 +1847,7 @@ public class DatabaseTest extends DualTestCase {
         close(env);
         myDb = initEnvAndDb(false, true, false, false, false, "100000");
 
-        /* maxBytes > cache size.  Should throw IllegalArgumentException. */
+        /* maxBytes > cache size. Should throw IllegalArgumentException. */
         try {
             PreloadConfig conf = new PreloadConfig();
             conf.setMaxBytes(Integer.MAX_VALUE);
@@ -2086,21 +1861,18 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testPreloadNoLNs()
-        throws Throwable {
+    public void testPreloadNoLNs() throws Throwable {
 
         Database myDb = initEnvAndDb(false, true, false, true, false, null);
 
-        final boolean embeddedLNs =
-            (DbInternal.getNonNullEnvImpl(env).getMaxEmbeddedLN() >= 1);
+        final boolean embeddedLNs = (DbInternal.getNonNullEnvImpl(env).getMaxEmbeddedLN() >= 1);
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         for (int i = 1000; i > 0; i--) {
             key.setData(TestUtils.getTestArray(i));
             data.setData(new byte[1]);
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb.put(null, key, data));
+            assertEquals(OperationStatus.SUCCESS, myDb.put(null, key, data));
         }
 
         /* Do not load LNs. */
@@ -2121,14 +1893,13 @@ public class DatabaseTest extends DualTestCase {
     }
 
     /**
-     * Test preload with BIN-deltas in cache, for example, when BINs are
-     * mutated by the evictor, or after a crash and recovery. The latter is
-     * more likely, since preload is normally performed right after opening
-     * the Environment as when the bug was discovered [#24565].
+     * Test preload with BIN-deltas in cache, for example, when BINs are mutated
+     * by the evictor, or after a crash and recovery. The latter is more likely,
+     * since preload is normally performed right after opening the Environment
+     * as when the bug was discovered [#24565].
      */
     @Test
-    public void testPreloadWithBINDeltasInCache()
-        throws Throwable {
+    public void testPreloadWithBINDeltasInCache() throws Throwable {
 
         Database myDb = initEnvAndDb(false, false, false, true, false, null);
 
@@ -2143,8 +1914,7 @@ public class DatabaseTest extends DualTestCase {
             key.setData(TestUtils.getTestArray(rnd.nextInt(5000)));
             data.setData(new byte[4]);
 
-            if (OperationStatus.SUCCESS ==
-                myDb.putNoOverwrite(null, key, data)) {
+            if (OperationStatus.SUCCESS == myDb.putNoOverwrite(null, key, data)) {
                 nRecs += 1;
             }
         }
@@ -2153,11 +1923,10 @@ public class DatabaseTest extends DualTestCase {
         env.checkpoint(new CheckpointConfig().setForce(true));
 
         /*
-         * To create deltas in cache, it is easier to mutate the BINs
-         * explicitly than to truncate the log before CkptEnd and recover.
+         * To create deltas in cache, it is easier to mutate the BINs explicitly
+         * than to truncate the log before CkptEnd and recover.
          */
-        for (final IN in :
-             DbInternal.getNonNullEnvImpl(env).getInMemoryINs()) {
+        for (final IN in : DbInternal.getNonNullEnvImpl(env).getInMemoryINs()) {
 
             if (in.isBIN()) {
                 final BIN bin = (BIN) in;
@@ -2169,8 +1938,8 @@ public class DatabaseTest extends DualTestCase {
             }
         }
 
-//        System.out.println(
-//            "nDeltas=" + env.getStats(null).getNCachedBINDeltas());
+        //        System.out.println(
+        //            "nDeltas=" + env.getStats(null).getNCachedBINDeltas());
 
         final PreloadConfig conf = new PreloadConfig();
         conf.setLoadLNs(true);
@@ -2178,7 +1947,7 @@ public class DatabaseTest extends DualTestCase {
 
         assertEquals(nRecs, stats.getNLNsLoaded() + stats.getNEmbeddedLNs());
 
-//        System.out.println("count " + myDb.count());
+        //        System.out.println("count " + myDb.count());
 
         myDb.close();
         close(env);
@@ -2189,8 +1958,7 @@ public class DatabaseTest extends DualTestCase {
      * when scanning with CacheMode.UNCHANGED after a preload. [#24629]
      */
     @Test
-    public void testUseUnchangedModeAfterPreload()
-        throws Throwable {
+    public void testUseUnchangedModeAfterPreload() throws Throwable {
 
         /* Create a test db with one record */
         Database myDb = initEnvAndDb(false, false, false, true, false, null);
@@ -2207,9 +1975,7 @@ public class DatabaseTest extends DualTestCase {
 
             IntegerBinding.intToEntry(i, key);
 
-            assertEquals(
-                OperationStatus.SUCCESS,
-                myDb.putNoOverwrite(txn, key, data));
+            assertEquals(OperationStatus.SUCCESS, myDb.putNoOverwrite(txn, key, data));
         }
 
         txn.commit();
@@ -2237,9 +2003,7 @@ public class DatabaseTest extends DualTestCase {
 
             long cacheSizeAfterScan = env.getStats(null).getCacheTotalBytes();
 
-            assertEquals(
-                "loadLNs " + loadLNs,
-                cacheSizeBeforeScan, cacheSizeAfterScan);
+            assertEquals("loadLNs " + loadLNs, cacheSizeBeforeScan, cacheSizeAfterScan);
         }
 
         myDb.close();
@@ -2247,8 +2011,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDbClose()
-        throws Throwable {
+    public void testDbClose() throws Throwable {
 
         /* Set up a test db */
         Database myDb = initEnvAndDb(false, true, false, true, false, null);
@@ -2258,14 +2021,12 @@ public class DatabaseTest extends DualTestCase {
         for (int i = 2500; i > 0; i--) {
             key.setData(TestUtils.getTestArray(i));
             data.setData(TestUtils.getTestArray(i));
-            assertEquals(OperationStatus.SUCCESS,
-                         myDb.put(txn, key, data));
+            assertEquals(OperationStatus.SUCCESS, myDb.put(txn, key, data));
         }
 
         /* Create a cursor, use it, then close db without closing cursor. */
         Cursor cursor = myDb.openCursor(txn, null);
-        assertEquals(OperationStatus.SUCCESS,
-                     cursor.getFirst(key, data, LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getFirst(key, data, LockMode.DEFAULT));
 
         try {
             myDb.close();
@@ -2275,8 +2036,7 @@ public class DatabaseTest extends DualTestCase {
 
         try {
             txn.commit();
-            fail("didn't throw IllegalStateException for uncommitted " +
-                 "transaction");
+            fail("didn't throw IllegalStateException for uncommitted " + "transaction");
         } catch (IllegalStateException e) {
         }
 
@@ -2290,21 +2050,16 @@ public class DatabaseTest extends DualTestCase {
      */
     @Test
     public void testDbPreempted() {
-        doDbPreempted(false /*useTxnForDbOpen*/,
-                      false /*accessDbAfterPreempted*/);
+        doDbPreempted(false /* useTxnForDbOpen */, false /* accessDbAfterPreempted */);
 
-        doDbPreempted(false /*useTxnForDbOpen*/,
-                      true  /*accessDbAfterPreempted*/);
+        doDbPreempted(false /* useTxnForDbOpen */, true /* accessDbAfterPreempted */);
 
-        doDbPreempted(true  /*useTxnForDbOpen*/,
-                      false /*accessDbAfterPreempted*/);
+        doDbPreempted(true /* useTxnForDbOpen */, false /* accessDbAfterPreempted */);
 
-        doDbPreempted(true  /*useTxnForDbOpen*/,
-                      true  /*accessDbAfterPreempted*/);
+        doDbPreempted(true /* useTxnForDbOpen */, true /* accessDbAfterPreempted */);
     }
 
-    private void doDbPreempted(boolean useTxnForDbOpen,
-                               boolean accessDbAfterPreempted) {
+    private void doDbPreempted(boolean useTxnForDbOpen, boolean accessDbAfterPreempted) {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
@@ -2432,7 +2187,7 @@ public class DatabaseTest extends DualTestCase {
      */
     @Test
     public void testDbOpenAbortWithDbClose() {
-        doDbOpenAbort(true /*withDbClose*/);
+        doDbOpenAbort(true /* withDbClose */);
     }
 
     /**
@@ -2441,11 +2196,11 @@ public class DatabaseTest extends DualTestCase {
      */
     @Test
     public void testDbOpenAbortNoDbClose() {
-        doDbOpenAbort(false /*withDbClose*/);
+        doDbOpenAbort(false /* withDbClose */);
     }
 
     /**
-     * Opens (creates) a database with a txn, then aborts that txn.  Optionally
+     * Opens (creates) a database with a txn, then aborts that txn. Optionally
      * closes the database handle after the abort.
      */
     private void doDbOpenAbort(boolean withDbClose) {
@@ -2462,8 +2217,7 @@ public class DatabaseTest extends DualTestCase {
         Transaction txn = env.beginTransaction(null, null);
         Database db = env.openDatabase(txn, "testDB", dbConfig);
         Cursor c = db.openCursor(txn, null);
-        OperationStatus status = c.put(new DatabaseEntry(new byte[1]),
-                                       new DatabaseEntry(new byte[1]));
+        OperationStatus status = c.put(new DatabaseEntry(new byte[1]), new DatabaseEntry(new byte[1]));
         assertSame(OperationStatus.SUCCESS, status);
 
         c.close();
@@ -2475,8 +2229,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testDbCloseUnopenedDb()
-        throws DatabaseException {
+    public void testDbCloseUnopenedDb() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
@@ -2495,8 +2248,7 @@ public class DatabaseTest extends DualTestCase {
      * Test that open cursor isn't possible on a closed database.
      */
     @Test
-    public void testOpenCursor()
-        throws DatabaseException {
+    public void testOpenCursor() throws DatabaseException {
 
         Database db = initEnvAndDb(true, true, false, true, false, null);
         Cursor cursor = db.openCursor(null, null);
@@ -2530,8 +2282,7 @@ public class DatabaseTest extends DualTestCase {
     }
 
     @Test
-    public void testBufferOverflowingPut()
-        throws Throwable {
+    public void testBufferOverflowingPut() throws Throwable {
 
         try {
 
@@ -2567,11 +2318,11 @@ public class DatabaseTest extends DualTestCase {
     /**
      * Check that the handle lock is not left behind when a non-transactional
      * open of a primary DB fails while populating the secondary. [#15558]
+     * 
      * @throws Exception
      */
     @Test
-    public void testFailedNonTxnDbOpen()
-        throws Exception {
+    public void testFailedNonTxnDbOpen() throws Exception {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -2581,8 +2332,7 @@ public class DatabaseTest extends DualTestCase {
         priConfig.setAllowCreate(true);
         Database priDb = env.openDatabase(null, "testDB", priConfig);
 
-        priDb.put(null, new DatabaseEntry(new byte[1]),
-                        new DatabaseEntry(new byte[2]));
+        priDb.put(null, new DatabaseEntry(new byte[1]), new DatabaseEntry(new byte[2]));
 
         SecondaryConfig secConfig = new SecondaryConfig();
         secConfig.setAllowCreate(true);
@@ -2590,12 +2340,9 @@ public class DatabaseTest extends DualTestCase {
         /* Use priDb as foreign key DB for ease of testing. */
         secConfig.setForeignKeyDatabase(priDb);
         secConfig.setKeyCreator(new SecondaryKeyCreator() {
-            public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                              DatabaseEntry key,
-                                              DatabaseEntry data,
+            public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                               DatabaseEntry result) {
-                result.setData
-                    (data.getData(), data.getOffset(), data.getSize());
+                result.setData(data.getData(), data.getOffset(), data.getSize());
                 return true;
             }
         });
@@ -2604,8 +2351,7 @@ public class DatabaseTest extends DualTestCase {
             fail();
         } catch (DatabaseException e) {
             /* Fails because [0,0] does not exist as a key in priDb. */
-            assertTrue(e.toString(),
-                       e.toString().indexOf("foreign key not allowed") > 0);
+            assertTrue(e.toString(), e.toString().indexOf("foreign key not allowed") > 0);
         }
 
         priDb.close();
@@ -2613,45 +2359,35 @@ public class DatabaseTest extends DualTestCase {
         env = null;
     }
 
-    EnvironmentConfig getEnvironmentConfig(
-        boolean dontRunEvictor,
-        boolean runCleaner,
-        boolean transactional,
-        String memSize)
-        throws IllegalArgumentException {
+    EnvironmentConfig getEnvironmentConfig(boolean dontRunEvictor, boolean runCleaner, boolean transactional,
+                                           String memSize)
+            throws IllegalArgumentException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(transactional);
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_CHECK_LEAKS, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_CHECK_LEAKS, "false");
 
         envConfig.setConfigParam(EnvironmentConfig.NODE_MAX_ENTRIES, "6");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.NODE_DUP_TREE_MAX_ENTRIES, "6");
+        envConfig.setConfigParam(EnvironmentConfig.NODE_DUP_TREE_MAX_ENTRIES, "6");
 
         envConfig.setTxnNoSync(Boolean.getBoolean(TestUtils.NO_SYNC));
 
         if (!runCleaner) {
-            envConfig.setConfigParam(
-                EnvironmentConfig.ENV_RUN_CLEANER, "false");
+            envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
         }
 
         if (dontRunEvictor) {
-            envConfig.setConfigParam(
-                EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+            envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
 
-
-            envConfig.setConfigParam(
-                EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+            envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
 
             /*
              * Don't let critical eviction run or it will interfere with the
              * preload test.
              */
-            envConfig.setConfigParam(
-                EnvironmentConfig.EVICTOR_CRITICAL_PERCENTAGE, "500");
+            envConfig.setConfigParam(EnvironmentConfig.EVICTOR_CRITICAL_PERCENTAGE, "500");
         }
 
         if (memSize != null) {
@@ -2665,19 +2401,11 @@ public class DatabaseTest extends DualTestCase {
     /**
      * Set up the environment and db.
      */
-    private Database initEnvAndDb(
-        boolean dontRunEvictor,
-        boolean runCleaner,
-        boolean allowDuplicates,
-        boolean transactional,
-        boolean deferredWrite,
-        String memSize)
-        throws DatabaseException {
+    private Database initEnvAndDb(boolean dontRunEvictor, boolean runCleaner, boolean allowDuplicates,
+                                  boolean transactional, boolean deferredWrite, String memSize)
+            throws DatabaseException {
 
-        EnvironmentConfig envConfig = getEnvironmentConfig(dontRunEvictor,
-                                                           runCleaner,
-                                                           transactional,
-                                                           memSize);
+        EnvironmentConfig envConfig = getEnvironmentConfig(dontRunEvictor, runCleaner, transactional, memSize);
         env = create(envHome, envConfig);
 
         /* Make a db and open it. */
@@ -2698,51 +2426,46 @@ public class DatabaseTest extends DualTestCase {
      */
     private Database pNOCDb;
 
-    public void XXtestPutNoOverwriteConcurrently()
-        throws Throwable {
+    public void XXtestPutNoOverwriteConcurrently() throws Throwable {
 
         pNOCDb = initEnvAndDb(true, true, true, true, false, null);
-        JUnitThread tester1 =
-            new JUnitThread("testNonBlocking1") {
-                @Override
-                public void testBody() {
-                    try {
-                        Transaction txn1 = env.beginTransaction(null, null);
-                        DatabaseEntry key = new DatabaseEntry();
-                        DatabaseEntry data = new DatabaseEntry();
-                        key.setData(TestUtils.getTestArray(1));
-                        data.setData(TestUtils.getTestArray(1));
-                        OperationStatus status =
-                            pNOCDb.putNoOverwrite(txn1, key, data);
-                        txn1.commit();
-                        System.out.println("thread1: " + status);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
-                    }
+        JUnitThread tester1 = new JUnitThread("testNonBlocking1") {
+            @Override
+            public void testBody() {
+                try {
+                    Transaction txn1 = env.beginTransaction(null, null);
+                    DatabaseEntry key = new DatabaseEntry();
+                    DatabaseEntry data = new DatabaseEntry();
+                    key.setData(TestUtils.getTestArray(1));
+                    data.setData(TestUtils.getTestArray(1));
+                    OperationStatus status = pNOCDb.putNoOverwrite(txn1, key, data);
+                    txn1.commit();
+                    System.out.println("thread1: " + status);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
-        JUnitThread tester2 =
-            new JUnitThread("testNonBlocking2") {
-                @Override
-                public void testBody() {
-                    try {
-                        Transaction txn2 = env.beginTransaction(null, null);
-                        DatabaseEntry key = new DatabaseEntry();
-                        DatabaseEntry data = new DatabaseEntry();
-                        key.setData(TestUtils.getTestArray(1));
-                        data.setData(TestUtils.getTestArray(2));
-                        OperationStatus status =
-                            pNOCDb.putNoOverwrite(txn2, key, data);
-                        txn2.commit();
-                        System.out.println("thread2: " + status);
-                    } catch (DatabaseException DBE) {
-                        DBE.printStackTrace();
-                        fail("caught DatabaseException " + DBE);
-                    }
+        JUnitThread tester2 = new JUnitThread("testNonBlocking2") {
+            @Override
+            public void testBody() {
+                try {
+                    Transaction txn2 = env.beginTransaction(null, null);
+                    DatabaseEntry key = new DatabaseEntry();
+                    DatabaseEntry data = new DatabaseEntry();
+                    key.setData(TestUtils.getTestArray(1));
+                    data.setData(TestUtils.getTestArray(2));
+                    OperationStatus status = pNOCDb.putNoOverwrite(txn2, key, data);
+                    txn2.commit();
+                    System.out.println("thread2: " + status);
+                } catch (DatabaseException DBE) {
+                    DBE.printStackTrace();
+                    fail("caught DatabaseException " + DBE);
                 }
-            };
+            }
+        };
 
         tester1.start();
         tester2.start();
@@ -2794,24 +2517,23 @@ public class DatabaseTest extends DualTestCase {
     }
 
     class DeleteIt implements Runnable {
-        int key;
-        Database db;
-        Environment env;
+        int             key;
+        Database        db;
+        Environment     env;
         OperationStatus retstat = null;
-        int waitEventPre;
-        int waitEventPost;
-        long waittime;
+        int             waitEventPre;
+        int             waitEventPost;
+        long            waittime;
 
-        DeleteIt(int key,
-                 Environment env,
-                 Database db) {
+        DeleteIt(int key, Environment env, Database db) {
             this.key = key;
             this.db = db;
             this.env = env;
-         }
+        }
 
         public void run() {
-            while (!doWork());
+            while (!doWork())
+                ;
         }
 
         private boolean doWork() {

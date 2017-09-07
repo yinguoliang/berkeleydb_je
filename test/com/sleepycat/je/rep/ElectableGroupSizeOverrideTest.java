@@ -35,8 +35,7 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
      * with an override in place.
      */
     @Test
-    public void testBasic()
-        throws InterruptedException {
+    public void testBasic() throws InterruptedException {
         createGroup();
         /* Shutdown the entire group. */
         closeNodes(repEnvInfo);
@@ -63,15 +62,11 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
     }
 
     /**
-     * tests a 5 node group, with the master failing as part of the majority
-     * of the nodes being lost.
-     *
-     * 1) Shutdown nodes n1-n3, including n1 the master
-     * 2) Verify no master amongst the remaining
-     * 3) Set override
-     * 4) Verify master emerges and write transactions can be committed.
-     * 5) Remove override
-     * 6) Bring up down nodes n1-n3 -- group is in normal working order
+     * tests a 5 node group, with the master failing as part of the majority of
+     * the nodes being lost. 1) Shutdown nodes n1-n3, including n1 the master 2)
+     * Verify no master amongst the remaining 3) Set override 4) Verify master
+     * emerges and write transactions can be committed. 5) Remove override 6)
+     * Bring up down nodes n1-n3 -- group is in normal working order
      */
     @Test
     public void testMasterDownOverride() throws InterruptedException {
@@ -81,20 +76,16 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
         /* Shutdown a simple majority, including the Master. */
         final int simpleMajority = (repEnvInfo.length + 1) / 2;
         RepEnvInfo[] downNodes = copyArray(repEnvInfo, 0, simpleMajority);
-        RepEnvInfo[] activeNodes =
-            copyArray(repEnvInfo, simpleMajority,
-                      repEnvInfo.length - simpleMajority);
+        RepEnvInfo[] activeNodes = copyArray(repEnvInfo, simpleMajority, repEnvInfo.length - simpleMajority);
         closeNodes(downNodes);
 
         for (RepEnvInfo ri : activeNodes) {
             /* No master amongst the remaining nodes. */
             assertTrue(!ri.getEnv().getState().isMaster());
         }
-        setMutableElectableGroupSize(simpleMajority-1, activeNodes);
+        setMutableElectableGroupSize(simpleMajority - 1, activeNodes);
 
-        RepEnvInfo master =
-            findMasterAndWaitForReplicas(10000, activeNodes.length - 1,
-                                         activeNodes);
+        RepEnvInfo master = findMasterAndWaitForReplicas(10000, activeNodes.length - 1, activeNodes);
 
         /* They should now be able to conclude an election. */
         assertTrue(master != null);
@@ -114,9 +105,7 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
     }
 
     /* Copy a part of an array to a new array. */
-    private RepEnvInfo[] copyArray(RepEnvInfo[] nodes,
-                                   int srcStart,
-                                   int copyLength) {
+    private RepEnvInfo[] copyArray(RepEnvInfo[] nodes, int srcStart, int copyLength) {
         RepEnvInfo[] newNodes = new RepEnvInfo[copyLength];
         System.arraycopy(nodes, srcStart, newNodes, 0, copyLength);
 
@@ -124,15 +113,11 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
     }
 
     /**
-     * tests a 5 node group, with the master being retained when the majority
-     * of the nodes is lost.
-     *
-     * 1) Shutdown nodes n3-n5, n1 is the master and is alive.
-     * 2) Verify that master can no longer commit transactions
-     * 3) Set override
-     * 4) Verify that write transactions can be committed
-     * 5) Remove override
-     * 6) Bring up down nodes n3-n5 -- group is in normal working order
+     * tests a 5 node group, with the master being retained when the majority of
+     * the nodes is lost. 1) Shutdown nodes n3-n5, n1 is the master and is
+     * alive. 2) Verify that master can no longer commit transactions 3) Set
+     * override 4) Verify that write transactions can be committed 5) Remove
+     * override 6) Bring up down nodes n3-n5 -- group is in normal working order
      */
     @Test
     public void testMasterUpOverride() throws InterruptedException {
@@ -141,11 +126,8 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
 
         /* Shutdown a simple majority, excluding the Master. */
         final int simpleMajority = (repEnvInfo.length + 1) / 2;
-        RepEnvInfo[] downNodes =
-            copyArray(repEnvInfo, simpleMajority - 1,
-                      repEnvInfo.length - simpleMajority + 1);
-        RepEnvInfo[] activeNodes = copyArray(repEnvInfo, 0,
-                                             simpleMajority - 1);
+        RepEnvInfo[] downNodes = copyArray(repEnvInfo, simpleMajority - 1, repEnvInfo.length - simpleMajority + 1);
+        RepEnvInfo[] activeNodes = copyArray(repEnvInfo, 0, simpleMajority - 1);
         closeNodes(downNodes);
 
         assertTrue(repEnvInfo[0].getEnv().getState().isMaster());
@@ -159,7 +141,7 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
         } catch (InsufficientReplicasException ire) {
             // ok
         }
-        setMutableElectableGroupSize(simpleMajority-1, activeNodes);
+        setMutableElectableGroupSize(simpleMajority - 1, activeNodes);
 
         /* Write should succeed without exceptions with the override */
         tryWrite(findMaster(activeNodes).getEnv(), "dbok");
@@ -175,8 +157,7 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
         restartNodes(copyArray(downNodes, 1, downNodes.length - 1));
     }
 
-    private void startGroupWithOverride(int override)
-        throws InterruptedException {
+    private void startGroupWithOverride(int override) throws InterruptedException {
 
         /* Now Try bringing up just one node using override */
         setElectableGroupSize(override, repEnvInfo);
@@ -189,10 +170,10 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
         /* Write must succeed without exceptions. */
         tryWrite(menv, "dbok" + override);
         /*
-         * It should be possible for the other nodes to find the master
-         * and join.
+         * It should be possible for the other nodes to find the master and
+         * join.
          */
-        for (int i=override; i < repEnvInfo.length; i++) {
+        for (int i = override; i < repEnvInfo.length; i++) {
             repEnvInfo[i].openEnv();
             assertTrue(repEnvInfo[i].getEnv().getState().isReplica());
         }
@@ -211,9 +192,7 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
         try {
             Transaction txn = repEnv.beginTransaction(null, null);
             db = repEnv.openDatabase(txn, dbName, dbconfig);
-            txn.commit(new Durability(SyncPolicy.SYNC,
-                                      SyncPolicy.SYNC,
-                                      ReplicaAckPolicy.SIMPLE_MAJORITY));
+            txn.commit(new Durability(SyncPolicy.SYNC, SyncPolicy.SYNC, ReplicaAckPolicy.SIMPLE_MAJORITY));
         } finally {
             if (db != null) {
                 /* Close database even in presence of exceptions. */
@@ -236,8 +215,8 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
     }
 
     /**
-     * Sets the electable group size mutable associated with an open
-     * environment handle.
+     * Sets the electable group size mutable associated with an open environment
+     * handle.
      *
      * @param override the override value
      * @param nodes the nodes where the override is to be applied
@@ -257,8 +236,7 @@ public class ElectableGroupSizeOverrideTest extends RepTestBase {
      */
     private void setEnvSetupTimeout(String duration) {
         for (RepEnvInfo ri : repEnvInfo) {
-            ri.getRepConfig().setConfigParam
-                (RepParams.ENV_SETUP_TIMEOUT.getName(), duration);
+            ri.getRepConfig().setConfigParam(RepParams.ENV_SETUP_TIMEOUT.getName(), duration);
         }
     }
 }

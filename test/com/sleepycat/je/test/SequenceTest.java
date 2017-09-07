@@ -43,8 +43,8 @@ public class SequenceTest extends TxnTestCase {
     public static List<Object[]> genParams() {
         return getTxnParams(null, false);
     }
-    
-    public SequenceTest(String type){
+
+    public SequenceTest(String type) {
         initEnvConfig();
         txnType = type;
         isTransactional = (txnType != TXN_NULL);
@@ -52,8 +52,7 @@ public class SequenceTest extends TxnTestCase {
     }
 
     @Test
-    public void testIllegal()
-        throws DatabaseException {
+    public void testIllegal() throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry(new byte[1]);
         SequenceConfig config = new SequenceConfig();
@@ -214,8 +213,7 @@ public class SequenceTest extends TxnTestCase {
     }
 
     @Test
-    public void testBasic()
-        throws DatabaseException {
+    public void testBasic() throws DatabaseException {
 
         Database db = openDb("foo");
         DatabaseEntry key = new DatabaseEntry(new byte[0]);
@@ -268,8 +266,7 @@ public class SequenceTest extends TxnTestCase {
     }
 
     @Test
-    public void testMultipleHandles()
-        throws DatabaseException {
+    public void testMultipleHandles() throws DatabaseException {
 
         Database db = openDb("foo");
         DatabaseEntry key = new DatabaseEntry(new byte[0]);
@@ -309,8 +306,7 @@ public class SequenceTest extends TxnTestCase {
     }
 
     @Test
-    public void testRanges()
-        throws DatabaseException {
+    public void testRanges() throws DatabaseException {
 
         Database db = openDb("foo");
 
@@ -337,7 +333,7 @@ public class SequenceTest extends TxnTestCase {
         doRange(db, -10, 10, 20, 0);
 
         /*
-         * Cache sizes.  We cheat a little by making the cache size an even
+         * Cache sizes. We cheat a little by making the cache size an even
          * multiple of the delta whenever the cache size is greater than the
          * delta; otherwise, it is too difficult to predict caching.
          */
@@ -356,8 +352,7 @@ public class SequenceTest extends TxnTestCase {
         db.close();
     }
 
-    private void doRange(Database db, long min, long max, int delta, int cache)
-        throws DatabaseException {
+    private void doRange(Database db, long min, long max, int delta, int cache) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry(new byte[1]);
         boolean incr;
@@ -365,24 +360,24 @@ public class SequenceTest extends TxnTestCase {
 
         for (int option = 0; option < 4; option += 1) {
             switch (option) {
-            case 0:
-                incr = true;
-                wrap = false;
-                break;
-            case 1:
-                incr = true;
-                wrap = false;
-                break;
-            case 2:
-                incr = true;
-                wrap = false;
-                break;
-            case 3:
-                incr = true;
-                wrap = false;
-                break;
-            default:
-                throw new IllegalStateException();
+                case 0:
+                    incr = true;
+                    wrap = false;
+                    break;
+                case 1:
+                    incr = true;
+                    wrap = false;
+                    break;
+                case 2:
+                    incr = true;
+                    wrap = false;
+                    break;
+                case 3:
+                    incr = true;
+                    wrap = false;
+                    break;
+                default:
+                    throw new IllegalStateException();
             }
 
             SequenceConfig config = new SequenceConfig();
@@ -393,13 +388,8 @@ public class SequenceTest extends TxnTestCase {
             config.setRange(min, max);
             config.setCacheSize(cache);
 
-            String msg =
-                "incr=" + incr +
-                " wrap=" + wrap +
-                " min=" + min +
-                " max=" + max +
-                " delta=" + delta +
-                " cache=" + cache;
+            String msg = "incr=" + incr + " wrap=" + wrap + " min=" + min + " max=" + max + " delta=" + delta
+                    + " cache=" + cache;
 
             Transaction txn = txnBegin();
             db.removeSequence(txn, key);
@@ -413,8 +403,7 @@ public class SequenceTest extends TxnTestCase {
 
                     boolean expectCached = false;
                     if (cache != 0) {
-                        expectCached = delta < cache && i != max &&
-                            (((i - min) % cache) != 0);
+                        expectCached = delta < cache && i != max && (((i - min) % cache) != 0);
                     }
 
                     doOne(msg, seq, txn, delta, i, expectCached);
@@ -436,8 +425,7 @@ public class SequenceTest extends TxnTestCase {
 
                     boolean expectCached = false;
                     if (cache != 0) {
-                        expectCached = delta < cache && i != min &&
-                            (((max - i) % cache) != 0);
+                        expectCached = delta < cache && i != min && (((max - i) % cache) != 0);
                     }
 
                     doOne(msg, seq, txn, delta, i, expectCached);
@@ -471,13 +459,8 @@ public class SequenceTest extends TxnTestCase {
         }
     }
 
-    private void doOne(String msg,
-                       Sequence seq,
-                       Transaction txn,
-                       int delta,
-                       long expectValue,
-                       boolean expectCached)
-        throws DatabaseException {
+    private void doOne(String msg, Sequence seq, Transaction txn, int delta, long expectValue, boolean expectCached)
+            throws DatabaseException {
 
         msg += " value=" + expectValue;
 
@@ -496,14 +479,12 @@ public class SequenceTest extends TxnTestCase {
         assertEquals(msg, expectCached ? 1 : 0, stats.getNCachedGets());
     }
 
-    private Database openDb(String name)
-        throws DatabaseException {
+    private Database openDb(String name) throws DatabaseException {
 
         return openDb(name, false);
     }
 
-    private Database openDb(String name, boolean duplicates)
-        throws DatabaseException {
+    private Database openDb(String name, boolean duplicates) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(isTransactional);

@@ -19,10 +19,8 @@ import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.dbi.EnvironmentImpl;
 
 public class FileManagerTestUtils {
-    public static void createLogFile(FileManager fileManager,
-                                         EnvironmentImpl envImpl,
-                                         long logFileSize)
-        throws DatabaseException, IOException {
+    public static void createLogFile(FileManager fileManager, EnvironmentImpl envImpl, long logFileSize)
+            throws DatabaseException, IOException {
 
         LogBuffer logBuffer = new LogBuffer(50, envImpl);
         logBuffer.latchForWrite();

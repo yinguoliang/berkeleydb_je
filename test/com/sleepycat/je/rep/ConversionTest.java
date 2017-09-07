@@ -46,8 +46,7 @@ public class ConversionTest extends TestBase {
      * re-opened as a standalone environment in r/w mode
      */
     @Test
-    public void testNoStandaloneReopen()
-        throws DatabaseException, IOException {
+    public void testNoStandaloneReopen() throws DatabaseException, IOException {
 
         RepEnvInfo[] repEnvInfo = initialOpenWithReplication();
 
@@ -56,8 +55,7 @@ public class ConversionTest extends TestBase {
             EnvironmentConfig reopenConfig = new EnvironmentConfig();
             reopenConfig.setTransactional(true);
             @SuppressWarnings("unused")
-            Environment unused = new Environment(repEnvInfo[0].getEnvHome(),
-                                                 reopenConfig);
+            Environment unused = new Environment(repEnvInfo[0].getEnvHome(), reopenConfig);
             fail("Should have thrown an exception.");
         } catch (UnsupportedOperationException ignore) {
             /* throw a more specific exception? */
@@ -65,12 +63,11 @@ public class ConversionTest extends TestBase {
     }
 
     /**
-     * Check that an environment which is opened for replication can
-     * also be opened as a standalone r/o environment.
+     * Check that an environment which is opened for replication can also be
+     * opened as a standalone r/o environment.
      */
     @Test
-    public void testStandaloneRO()
-        throws DatabaseException, IOException {
+    public void testStandaloneRO() throws DatabaseException, IOException {
 
         RepEnvInfo[] repEnvInfo = initialOpenWithReplication();
 
@@ -79,8 +76,7 @@ public class ConversionTest extends TestBase {
             EnvironmentConfig reopenConfig = new EnvironmentConfig();
             reopenConfig.setTransactional(true);
             reopenConfig.setReadOnly(true);
-            Environment env = new Environment(repEnvInfo[0].getEnvHome(),
-                                              reopenConfig);
+            Environment env = new Environment(repEnvInfo[0].getEnvHome(), reopenConfig);
             env.close();
         } catch (DatabaseException e) {
             fail("Should be successful" + e);
@@ -88,8 +84,7 @@ public class ConversionTest extends TestBase {
     }
 
     @Test
-    public void testStandaloneUtility()
-        throws DatabaseException, IOException {
+    public void testStandaloneUtility() throws DatabaseException, IOException {
 
         RepEnvInfo[] repEnvInfo = initialOpenWithReplication();
 
@@ -98,18 +93,15 @@ public class ConversionTest extends TestBase {
             EnvironmentConfig reopenConfig = new EnvironmentConfig();
             reopenConfig.setTransactional(true);
             reopenConfig.setReadOnly(true);
-            EnvironmentImpl envImpl =
-                CmdUtil.makeUtilityEnvironment(repEnvInfo[0].getEnvHome(),
-                                           true /* readOnly */);
+            EnvironmentImpl envImpl = CmdUtil.makeUtilityEnvironment(repEnvInfo[0].getEnvHome(), true /* readOnly */);
             envImpl.close();
         } catch (DatabaseException e) {
             fail("Should be successful" + e);
         }
     }
 
-    private RepEnvInfo[] initialOpenWithReplication()
-        throws DatabaseException, IOException {
-     
+    private RepEnvInfo[] initialOpenWithReplication() throws DatabaseException, IOException {
+
         RepEnvInfo[] repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 2);
         RepTestUtils.joinGroup(repEnvInfo);
         for (RepEnvInfo repi : repEnvInfo) {

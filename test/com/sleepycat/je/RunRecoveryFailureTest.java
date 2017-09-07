@@ -32,30 +32,26 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * @excludeDualMode
- * This test does not run in Replication Dual Mode. There are several
- * logistical issues.
- *
- * -It assumes that all log files are in the <envHome> directory, whereas
- * dual mode environments are in <envHome>/rep*
- * -It attempts to set the log file size to 1024, which is overridden by the
- * dual mode framework.
- *
- * Since the test doesn't add any unique coverage to dual mode testing, it's
- * not worth overcoming the logistical issues.
+ * @excludeDualMode This test does not run in Replication Dual Mode. There are
+ *                  several logistical issues. -It assumes that all log files
+ *                  are in the <envHome> directory, whereas dual mode
+ *                  environments are in <envHome>/rep* -It attempts to set the
+ *                  log file size to 1024, which is overridden by the dual mode
+ *                  framework. Since the test doesn't add any unique coverage to
+ *                  dual mode testing, it's not worth overcoming the logistical
+ *                  issues.
  */
 public class RunRecoveryFailureTest extends TestBase {
 
     private Environment env;
-    private final File envHome;
+    private final File  envHome;
 
     public RunRecoveryFailureTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         openEnv();
@@ -81,8 +77,7 @@ public class RunRecoveryFailureTest extends TestBase {
         }
     }
 
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
@@ -92,13 +87,9 @@ public class RunRecoveryFailureTest extends TestBase {
          * checksum errors)
          */
         DbInternal.disableParameterValidation(envConfig);
-        envConfig.setConfigParam
-            (EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_MEM_SIZE.getName(),
-             EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_MAX.getName(), "1024");
+        envConfig.setConfigParam(EnvironmentParams.NUM_LOG_BUFFERS.getName(), "2");
+        envConfig.setConfigParam(EnvironmentParams.LOG_MEM_SIZE.getName(), EnvironmentParams.LOG_MEM_SIZE_MIN_STRING);
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), "1024");
         envConfig.setAllowCreate(true);
         env = new Environment(envHome, envConfig);
     }
@@ -108,13 +99,11 @@ public class RunRecoveryFailureTest extends TestBase {
      * RunRecoveryException.
      */
     @Test
-    public void testInvalidateEnvMidStream()
-        throws Throwable {
+    public void testInvalidateEnvMidStream() throws Throwable {
 
         try {
             /* Make a new db in this env and flush the file. */
-            Transaction txn =
-                env.beginTransaction(null, TransactionConfig.DEFAULT);
+            Transaction txn = env.beginTransaction(null, TransactionConfig.DEFAULT);
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setTransactional(true);
             dbConfig.setAllowCreate(true);
@@ -131,25 +120,19 @@ public class RunRecoveryFailureTest extends TestBase {
             /*
              * Corrupt each log file, then abort the txn. Aborting the txn
              * results in an undo of each insert, which will provoke JE into
-             * reading the log a lot, and noticing the file corruption.  Should
+             * reading the log a lot, and noticing the file corruption. Should
              * get a checksum error, which should invalidate the environment.
              */
-            long currentFile = DbInternal.getNonNullEnvImpl(env)
-                                         .getFileManager()
-                                         .getCurrentFileNum();
+            long currentFile = DbInternal.getNonNullEnvImpl(env).getFileManager().getCurrentFileNum();
             for (int fileNum = 0; fileNum <= currentFile; fileNum += 1) {
-                String logFileName =
-                    FileManager.getFileName(fileNum, FileManager.JE_SUFFIX);
+                String logFileName = FileManager.getFileName(fileNum, FileManager.JE_SUFFIX);
                 File file = new File(envHome, logFileName);
-                RandomAccessFile starterFile =
-                    new RandomAccessFile(file, "rw");
+                RandomAccessFile starterFile = new RandomAccessFile(file, "rw");
                 FileChannel channel = starterFile.getChannel();
                 long fileSize = channel.size();
                 if (fileSize > FileManager.firstLogEntryOffset()) {
-                    ByteBuffer junkBuffer = ByteBuffer.allocate
-                        ((int) fileSize - FileManager.firstLogEntryOffset());
-                    int written = channel.write
-                        (junkBuffer, FileManager.firstLogEntryOffset());
+                    ByteBuffer junkBuffer = ByteBuffer.allocate((int) fileSize - FileManager.firstLogEntryOffset());
+                    int written = channel.write(junkBuffer, FileManager.firstLogEntryOffset());
                     assertTrue(written > 0);
                     starterFile.close();
                 }

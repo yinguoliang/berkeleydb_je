@@ -44,9 +44,9 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 public class EvictSelectionTest extends TestBase {
-    private final File envHome;
-    private final int scanSize = 5;
-    private Environment env;
+    private final File      envHome;
+    private final int       scanSize = 5;
+    private Environment     env;
     private EnvironmentImpl envImpl;
 
     public EvictSelectionTest() {
@@ -85,8 +85,11 @@ public class EvictSelectionTest extends TestBase {
             candidates.clear();
         }
 
-        public void doIOHook() {};
-        public void doHook() {}
+        public void doIOHook() {
+        };
+
+        public void doHook() {
+        }
 
         public IN getHookValue() {
             return null;
@@ -94,12 +97,11 @@ public class EvictSelectionTest extends TestBase {
     }
 
     /*
-     * We might call evict on an empty INList if the cache is set very low
-     * at recovery time.
+     * We might call evict on an empty INList if the cache is set very low at
+     * recovery time.
      */
     @Test
-    public void testEmptyINList()
-        throws Throwable {
+    public void testEmptyINList() throws Throwable {
 
         /* Create an environment, database, and insert some data. */
         initialize(true);
@@ -115,27 +117,17 @@ public class EvictSelectionTest extends TestBase {
     /*
      * Create an environment, database, and insert some data.
      */
-    private void initialize(boolean makeDatabase)
-        throws DatabaseException {
+    private void initialize(boolean makeDatabase) throws DatabaseException {
 
         /* Environment */
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_RUN_EVICTOR.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_RUN_CLEANER.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_RUN_CHECKPOINTER.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 ENV_RUN_INCOMPRESSOR.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.
-                                 NODE_MAX.getName(), "4");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "4");
 
         env = new Environment(envHome, envConfig);
         envImpl = DbInternal.getNonNullEnvImpl(env);
@@ -161,30 +153,26 @@ public class EvictSelectionTest extends TestBase {
 
     /**
      * Tests a fix for an eviction bug that could cause an OOME in a read-only
-     * environment.  [#17590]
-     *
-     * Before the bug fix, a dirty IN prevented eviction from working if the
-     * dirty IN is returned by Evictor.selectIN repeatedly, only to be rejected
-     * by Evictor.evictIN because it is dirty.  A dirty IN was considered as a
-     * target and sometimes selected by selectIN as a way to avoid an infinite
-     * loop when all INs are dirty.  This is unnecessary, since a condition was
-     * added to cause the selectIN loop to terminate when all INs in the INList
-     * have been iterated.  Now, with the fix, a dirty IN in a read-only
-     * environment is never considered as a target or returned by selectIN.
-     *
-     * The OOME was reproduced with a simple test that uses a cursor to iterate
-     * through 100k records, each 100k in size, in a read-only enviroment with
-     * a 16m heap.  However, reproducing the problem in a fast-running unit
-     * test is very difficult.  Instead, since the code change only impacts a
-     * read-only environment, this unit test only ensures that the fix does not
-     * cause an infinte loop when all nodes are dirty.
+     * environment. [#17590] Before the bug fix, a dirty IN prevented eviction
+     * from working if the dirty IN is returned by Evictor.selectIN repeatedly,
+     * only to be rejected by Evictor.evictIN because it is dirty. A dirty IN
+     * was considered as a target and sometimes selected by selectIN as a way to
+     * avoid an infinite loop when all INs are dirty. This is unnecessary, since
+     * a condition was added to cause the selectIN loop to terminate when all
+     * INs in the INList have been iterated. Now, with the fix, a dirty IN in a
+     * read-only environment is never considered as a target or returned by
+     * selectIN. The OOME was reproduced with a simple test that uses a cursor
+     * to iterate through 100k records, each 100k in size, in a read-only
+     * enviroment with a 16m heap. However, reproducing the problem in a
+     * fast-running unit test is very difficult. Instead, since the code change
+     * only impacts a read-only environment, this unit test only ensures that
+     * the fix does not cause an infinte loop when all nodes are dirty.
      */
     @Test
-    public void testReadOnlyAllDirty()
-        throws Throwable {
+    public void testReadOnlyAllDirty() throws Throwable {
 
         /* Create an environment, database, and insert some data. */
-        initialize(true /*makeDatabase*/);
+        initialize(true /* makeDatabase */);
         env.close();
         env = null;
         envImpl = null;
@@ -217,10 +205,9 @@ public class EvictSelectionTest extends TestBase {
         }
 
         /*
-         * Force an eviction.  No nodes will be selected for an eviction,
-         * because all nodes are dirty.  If the (nIterated < maxNodesToIterate)
-         * condition is removed from the selectIN loop, an infinite loop will
-         * occur.
+         * Force an eviction. No nodes will be selected for an eviction, because
+         * all nodes are dirty. If the (nIterated < maxNodesToIterate) condition
+         * is removed from the selectIN loop, an infinite loop will occur.
          */
         final EnvironmentMutableConfig mutableConfig = env.getMutableConfig();
         mutableConfig.setCacheSize(MemoryBudget.MIN_MAX_MEMORY_SIZE);

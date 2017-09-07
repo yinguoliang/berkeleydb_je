@@ -35,32 +35,29 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 public class TreeTestBase extends TestBase {
-    static protected final boolean DEBUG = true;
+    static protected final boolean DEBUG                = true;
 
-    static protected int N_KEY_BYTES = 10;
-    static protected int N_ITERS = 1;
-    static protected int N_KEYS = 10000;
-    static protected int MAX_ENTRIES_PER_NODE = 6;
+    static protected int           N_KEY_BYTES          = 10;
+    static protected int           N_ITERS              = 1;
+    static protected int           N_KEYS               = 10000;
+    static protected int           MAX_ENTRIES_PER_NODE = 6;
 
-    protected Tree tree = null;
-    protected byte[] minKey = null;
-    protected byte[] maxKey = null;
-    protected Database db = null;
-    protected Environment env = null;
-    protected File envHome = null;
+    protected Tree                 tree                 = null;
+    protected byte[]               minKey               = null;
+    protected byte[]               maxKey               = null;
+    protected Database             db                   = null;
+    protected Environment          env                  = null;
+    protected File                 envHome              = null;
 
     public TreeTestBase() {
         envHome = SharedTestUtils.getTestDir();
     }
 
-    void initEnv(boolean duplicatesAllowed)
-        throws DatabaseException {
+    void initEnv(boolean duplicatesAllowed) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                 Integer.toString(MAX_ENTRIES_PER_NODE));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), Integer.toString(MAX_ENTRIES_PER_NODE));
         envConfig.setAllowCreate(true);
         envConfig.setTxnNoSync(Boolean.getBoolean(TestUtils.NO_SYNC));
         env = new Environment(envHome, envConfig);
@@ -76,8 +73,7 @@ public class TreeTestBase extends TestBase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         db.close();
         if (env != null) {
@@ -92,9 +88,7 @@ public class TreeTestBase extends TestBase {
 
     protected IN makeDupIN(IN old) {
 
-        IN ret = new IN(
-            DbInternal.getDbImpl(db),
-            old.getIdentifierKey(), MAX_ENTRIES_PER_NODE, 2);
+        IN ret = new IN(DbInternal.getDbImpl(db), old.getIdentifierKey(), MAX_ENTRIES_PER_NODE, 2);
 
         ret.setNodeId(old.getNodeId());
         ret.setIsRoot(old.isRoot());
@@ -109,8 +103,7 @@ public class TreeTestBase extends TestBase {
     /**
      * Helper routine to insert a key and immediately read it back.
      */
-    protected void insertAndRetrieve(NullCursor cursor, byte[] key, LN ln)
-        throws DatabaseException {
+    protected void insertAndRetrieve(NullCursor cursor, byte[] key, LN ln) throws DatabaseException {
 
         if (minKey == null) {
             minKey = key;
@@ -128,8 +121,7 @@ public class TreeTestBase extends TestBase {
 
         TestUtils.checkLatchCount();
 
-        assertTrue(cursor.insertRecord(
-            key, ln, false, ReplicationContext.NO_REPLICATE));
+        assertTrue(cursor.insertRecord(key, ln, false, ReplicationContext.NO_REPLICATE));
 
         TestUtils.checkLatchCount();
 
@@ -141,12 +133,10 @@ public class TreeTestBase extends TestBase {
     /**
      * Helper routine to read the LN referred to by key.
      */
-    protected LN retrieveLN(byte[] key)
-        throws DatabaseException {
+    protected LN retrieveLN(byte[] key) throws DatabaseException {
 
         TestUtils.checkLatchCount();
-        IN n = tree.search(key, Tree.SearchType.NORMAL, null,
-                           CacheMode.DEFAULT, null /*keyComparator*/);
+        IN n = tree.search(key, Tree.SearchType.NORMAL, null, CacheMode.DEFAULT, null /* keyComparator */);
         if (!(n instanceof BIN)) {
             fail("search didn't return a BIN for key: " + key);
         }
@@ -173,11 +163,10 @@ public class TreeTestBase extends TestBase {
     }
 
     /**
-     * Using getNextBin, count all the keys in the database.  Ensure that
-     * they're returned in ascending order.
+     * Using getNextBin, count all the keys in the database. Ensure that they're
+     * returned in ascending order.
      */
-    protected int countAndValidateKeys(Tree tree)
-        throws DatabaseException {
+    protected int countAndValidateKeys(Tree tree) throws DatabaseException {
 
         TestUtils.checkLatchCount();
         BIN nextBin = (BIN) tree.getFirstNode(CacheMode.DEFAULT);
@@ -189,8 +178,7 @@ public class TreeTestBase extends TestBase {
             for (int i = 0; i < nextBin.getNEntries(); i++) {
                 byte[] curKey = nextBin.getKey(i);
                 if (Key.compareKeys(curKey, prevKey, null) <= 0) {
-                    throw new RuntimeException
-                        ("keys are out of order");
+                    throw new RuntimeException("keys are out of order");
                 }
                 cnt++;
                 prevKey = curKey;
@@ -202,11 +190,10 @@ public class TreeTestBase extends TestBase {
     }
 
     /**
-     * Using getPrevBin, count all the keys in the database.  Ensure that
-     * they're returned in descending order.
+     * Using getPrevBin, count all the keys in the database. Ensure that they're
+     * returned in descending order.
      */
-    protected int countAndValidateKeysBackwards(Tree tree)
-        throws DatabaseException {
+    protected int countAndValidateKeysBackwards(Tree tree) throws DatabaseException {
 
         TestUtils.checkLatchCount();
         BIN nextBin = (BIN) tree.getLastNode(CacheMode.DEFAULT);
@@ -217,10 +204,8 @@ public class TreeTestBase extends TestBase {
         while (nextBin != null) {
             for (int i = nextBin.getNEntries() - 1; i >= 0; i--) {
                 byte[] curKey = nextBin.getKey(i);
-                if (prevKey != null &&
-                    Key.compareKeys(prevKey, curKey, null) <= 0) {
-                    throw new RuntimeException
-                        ("keys are out of order");
+                if (prevKey != null && Key.compareKeys(prevKey, curKey, null) <= 0) {
+                    throw new RuntimeException("keys are out of order");
                 }
                 cnt++;
                 prevKey = curKey;

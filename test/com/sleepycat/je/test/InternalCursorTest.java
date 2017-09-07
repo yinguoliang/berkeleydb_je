@@ -37,21 +37,20 @@ import com.sleepycat.util.test.TxnTestCase;
 
 /**
  * Tests the use of the Cursor class for internal operations where
- * DbInternal.makeCursor is called instead of Database.openCursor.  The
+ * DbInternal.makeCursor is called instead of Database.openCursor. The
  * makeCursor method calls Cursor.setNonCloning(true), so this tests the
- * NonCloning feature.  The NonCloning feature is not available for public API
+ * NonCloning feature. The NonCloning feature is not available for public API
  * Cursors.
  */
 @RunWith(Parameterized.class)
 public class InternalCursorTest extends TxnTestCase {
 
-    
     @Parameters
     public static List<Object[]> genParams() {
         return getTxnParams(null, false);
     }
-    
-    public InternalCursorTest(String type){
+
+    public InternalCursorTest(String type) {
         initEnvConfig();
         txnType = type;
         isTransactional = (txnType != TXN_NULL);
@@ -59,27 +58,25 @@ public class InternalCursorTest extends TxnTestCase {
     }
 
     /**
-     * Ensures that a Cursor is removed from the current BIN when Cursor
-     * methods such as put() and search() are called. These methods pass false
-     * for the samePosition parameter of beginMoveCursor.  Previously the
-     * CursorImpl was not reset when cloning was disabled, which caused Cursors
-     * to accumulate in BINs.  This test goes along new assertions in
-     * CursorImpl.setBIN/setDupBIN which check for residual cursors.  [#16280]
+     * Ensures that a Cursor is removed from the current BIN when Cursor methods
+     * such as put() and search() are called. These methods pass false for the
+     * samePosition parameter of beginMoveCursor. Previously the CursorImpl was
+     * not reset when cloning was disabled, which caused Cursors to accumulate
+     * in BINs. This test goes along new assertions in
+     * CursorImpl.setBIN/setDupBIN which check for residual cursors. [#16280]
      */
     @Test
     public void testAddCursorFix() {
-        final Database db = openDb("foo", false /*duplicates*/);
+        final Database db = openDb("foo", false /* duplicates */);
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry();
         IntegerBinding.intToEntry(123, data);
 
         final Transaction txn = txnBeginCursor();
-        final Locker locker = (txn != null) ?
-            DbInternal.getLocker(txn) :
-            BasicLocker.createBasicLocker(DbInternal.getNonNullEnvImpl(env));
+        final Locker locker = (txn != null) ? DbInternal.getLocker(txn)
+                : BasicLocker.createBasicLocker(DbInternal.getNonNullEnvImpl(env));
         /* Create a non-sticky Cursor. */
-        final Cursor cursor = DbInternal.makeCursor
-            (DbInternal.getDbImpl(db), locker, null);
+        final Cursor cursor = DbInternal.makeCursor(DbInternal.getDbImpl(db), locker, null);
 
         /* Add records to create 2 BINs. */
         OperationStatus status;
@@ -114,10 +111,7 @@ public class InternalCursorTest extends TxnTestCase {
         for (int i = 1; i <= 200; i += 1) {
             assertEquals(i, IntegerBinding.entryToInt(key));
             status = cursor.getNext(key, data, null);
-            assertSame((i == 200) ?
-                        OperationStatus.NOTFOUND :
-                        OperationStatus.SUCCESS,
-                        status);
+            assertSame((i == 200) ? OperationStatus.NOTFOUND : OperationStatus.SUCCESS, status);
         }
 
         /* Put in first BIN. */

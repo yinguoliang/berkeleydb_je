@@ -24,16 +24,13 @@ public class JUnitMethodThread extends JUnitThread {
     private Method method;
     private Object param;
 
-    public JUnitMethodThread(String threadName, String methodName,
-                             Object testCase)
-        throws NoSuchMethodException {
+    public JUnitMethodThread(String threadName, String methodName, Object testCase) throws NoSuchMethodException {
 
         this(threadName, methodName, testCase, null);
     }
 
-    public JUnitMethodThread(String threadName, String methodName,
-                             Object testCase, Object param)
-        throws NoSuchMethodException {
+    public JUnitMethodThread(String threadName, String methodName, Object testCase, Object param)
+            throws NoSuchMethodException {
 
         super(threadName);
         this.testCase = testCase;
@@ -41,8 +38,7 @@ public class JUnitMethodThread extends JUnitThread {
         method = testCase.getClass().getMethod(methodName, new Class[0]);
     }
 
-    public void testBody()
-        throws Exception {
+    public void testBody() throws Exception {
 
         if (param != null) {
             method.invoke(testCase, new Object[] { param });

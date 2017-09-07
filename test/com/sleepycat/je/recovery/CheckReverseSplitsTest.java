@@ -46,28 +46,25 @@ import com.sleepycat.je.util.TestUtils;
  */
 public class CheckReverseSplitsTest extends CheckBase {
 
-    private static final String DB_NAME = "simpleDB";
+    private static final String     DB_NAME      = "simpleDB";
 
-    private int max = 12;
-    private boolean useDups;
+    private int                     max          = 12;
+    private boolean                 useDups;
     private static CheckpointConfig FORCE_CONFIG = new CheckpointConfig();
     static {
         FORCE_CONFIG.setForce(true);
     }
 
     /**
-     * SR #13501
-     * Reverse splits require the same upward propagation as regular splits,
-     * to avoid logging inconsistent versions of ancestor INs.
+     * SR #13501 Reverse splits require the same upward propagation as regular
+     * splits, to avoid logging inconsistent versions of ancestor INs.
      */
     @Test
-    public void testReverseSplit()
-        throws Throwable {
+    public void testReverseSplit() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         turnOffEnvDaemons(envConfig);
-        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                 "4");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "4");
         envConfig.setAllowCreate(true);
 
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -76,17 +73,14 @@ public class CheckReverseSplitsTest extends CheckBase {
 
         /* Run the full test case w/out truncating the log. */
         testOneCase(DB_NAME, envConfig, dbConfig,
-                    new TestGenerator(true /* generate log description */){
-                        void generateData(Database db)
-                            throws DatabaseException {
-                            setupReverseSplit(db);
-                        }
-                    },
-                    envConfig, dbConfig);
+                new TestGenerator(true /* generate log description */) {
+                    void generateData(Database db) throws DatabaseException {
+                        setupReverseSplit(db);
+                    }
+                }, envConfig, dbConfig);
 
         /*
-         * Now run the test in a stepwise loop, truncate after each
-         * log entry.
+         * Now run the test in a stepwise loop, truncate after each log entry.
          */
 
         /* Establish the base set of records we expect. */
@@ -107,8 +101,7 @@ public class CheckReverseSplitsTest extends CheckBase {
     }
 
     @Test
-    public void testReverseSplitDups()
-        throws Throwable {
+    public void testReverseSplitDups() throws Throwable {
 
         useDups = true;
         testReverseSplit();
@@ -117,8 +110,9 @@ public class CheckReverseSplitsTest extends CheckBase {
     /**
      * Create this:
      * <p>
+     * 
      * <pre>
-
+    
                          INa                        level 3
                    /           \
                 INb            INc                  level 2
@@ -126,19 +120,18 @@ public class CheckReverseSplitsTest extends CheckBase {
            BINs BINt  BINu   BINv  BINw             level 1
      * </pre>
      * <p>
-     * First provoke an IN compression which removes BINs, and then
-     * provoke a split of BINw which results in propagating the change
-     * all the way up the tree. The bug therefore created a version of INa
-     * on disk which did not include the removal of BINs.
+     * First provoke an IN compression which removes BINs, and then provoke a
+     * split of BINw which results in propagating the change all the way up the
+     * tree. The bug therefore created a version of INa on disk which did not
+     * include the removal of BINs.
      */
-    private void setupReverseSplit(Database db)
-        throws DatabaseException {
+    private void setupReverseSplit(Database db) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
         /* Populate a tree so it grows to 3 levels. */
-        for (int i = 0; i < max; i ++) {
+        for (int i = 0; i < max; i++) {
             if (useDups) {
                 IntegerBinding.intToEntry(0, key);
             } else {
@@ -151,11 +144,9 @@ public class CheckReverseSplitsTest extends CheckBase {
         /* Empty out the leftmost bin */
         Cursor c = db.openCursor(null, null);
         try {
-            assertEquals(OperationStatus.SUCCESS, c.getFirst(key, data,
-                                                         LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, c.getFirst(key, data, LockMode.DEFAULT));
             assertEquals(OperationStatus.SUCCESS, c.delete());
-            assertEquals(OperationStatus.SUCCESS,
-                         c.getFirst(key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, c.getFirst(key, data, LockMode.DEFAULT));
             assertEquals(OperationStatus.SUCCESS, c.delete());
         } finally {
             c.close();
@@ -177,15 +168,14 @@ public class CheckReverseSplitsTest extends CheckBase {
         Trace.trace(DbInternal.getNonNullEnvImpl(env), "After compress");
 
         /*
-         * Add enough keys to split the level 2 IN on the right hand side.
-         * This makes an INa which still references the obsolete BINs.
-         * Truncate the log before the mapLN which refers to the new INa,
-         * else the case will not fail, because recovery will first apply the
-         * new INa, and then apply the INDelete of BINs. We want this case
-         * to apply the INDelete of BINs, and then follow with a splicing in
-         * of the new root.
+         * Add enough keys to split the level 2 IN on the right hand side. This
+         * makes an INa which still references the obsolete BINs. Truncate the
+         * log before the mapLN which refers to the new INa, else the case will
+         * not fail, because recovery will first apply the new INa, and then
+         * apply the INDelete of BINs. We want this case to apply the INDelete
+         * of BINs, and then follow with a splicing in of the new root.
          */
-        for (int i = max; i < max+13; i ++) {
+        for (int i = max; i < max + 13; i++) {
             if (useDups) {
                 IntegerBinding.intToEntry(0, key);
             } else {
@@ -203,13 +193,11 @@ public class CheckReverseSplitsTest extends CheckBase {
      * Create a tree, remove it all, replace with new records.
      */
     @Test
-    public void testCompleteRemoval()
-        throws Throwable {
+    public void testCompleteRemoval() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         turnOffEnvDaemons(envConfig);
-        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                 "4");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "4");
         envConfig.setAllowCreate(true);
 
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -218,13 +206,11 @@ public class CheckReverseSplitsTest extends CheckBase {
 
         /* Run the full test case w/out truncating the log. */
         testOneCase(DB_NAME, envConfig, dbConfig,
-                    new TestGenerator(true /* generate log description. */){
-                        void generateData(Database db)
-                            throws DatabaseException {
-                            setupCompleteRemoval(db);
-                        }
-                    },
-                    envConfig, dbConfig);
+                new TestGenerator(true /* generate log description. */) {
+                    void generateData(Database db) throws DatabaseException {
+                        setupCompleteRemoval(db);
+                    }
+                }, envConfig, dbConfig);
 
         /*
          * Now run the test in a stepwise loop, truncate after each log entry.
@@ -235,8 +221,7 @@ public class CheckReverseSplitsTest extends CheckBase {
     }
 
     @Test
-    public void testCompleteRemovalDups()
-        throws Throwable {
+    public void testCompleteRemovalDups() throws Throwable {
 
         useDups = true;
         testCompleteRemoval();
@@ -245,14 +230,13 @@ public class CheckReverseSplitsTest extends CheckBase {
     /**
      * Create a populated tree, delete all records, then begin to insert again.
      */
-    private void setupCompleteRemoval(Database db)
-        throws DatabaseException {
+    private void setupCompleteRemoval(Database db) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
         /* Populate a tree so it grows to 3 levels. */
-        for (int i = 0; i < max; i ++) {
+        for (int i = 0; i < max; i++) {
             if (useDups) {
                 IntegerBinding.intToEntry(0, key);
             } else {
@@ -268,8 +252,7 @@ public class CheckReverseSplitsTest extends CheckBase {
         Cursor c = db.openCursor(null, null);
         try {
             int count = 0;
-            while (c.getNext(key, data, LockMode.DEFAULT) ==
-                   OperationStatus.SUCCESS) {
+            while (c.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
                 assertEquals(OperationStatus.SUCCESS, c.delete());
                 count++;
             }
@@ -281,7 +264,7 @@ public class CheckReverseSplitsTest extends CheckBase {
         /* For log description start. */
         setStepwiseStart();
 
-        /* Checkpoint before, so we don't simply replay all the  deleted LNs */
+        /* Checkpoint before, so we don't simply replay all the deleted LNs */
         env.checkpoint(FORCE_CONFIG);
 
         /* Compress, and make sure the subtree was removed. */
@@ -294,7 +277,7 @@ public class CheckReverseSplitsTest extends CheckBase {
         }
 
         /* Insert new data. */
-        for (int i = max*2; i < ((max*2) +5); i ++) {
+        for (int i = max * 2; i < ((max * 2) + 5); i++) {
             if (useDups) {
                 IntegerBinding.intToEntry(0, key);
             } else {

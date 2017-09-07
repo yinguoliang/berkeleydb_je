@@ -11,7 +11,6 @@
  * license and additional information.
  */
 
-
 package com.sleepycat.je.rep;
 
 import com.sleepycat.je.rep.impl.RepGroupImpl;
@@ -53,24 +52,23 @@ import static org.junit.Assert.fail;
  */
 class MockClientNode {
 
-    public final String nodeName = "MockClientNode";
+    public final String                  nodeName = "MockClientNode";
 
-    private final Logger logger;
-    private final SubscriptionConfig config;
-    private final NodeType nodeType;
-    private final RepImpl repImpl;
+    private final Logger                 logger;
+    private final SubscriptionConfig     config;
+    private final NodeType               nodeType;
+    private final RepImpl                repImpl;
 
     /* communication channel between subscriber and feeder */
-    private NamedChannelWithTimeout namedChannel;
+    private NamedChannelWithTimeout      namedChannel;
     /* task to register channel with timeout */
-    private ChannelTimeoutTask channelTimeoutTask;
+    private ChannelTimeoutTask           channelTimeoutTask;
     /* protocol used to communicate with feeder */
-    private Protocol protocol;
+    private Protocol                     protocol;
     /* received msgs */
     private List<BinaryProtocol.Message> receivedMsgs;
 
-    MockClientNode(NodeType nodeType, ReplicatedEnvironment env, Logger logger)
-        throws Exception {
+    MockClientNode(NodeType nodeType, ReplicatedEnvironment env, Logger logger) throws Exception {
 
         this.nodeType = nodeType;
         this.logger = logger;
@@ -85,23 +83,18 @@ class MockClientNode {
     void handshakeWithFeeder() throws Exception {
 
         openChannel();
-        ReplicaFeederHandshake handshake =
-            new ReplicaFeederHandshake(
-                new MockClientNodeFeederHandshakeConfig());
+        ReplicaFeederHandshake handshake = new ReplicaFeederHandshake(new MockClientNodeFeederHandshakeConfig());
         protocol = handshake.execute();
 
     }
 
     VLSN syncupWithFeeder(VLSN reqVLSN) {
-        final SubscriberFeederSyncup syncup =
-            new SubscriberFeederSyncup(namedChannel, protocol,
-                                       config.getFeederFilter(),
-                                       repImpl, logger);
+        final SubscriberFeederSyncup syncup = new SubscriberFeederSyncup(namedChannel, protocol,
+                config.getFeederFilter(), repImpl, logger);
         return syncup.execute(reqVLSN);
     }
 
-    void consumeMsgLoop(long expected)
-        throws InternalException, IOException {
+    void consumeMsgLoop(long expected) throws InternalException, IOException {
 
         long counter = 0;
         while (counter < expected) {
@@ -114,8 +107,7 @@ class MockClientNode {
             /* ignore heartbeat in mock client */
             if (messageOp != Protocol.HEARTBEAT) {
                 if (messageOp == Protocol.SHUTDOWN_REQUEST) {
-                    throw new InternalException("Receive shutdown msg from " +
-                                                "feeder " + message);
+                    throw new InternalException("Receive shutdown msg from " + "feeder " + message);
                 } else {
                     /* a regular data entry message */
                     receivedMsgs.add(message);
@@ -143,37 +135,25 @@ class MockClientNode {
             throw new IllegalStateException("Replication env is unavailable.");
         }
 
-        DataChannelFactory.ConnectOptions connectOpts =
-            new DataChannelFactory
-                .ConnectOptions()
-                .setTcpNoDelay(config.TCP_NO_DELAY)
-                .setReceiveBufferSize(config.getReceiveBufferSize())
-                .setOpenTimeout((int) config
-                    .getStreamOpenTimeout(TimeUnit.MILLISECONDS))
+        DataChannelFactory.ConnectOptions connectOpts = new DataChannelFactory.ConnectOptions()
+                .setTcpNoDelay(config.TCP_NO_DELAY).setReceiveBufferSize(config.getReceiveBufferSize())
+                .setOpenTimeout((int) config.getStreamOpenTimeout(TimeUnit.MILLISECONDS))
                 .setBlocking(config.BLOCKING_MODE_CHANNEL);
 
-        final DataChannel channel =
-            RepUtils.openBlockingChannel(config.getInetSocketAddress(),
-                                         repImpl.getChannelFactory(),
-                                         connectOpts);
+        final DataChannel channel = RepUtils.openBlockingChannel(config.getInetSocketAddress(),
+                repImpl.getChannelFactory(), connectOpts);
 
-        ServiceDispatcher.doServiceHandshake(channel,
-                                             FeederManager.FEEDER_SERVICE);
-        final int timeoutMs = repImpl.getConfigManager().
-            getDuration(RepParams.PRE_HEARTBEAT_TIMEOUT);
+        ServiceDispatcher.doServiceHandshake(channel, FeederManager.FEEDER_SERVICE);
+        final int timeoutMs = repImpl.getConfigManager().getDuration(RepParams.PRE_HEARTBEAT_TIMEOUT);
 
         channelTimeoutTask = new ChannelTimeoutTask(new Timer(true));
-        namedChannel =
-            new NamedChannelWithTimeout(repImpl, logger, channelTimeoutTask,
-                                        channel, timeoutMs);
+        namedChannel = new NamedChannelWithTimeout(repImpl, logger, channelTimeoutTask, channel, timeoutMs);
 
         return namedChannel;
     }
 
     /* Create a subscription configuration */
-    private SubscriptionConfig createConfig(ReplicatedEnvironment masterEnv,
-                                            boolean useGroupUUID)
-        throws Exception {
+    private SubscriptionConfig createConfig(ReplicatedEnvironment masterEnv, boolean useGroupUUID) throws Exception {
 
         final String home = "./subhome/";
         final String subNodeName = "test-mockclient-node";
@@ -184,8 +164,7 @@ class MockClientNode {
         String groupName;
 
         final File envRoot = SharedTestUtils.getTestDir();
-        final File subHome = new File(envRoot.getAbsolutePath() +
-                                      File.separator + home);
+        final File subHome = new File(envRoot.getAbsolutePath() + File.separator + home);
         if (!subHome.exists()) {
             if (!subHome.mkdir()) {
                 fail("unable to create test dir, fail the test");
@@ -206,16 +185,14 @@ class MockClientNode {
         }
 
         final String feederHostPortPair = feederNode + ":" + feederPort;
-        return new SubscriptionConfig(subNodeName, subHome.getAbsolutePath(),
-                                      nodeHostPortPair, feederHostPortPair,
-                                      groupName, uuid, nodeType);
+        return new SubscriptionConfig(subNodeName, subHome.getAbsolutePath(), nodeHostPortPair, feederHostPortPair,
+                groupName, uuid, nodeType);
     }
 
     /*-----------------------------------*/
     /*-         Inner Classes           -*/
     /*-----------------------------------*/
-    private class MockClientNodeFeederHandshakeConfig
-        implements ReplicaFeederHandshakeConfig {
+    private class MockClientNodeFeederHandshakeConfig implements ReplicaFeederHandshakeConfig {
 
         MockClientNodeFeederHandshakeConfig() {
         }
@@ -243,10 +220,9 @@ class MockClientNode {
         /* create a group impl from group name and group uuid */
         public RepGroupImpl getGroup() {
 
-            RepGroupImpl repGroupImpl = new RepGroupImpl(
-                config.getGroupName(),
-                true, /* unknown group uuid */
-                repImpl.getCurrentJEVersion());
+            RepGroupImpl repGroupImpl = new RepGroupImpl(config.getGroupName(),
+                    true, /* unknown group uuid */
+                    repImpl.getCurrentJEVersion());
 
             /* use uuid if specified, otherwise unknown uuid will be used */
             if (config.getGroupUUID() != null) {

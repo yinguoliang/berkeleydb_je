@@ -51,12 +51,12 @@ import com.sleepycat.util.test.TestBase;
  * Exercise the delta based BIN logging.
  */
 public class BinDeltaTest extends TestBase {
-    private static final String DB_NAME = "test";
-    private static final boolean DEBUG = false;
-    private Environment env;
-    private final File envHome;
-    private Database db;
-    private LogManager logManager;
+    private static final String  DB_NAME = "test";
+    private static final boolean DEBUG   = false;
+    private Environment          env;
+    private final File           envHome;
+    private Database             db;
+    private LogManager           logManager;
 
     public BinDeltaTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -66,22 +66,18 @@ public class BinDeltaTest extends TestBase {
     }
 
     @Before
-    public void setUp() 
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         /*
-         * Properties for creating an environment.  Disable the evictor for
-         * this test, use larger BINS.
+         * Properties for creating an environment. Disable the evictor for this
+         * test, use larger BINS.
          */
         super.setUp();
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "true");
-        envConfig.setConfigParam
-            (EnvironmentParams.NODE_MAX.getName(), "50");
-        envConfig.setConfigParam
-            (EnvironmentParams.BIN_DELTA_PERCENT.getName(), "50");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "true");
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "50");
+        envConfig.setConfigParam(EnvironmentParams.BIN_DELTA_PERCENT.getName(), "50");
         envConfig.setAllowCreate(true);
         env = new Environment(envHome, envConfig);
         logManager = DbInternal.getNonNullEnvImpl(env).getLogManager();
@@ -100,8 +96,7 @@ public class BinDeltaTest extends TestBase {
     /**
      * Create a db, fill with numRecords, return the first BIN.
      */
-    private BIN initDb(int start, int end)
-        throws DatabaseException {
+    private BIN initDb(int start, int end) throws DatabaseException {
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(true);
         dbConfig.setAllowCreate(true);
@@ -110,10 +105,8 @@ public class BinDeltaTest extends TestBase {
         addRecords(start, end);
 
         /* Now reach into the tree and get the first BIN */
-        Locker txn = BasicLocker.
-            createBasicLocker(DbInternal.getNonNullEnvImpl(env));
-        CursorImpl internalCursor =
-            new CursorImpl(DbInternal.getDbImpl(db), txn);
+        Locker txn = BasicLocker.createBasicLocker(DbInternal.getNonNullEnvImpl(env));
+        CursorImpl internalCursor = new CursorImpl(DbInternal.getDbImpl(db), txn);
         assertTrue(internalCursor.positionFirstOrLast(true));
         BIN firstBIN = internalCursor.getBIN();
         firstBIN.releaseLatch();
@@ -125,8 +118,7 @@ public class BinDeltaTest extends TestBase {
     /**
      * Modify the data, just to dirty the BIN.
      */
-    private void modifyRecords(int start, int end, int increment)
-        throws DatabaseException {
+    private void modifyRecords(int start, int end, int increment) throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
         Cursor cursor = db.openCursor(txn, null);
@@ -136,10 +128,8 @@ public class BinDeltaTest extends TestBase {
 
         for (int i = start; i <= end; i++) {
             searchKey.setData(TestUtils.getTestArray(i));
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getSearchKey(searchKey, foundData,
-                                             LockMode.DEFAULT));
-            newData.setData(TestUtils.getTestArray(i+increment));
+            assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(searchKey, foundData, LockMode.DEFAULT));
+            newData.setData(TestUtils.getTestArray(i + increment));
             cursor.putCurrent(newData);
         }
         cursor.close();
@@ -149,12 +139,11 @@ public class BinDeltaTest extends TestBase {
     /*
      * Add the specified records.
      */
-    private void addRecords(int start, int end)
-        throws DatabaseException {
+    private void addRecords(int start, int end) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
-        for (int i = start;  i < end; i++) {
+        for (int i = start; i < end; i++) {
             byte[] keyData = TestUtils.getTestArray(i);
             byte[] dataData = TestUtils.byteArrayCopy(keyData);
             key.setData(keyData);
@@ -167,8 +156,7 @@ public class BinDeltaTest extends TestBase {
      * Simple test, delta a BIN several times, reconstruct.
      */
     @Test
-    public void testSimple()
-            throws Throwable {
+    public void testSimple() throws Throwable {
 
         try {
             /* Create a db, insert records value 10 - 30, get the first BIN */
@@ -190,12 +178,12 @@ public class BinDeltaTest extends TestBase {
             }
 
             /* Modify some of the data, add data so the BIN is changed. */
-            modifyRecords(11,13,10);
-            addRecords(1,3);
+            modifyRecords(11, 13, 10);
+            addRecords(1, 3);
             logAndCheck(bin);
 
             /* Modify more of the data, so the BIN is changed. */
-            modifyRecords(14,15,10);
+            modifyRecords(14, 15, 10);
             logAndCheck(bin);
         } catch (Throwable t) {
             t.printStackTrace();
@@ -206,22 +194,16 @@ public class BinDeltaTest extends TestBase {
     }
 
     /**
-     * Test that a delta is correctly generated when there are entries
-     * that have been aborted and rolled back.
-     *
-     * The case we're trying to test, (that was in error before)
-     *  - a record is deleted
-     *  - a full version of BIN x is written to the log, reflecting that
-     *    deletion.
-     *  - the deleting txn is aborted, so the record is restored. Now the
-     *    BIN has an entry where the child LSN is less than the last full
-     *    BIN version LSN.
-     *  - generate a delta, make sure that the restoration of the record is
-     *    present.
+     * Test that a delta is correctly generated when there are entries that have
+     * been aborted and rolled back. The case we're trying to test, (that was in
+     * error before) - a record is deleted - a full version of BIN x is written
+     * to the log, reflecting that deletion. - the deleting txn is aborted, so
+     * the record is restored. Now the BIN has an entry where the child LSN is
+     * less than the last full BIN version LSN. - generate a delta, make sure
+     * that the restoration of the record is present.
      */
     @Test
-    public void testUndo()
-        throws Throwable {
+    public void testUndo() throws Throwable {
 
         try {
             /* Create a db, insert records value 10 - 30, get the first BIN */
@@ -232,8 +214,7 @@ public class BinDeltaTest extends TestBase {
             Cursor cursor = db.openCursor(txn, null);
             DatabaseEntry firstKey = new DatabaseEntry();
             DatabaseEntry foundData = new DatabaseEntry();
-            OperationStatus status = cursor.getFirst(firstKey, foundData,
-                                                     LockMode.DEFAULT);
+            OperationStatus status = cursor.getFirst(firstKey, foundData, LockMode.DEFAULT);
             assertEquals(OperationStatus.SUCCESS, status);
             status = cursor.delete();
             assertEquals(OperationStatus.SUCCESS, status);
@@ -246,8 +227,8 @@ public class BinDeltaTest extends TestBase {
             assertTrue(fullLsn != DbLsn.NULL_LSN);
 
             /*
-             * Roll back the deletion. Now the full version of the LSN is out
-             * of date.
+             * Roll back the deletion. Now the full version of the LSN is out of
+             * date.
              */
             txn.abort();
 
@@ -269,11 +250,10 @@ public class BinDeltaTest extends TestBase {
     /* check knownDelete. */
 
     /**
-     * Log the targetBIN, then read it back from the log and make sure
-     * the recreated BIN matches the in memory BIN.
+     * Log the targetBIN, then read it back from the log and make sure the
+     * recreated BIN matches the in memory BIN.
      */
-    private void logAndCheck(BIN targetBIN)
-        throws IOException, DatabaseException {
+    private void logAndCheck(BIN targetBIN) throws IOException, DatabaseException {
 
         /*
          * Log it as a delta.
@@ -292,8 +272,7 @@ public class BinDeltaTest extends TestBase {
         assertFalse(targetBIN.getDirty());
 
         /* Read the delta back. */
-        LogEntry partial =
-            logManager.getLogEntry(targetBIN.getLastDeltaLsn());
+        LogEntry partial = logManager.getLogEntry(targetBIN.getLastDeltaLsn());
 
         /* Make sure that this is was a delta entry. */
         assertTrue(partial instanceof BINDeltaLogEntry);
@@ -302,20 +281,17 @@ public class BinDeltaTest extends TestBase {
         delta.setDatabase(targetBIN.getDatabase());
 
         /* Compare to the current version. */
-        BIN createdBIN =
-            delta.reconstituteBIN(targetBIN.getDatabase());
+        BIN createdBIN = delta.reconstituteBIN(targetBIN.getDatabase());
         if (DEBUG) {
             System.out.println("created");
             System.out.println(createdBIN.dumpString(0, true));
         }
 
-        assertEquals(targetBIN.getClass().getName(),
-                     createdBIN.getClass().getName());
+        assertEquals(targetBIN.getClass().getName(), createdBIN.getClass().getName());
         assertEquals(targetBIN.getNEntries(), createdBIN.getNEntries());
 
         for (int i = 0; i < createdBIN.getNEntries(); i++) {
-            assertEquals("LSN " + i, targetBIN.getLsn(i),
-                         createdBIN.getLsn(i));
+            assertEquals("LSN " + i, targetBIN.getLsn(i), createdBIN.getLsn(i));
         }
         assertFalse(createdBIN.getDirty());
     }

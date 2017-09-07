@@ -41,28 +41,25 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * @excludeDualMode
- * This test does not run in Replication Dual Mode. There are several
- * logistical issues.
- *
- * -It assumes that all log files are in the <envHome> directory, whereas
- * dual mode environments are in <envHome>/rep*
+ * @excludeDualMode This test does not run in Replication Dual Mode. There are
+ *                  several logistical issues. -It assumes that all log files
+ *                  are in the <envHome> directory, whereas dual mode
+ *                  environments are in <envHome>/rep*
  */
 public class CustomDbPrintLogTest extends TestBase {
 
-    public static int COUNTER = 0;
+    public static int        COUNTER = 0;
     public static DatabaseId CHECK_ID;
 
-    private Environment env;
-    private final File envHome;
+    private Environment      env;
+    private final File       envHome;
 
     public CustomDbPrintLogTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         deletePrintInfo();
@@ -83,7 +80,7 @@ public class CustomDbPrintLogTest extends TestBase {
         } catch (Exception e) {
             e.printStackTrace();
             return;
-        } 
+        }
 
         deletePrintInfo();
     }
@@ -91,8 +88,7 @@ public class CustomDbPrintLogTest extends TestBase {
     /* Delete the dumpLog file created by TestDumper. */
     private void deletePrintInfo() {
         for (File file : envHome.listFiles()) {
-            if (file.isFile() && 
-                file.getName().contains(TestDumper.SAVE_INFO_FILE)) {
+            if (file.isFile() && file.getName().contains(TestDumper.SAVE_INFO_FILE)) {
                 boolean deleted = file.delete();
                 assertTrue(deleted);
             }
@@ -120,23 +116,18 @@ public class CustomDbPrintLogTest extends TestBase {
     }
 
     /*
-     * Use the custom log printer to list types of log entries.  
-     *
-     * Note that we run the custom log printer in a separate process, whereas
-     * it would have seemed more intuitive to merely call DbPrintLog
-     * programmatically. It's done this way instead because the classpath
-     * doesn't work out right within junit and it doesn't recognize the
-     * custom dumper class.
+     * Use the custom log printer to list types of log entries. Note that we run
+     * the custom log printer in a separate process, whereas it would have
+     * seemed more intuitive to merely call DbPrintLog programmatically. It's
+     * done this way instead because the classpath doesn't work out right within
+     * junit and it doesn't recognize the custom dumper class.
      */
     @Test
-    public void testCustom() 
-        throws Throwable {
+    public void testCustom() throws Throwable {
 
         createEnv();
-        LNFileReader reader = 
-            new LNFileReader(DbInternal.getNonNullEnvImpl(env),
-                             10000, 0, true, DbLsn.NULL_LSN, DbLsn.NULL_LSN,
-                             null, DbLsn.NULL_LSN);
+        LNFileReader reader = new LNFileReader(DbInternal.getNonNullEnvImpl(env), 10000, 0, true, DbLsn.NULL_LSN,
+                DbLsn.NULL_LSN, null, DbLsn.NULL_LSN);
         /* Specify the entry types looking for. */
         reader.addTargetType(LogEntryType.LOG_DEL_LN);
         reader.addTargetType(LogEntryType.LOG_INS_LN);
@@ -145,18 +136,16 @@ public class CustomDbPrintLogTest extends TestBase {
         /* Check the LN count. */
         int count = 0;
         ArrayList<String> lnMessages = new ArrayList<String>();
-        while(reader.readNextEntry()) {
+        while (reader.readNextEntry()) {
             count++;
-            lnMessages.add(reader.getLNLogEntry().getLogType() + " lsn=" + 
-                           DbLsn.getNoFormatString(reader.getLastLsn()));
+            lnMessages
+                    .add(reader.getLNLogEntry().getLogType() + " lsn=" + DbLsn.getNoFormatString(reader.getLastLsn()));
         }
         assertTrue("count: " + count, count == 10);
 
-        TestDumper foo = new TestDumper(DbInternal.getNonNullEnvImpl(env),
-                                        1000,
-                                        0L, 0L, 0L, null, null, false, false, 
-                                        true);
-        
+        TestDumper foo = new TestDumper(DbInternal.getNonNullEnvImpl(env), 1000, 0L, 0L, 0L, null, null, false, false,
+                true);
+
         /* Invoke process to call the DbPrintLog. */
         String[] commands = new String[5];
         commands[0] = "com.sleepycat.je.util.DbPrintLog";
@@ -164,9 +153,8 @@ public class CustomDbPrintLogTest extends TestBase {
         commands[2] = envHome.getAbsolutePath();
         commands[3] = "-c";
         commands[4] = foo.getClass().getName();
-        
-        JUnitProcessThread thread = 
-            new JUnitProcessThread("TestDumper", 0, null, commands, true);
+
+        JUnitProcessThread thread = new JUnitProcessThread("TestDumper", 0, null, commands, true);
         thread.start();
 
         try {
@@ -179,13 +167,13 @@ public class CustomDbPrintLogTest extends TestBase {
         ArrayList<String> messages = readMessages();
         assertTrue(messages.size() > count);
 
-        /* 
+        /*
          * Check messages read by the LNFileReader must exist in the list read
          * by TestDumper.
          */
         for (String message : lnMessages) {
-            assertTrue("message: " + message + " is not in information " +
-                       "read by TestDumper", messages.contains(message));
+            assertTrue("message: " + message + " is not in information " + "read by TestDumper",
+                    messages.contains(message));
         }
 
         /* Close Environment. */
@@ -194,8 +182,7 @@ public class CustomDbPrintLogTest extends TestBase {
     }
 
     /* Read messages written by TestDumper. */
-    private ArrayList<String> readMessages() 
-        throws Exception {
+    private ArrayList<String> readMessages() throws Exception {
 
         File file = new File(envHome, TestDumper.SAVE_INFO_FILE);
         assertTrue(file.exists());

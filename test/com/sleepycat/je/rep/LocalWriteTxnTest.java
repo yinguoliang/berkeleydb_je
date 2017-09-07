@@ -58,11 +58,8 @@ public class LocalWriteTxnTest extends RepTestBase {
         final boolean repWriteAllowed;
         final boolean acksEnforced;
 
-        Case(final boolean localWrite,
-             final boolean readOnly,
-             final boolean localWriteAllowed,
-             final boolean repWriteAllowed,
-             final boolean acksEnforced) {
+        Case(final boolean localWrite, final boolean readOnly, final boolean localWriteAllowed,
+             final boolean repWriteAllowed, final boolean acksEnforced) {
             this.localWrite = localWrite;
             this.readOnly = readOnly;
             this.localWriteAllowed = localWriteAllowed;
@@ -72,32 +69,27 @@ public class LocalWriteTxnTest extends RepTestBase {
 
         @Override
         public String toString() {
-            return "localWrite=" + localWrite +
-                " readOnly=" + readOnly +
-                " localWriteAllowed=" + localWriteAllowed +
-                " repWriteAllowed=" + repWriteAllowed +
-                " acksEnforced=" + acksEnforced;
+            return "localWrite=" + localWrite + " readOnly=" + readOnly + " localWriteAllowed=" + localWriteAllowed
+                    + " repWriteAllowed=" + repWriteAllowed + " acksEnforced=" + acksEnforced;
         }
     }
 
     private static Case[] CASES = new Case[] {
-        /*
-         *       localWrite
-         *              readOnly
-         *                     localWriteAllowed
-         *                            repWriteAllowed
-         *                                   acksEnforced
-         */
-        new Case(false, false, false, true,  true),
-        new Case(false, true,  false, false, false),
-        new Case(true,  false, true,  false, false),
-    };
+                                                                                                  /*
+                                                                                                   * localWrite
+                                                                                                   * readOnly
+                                                                                                   * localWriteAllowed
+                                                                                                   * repWriteAllowed
+                                                                                                   * acksEnforced
+                                                                                                   */
+            new Case(false, false, false, true, true), new Case(false, true, false, false, false),
+            new Case(true, false, true, false, false), };
 
     ReplicatedEnvironment master;
-    Database masterDb;
-    Database[] repDbs;
-    Database[] localNonTxnalDbs;
-    Database[] localTxnalDbs;
+    Database              masterDb;
+    Database[]            repDbs;
+    Database[]            localNonTxnalDbs;
+    Database[]            localTxnalDbs;
 
     public LocalWriteTxnTest() {
         groupSize = 3;
@@ -157,15 +149,12 @@ public class LocalWriteTxnTest extends RepTestBase {
             for (n = 0; n < groupSize; n += 1) {
 
                 /*
-                 * Auto-commit writes are always allowed (other than to a rep
-                 * DB on a replica, which is handled by checkWriteAllowed).
+                 * Auto-commit writes are always allowed (other than to a rep DB
+                 * on a replica, which is handled by checkWriteAllowed).
                  */
-                checkWriteAllowed(
-                    repDbs[n], null, true);
-                checkWriteAllowed(
-                    localTxnalDbs[n], null, true);
-                checkWriteAllowed(
-                    localNonTxnalDbs[n], null, true);
+                checkWriteAllowed(repDbs[n], null, true);
+                checkWriteAllowed(localTxnalDbs[n], null, true);
+                checkWriteAllowed(localNonTxnalDbs[n], null, true);
 
                 /* Reads are always allowed. */
                 readRecordsNonTxnal(repDbs[n]);
@@ -185,17 +174,12 @@ public class LocalWriteTxnTest extends RepTestBase {
                  * Consistency of non-tnxal reads is always enforced for a rep
                  * DB, and never enforced for a local DB.
                  */
-                checkConsistencyEnforced(
-                    repDbs[n], null, consistencyEnforced);
-                checkConsistencyEnforced(
-                    localTxnalDbs[n], null, false);
-                checkConsistencyEnforced(
-                    localNonTxnalDbs[n], null, false);
+                checkConsistencyEnforced(repDbs[n], null, consistencyEnforced);
+                checkConsistencyEnforced(localTxnalDbs[n], null, false);
+                checkConsistencyEnforced(localNonTxnalDbs[n], null, false);
             }
         } catch (final Throwable e) {
-            throw new RuntimeException(
-                String.valueOf(repEnvInfo[n].getEnv().getState()) +
-                " NonTxnal", e);
+            throw new RuntimeException(String.valueOf(repEnvInfo[n].getEnv().getState()) + " NonTxnal", e);
         }
 
         /*
@@ -203,8 +187,7 @@ public class LocalWriteTxnTest extends RepTestBase {
          */
         for (final Case c : CASES) {
             try {
-                final TransactionConfig txnConfig =
-                    makeTxnConfig(c.localWrite, c.readOnly);
+                final TransactionConfig txnConfig = makeTxnConfig(c.localWrite, c.readOnly);
 
                 for (n = 0; n < groupSize; n += 1) {
 
@@ -212,10 +195,8 @@ public class LocalWriteTxnTest extends RepTestBase {
                      * Whether writes are allowed depends on the whether
                      * local-write or read-only are configured.
                      */
-                    checkWriteAllowed(
-                        repDbs[n], txnConfig, c.repWriteAllowed);
-                    checkWriteAllowed(
-                        localTxnalDbs[n], txnConfig, c.localWriteAllowed);
+                    checkWriteAllowed(repDbs[n], txnConfig, c.repWriteAllowed);
+                    checkWriteAllowed(localTxnalDbs[n], txnConfig, c.localWriteAllowed);
 
                     /* Reads are always allowed. */
                     readRecords(repDbs[n], txnConfig);
@@ -231,17 +212,12 @@ public class LocalWriteTxnTest extends RepTestBase {
                     final boolean consistencyEnforced = (n > 0);
 
                     /* Consistency is always enforced for user txns. */
-                    checkConsistencyEnforced(
-                        repDbs[n], txnConfig, consistencyEnforced);
-                    checkConsistencyEnforced(
-                        repDbs[n], null, consistencyEnforced);
-                    checkConsistencyEnforced(
-                        localTxnalDbs[n], txnConfig, consistencyEnforced);
+                    checkConsistencyEnforced(repDbs[n], txnConfig, consistencyEnforced);
+                    checkConsistencyEnforced(repDbs[n], null, consistencyEnforced);
+                    checkConsistencyEnforced(localTxnalDbs[n], txnConfig, consistencyEnforced);
                 }
             } catch (final Throwable e) {
-                throw new RuntimeException(
-                    String.valueOf(repEnvInfo[n].getEnv().getState()) +
-                    " Case: " + c, e);
+                throw new RuntimeException(String.valueOf(repEnvInfo[n].getEnv().getState()) + " Case: " + c, e);
             }
         }
 
@@ -261,30 +237,20 @@ public class LocalWriteTxnTest extends RepTestBase {
             for (n = 0; n < stopNode; n += 1) {
 
                 /*
-                 * Acks are enforced only for rep DBs on the master.  (If
+                 * Acks are enforced only for rep DBs on the master. (If
                  * writeAllowed is false, then of course acks cannot be
                  * enforced.)
                  */
                 if (n == 0) {
-                    checkAcksEnforced(
-                        repDbs[n], null, true /*acksEnforced*/,
-                        true /*writeAllowed*/);
+                    checkAcksEnforced(repDbs[n], null, true /* acksEnforced */, true /* writeAllowed */);
                 } else {
-                    checkAcksEnforced(
-                        repDbs[n], null, false /*acksEnforced*/,
-                        false /*writeAllowed*/);
+                    checkAcksEnforced(repDbs[n], null, false /* acksEnforced */, false /* writeAllowed */);
                 }
-                checkAcksEnforced(
-                    localTxnalDbs[n], null, false /*acksEnforced*/,
-                    true /*writeAllowed*/);
-                checkAcksEnforced(
-                    localNonTxnalDbs[n], null, false /*acksEnforced*/,
-                    true /*writeAllowed*/);
+                checkAcksEnforced(localTxnalDbs[n], null, false /* acksEnforced */, true /* writeAllowed */);
+                checkAcksEnforced(localNonTxnalDbs[n], null, false /* acksEnforced */, true /* writeAllowed */);
             }
         } catch (final Throwable e) {
-            throw new RuntimeException(
-                String.valueOf(repEnvInfo[n].getEnv().getState()) +
-                " NonTxnal", e);
+            throw new RuntimeException(String.valueOf(repEnvInfo[n].getEnv().getState()) + " NonTxnal", e);
         }
 
         /*
@@ -292,28 +258,21 @@ public class LocalWriteTxnTest extends RepTestBase {
          */
         for (final Case c : CASES) {
             try {
-                final TransactionConfig txnConfig =
-                    makeTxnConfig(c.localWrite, c.readOnly);
+                final TransactionConfig txnConfig = makeTxnConfig(c.localWrite, c.readOnly);
 
                 /*
                  * Whether acks are enforced depends on the whether local-write
-                 * is configured.  (If writeAllowed is false, then of course
-                 * acks cannot be enforced.)
+                 * is configured. (If writeAllowed is false, then of course acks
+                 * cannot be enforced.)
                  */
                 for (n = 0; n < stopNode; n += 1) {
                     final boolean acksEnforced = c.acksEnforced && (n == 0);
 
-                    checkAcksEnforced(
-                        repDbs[n], txnConfig, acksEnforced,
-                        c.repWriteAllowed && (n == 0));
-                    checkAcksEnforced(
-                        localTxnalDbs[n], txnConfig, acksEnforced,
-                        c.localWriteAllowed);
+                    checkAcksEnforced(repDbs[n], txnConfig, acksEnforced, c.repWriteAllowed && (n == 0));
+                    checkAcksEnforced(localTxnalDbs[n], txnConfig, acksEnforced, c.localWriteAllowed);
                 }
             } catch (final Throwable e) {
-                throw new RuntimeException(
-                    String.valueOf(repEnvInfo[n].getEnv().getState()) +
-                    " Case: " + c, e);
+                throw new RuntimeException(String.valueOf(repEnvInfo[n].getEnv().getState()) + " Case: " + c, e);
             }
         }
 
@@ -324,8 +283,7 @@ public class LocalWriteTxnTest extends RepTestBase {
         }
     }
 
-    private TransactionConfig makeTxnConfig(final boolean localWrite,
-                                            final boolean readOnly) {
+    private TransactionConfig makeTxnConfig(final boolean localWrite, final boolean readOnly) {
 
         final TransactionConfig txnConfig = new TransactionConfig();
 
@@ -340,7 +298,7 @@ public class LocalWriteTxnTest extends RepTestBase {
 
     /**
      * Open and populate test DBs using auto-commit writes, which works without
-     * specifying local-write.  This, plus using non-transactional reads, also
+     * specifying local-write. This, plus using non-transactional reads, also
      * provides more test coverage.
      */
     private void openAndPopulateDBs() {
@@ -353,21 +311,19 @@ public class LocalWriteTxnTest extends RepTestBase {
         for (int i = 0; i < groupSize; i += 1) {
             final ReplicatedEnvironment env = repEnvInfo[i].getEnv();
 
-            localTxnalDbs[i] = openDb(
-                env, false /*replicated*/, true /*txnal*/);
+            localTxnalDbs[i] = openDb(env, false /* replicated */, true /* txnal */);
 
             writeRecordsAutoCommit(localTxnalDbs[i]);
             readRecordsNonTxnal(localTxnalDbs[i]);
 
-            localNonTxnalDbs[i] = openDb(
-                env, false /*replicated*/, false /*txnal*/);
+            localNonTxnalDbs[i] = openDb(env, false /* replicated */, false /* txnal */);
 
             writeRecordsAutoCommit(localNonTxnalDbs[i]);
             readRecordsNonTxnal(localNonTxnalDbs[i]);
         }
 
         /* Open/populate/read master DB. */
-        masterDb = openDb(master, true /*replicated*/, true /*txnal*/);
+        masterDb = openDb(master, true /* replicated */, true /* txnal */);
         repDbs[0] = masterDb;
 
         writeRecordsAutoCommit(masterDb);
@@ -379,23 +335,19 @@ public class LocalWriteTxnTest extends RepTestBase {
         /* Open/read replica DBs. */
         for (int i = 1; i < groupSize; i += 1) {
             final ReplicatedEnvironment env = repEnvInfo[i].getEnv();
-            repDbs[i] = openDb(env, true /*replicated*/, true /*txnal*/);
+            repDbs[i] = openDb(env, true /* replicated */, true /* txnal */);
             readRecordsNonTxnal(repDbs[i]);
         }
     }
 
-    private Database openDb(final ReplicatedEnvironment env,
-                            final boolean replicated,
-                            final boolean txnal) {
+    private Database openDb(final ReplicatedEnvironment env, final boolean replicated, final boolean txnal) {
 
         final DatabaseConfig config = new DatabaseConfig();
         config.setAllowCreate(true);
         config.setReplicated(replicated);
         config.setTransactional(txnal);
 
-        final String dbName = "test-" +
-            (replicated ? "rep" : "nonRep") + "-" +
-            (txnal ? "txnal" : "nonTxnal");
+        final String dbName = "test-" + (replicated ? "rep" : "nonRep") + "-" + (txnal ? "txnal" : "nonTxnal");
 
         return env.openDatabase(null, dbName, config);
     }
@@ -404,13 +356,11 @@ public class LocalWriteTxnTest extends RepTestBase {
      * Tries to write and checks behavior against the writeAllowed param value.
      *
      * @param txnConfig is non-null if an explicit txn should be used. Is null
-     * to write with a null txn (auto-commit) and when the db is non-txnal.
+     *            to write with a null txn (auto-commit) and when the db is
+     *            non-txnal.
      */
-    private void checkWriteAllowed(final Database db,
-                                   final TransactionConfig txnConfig,
-                                   final boolean writeAllowed) {
-        final ReplicatedEnvironment env =
-            (ReplicatedEnvironment) db.getEnvironment();
+    private void checkWriteAllowed(final Database db, final TransactionConfig txnConfig, final boolean writeAllowed) {
+        final ReplicatedEnvironment env = (ReplicatedEnvironment) db.getEnvironment();
 
         try {
             if (txnConfig != null) {
@@ -420,12 +370,9 @@ public class LocalWriteTxnTest extends RepTestBase {
             }
             assertTrue("Write was allowed", writeAllowed);
         } catch (UnsupportedOperationException e) {
-            assertFalse(
-                "Write was not allowed - " + e.getMessage(), writeAllowed);
+            assertFalse("Write was not allowed - " + e.getMessage(), writeAllowed);
         } catch (ReplicaWriteException e) {
-            assertTrue(
-                "Expected UnsupportedOperation but got ReplicaWrite",
-                writeAllowed);
+            assertTrue("Expected UnsupportedOperation but got ReplicaWrite", writeAllowed);
             assertTrue(db.getConfig().getReplicated());
             assertEquals(ReplicatedEnvironment.State.REPLICA, env.getState());
         }
@@ -435,21 +382,16 @@ public class LocalWriteTxnTest extends RepTestBase {
      * Called with one replica down, so committing with ReplicaAckPolicy.ALL
      * should always fail.
      *
-     * @param txnConfig is non-null if an explicit txn should be used.
-     * Is null to use a null txn (auto-commit) and when the db is non-txnal.
+     * @param txnConfig is non-null if an explicit txn should be used. Is null
+     *            to use a null txn (auto-commit) and when the db is non-txnal.
      */
-    private void checkAcksEnforced(final Database db,
-                                   final TransactionConfig txnConfig,
-                                   final boolean acksEnforced,
+    private void checkAcksEnforced(final Database db, final TransactionConfig txnConfig, final boolean acksEnforced,
                                    final boolean writeAllowed) {
 
-        final ReplicatedEnvironment env =
-            (ReplicatedEnvironment) db.getEnvironment();
+        final ReplicatedEnvironment env = (ReplicatedEnvironment) db.getEnvironment();
 
-        final Durability ackPolicyAll = new Durability(
-            Durability.SyncPolicy.NO_SYNC,
-            Durability.SyncPolicy.NO_SYNC,
-            Durability.ReplicaAckPolicy.ALL);
+        final Durability ackPolicyAll = new Durability(Durability.SyncPolicy.NO_SYNC, Durability.SyncPolicy.NO_SYNC,
+                Durability.ReplicaAckPolicy.ALL);
 
         final Durability saveDurability;
 
@@ -495,8 +437,7 @@ public class LocalWriteTxnTest extends RepTestBase {
         writeRecords(db, (Transaction) null);
     }
 
-    private CommitToken writeRecords(final Database db,
-                                     final TransactionConfig txnConfig) {
+    private CommitToken writeRecords(final Database db, final TransactionConfig txnConfig) {
         assertNotNull(txnConfig);
         final Environment env = db.getEnvironment();
         final Transaction txn = env.beginTransaction(null, txnConfig);
@@ -513,10 +454,7 @@ public class LocalWriteTxnTest extends RepTestBase {
     private void writeRecords(final Database db, final Transaction txn) {
 
         /* Cannot use a cursor to write to a txnal DB with no txn. */
-        final Cursor cursor =
-            (!db.getConfig().getTransactional() || (txn != null)) ?
-            db.openCursor(txn, null) :
-            null;
+        final Cursor cursor = (!db.getConfig().getTransactional() || (txn != null)) ? db.openCursor(txn, null) : null;
 
         try {
             for (int i = 0; i < N_RECORDS; i++) {
@@ -541,27 +479,22 @@ public class LocalWriteTxnTest extends RepTestBase {
      * Tries to read with an impossible consistency policy that can never be
      * satisfied.
      *
-     * @param txnConfig is non-null if an explicit txn should be used.
-     * Is null to read non-transactionally and when the db is non-txnal.
+     * @param txnConfig is non-null if an explicit txn should be used. Is null
+     *            to read non-transactionally and when the db is non-txnal.
      */
-    private void checkConsistencyEnforced(
-        final Database db,
-        final TransactionConfig txnConfig,
-        final boolean consistencyEnforced) {
+    private void checkConsistencyEnforced(final Database db, final TransactionConfig txnConfig,
+                                          final boolean consistencyEnforced) {
 
-        final ReplicatedEnvironment env =
-            (ReplicatedEnvironment) db.getEnvironment();
+        final ReplicatedEnvironment env = (ReplicatedEnvironment) db.getEnvironment();
 
         final RepImpl repImpl = RepInternal.getNonNullRepImpl(env);
         final RepNode repNode = repImpl.getRepNode();
 
-        final CommitToken impossibleCommitToken = new CommitToken(
-            repNode.getUUID(),
-            repNode.getCurrentTxnEndVLSN().getSequence() + 100);
+        final CommitToken impossibleCommitToken = new CommitToken(repNode.getUUID(),
+                repNode.getCurrentTxnEndVLSN().getSequence() + 100);
 
-        final ReplicaConsistencyPolicy impossiblePolicy =
-            new CommitPointConsistencyPolicy(
-                impossibleCommitToken, 1, MILLISECONDS);
+        final ReplicaConsistencyPolicy impossiblePolicy = new CommitPointConsistencyPolicy(impossibleCommitToken, 1,
+                MILLISECONDS);
 
         final ReplicaConsistencyPolicy savePolicy;
 
@@ -595,8 +528,7 @@ public class LocalWriteTxnTest extends RepTestBase {
         readRecords(db, (Transaction) null);
     }
 
-    private void readRecords(final Database db,
-                             final TransactionConfig txnConfig) {
+    private void readRecords(final Database db, final TransactionConfig txnConfig) {
         final Environment env = db.getEnvironment();
         final Transaction txn = env.beginTransaction(null, txnConfig);
         readRecords(db, txn);

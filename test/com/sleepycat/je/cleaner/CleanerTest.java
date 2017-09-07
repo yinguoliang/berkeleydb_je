@@ -74,65 +74,56 @@ import com.sleepycat.utilint.StringUtils;
 @RunWith(Parameterized.class)
 public class CleanerTest extends CleanerTestBase {
 
-    private static final int N_KEYS = 300;
-    private static final int N_KEY_BYTES = 10;
+    private static final int              N_KEYS       = 300;
+    private static final int              N_KEY_BYTES  = 10;
 
     /*
      * Make the log file size small enough to allow cleaning, but large enough
      * not to generate a lot of fsyncing at the log file boundaries.
      */
-    private static final int FILE_SIZE = 10000;
+    private static final int              FILE_SIZE    = 10000;
 
-    protected Database db = null;
+    protected Database                    db           = null;
 
-    private Database exampleDb;
+    private Database                      exampleDb;
 
-    private boolean embeddedLNs = false;
+    private boolean                       embeddedLNs  = false;
 
-    private static final CheckpointConfig FORCE_CONFIG = 
-        new CheckpointConfig();
+    private static final CheckpointConfig FORCE_CONFIG = new CheckpointConfig();
     static {
         FORCE_CONFIG.setForce(true);
     }
 
-    private JUnitThread junitThread;
+    private JUnitThread  junitThread;
     private volatile int synchronizer;
 
     public CleanerTest(boolean multiSubDir) {
         envMultiSubDir = multiSubDir;
-        customName = envMultiSubDir ? "multi-sub-dir" : null ;
-    }
-    
-    @Parameters
-    public static List<Object[]> genParams() {
-        
-        return getEnv(new boolean[] {false, true});
+        customName = envMultiSubDir ? "multi-sub-dir" : null;
     }
 
-    private void initEnv(boolean createDb, boolean allowDups)
-        throws DatabaseException {
+    @Parameters
+    public static List<Object[]> genParams() {
+
+        return getEnv(new boolean[] { false, true });
+    }
+
+    private void initEnv(boolean createDb, boolean allowDups) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
         envConfig.setTxnNoSync(Boolean.getBoolean(TestUtils.NO_SYNC));
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 Integer.toString(FILE_SIZE));
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.CLEANER_REMOVE.getName(),
-                                 "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(FILE_SIZE));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_REMOVE.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
-        envConfig.setConfigParam(EnvironmentParams.BIN_DELTA_PERCENT.getName(),
-                                 "75");
+        envConfig.setConfigParam(EnvironmentParams.BIN_DELTA_PERCENT.getName(), "75");
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, envConfig);
@@ -150,8 +141,7 @@ public class CleanerTest extends CleanerTestBase {
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
 
         if (junitThread != null) {
             junitThread.shutdown();
@@ -162,8 +152,7 @@ public class CleanerTest extends CleanerTestBase {
         exampleDb = null;
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (exampleDb != null) {
             exampleDb.close();
@@ -177,8 +166,7 @@ public class CleanerTest extends CleanerTestBase {
     }
 
     @Test
-    public void testCleanerNoDupes()
-        throws Throwable {
+    public void testCleanerNoDupes() throws Throwable {
 
         initEnv(true, false);
         try {
@@ -190,8 +178,7 @@ public class CleanerTest extends CleanerTestBase {
     }
 
     @Test
-    public void testCleanerWithDupes()
-        throws Throwable {
+    public void testCleanerWithDupes() throws Throwable {
 
         initEnv(true, true);
         try {
@@ -202,14 +189,11 @@ public class CleanerTest extends CleanerTestBase {
         }
     }
 
-    private void doCleanerTest(int nKeys, int nDupsPerKey)
-        throws DatabaseException {
+    private void doCleanerTest(int nKeys, int nDupsPerKey) throws DatabaseException {
 
-        EnvironmentImpl environment =
-            DbInternal.getNonNullEnvImpl(env);
+        EnvironmentImpl environment = DbInternal.getNonNullEnvImpl(env);
         FileManager fileManager = environment.getFileManager();
-        Map<String, Set<String>> expectedMap =
-            new HashMap<String, Set<String>>();
+        Map<String, Set<String>> expectedMap = new HashMap<String, Set<String>>();
         doLargePut(expectedMap, nKeys, nDupsPerKey, true);
         Long lastNum = fileManager.getLastFileNum();
 
@@ -219,8 +203,7 @@ public class CleanerTest extends CleanerTestBase {
 
         Cursor cursor = exampleDb.openCursor(null, null);
 
-        while (cursor.getNext(foundKey, foundData, LockMode.DEFAULT) ==
-               OperationStatus.SUCCESS) {
+        while (cursor.getNext(foundKey, foundData, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
         }
 
         env.checkpoint(FORCE_CONFIG);
@@ -228,13 +211,11 @@ public class CleanerTest extends CleanerTestBase {
         for (int i = 0; i < (int) lastNum.longValue(); i++) {
 
             /*
-             * Force clean one file.  Utilization-based cleaning won't
-             * work here, since utilization is over 90%.
+             * Force clean one file. Utilization-based cleaning won't work here,
+             * since utilization is over 90%.
              */
-            DbInternal.getNonNullEnvImpl(env).
-                getCleaner().
-                doClean(false, // cleanMultipleFiles
-                        true); // forceCleaning
+            DbInternal.getNonNullEnvImpl(env).getCleaner().doClean(false, // cleanMultipleFiles
+                    true); // forceCleaning
         }
 
         EnvironmentStats stats = env.getStats(TestUtils.FAST_STATS);
@@ -246,8 +227,7 @@ public class CleanerTest extends CleanerTestBase {
         initEnv(false, (nDupsPerKey > 1));
 
         checkData(expectedMap);
-        assertTrue(fileManager.getLastFileNum().longValue() >
-                   lastNum.longValue());
+        assertTrue(fileManager.getLastFileNum().longValue() > lastNum.longValue());
 
         closeEnv();
     }
@@ -256,18 +236,15 @@ public class CleanerTest extends CleanerTestBase {
      * Ensure that INs are cleaned.
      */
     @Test
-    public void testCleanInternalNodes()
-        throws DatabaseException {
+    public void testCleanInternalNodes() throws DatabaseException {
 
         initEnv(true, true);
         int nKeys = 200;
 
-        EnvironmentImpl environment =
-            DbInternal.getNonNullEnvImpl(env);
+        EnvironmentImpl environment = DbInternal.getNonNullEnvImpl(env);
         FileManager fileManager = environment.getFileManager();
         /* Insert a lot of keys. ExpectedMap holds the expected data */
-        Map<String, Set<String>> expectedMap =
-            new HashMap<String, Set<String>>();
+        Map<String, Set<String>> expectedMap = new HashMap<String, Set<String>>();
         doLargePut(expectedMap, nKeys, 1, true);
 
         /* Modify every other piece of data. */
@@ -294,15 +271,14 @@ public class CleanerTest extends CleanerTestBase {
         checkData(expectedMap);
         EnvironmentStats stats = env.getStats(TestUtils.FAST_STATS);
 
-        /* Make sure we really cleaned something.*/
+        /* Make sure we really cleaned something. */
         assertTrue(stats.getNINsCleaned() > 0);
         assertTrue(stats.getNLNsCleaned() > 0);
 
         closeEnv();
         initEnv(false, true);
         checkData(expectedMap);
-        assertTrue(fileManager.getLastFileNum().longValue() >
-                   lastNum.longValue());
+        assertTrue(fileManager.getLastFileNum().longValue() > lastNum.longValue());
 
         closeEnv();
     }
@@ -311,29 +287,26 @@ public class CleanerTest extends CleanerTestBase {
      * See if we can clean in the middle of the file set.
      */
     @Test
-    public void testCleanFileHole()
-        throws Throwable {
+    public void testCleanFileHole() throws Throwable {
 
         initEnv(true, true);
 
         int nKeys = 20; // test ends up inserting 2*nKeys
         int nDupsPerKey = 30;
 
-        EnvironmentImpl environment =
-            DbInternal.getNonNullEnvImpl(env);
+        EnvironmentImpl environment = DbInternal.getNonNullEnvImpl(env);
         FileManager fileManager = environment.getFileManager();
 
         /* Insert some non dup data, modify, insert dup data. */
-        Map<String, Set<String>> expectedMap =
-            new HashMap<String, Set<String>>();
+        Map<String, Set<String>> expectedMap = new HashMap<String, Set<String>>();
         doLargePut(expectedMap, nKeys, 1, true);
         modifyData(expectedMap, 10, true);
         doLargePut(expectedMap, nKeys, nDupsPerKey, true);
         checkData(expectedMap);
 
         /*
-         * Delete all the data, but abort. (Try to fill up the log
-         * with entries we don't need.
+         * Delete all the data, but abort. (Try to fill up the log with entries
+         * we don't need.
          */
         deleteData(expectedMap, false, false);
         checkData(expectedMap);
@@ -358,67 +331,58 @@ public class CleanerTest extends CleanerTestBase {
         checkData(expectedMap);
         EnvironmentStats stats = env.getStats(TestUtils.FAST_STATS);
 
-        /* Make sure we really cleaned something.*/
+        /* Make sure we really cleaned something. */
         assertTrue(stats.getNINsCleaned() > 0);
         assertTrue(stats.getNLNsCleaned() > 0);
 
         closeEnv();
         initEnv(false, true);
         checkData(expectedMap);
-        assertTrue(fileManager.getLastFileNum().longValue() >
-                   lastNum.longValue());
+        assertTrue(fileManager.getLastFileNum().longValue() > lastNum.longValue());
 
         closeEnv();
     }
 
     /**
-     * Test for SR13191.  This SR shows a problem where a MapLN is initialized
-     * with a DatabaseImpl that has a null EnvironmentImpl.  When the Database
-     * gets used, a NullPointerException occurs in the Cursor code which
-     * expects there to be an EnvironmentImpl present.  The MapLN gets init'd
-     * by the Cleaner reading through a log file and encountering a MapLN which
-     * is not presently in the DbTree.  As an efficiency, the Cleaner calls
-     * updateEntry on the BIN to try to insert the MapLN into the BIN so that
-     * it won't have to fetch it when it migrates the BIN.  But this is bad
-     * since the MapLN has not been init'd properly.  The fix was to ensure
-     * that the MapLN is init'd correctly by calling postFetchInit on it just
-     * prior to inserting it into the BIN.
-     *
-     * This test first creates an environment and two databases.  The first
-     * database it just adds to the tree with no data.  This will be the MapLN
-     * that eventually gets instantiated by the cleaner.  The second database
-     * is used just to create a bunch of data that will get deleted so as to
-     * create a low utilization for one of the log files.  Once the data for
-     * db2 is created, the log is flipped (so file 0 is the one with the MapLN
-     * for db1 in it), and the environment is closed and reopened.  We insert
-     * more data into db2 until we have enough .jdb files that file 0 is
-     * attractive to the cleaner.  Call the cleaner to have it instantiate the
+     * Test for SR13191. This SR shows a problem where a MapLN is initialized
+     * with a DatabaseImpl that has a null EnvironmentImpl. When the Database
+     * gets used, a NullPointerException occurs in the Cursor code which expects
+     * there to be an EnvironmentImpl present. The MapLN gets init'd by the
+     * Cleaner reading through a log file and encountering a MapLN which is not
+     * presently in the DbTree. As an efficiency, the Cleaner calls updateEntry
+     * on the BIN to try to insert the MapLN into the BIN so that it won't have
+     * to fetch it when it migrates the BIN. But this is bad since the MapLN has
+     * not been init'd properly. The fix was to ensure that the MapLN is init'd
+     * correctly by calling postFetchInit on it just prior to inserting it into
+     * the BIN. This test first creates an environment and two databases. The
+     * first database it just adds to the tree with no data. This will be the
+     * MapLN that eventually gets instantiated by the cleaner. The second
+     * database is used just to create a bunch of data that will get deleted so
+     * as to create a low utilization for one of the log files. Once the data
+     * for db2 is created, the log is flipped (so file 0 is the one with the
+     * MapLN for db1 in it), and the environment is closed and reopened. We
+     * insert more data into db2 until we have enough .jdb files that file 0 is
+     * attractive to the cleaner. Call the cleaner to have it instantiate the
      * MapLN and then use the MapLN in a Database.get() call.
      */
     @Test
-    public void testSR13191()
-        throws Throwable {
+    public void testSR13191() throws Throwable {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-        FileManager fileManager =
-            DbInternal.getNonNullEnvImpl(env).getFileManager();
+        FileManager fileManager = DbInternal.getNonNullEnvImpl(env).getFileManager();
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
-        Database db1 =
-            env.openDatabase(null, "db1", dbConfig);
+        Database db1 = env.openDatabase(null, "db1", dbConfig);
 
-        Database db2 =
-            env.openDatabase(null, "db2", dbConfig);
+        Database db2 = env.openDatabase(null, "db2", dbConfig);
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -429,15 +393,13 @@ public class CleanerTest extends CleanerTestBase {
         }
         db1.close();
         db2.close();
-        assertEquals("Should have 0 as current file", 0L,
-                     fileManager.getCurrentFileNum());
+        assertEquals("Should have 0 as current file", 0L, fileManager.getCurrentFileNum());
         envImpl.forceLogFileFlip();
         env.close();
 
         env = new Environment(envHome, envConfig);
         fileManager = DbInternal.getNonNullEnvImpl(env).getFileManager();
-        assertEquals("Should have 1 as current file", 1L,
-                     fileManager.getCurrentFileNum());
+        assertEquals("Should have 1 as current file", 1L, fileManager.getCurrentFileNum());
 
         db2 = env.openDatabase(null, "db2", dbConfig);
 
@@ -459,22 +421,16 @@ public class CleanerTest extends CleanerTestBase {
      * [#15158].
      */
     @Test
-    public void testCleanerStop()
-        throws Throwable {
+    public void testCleanerStop() throws Throwable {
 
         final int fileSize = 1000000;
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_MAX.getName(),
-             Integer.toString(fileSize));
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(fileSize));
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
 
@@ -493,8 +449,7 @@ public class CleanerTest extends CleanerTestBase {
         assertEquals(0, stats.getNCleanerRuns());
 
         envConfig = env.getConfig();
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "true");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "true");
         env.setMutableConfig(envConfig);
 
         int iter = 0;
@@ -504,11 +459,11 @@ public class CleanerTest extends CleanerTestBase {
 
                 /*
                  * At one time the DaemonThread did not wakeup immediately in
-                 * this test.  A workaround was to add an item to the job queue
-                 * in FileProcessor.wakeup.  Later the job queue was removed
-                 * and the DaemonThread.run() was fixed to wakeup immediately.
-                 * This test verifies that the cleanup of the run() method
-                 * works properly [#15267].
+                 * this test. A workaround was to add an item to the job queue
+                 * in FileProcessor.wakeup. Later the job queue was removed and
+                 * the DaemonThread.run() was fixed to wakeup immediately. This
+                 * test verifies that the cleanup of the run() method works
+                 * properly [#15267].
                  */
                 fail("Cleaner did not run after " + iter + " tries");
             }
@@ -517,8 +472,7 @@ public class CleanerTest extends CleanerTestBase {
             stats = env.getStats(null);
         }
 
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
         env.setMutableConfig(envConfig);
 
         long prevNFiles = stats.getNCleanerRuns();
@@ -533,9 +487,8 @@ public class CleanerTest extends CleanerTestBase {
 
         stats = env.getStats(null);
         long currNFiles = stats.getNCleanerRuns();
-        assertEquals("Expected no files cleaned, prevNFiles=" + prevNFiles + 
-                     ", currNFiles=" + currNFiles, 
-                     prevNFiles, currNFiles);
+        assertEquals("Expected no files cleaned, prevNFiles=" + prevNFiles + ", currNFiles=" + currNFiles, prevNFiles,
+                currNFiles);
 
         db.close();
         env.close();
@@ -543,27 +496,20 @@ public class CleanerTest extends CleanerTestBase {
 
     /**
      * Tests that the FileSelector memory budget is subtracted when the
-     * environment is closed.  Before the fix in SR [#16368], it was not.
+     * environment is closed. Before the fix in SR [#16368], it was not.
      */
     @Test
-    public void testFileSelectorMemBudget()
-        throws Throwable {
+    public void testFileSelectorMemBudget() throws Throwable {
 
         final int fileSize = 1000000;
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_MAX.getName(),
-             Integer.toString(fileSize));
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(fileSize));
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
 
@@ -585,12 +531,12 @@ public class CleanerTest extends CleanerTestBase {
 
         /*
          * To force the memory leak to be detected we have to close without a
-         * checkpoint.  The checkpoint will finish processing all cleaned files
-         * and subtract them from the budget.  But this should happen during
+         * checkpoint. The checkpoint will finish processing all cleaned files
+         * and subtract them from the budget. But this should happen during
          * close, even without a checkpoint.
          */
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-        envImpl.close(false /*doCheckpoint*/);
+        envImpl.close(false /* doCheckpoint */);
     }
 
     /**
@@ -598,15 +544,13 @@ public class CleanerTest extends CleanerTestBase {
      * [#16368]
      */
     @Test
-    public void testCleanLogReadOnly()
-        throws Throwable {
+    public void testCleanLogReadOnly() throws Throwable {
 
         /* Open read-write. */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
         env.close();
@@ -622,40 +566,33 @@ public class CleanerTest extends CleanerTestBase {
             env.cleanLog();
             fail();
         } catch (UnsupportedOperationException e) {
-            assertEquals
-                ("Log cleaning not allowed in a read-only or memory-only " +
-                 "environment", e.getMessage());
+            assertEquals("Log cleaning not allowed in a read-only or memory-only " + "environment", e.getMessage());
 
         }
     }
 
     /**
      * Tests that when a file being cleaned is deleted, we ignore the error and
-     * don't repeatedly try to clean it.  This is happening when we mistakenly
-     * clean a file after it has been queued for deletion.  The workaround is
-     * to catch LogFileNotFoundException in the cleaner and ignore the error.
-     * We're testing the workaround here by forcing cleaning of deleted files.
+     * don't repeatedly try to clean it. This is happening when we mistakenly
+     * clean a file after it has been queued for deletion. The workaround is to
+     * catch LogFileNotFoundException in the cleaner and ignore the error. We're
+     * testing the workaround here by forcing cleaning of deleted files.
      * [#15528]
      */
     @Test
-    public void testUnexpectedFileDeletion()
-        throws DatabaseException {
+    public void testUnexpectedFileDeletion() throws DatabaseException {
 
         initEnv(true, false);
         EnvironmentMutableConfig config = env.getMutableConfig();
-        config.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        config.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
+        config.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        config.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
         env.setMutableConfig(config);
 
-        final EnvironmentImpl envImpl =
-            DbInternal.getNonNullEnvImpl(env);
+        final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         final Cleaner cleaner = envImpl.getCleaner();
         final FileSelector fileSelector = cleaner.getFileSelector();
 
-        Map<String, Set<String>> expectedMap =
-            new HashMap<String, Set<String>>();
+        Map<String, Set<String>> expectedMap = new HashMap<String, Set<String>>();
         doLargePut(expectedMap, 1000, 1, true);
         checkData(expectedMap);
 
@@ -669,12 +606,13 @@ public class CleanerTest extends CleanerTestBase {
             fileSelector.injectFileForCleaning(new Long(file2));
             assertTrue(fileSelector.getToBeCleanedFiles().contains(file1));
             assertTrue(fileSelector.getToBeCleanedFiles().contains(file2));
-            while (env.cleanLog() > 0) {}
+            while (env.cleanLog() > 0) {
+            }
             assertTrue(!fileSelector.getToBeCleanedFiles().contains(file1));
             assertTrue(!fileSelector.getToBeCleanedFiles().contains(file2));
             env.checkpoint(FORCE_CONFIG);
-            Map<Long,FileSummary> allFiles = envImpl.getUtilizationProfile().
-                getFileSummaryMap(true /*includeTrackedFiles*/);
+            Map<Long, FileSummary> allFiles = envImpl.getUtilizationProfile()
+                    .getFileSummaryMap(true /* includeTrackedFiles */);
             assertTrue(!allFiles.containsKey(file1));
             assertTrue(!allFiles.containsKey(file2));
         }
@@ -684,14 +622,11 @@ public class CleanerTest extends CleanerTestBase {
     }
 
     /**
-     * Helper routine. Generates keys with random alpha values while data
-     * is numbered numerically.
+     * Helper routine. Generates keys with random alpha values while data is
+     * numbered numerically.
      */
-    private void doLargePut(Map<String, Set<String>> expectedMap,
-                            int nKeys,
-                            int nDupsPerKey,
-                            boolean commit)
-        throws DatabaseException {
+    private void doLargePut(Map<String, Set<String>> expectedMap, int nKeys, int nDupsPerKey, boolean commit)
+            throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
         for (int i = 0; i < nKeys; i++) {
@@ -700,8 +635,8 @@ public class CleanerTest extends CleanerTestBase {
             String keyString = StringUtils.fromUTF8(key);
 
             /*
-             * The data map is keyed by key value, and holds a hash
-             * map of all data values.
+             * The data map is keyed by key value, and holds a hash map of all
+             * data values.
              */
             Set<String> dataVals = new HashSet<String>();
             if (commit) {
@@ -709,9 +644,7 @@ public class CleanerTest extends CleanerTestBase {
             }
             for (int j = 0; j < nDupsPerKey; j++) {
                 String dataString = Integer.toString(j);
-                exampleDb.put(txn,
-                              new StringDbt(keyString),
-                              new StringDbt(dataString));
+                exampleDb.put(txn, new StringDbt(keyString), new StringDbt(dataString));
                 dataVals.add(dataString);
             }
         }
@@ -725,10 +658,8 @@ public class CleanerTest extends CleanerTestBase {
     /**
      * Increment each data value.
      */
-    private void modifyData(Map<String, Set<String>> expectedMap,
-                            int increment,
-                            boolean commit)
-        throws DatabaseException {
+    private void modifyData(Map<String, Set<String>> expectedMap, int increment, boolean commit)
+            throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
 
@@ -736,8 +667,7 @@ public class CleanerTest extends CleanerTestBase {
         StringDbt foundData = new StringDbt();
 
         Cursor cursor = exampleDb.openCursor(txn, null);
-        OperationStatus status = cursor.getFirst(foundKey, foundData,
-                                                 LockMode.DEFAULT);
+        OperationStatus status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
 
         boolean toggle = true;
         while (status == OperationStatus.SUCCESS) {
@@ -753,22 +683,17 @@ public class CleanerTest extends CleanerTestBase {
 
                     Set<String> dataVals = expectedMap.get(foundKeyString);
                     if (dataVals == null) {
-                        fail("Couldn't find " +
-                             foundKeyString + "/" + foundDataString);
+                        fail("Couldn't find " + foundKeyString + "/" + foundDataString);
                     } else if (dataVals.contains(foundDataString)) {
                         dataVals.remove(foundDataString);
                         dataVals.add(newDataString);
                     } else {
-                        fail("Couldn't find " +
-                             foundKeyString + "/" + foundDataString);
+                        fail("Couldn't find " + foundKeyString + "/" + foundDataString);
                     }
                 }
 
-                assertEquals(OperationStatus.SUCCESS,
-                             cursor.delete());
-                assertEquals(OperationStatus.SUCCESS,
-                             cursor.put(foundKey,
-                                        new StringDbt(newDataString)));
+                assertEquals(OperationStatus.SUCCESS, cursor.delete());
+                assertEquals(OperationStatus.SUCCESS, cursor.put(foundKey, new StringDbt(newDataString)));
                 toggle = false;
             } else {
                 toggle = true;
@@ -788,10 +713,8 @@ public class CleanerTest extends CleanerTestBase {
     /**
      * Delete data.
      */
-    private void deleteData(Map<String, Set<String>> expectedMap,
-                            boolean everyOther,
-                            boolean commit)
-        throws DatabaseException {
+    private void deleteData(Map<String, Set<String>> expectedMap, boolean everyOther, boolean commit)
+            throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
 
@@ -799,8 +722,7 @@ public class CleanerTest extends CleanerTestBase {
         StringDbt foundData = new StringDbt();
 
         Cursor cursor = exampleDb.openCursor(txn, null);
-        OperationStatus status = cursor.getFirst(foundKey, foundData,
-                                                 LockMode.DEFAULT);
+        OperationStatus status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
 
         boolean toggle = true;
         while (status == OperationStatus.SUCCESS) {
@@ -814,16 +736,14 @@ public class CleanerTest extends CleanerTestBase {
 
                     Set dataVals = expectedMap.get(foundKeyString);
                     if (dataVals == null) {
-                        fail("Couldn't find " +
-                             foundKeyString + "/" + foundDataString);
+                        fail("Couldn't find " + foundKeyString + "/" + foundDataString);
                     } else if (dataVals.contains(foundDataString)) {
                         dataVals.remove(foundDataString);
                         if (dataVals.size() == 0) {
                             expectedMap.remove(foundKeyString);
                         }
                     } else {
-                        fail("Couldn't find " +
-                             foundKeyString + "/" + foundDataString);
+                        fail("Couldn't find " + foundKeyString + "/" + foundDataString);
                     }
                 }
 
@@ -831,7 +751,7 @@ public class CleanerTest extends CleanerTestBase {
             }
 
             if (everyOther) {
-                toggle = toggle? false: true;
+                toggle = toggle ? false : true;
             }
 
             status = cursor.getNext(foundKey, foundData, LockMode.DEFAULT);
@@ -848,25 +768,22 @@ public class CleanerTest extends CleanerTestBase {
     /**
      * Check what's in the database against what's in the expected map.
      */
-    private void checkData(Map<String, Set<String>> expectedMap)
-        throws DatabaseException {
+    private void checkData(Map<String, Set<String>> expectedMap) throws DatabaseException {
 
         StringDbt foundKey = new StringDbt();
         StringDbt foundData = new StringDbt();
         Cursor cursor = exampleDb.openCursor(null, null);
-        OperationStatus status = cursor.getFirst(foundKey, foundData,
-                                                 LockMode.DEFAULT);
+        OperationStatus status = cursor.getFirst(foundKey, foundData, LockMode.DEFAULT);
 
         /*
-         * Make a copy of expectedMap so that we're free to delete out
-         * of the set of expected results when we verify.
-         * Also make a set of counts for each key value, to test count.
+         * Make a copy of expectedMap so that we're free to delete out of the
+         * set of expected results when we verify. Also make a set of counts for
+         * each key value, to test count.
          */
 
         Map<String, Set<String>> checkMap = new HashMap<String, Set<String>>();
-        Map<String, Integer>countMap = new HashMap<String, Integer>();
-        Iterator<Map.Entry<String, Set<String>>> iter =
-                        expectedMap.entrySet().iterator();
+        Map<String, Integer> countMap = new HashMap<String, Integer>();
+        Iterator<Map.Entry<String, Set<String>>> iter = expectedMap.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<String, Set<String>> entry = iter.next();
             Set<String> copySet = new HashSet<String>();
@@ -882,24 +799,19 @@ public class CleanerTest extends CleanerTestBase {
             /* Check that the current value is in the check values map */
             Set dataVals = checkMap.get(foundKeyString);
             if (dataVals == null) {
-                fail("Couldn't find " +
-                     foundKeyString + "/" + foundDataString);
+                fail("Couldn't find " + foundKeyString + "/" + foundDataString);
             } else if (dataVals.contains(foundDataString)) {
                 dataVals.remove(foundDataString);
                 if (dataVals.size() == 0) {
                     checkMap.remove(foundKeyString);
                 }
             } else {
-                fail("Couldn't find " +
-                     foundKeyString + "/" +
-                     foundDataString +
-                     " in data vals");
+                fail("Couldn't find " + foundKeyString + "/" + foundDataString + " in data vals");
             }
 
             /* Check that the count is right. */
             int count = cursor.count();
-            assertEquals(countMap.get(foundKeyString).intValue(),
-                         count);
+            assertEquals(countMap.get(foundKeyString).intValue(), count);
 
             status = cursor.getNext(foundKey, foundData, LockMode.DEFAULT);
         }
@@ -921,8 +833,7 @@ public class CleanerTest extends CleanerTestBase {
             String key = (String) entry.getKey();
             Iterator dataIter = ((Set) entry.getValue()).iterator();
             while (dataIter.hasNext()) {
-                System.out.println("key=" + key +
-                                   " data=" + (String) dataIter.next());
+                System.out.println("key=" + key + " data=" + (String) dataIter.next());
             }
         }
     }
@@ -932,19 +843,16 @@ public class CleanerTest extends CleanerTestBase {
      * that the changes actually take effect.
      */
     @Test
-    public void testMutableConfig()
-        throws DatabaseException {
+    public void testMutableConfig() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
         envConfig = env.getConfig();
-        EnvironmentImpl envImpl =
-            DbInternal.getNonNullEnvImpl(env);
+        EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         Cleaner cleaner = envImpl.getCleaner();
         MemoryBudget budget = envImpl.getMemoryBudget();
         String name;
@@ -977,8 +885,7 @@ public class CleanerTest extends CleanerTestBase {
 
         /* je.cleaner.expunge */
         name = EnvironmentParams.CLEANER_REMOVE.getName();
-        val = "false".equals(envConfig.getConfigParam(name)) ?
-            "true" : "false";
+        val = "false".equals(envConfig.getConfigParam(name)) ? "true" : "false";
         setParam(name, val);
         assertEquals(val.equals("true"), cleaner.expunge);
 
@@ -993,28 +900,24 @@ public class CleanerTest extends CleanerTestBase {
         assertEquals(7777, cleaner.readBufferSize);
 
         /* je.cleaner.detailMaxMemoryPercentage */
-        name = EnvironmentParams.CLEANER_DETAIL_MAX_MEMORY_PERCENTAGE.
-            getName();
+        name = EnvironmentParams.CLEANER_DETAIL_MAX_MEMORY_PERCENTAGE.getName();
         setParam(name, "7");
-        assertEquals((budget.getMaxMemory() * 7) / 100,
-                     budget.getTrackerBudget());
+        assertEquals((budget.getMaxMemory() * 7) / 100, budget.getTrackerBudget());
 
         /* je.cleaner.threads */
         name = EnvironmentParams.CLEANER_THREADS.getName();
         setParam(name, "7");
-        assertEquals((envImpl.isNoLocking() ? 0 : 7),
-                     countCleanerThreads());
+        assertEquals((envImpl.isNoLocking() ? 0 : 7), countCleanerThreads());
 
         env.close();
         env = null;
     }
 
     /**
-     * Sets a mutable config param, checking that the given value is not
-     * already set and that it actually changes.
+     * Sets a mutable config param, checking that the given value is not already
+     * set and that it actually changes.
      */
-    private void setParam(String name, String val)
-        throws DatabaseException {
+    private void setParam(String name, String val) throws DatabaseException {
 
         EnvironmentMutableConfig config = env.getMutableConfig();
         String myVal = config.getConfigParam(name);
@@ -1038,8 +941,7 @@ public class CleanerTest extends CleanerTestBase {
 
         int count = 0;
         for (int i = 0; i < threads.length; i += 1) {
-            if (threads[i] != null &&
-                threads[i].getName().startsWith("Cleaner")) {
+            if (threads[i] != null && threads[i].getName().startsWith("Cleaner")) {
                 count += 1;
             }
         }
@@ -1049,27 +951,23 @@ public class CleanerTest extends CleanerTestBase {
 
     /**
      * Checks that the memory budget is updated properly by the
-     * UtilizationTracker.  Prior to a bug fix [#15505] amounts were added to
-     * the budget but not subtracted when two TrackedFileSummary objects were
-     * merged.  Merging occurs when a local tracker is added to the global
-     * tracker.  Local trackers are used during recovery, checkpoints, lazy
+     * UtilizationTracker. Prior to a bug fix [#15505] amounts were added to the
+     * budget but not subtracted when two TrackedFileSummary objects were
+     * merged. Merging occurs when a local tracker is added to the global
+     * tracker. Local trackers are used during recovery, checkpoints, lazy
      * compression, and reverse splits.
      */
     @Test
-    public void testTrackerMemoryBudget()
-        throws DatabaseException {
+    public void testTrackerMemoryBudget() throws DatabaseException {
 
         /* Open environment. */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, envConfig);
@@ -1098,10 +996,9 @@ public class CleanerTest extends CleanerTestBase {
         long admin = env.getStats(null).getAdminBytes();
 
         /*
-         * Nothing becomes obsolete when inserting and no INs are logged, so
-         * the budget does not increase. In fact, if the new LN is embedded,
-         * it is recorded as immediately obsolete, but its offset is not
-         * tracked.
+         * Nothing becomes obsolete when inserting and no INs are logged, so the
+         * budget does not increase. In fact, if the new LN is embedded, it is
+         * recorded as immediately obsolete, but its offset is not tracked.
          */
         IntegerBinding.intToEntry(201, key);
         exampleDb.put(null, key, data);
@@ -1110,9 +1007,9 @@ public class CleanerTest extends CleanerTestBase {
         assertEquals(admin, env.getStats(null).getAdminBytes());
 
         /*
-         * Update a record and expect the budget to increase because the old
-         * LN becomes obsolete. With embedded LNs, no increase occurs because
-         * the old LN has already been counted.
+         * Update a record and expect the budget to increase because the old LN
+         * becomes obsolete. With embedded LNs, no increase occurs because the
+         * old LN has already been counted.
          */
         exampleDb.put(null, key, data);
 
@@ -1144,9 +1041,9 @@ public class CleanerTest extends CleanerTestBase {
         assertEquals(admin, env.getStats(null).getAdminBytes());
 
         /*
-         * Compress and expect no change to the budget.  Prior to the fix for
-         * [#15505] the assertion below failed because the baseline admin
-         * budget was not restored.
+         * Compress and expect no change to the budget. Prior to the fix for
+         * [#15505] the assertion below failed because the baseline admin budget
+         * was not restored.
          */
         env.compress();
         flushTrackedFiles();
@@ -1159,8 +1056,7 @@ public class CleanerTest extends CleanerTestBase {
      * Flushes all tracked files to subtract tracked info from the admin memory
      * budget.
      */
-    private void flushTrackedFiles()
-        throws DatabaseException {
+    private void flushTrackedFiles() throws DatabaseException {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         UtilizationTracker tracker = envImpl.getUtilizationTracker();
@@ -1173,28 +1069,22 @@ public class CleanerTest extends CleanerTestBase {
 
     /**
      * Tests that memory is budgeted correctly for FileSummaryLNs that are
-     * inserted and deleted after calling setTrackedSummary.  The size of the
+     * inserted and deleted after calling setTrackedSummary. The size of the
      * FileSummaryLN changes during logging when setTrackedSummary is called,
      * and this is accounted for specially in CursorImpl.finishInsert. [#15831]
      */
     @Test
-    public void testFileSummaryLNMemoryUsage()
-        throws DatabaseException {
+    public void testFileSummaryLNMemoryUsage() throws DatabaseException {
 
         /* Open environment, prevent concurrent access by daemons. */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
 
@@ -1209,29 +1099,25 @@ public class CleanerTest extends CleanerTestBase {
             locker = BasicLocker.createBasicLocker(envImpl);
             cursor = new CursorImpl(fileSummaryDb, locker);
 
-            /* Get parent BIN.  There should be only one BIN in the tree. */
-            IN root =
-                fileSummaryDb.getTree().getRootIN(CacheMode.DEFAULT);
+            /* Get parent BIN. There should be only one BIN in the tree. */
+            IN root = fileSummaryDb.getTree().getRootIN(CacheMode.DEFAULT);
             root.releaseLatch();
             assertEquals(1, root.getNEntries());
             BIN parent = (BIN) root.getTarget(0);
 
             /* Use an artificial FileSummaryLN with a tracked summary. */
             FileSummaryLN ln = new FileSummaryLN(new FileSummary());
-            TrackedFileSummary tfs = new TrackedFileSummary
-                (envImpl.getUtilizationTracker(), 0 /*fileNum*/,
-                 true /*trackDetail*/);
-            tfs.trackObsolete(0, true /*checkDupOffsets*/);
-            byte[] keyBytes =
-                FileSummaryLN.makeFullKey(0 /*fileNum*/, 123 /*sequence*/);
+            TrackedFileSummary tfs = new TrackedFileSummary(envImpl.getUtilizationTracker(), 0 /* fileNum */,
+                    true /* trackDetail */);
+            tfs.trackObsolete(0, true /* checkDupOffsets */);
+            byte[] keyBytes = FileSummaryLN.makeFullKey(0 /* fileNum */, 123 /* sequence */);
             int keySize = MemoryBudget.byteArraySize(keyBytes.length);
 
             /* Perform insert after calling setTrackedSummary. */
             long oldSize = ln.getMemorySizeIncludedByParent();
             long oldParentSize = getAdjustedMemSize(parent, memBudget);
             ln.setTrackedSummary(tfs);
-            boolean inserted = cursor.insertRecord(
-                keyBytes, ln, false, fileSummaryDb.getRepContext());
+            boolean inserted = cursor.insertRecord(keyBytes, ln, false, fileSummaryDb.getRepContext());
             assertTrue(inserted);
 
             cursor.latchBIN();
@@ -1243,9 +1129,7 @@ public class CleanerTest extends CleanerTestBase {
             long newParentSize = getAdjustedMemSize(parent, memBudget);
 
             /* The size of the LN increases during logging. */
-            assertEquals(newSize,
-                         oldSize +
-                         ln.getObsoleteOffsets().getExtraMemorySize());
+            assertEquals(newSize, oldSize + ln.getObsoleteOffsets().getExtraMemorySize());
 
             /* The correct size is accounted for by the parent BIN. */
             assertEquals(newSize + keySize, newParentSize - oldParentSize);
@@ -1266,16 +1150,14 @@ public class CleanerTest extends CleanerTestBase {
             /* Perform delete. */
             oldSize = newSize;
             oldParentSize = newParentSize;
-            OperationResult result = cursor.deleteCurrentRecord(
-                fileSummaryDb.getRepContext());
+            OperationResult result = cursor.deleteCurrentRecord(fileSummaryDb.getRepContext());
             assertNotNull(result);
             newSize = ln.getMemorySizeIncludedByParent();
             newParentSize = getAdjustedMemSize(parent, memBudget);
 
             /* Size changes during delete also, which performs eviction. */
             assertTrue(newSize < oldSize);
-            assertTrue(oldSize - newSize >
-                       ln.getObsoleteOffsets().getExtraMemorySize());
+            assertTrue(oldSize - newSize > ln.getObsoleteOffsets().getExtraMemorySize());
             assertEquals(0 - oldSize, newParentSize - oldParentSize);
         } finally {
             if (cursor != null) {
@@ -1287,17 +1169,16 @@ public class CleanerTest extends CleanerTestBase {
             }
         }
 
-        TestUtils.validateNodeMemUsage(envImpl, true /*assertOnError*/);
+        TestUtils.validateNodeMemUsage(envImpl, true /* assertOnError */);
 
         /* Insert again, this time using the UtilizationProfile method. */
         FileSummaryLN ln = new FileSummaryLN(new FileSummary());
-        TrackedFileSummary tfs = new TrackedFileSummary
-            (envImpl.getUtilizationTracker(), 0 /*fileNum*/,
-             true /*trackDetail*/);
-        tfs.trackObsolete(0, true/*checkDupOffsets*/);
+        TrackedFileSummary tfs = new TrackedFileSummary(envImpl.getUtilizationTracker(), 0 /* fileNum */,
+                true /* trackDetail */);
+        tfs.trackObsolete(0, true/* checkDupOffsets */);
         ln.setTrackedSummary(tfs);
-        assertTrue(up.insertFileSummary(ln, 0 /*fileNum*/, 123 /*sequence*/));
-        TestUtils.validateNodeMemUsage(envImpl, true /*assertOnError*/);
+        assertTrue(up.insertFileSummary(ln, 0 /* fileNum */, 123 /* sequence */));
+        TestUtils.validateNodeMemUsage(envImpl, true /* assertOnError */);
 
         closeEnv();
     }
@@ -1305,19 +1186,18 @@ public class CleanerTest extends CleanerTestBase {
     /**
      * Checks that log utilization is updated incrementally during the
      * checkpoint rather than only when the highest dirty level in the Btree is
-     * flushed.  This feature (incremental update) was added so that log
-     * cleaning is not delayed until the end of the checkpoint. [#16037]
+     * flushed. This feature (incremental update) was added so that log cleaning
+     * is not delayed until the end of the checkpoint. [#16037]
      */
     @Test
-    public void testUtilizationDuringCheckpoint()
-        throws DatabaseException {
+    public void testUtilizationDuringCheckpoint() throws DatabaseException {
 
         /*
          * Use Database.sync of a deferred-write database to perform this test
-         * rather than a checkpoint, because the hook is called at a
-         * predictable place when only a single database is flushed.  The
-         * implementation of Checkpointer.flushDirtyNodes is shared for
-         * Database.sync and checkpoint, so this tests both cases.
+         * rather than a checkpoint, because the hook is called at a predictable
+         * place when only a single database is flushed. The implementation of
+         * Checkpointer.flushDirtyNodes is shared for Database.sync and
+         * checkpoint, so this tests both cases.
          */
         final int FANOUT = 25;
         final int N_KEYS = FANOUT * FANOUT * FANOUT;
@@ -1325,11 +1205,9 @@ public class CleanerTest extends CleanerTestBase {
         /* Open environment. */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, envConfig);
@@ -1354,8 +1232,7 @@ public class CleanerTest extends CleanerTestBase {
         DatabaseEntry dataEntry = new DatabaseEntry(new byte[4]);
         for (int i = 0; i < N_KEYS; i += 1) {
             LongBinding.longToEntry(i, keyEntry);
-            assertSame(OperationStatus.SUCCESS,
-                       exampleDb.put(null, keyEntry, dataEntry));
+            assertSame(OperationStatus.SUCCESS, exampleDb.put(null, keyEntry, dataEntry));
             EnvironmentStats stats = env.getStats(statsConfig);
             if (stats.getNEvictPasses() > 0) {
                 break;
@@ -1363,15 +1240,13 @@ public class CleanerTest extends CleanerTestBase {
         }
 
         /*
-         * Sync and write an LN in each BIN to create a bunch of dirty INs
-         * that, when flushed again, will cause the prior versions to be
-         * obsolete.
+         * Sync and write an LN in each BIN to create a bunch of dirty INs that,
+         * when flushed again, will cause the prior versions to be obsolete.
          */
         env.sync();
         for (int i = 0; i < N_KEYS; i += FANOUT) {
             LongBinding.longToEntry(i, keyEntry);
-            assertSame(OperationStatus.SUCCESS,
-                       exampleDb.put(null, keyEntry, dataEntry));
+            assertSame(OperationStatus.SUCCESS, exampleDb.put(null, keyEntry, dataEntry));
         }
 
         /*
@@ -1385,59 +1260,57 @@ public class CleanerTest extends CleanerTestBase {
 
         /*
          * The test hook is called just before writing the highest dirty level
-         * in the Btree.  At that point, utilization should be reduced if the
-         * incremental utilization update feature is working properly.  Before
+         * in the Btree. At that point, utilization should be reduced if the
+         * incremental utilization update feature is working properly. Before
          * adding this feature, utilization was not changed at this point.
          */
         final int oldUtilization = getUtilization();
         final StringBuilder hookCalledFlag = new StringBuilder();
 
-        Checkpointer.setMaxFlushLevelHook(
-            new TestHook() {
+        Checkpointer.setMaxFlushLevelHook(new TestHook() {
 
-                public void doHook() {
+            public void doHook() {
 
-                    hookCalledFlag.append(1);
+                hookCalledFlag.append(1);
 
-                    final int newUtilization = getUtilization();
+                final int newUtilization = getUtilization();
 
-                    int diff = (int)
-                        ((100.0 * (oldUtilization - newUtilization)) /
-                         oldUtilization);
+                int diff = (int) ((100.0 * (oldUtilization - newUtilization)) / oldUtilization);
 
-                    String msg = "oldUtilization=" + oldUtilization +
-                        " newUtilization=" + newUtilization +
-                        " diff = " + diff + "%";
+                String msg = "oldUtilization=" + oldUtilization + " newUtilization=" + newUtilization + " diff = "
+                        + diff + "%";
 
-                    if (embeddedLNs) {
-                        assertTrue(msg, diff >= 6);
-                    } else {
-                        assertTrue(msg, diff >= 10);
-                    }
-
-                    /* Don't call the test hook repeatedly. */
-                    Checkpointer.setMaxFlushLevelHook(null);
+                if (embeddedLNs) {
+                    assertTrue(msg, diff >= 6);
+                } else {
+                    assertTrue(msg, diff >= 10);
                 }
-                public Object getHookValue() {
-                    throw new UnsupportedOperationException();
-                }
-                public void doIOHook() {
-                    throw new UnsupportedOperationException();
-                }
-                public void hookSetup() {
-                    throw new UnsupportedOperationException();
-                }
-                public void doHook(Object obj) {
-                    throw new UnsupportedOperationException();                
-                }
+
+                /* Don't call the test hook repeatedly. */
+                Checkpointer.setMaxFlushLevelHook(null);
             }
-        );
+
+            public Object getHookValue() {
+                throw new UnsupportedOperationException();
+            }
+
+            public void doIOHook() {
+                throw new UnsupportedOperationException();
+            }
+
+            public void hookSetup() {
+                throw new UnsupportedOperationException();
+            }
+
+            public void doHook(Object obj) {
+                throw new UnsupportedOperationException();
+            }
+        });
         exampleDb.sync();
         assertTrue(hookCalledFlag.length() > 0);
 
         /* While we're here, do a quick check of getCurrentMinUtilization. */
-        final int lastKnownUtilization =
-            env.getStats(null).getCurrentMinUtilization();
+        final int lastKnownUtilization = env.getStats(null).getCurrentMinUtilization();
         assertTrue(lastKnownUtilization > 0);
 
         closeEnv();
@@ -1445,14 +1318,12 @@ public class CleanerTest extends CleanerTestBase {
 
     private int getUtilization() {
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-        Map<Long,FileSummary> map =
-            envImpl.getUtilizationProfile().getFileSummaryMap(true);
+        Map<Long, FileSummary> map = envImpl.getUtilizationProfile().getFileSummaryMap(true);
         FileSummary totals = new FileSummary();
         for (FileSummary summary : map.values()) {
             totals.add(summary);
         }
-        return FileSummary.utilization(totals.getObsoleteSize(),
-                                       totals.totalSize);
+        return FileSummary.utilization(totals.getObsoleteSize(), totals.totalSize);
     }
 
     /**
@@ -1460,88 +1331,59 @@ public class CleanerTest extends CleanerTestBase {
      * rep, which changes during eviction.
      */
     private long getAdjustedMemSize(IN in, MemoryBudget memBudget) {
-        return getMemSize(in, memBudget) -
-               in.getTargets().calculateMemorySize();
+        return getMemSize(in, memBudget) - in.getTargets().calculateMemorySize();
     }
 
     /**
      * Returns the memory size taken by the given IN and the tree memory usage.
      */
     private long getMemSize(IN in, MemoryBudget memBudget) {
-        return memBudget.getTreeMemoryUsage() +
-               in.getInMemorySize() -
-               in.getBudgetedMemorySize();
+        return memBudget.getTreeMemoryUsage() + in.getInMemorySize() - in.getBudgetedMemorySize();
     }
 
     /**
      * Tests that dirtiness is logged upwards during a checkpoint, even if a
      * node is evicted and refetched after being added to the checkpointer's
      * dirty map, and before that entry in the dirty map is processed by the
-     * checkpointer.  [#16523]
-     *
-     *  Root INa
-     *      /  \
-     *     INb  ...
-     *    /
-     *   INc
-     *  /
-     * BINd
-     *
-     * The scenario that causes the bug is:
-     *
-     * 1) Prior to the final checkpoint, the cleaner processes a log file
-     * containing BINd.  The cleaner marks BINd dirty so that it will be
-     * flushed prior to the end of the next checkpoint, at which point the file
-     * containing BINd will be deleted.  The cleaner also calls
+     * checkpointer. [#16523] Root INa / \ INb ... / INc / BINd The scenario
+     * that causes the bug is: 1) Prior to the final checkpoint, the cleaner
+     * processes a log file containing BINd. The cleaner marks BINd dirty so
+     * that it will be flushed prior to the end of the next checkpoint, at which
+     * point the file containing BINd will be deleted. The cleaner also calls
      * setProhibitNextDelta on BINd to ensure that a full version will be
-     * logged.
-     *
-     * 2) At checkpoint start, BINd is added to the checkpoiner's dirty map.
-     * It so happens that INa is also dirty, perhaps as the result of a split,
-     * and added to the dirty map.  The checkpointer's max flush level is 4.
-     *
-     * 3) The evictor flushes BINd and then its parent INc.  Both are logged
+     * logged. 2) At checkpoint start, BINd is added to the checkpoiner's dirty
+     * map. It so happens that INa is also dirty, perhaps as the result of a
+     * split, and added to the dirty map. The checkpointer's max flush level is
+     * 4. 3) The evictor flushes BINd and then its parent INc. Both are logged
      * provisionally, since their level is less than 4, the checkpointer's max
-     * flush level.  INb, the parent of INc, is dirty.
-     *
-     * 4) INc, along with BINd, is loaded back into the Btree as the result of
-     * reading an LN in BINd.  INc and BINd are both non-dirty.  INb, the
-     * parent of INc, is still dirty.
-     *
-     * 5) The checkpointer processes its reference to BINd in the dirty map.
-     * It finds that BINd is not dirty, so does not need to be logged.  It
-     * attempts to add the parent, INc, to the dirty map in order to propagate
-     * changes upward.  However, because INc is not dirty, it is not added to
-     * the dirty map -- this was the bug, it should be added even if not dirty.
-     * So as the result of this step, the checkpointer does no logging and does
-     * not add anything to the dirty map.
-     *
-     * 6) The checkpointer logs INa (it was dirty at the start of the
-     * checkpoint) and the checkpoint finishes.  It deletes the cleaned log
-     * file that contains the original version of BINd.
-     *
-     * The key thing is that INb is now dirty and was not logged.  It should
-     * have been logged as the result of being an ancestor of BINd, which was
-     * in the dirty map.  Its parent INa was logged, but does not refer to the
-     * latest version of INb/INc/BINd.
-     *
-     * 7) Now we recover.  INc and BINd, which were evicted during step (3),
-     * are not replayed because they are provisional -- they are lost.  When a
-     * search for an LN in BINd is performed, we traverse down to the old
-     * version of BINd, which causes LogFileNotFound.
-     *
-     * The fix is to add INc to the dirty map at step (5), even though it is
-     * not dirty.  When the reference to INc in the dirty map is processed we
-     * will not log INc, but we will add its parent INb to the dirty map.  Then
-     * when the reference to INb is processed, it will be logged because it is
-     * dirty.  Then INa is logged and refers to the latest version of
-     * INb/INc/BINd.
-     *
-     * This problem could only occur with a Btree of depth 4 or greater.
+     * flush level. INb, the parent of INc, is dirty. 4) INc, along with BINd,
+     * is loaded back into the Btree as the result of reading an LN in BINd. INc
+     * and BINd are both non-dirty. INb, the parent of INc, is still dirty. 5)
+     * The checkpointer processes its reference to BINd in the dirty map. It
+     * finds that BINd is not dirty, so does not need to be logged. It attempts
+     * to add the parent, INc, to the dirty map in order to propagate changes
+     * upward. However, because INc is not dirty, it is not added to the dirty
+     * map -- this was the bug, it should be added even if not dirty. So as the
+     * result of this step, the checkpointer does no logging and does not add
+     * anything to the dirty map. 6) The checkpointer logs INa (it was dirty at
+     * the start of the checkpoint) and the checkpoint finishes. It deletes the
+     * cleaned log file that contains the original version of BINd. The key
+     * thing is that INb is now dirty and was not logged. It should have been
+     * logged as the result of being an ancestor of BINd, which was in the dirty
+     * map. Its parent INa was logged, but does not refer to the latest version
+     * of INb/INc/BINd. 7) Now we recover. INc and BINd, which were evicted
+     * during step (3), are not replayed because they are provisional -- they
+     * are lost. When a search for an LN in BINd is performed, we traverse down
+     * to the old version of BINd, which causes LogFileNotFound. The fix is to
+     * add INc to the dirty map at step (5), even though it is not dirty. When
+     * the reference to INc in the dirty map is processed we will not log INc,
+     * but we will add its parent INb to the dirty map. Then when the reference
+     * to INb is processed, it will be logged because it is dirty. Then INa is
+     * logged and refers to the latest version of INb/INc/BINd. This problem
+     * could only occur with a Btree of depth 4 or greater.
      */
     @Test
-    public void testEvictionDuringCheckpoint()
-        throws DatabaseException {
+    public void testEvictionDuringCheckpoint() throws DatabaseException {
 
         /* Use small fanout to create a deep tree. */
         final int FANOUT = 6;
@@ -1550,21 +1392,15 @@ public class CleanerTest extends CleanerTestBase {
         /* Open environment without interference of daemon threads. */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
-        final EnvironmentImpl envImpl =
-            DbInternal.getNonNullEnvImpl(env);
+        final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
         /* Open database. */
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -1579,8 +1415,7 @@ public class CleanerTest extends CleanerTestBase {
         int nRecords;
         for (nRecords = 1;; nRecords += 1) {
             LongBinding.longToEntry(nRecords, keyEntry);
-            assertSame(OperationStatus.SUCCESS,
-                       exampleDb.put(null, keyEntry, dataEntry));
+            assertSame(OperationStatus.SUCCESS, exampleDb.put(null, keyEntry, dataEntry));
             if (nRecords % 10 == 0) {
                 int level = envImpl.getDbTree().getHighestLevel(dbImpl);
                 if ((level & IN.LEVEL_MASK) >= 4) {
@@ -1592,7 +1427,7 @@ public class CleanerTest extends CleanerTestBase {
         /* Flush all dirty nodes. */
         env.sync();
 
-        /* Get BINd and its ancestors.  Mark BINd and INa dirty. */
+        /* Get BINd and its ancestors. Mark BINd and INa dirty. */
         final IN nodeINa = dbImpl.getTree().getRootIN(CacheMode.DEFAULT);
         nodeINa.releaseLatch();
         final IN nodeINb = (IN) nodeINa.getTarget(0);
@@ -1620,29 +1455,30 @@ public class CleanerTest extends CleanerTestBase {
 
                     /*
                      * Force BINd and INc to be loaded into cache by fetching
-                     * the left-most record.
-                     *
-                     * Note that nodeINc and nodeBINd are different instances
-                     * and are no longer in the Btree but we don't change these
-                     * variables because they are final.  They should not be
-                     * used past this point.
+                     * the left-most record. Note that nodeINc and nodeBINd are
+                     * different instances and are no longer in the Btree but we
+                     * don't change these variables because they are final. They
+                     * should not be used past this point.
                      */
                     LongBinding.longToEntry(1, keyEntry);
-                    assertSame(OperationStatus.SUCCESS,
-                               exampleDb.get(null, keyEntry, dataEntry, null));
+                    assertSame(OperationStatus.SUCCESS, exampleDb.get(null, keyEntry, dataEntry, null));
                 } catch (DatabaseException e) {
                     throw new RuntimeException(e);
                 }
             }
+
             public Object getHookValue() {
                 throw new UnsupportedOperationException();
             }
+
             public void doIOHook() {
                 throw new UnsupportedOperationException();
             }
+
             public void hookSetup() {
                 throw new UnsupportedOperationException();
             }
+
             public void doHook(Object obj) {
                 throw new UnsupportedOperationException();
             }
@@ -1656,27 +1492,21 @@ public class CleanerTest extends CleanerTestBase {
     }
 
     /**
-     * Simulate eviction by logging this node, updating the LSN in its
-     * parent slot, setting the Node to null in the parent slot, and
-     * removing the IN from the INList.  Logging is provisional.  The
-     * parent is dirtied.  May not be called unless this node is dirty and
-     * none of its children are dirty.  Children may be resident.
+     * Simulate eviction by logging this node, updating the LSN in its parent
+     * slot, setting the Node to null in the parent slot, and removing the IN
+     * from the INList. Logging is provisional. The parent is dirtied. May not
+     * be called unless this node is dirty and none of its children are dirty.
+     * Children may be resident.
      */
-    private void simulateEviction(Environment env,
-                                  EnvironmentImpl envImpl,
-                                  IN nodeToEvict,
-                                  IN parentNode)
-        throws DatabaseException {
+    private void simulateEviction(Environment env, EnvironmentImpl envImpl, IN nodeToEvict, IN parentNode)
+            throws DatabaseException {
 
-        assertTrue("not dirty " + nodeToEvict.getNodeId(),
-                   nodeToEvict.getDirty());
+        assertTrue("not dirty " + nodeToEvict.getNodeId(), nodeToEvict.getDirty());
         assertTrue(!hasDirtyChildren(nodeToEvict));
 
         parentNode.latch();
 
-        long lsn = TestUtils.logIN(
-            env, nodeToEvict, false /*allowDeltas*/, true /*provisional*/,
-            parentNode);
+        long lsn = TestUtils.logIN(env, nodeToEvict, false /* allowDeltas */, true /* provisional */, parentNode);
 
         int index;
         for (index = 0;; index += 1) {
@@ -1692,7 +1522,7 @@ public class CleanerTest extends CleanerTestBase {
 
         envImpl.getEvictor().remove(nodeToEvict);
         envImpl.getInMemoryINs().remove(nodeToEvict);
-        parentNode.recoverIN(index, null /*node*/, lsn, 0 /*lastLoggedSize*/);
+        parentNode.recoverIN(index, null /* node */, lsn, 0 /* lastLoggedSize */);
 
         nodeToEvict.releaseLatch();
         parentNode.releaseLatch();
@@ -1712,16 +1542,14 @@ public class CleanerTest extends CleanerTestBase {
     }
 
     @Test
-    public void testMultiCleaningBug()
-        throws DatabaseException {
+    public void testMultiCleaningBug() throws DatabaseException {
 
         initEnv(true, false);
 
         final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         final Cleaner cleaner = envImpl.getCleaner();
 
-        Map<String, Set<String>> expectedMap =
-            new HashMap<String, Set<String>>();
+        Map<String, Set<String>> expectedMap = new HashMap<String, Set<String>>();
         doLargePut(expectedMap, 1000, 1, true);
         modifyData(expectedMap, 1, true);
         checkData(expectedMap);
@@ -1733,36 +1561,35 @@ public class CleanerTest extends CleanerTestBase {
                     synchronizer = 1;
                 }
                 /* Wait for signal to proceed with cleaning. */
-                while (synchronizer != 2 &&
-                       synchronizer != 99 &&
-                       !Thread.interrupted()) {
+                while (synchronizer != 2 && synchronizer != 99 && !Thread.interrupted()) {
                     Thread.yield();
                 }
             }
+
             public Object getHookValue() {
                 throw new UnsupportedOperationException();
             }
+
             public void doIOHook() throws IOException {
                 throw new UnsupportedOperationException();
             }
+
             public void hookSetup() {
                 throw new UnsupportedOperationException();
             }
+
             public void doHook(Object obj) {
-                throw new UnsupportedOperationException();                
+                throw new UnsupportedOperationException();
             }
         };
 
         junitThread = new JUnitThread("TestMultiCleaningBug") {
-            public void testBody()
-                throws DatabaseException {
+            public void testBody() throws DatabaseException {
 
                 try {
                     while (synchronizer != 99) {
                         /* Wait for initial state. */
-                        while (synchronizer != 0 &&
-                               synchronizer != 99 &&
-                               !Thread.interrupted()) {
+                        while (synchronizer != 0 && synchronizer != 99 && !Thread.interrupted()) {
                             Thread.yield();
                         }
                         /* Clean with hook set, hook is called next. */
@@ -1816,44 +1643,33 @@ public class CleanerTest extends CleanerTestBase {
     }
 
     /**
-     * Ensures that LN migration is immediate.  Lazy migration is no longer
-     * used, even if configured.
+     * Ensures that LN migration is immediate. Lazy migration is no longer used,
+     * even if configured.
      */
     @SuppressWarnings("deprecation")
-    public void testCleanerLazyMigrationConfig()
-        throws DatabaseException {
+    public void testCleanerLazyMigrationConfig() throws DatabaseException {
 
         /* Open environment without interference of daemon threads. */
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_MAX.getName(),
-             Integer.toString(FILE_SIZE));
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(FILE_SIZE));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
 
         /* Configure immediate migration, even though it's deprecated. */
-        envConfig.setConfigParam
-            (EnvironmentConfig.CLEANER_LAZY_MIGRATION, "true");
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_LAZY_MIGRATION, "true");
 
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, envConfig);
-        final EnvironmentImpl envImpl =
-            DbInternal.getNonNullEnvImpl(env);
+        final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
         /* Open database. */
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -1867,8 +1683,7 @@ public class CleanerTest extends CleanerTestBase {
         env.getStats(clearStats);
 
         /* Insert and update data. */
-        Map<String, Set<String>> expectedMap =
-            new HashMap<String, Set<String>>();
+        Map<String, Set<String>> expectedMap = new HashMap<String, Set<String>>();
         doLargePut(expectedMap, 1000, 1, true);
         modifyData(expectedMap, 1, true);
         checkData(expectedMap);
@@ -1910,25 +1725,18 @@ public class CleanerTest extends CleanerTestBase {
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 Integer.toString(FILE_SIZE));
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(FILE_SIZE));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
 
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, envConfig);
-        final EnvironmentImpl envImpl =
-            DbInternal.getNonNullEnvImpl(env);
+        final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
         /* Open database. */
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -1937,8 +1745,7 @@ public class CleanerTest extends CleanerTestBase {
         exampleDb = env.openDatabase(null, "foo", dbConfig);
 
         /* Insert and update data. */
-        Map<String, Set<String>> expectedMap =
-            new HashMap<String, Set<String>>();
+        Map<String, Set<String>> expectedMap = new HashMap<String, Set<String>>();
         doLargePut(expectedMap, 1000, 1, true);
         modifyData(expectedMap, 1, false);
         checkData(expectedMap);
@@ -1972,9 +1779,9 @@ public class CleanerTest extends CleanerTestBase {
 
         /*
          * Before optimization of FileSummaryLN deletion, there were 16 cache
-         * misses.  Without the optimization the cache misses occur because
+         * misses. Without the optimization the cache misses occur because
          * FileSummaryLNs are always evicted after reading or writing them, and
-         * then were fetched before deleting them.  Now that we can delete
+         * then were fetched before deleting them. Now that we can delete
          * FileSummaryLNs without fetching, there should be no misses.
          */
         stats = env.getStats(clearStats);
@@ -1986,10 +1793,10 @@ public class CleanerTest extends CleanerTestBase {
     /**
      * Ensure that LN migration does not cause the representation of INs to
      * change when migration places an LN in the slot and then evicts it
-     * afterwards.  The representation should remain "no target" (empty), if
-     * that was the BIN representation before the LN migration.  Before the bug
-     * fix [#21734] we neglected to call BIN.compactMemory after the eviction.
-     * The fix is for the cleaner to call BIN.evictLN, rather then doing the
+     * afterwards. The representation should remain "no target" (empty), if that
+     * was the BIN representation before the LN migration. Before the bug fix
+     * [#21734] we neglected to call BIN.compactMemory after the eviction. The
+     * fix is for the cleaner to call BIN.evictLN, rather then doing the
      * eviction separately.
      */
     public void testCompactBINAfterMigrateLN() {
@@ -1999,28 +1806,19 @@ public class CleanerTest extends CleanerTestBase {
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_MAX.getName(),
-             Integer.toString(FILE_SIZE));
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "80");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(FILE_SIZE));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
 
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         env = new Environment(envHome, envConfig);
-        final EnvironmentImpl envImpl =
-            DbInternal.getNonNullEnvImpl(env);
+        final EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
         /* Open database with CacheMode.EVICT_LN. */
         final DatabaseConfig dbConfig = new DatabaseConfig();
@@ -2035,8 +1833,7 @@ public class CleanerTest extends CleanerTestBase {
         env.getStats(clearStats);
 
         /* Insert and update data. */
-        final Map<String, Set<String>> expectedMap =
-            new HashMap<String, Set<String>>();
+        final Map<String, Set<String>> expectedMap = new HashMap<String, Set<String>>();
         doLargePut(expectedMap, 1000, 1, true);
         modifyData(expectedMap, 1, true);
         checkData(expectedMap);
@@ -2073,17 +1870,14 @@ public class CleanerTest extends CleanerTestBase {
         assertTrue(stats.getNLNsMigrated() > 100);
 
         /*
-         * Most importantly, LN migration should not cause the representation
-         * of INs to change -- most should still be "no target" (empty).
-         * [#21734]
-         *
+         * Most importantly, LN migration should not cause the representation of
+         * INs to change -- most should still be "no target" (empty). [#21734]
          * The reason that nNoTarget is reduced by one (one is subtracted from
          * nNoTarget below) is apparently because a FileSummaryLN DB BIN has
          * changed.
          */
         final long nNoTarget2 = stats.getNINNoTarget();
-        assertTrue("nNoTarget=" + nNoTarget + " nNoTarget2=" + nNoTarget2,
-                   nNoTarget2 >= nNoTarget - 1);
+        assertTrue("nNoTarget=" + nNoTarget + " nNoTarget2=" + nNoTarget2, nNoTarget2 >= nNoTarget - 1);
 
         closeEnv();
     }

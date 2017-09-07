@@ -25,13 +25,12 @@ import com.sleepycat.util.test.TestBase;
 
 public class CronScheduleParserTest extends TestBase {
 
-    private static long millsOneDay = 24 * 60 * 60 * 1000;
-    private static long millsOneHour = 60 * 60 * 1000;
+    private static long millsOneDay    = 24 * 60 * 60 * 1000;
+    private static long millsOneHour   = 60 * 60 * 1000;
     private static long millsOneMinute = 60 * 1000;
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
         CronScheduleParser.setCurCalHook = null;
         super.tearDown();
     }
@@ -53,8 +52,8 @@ public class CronScheduleParserTest extends TestBase {
         validateCorrect("* * * * *");
 
         /*
-         * Constraint 1: The standard string should be "* * * * *", i.e.
-         * there are 5 fields and 4 blank space.
+         * Constraint 1: The standard string should be "* * * * *", i.e. there
+         * are 5 fields and 4 blank space.
          */
         internalValidate(" * * *", CronScheduleParser.cons1);
         internalValidate("* * * * ", CronScheduleParser.cons1);
@@ -86,8 +85,8 @@ public class CronScheduleParserTest extends TestBase {
         validateCorrect("59 23 * * *");
 
         /*
-         * Constraint 5: If the field is a int value, then the value should
-         * be in the correct range.
+         * Constraint 5: If the field is a int value, then the value should be
+         * in the correct range.
          */
         internalValidate("-1 * * * *", CronScheduleParser.cons5);
         internalValidate("60 * * * *", CronScheduleParser.cons5);
@@ -103,8 +102,8 @@ public class CronScheduleParserTest extends TestBase {
         validateCorrect("1 1 * * 6");
 
         /*
-         * Constraint 6: If dayOfWeek is a concrete value, then minute or
-         * hour can not be '*'.
+         * Constraint 6: If dayOfWeek is a concrete value, then minute or hour
+         * can not be '*'.
          */
         internalValidate("* * * * 6", CronScheduleParser.cons6);
         internalValidate("1 * * * 6", CronScheduleParser.cons6);
@@ -117,7 +116,7 @@ public class CronScheduleParserTest extends TestBase {
         internalValidate("* 23 * * *", CronScheduleParser.cons7);
         validateCorrect("1 23 * * *");
     }
-    
+
     private void internalValidate(String cronSchedule, String mess) {
         try {
             new CronScheduleParser(cronSchedule);
@@ -126,7 +125,7 @@ public class CronScheduleParserTest extends TestBase {
             assertTrue(iae.getMessage().contains(mess));
         }
     }
-    
+
     private void validateCorrect(String cronSchedule) {
         try {
             new CronScheduleParser(cronSchedule);
@@ -145,22 +144,12 @@ public class CronScheduleParserTest extends TestBase {
         check("5 * * * *", 4 * millsOneMinute, millsOneHour);
         check("0 * * * *", 59 * millsOneMinute, millsOneHour);
 
-        check("59 7 * * *",
-            2 * millsOneHour + 58 * millsOneMinute,
-            millsOneDay);
-        check("30 1 * * *",
-            millsOneDay - (3 * millsOneHour + 31 * millsOneMinute),
-            millsOneDay);
+        check("59 7 * * *", 2 * millsOneHour + 58 * millsOneMinute, millsOneDay);
+        check("30 1 * * *", millsOneDay - (3 * millsOneHour + 31 * millsOneMinute), millsOneDay);
 
-        check("10 4 * * 6",
-            9 * millsOneMinute + 23 * millsOneHour,
-            7 * millsOneDay);
+        check("10 4 * * 6", 9 * millsOneMinute + 23 * millsOneHour, 7 * millsOneDay);
 
-        check(
-            "10 4 * * 3",
-            7 * millsOneDay -
-            (51 * millsOneMinute + 2 * millsOneDay),
-            7 * millsOneDay);
+        check("10 4 * * 3", 7 * millsOneDay - (51 * millsOneMinute + 2 * millsOneDay), 7 * millsOneDay);
     }
 
     private void check(String cronSchedule, long delay, long interval) {
@@ -189,12 +178,15 @@ public class CronScheduleParserTest extends TestBase {
         @Override
         public void doHook(Void obj) {
         }
+
         @Override
         public void hookSetup() {
         }
+
         @Override
         public void doIOHook() throws IOException {
         }
+
         @Override
         public Void getHookValue() {
             return null;

@@ -26,39 +26,33 @@ import com.sleepycat.util.test.TestBase;
 import com.sleepycat.utilint.StringUtils;
 
 /**
- * @author Paul.Kendall@orionhealth.com
- *
- * This test throws thread interrupts while JE is doing I/O intensive
- * work. When an interrupt is received during various NIO activities, NIO
- * closes the underlying file descriptor. In this multi-threaded test, abruptly
- * closing the file descriptor causes exceptions such as
- * java.nio.ChannelClosedException, because the uninterrupted thread may be in
- * the middle of using that file.
- *
- * JE must convert all such exceptions to
- * com.sleepycat.je.RunRecoveryException.
+ * @author Paul.Kendall@orionhealth.com This test throws thread interrupts while
+ *         JE is doing I/O intensive work. When an interrupt is received during
+ *         various NIO activities, NIO closes the underlying file descriptor. In
+ *         this multi-threaded test, abruptly closing the file descriptor causes
+ *         exceptions such as java.nio.ChannelClosedException, because the
+ *         uninterrupted thread may be in the middle of using that file. JE must
+ *         convert all such exceptions to com.sleepycat.je.RunRecoveryException.
  */
 public class InterruptTest extends TestBase {
 
     private final File envHome;
-    private final int NUM_OPS = 1000;
-    private final int NUM_ITERATIONS = 1;
+    private final int  NUM_OPS        = 1000;
+    private final int  NUM_ITERATIONS = 1;
 
     public InterruptTest() {
-        envHome =  SharedTestUtils.getTestDir();
+        envHome = SharedTestUtils.getTestDir();
     }
 
     @Test
-    public void testInterruptHandling()
-            throws Exception {
+    public void testInterruptHandling() throws Exception {
 
         for (int i = 0; i < NUM_ITERATIONS; i++) {
             interruptThreads(i);
         }
     }
 
-    public void interruptThreads(int i)
-            throws Exception {
+    public void interruptThreads(int i) throws Exception {
 
         // TestUtils.removeLogFiles("Loop", envHome, false);
         Environment env = null;
@@ -68,8 +62,7 @@ public class InterruptTest extends TestBase {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setTransactional(true);
             envConfig.setAllowCreate(true);
-            envConfig.setConfigParam
-                (EnvironmentParams.ENV_CHECK_LEAKS.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), "false");
             env = new Environment(envHome, envConfig);
 
             DatabaseConfig dbConfig = new DatabaseConfig();
@@ -78,26 +71,20 @@ public class InterruptTest extends TestBase {
             db = env.openDatabase(null, "testDB" + i, dbConfig);
 
             ActionThread putter = new ActionThread(env, db, 1) {
-                    @Override
-                    protected void doStuff(Database db,
-                                           Transaction txn,
-                                           DatabaseEntry key,
-                                           DatabaseEntry value)
+                @Override
+                protected void doStuff(Database db, Transaction txn, DatabaseEntry key, DatabaseEntry value)
                         throws DatabaseException {
-                        db.put(txn, key, value);
-                    }
-                };
+                    db.put(txn, key, value);
+                }
+            };
 
             ActionThread deleter = new ActionThread(env, db, 1) {
-                    @Override
-                    protected void doStuff(Database db,
-                                           Transaction txn,
-                                           DatabaseEntry key,
-                                           DatabaseEntry value)
+                @Override
+                protected void doStuff(Database db, Transaction txn, DatabaseEntry key, DatabaseEntry value)
                         throws DatabaseException {
-                        db.delete(txn, key);
-                    }
-                };
+                    db.delete(txn, key);
+                }
+            };
 
             putter.start();
             Thread.sleep(1000);
@@ -123,13 +110,12 @@ public class InterruptTest extends TestBase {
 
                 /*
                  * Expect a run recovery exception. Since it will be detected
-                 * when we try to close the database, close the environment
-                 * now so we can re-start in the same JVM.
+                 * when we try to close the database, close the environment now
+                 * so we can re-start in the same JVM.
                  */
             } catch (Throwable t) {
                 t.printStackTrace();
-                fail("Should not see any other kind of exception. Iteration=" +
-                     i);
+                fail("Should not see any other kind of exception. Iteration=" + i);
             } finally {
                 if (env != null) {
                     try {
@@ -144,26 +130,25 @@ public class InterruptTest extends TestBase {
     }
 
     abstract class ActionThread extends Thread {
-            private final Environment env;
-            private final Database db;
-        private final int threadNumber;
+        private final Environment env;
+        private final Database    db;
+        private final int         threadNumber;
 
-            public ActionThread(Environment env, Database db, int threadNumber) {
+        public ActionThread(Environment env, Database db, int threadNumber) {
             this.env = env;
             this.db = db;
             this.threadNumber = threadNumber;
-            }
+        }
 
-            @Override
+        @Override
         public void run() {
-            int i=0;
+            int i = 0;
             Transaction txn = null;
             try {
                 for (; i < NUM_OPS; i++) {
                     txn = env.beginTransaction(null, null);
                     DatabaseEntry key = new DatabaseEntry();
-                    key.setData
-                        (StringUtils.toUTF8("" + threadNumber * 10000 + i));
+                    key.setData(StringUtils.toUTF8("" + threadNumber * 10000 + i));
                     DatabaseEntry value = new DatabaseEntry();
                     value.setData(new byte[8192]);
                     doStuff(db, txn, key, value);
@@ -187,12 +172,9 @@ public class InterruptTest extends TestBase {
                 } catch (DatabaseException ignored) {
                 }
             }
-            }
+        }
 
-        abstract protected void doStuff(Database db,
-                                        Transaction txn,
-                                        DatabaseEntry key,
-                                        DatabaseEntry value)
-            throws DatabaseException;
+        abstract protected void doStuff(Database db, Transaction txn, DatabaseEntry key, DatabaseEntry value)
+                throws DatabaseException;
     }
 }

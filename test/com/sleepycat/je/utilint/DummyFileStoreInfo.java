@@ -20,21 +20,21 @@ import java.io.IOException;
  * both to isolate the test from current file system free space conditions, and
  * to permit testing with specific free space conditions.
  */
-public class DummyFileStoreInfo extends FileStoreInfo
-        implements FileStoreInfo.Factory {
+public class DummyFileStoreInfo extends FileStoreInfo implements FileStoreInfo.Factory {
 
     public static DummyFileStoreInfo INSTANCE = new DummyFileStoreInfo();
 
-    protected DummyFileStoreInfo() { }
+    protected DummyFileStoreInfo() {
+    }
 
     /* Implement Factory */
 
     @Override
-    public void factoryCheckSupported() { }
+    public void factoryCheckSupported() {
+    }
 
     @Override
-    public FileStoreInfo factoryGetInfo(final String file)
-        throws IOException {
+    public FileStoreInfo factoryGetInfo(final String file) throws IOException {
 
         factoryCheckSupported();
         return this;
@@ -43,15 +43,13 @@ public class DummyFileStoreInfo extends FileStoreInfo
     /* Implement FileStoreInfo */
 
     @Override
-    public long getTotalSpace()
-        throws IOException {
+    public long getTotalSpace() throws IOException {
 
         return Long.MAX_VALUE;
     }
 
     @Override
-    public long getUsableSpace()
-        throws IOException {
+    public long getUsableSpace() throws IOException {
 
         return Long.MAX_VALUE;
     }

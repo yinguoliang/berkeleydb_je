@@ -28,54 +28,49 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * Test multiple environment data directories. 
+ * Test multiple environment data directories.
  */
 public class EnvMultiSubDirTest extends TestBase {
-    private static final String DB_NAME = "testDb";
-    private static final String keyPrefix = "herococo";
-    private static final String dataValue = "abcdefghijklmnopqrstuvwxyz";
+    private static final String DB_NAME     = "testDb";
+    private static final String keyPrefix   = "herococo";
+    private static final String dataValue   = "abcdefghijklmnopqrstuvwxyz";
 
-    private final File envHome;
-    private final int N_DATA_DIRS = 3;
+    private final File          envHome;
+    private final int           N_DATA_DIRS = 3;
 
     public EnvMultiSubDirTest() {
         envHome = SharedTestUtils.getTestDir();
     }
-    
+
     @Before
-    public void setUp() 
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         super.setUp();
         TestUtils.createEnvHomeWithSubDir(envHome, N_DATA_DIRS);
     }
 
     /* Test the basic CRUD operations with multiple data directories. */
     @Test
-    public void testSubDirBasic()
-        throws Throwable {
+    public void testSubDirBasic() throws Throwable {
 
         doTestWork(false, false);
     }
 
     /* Test deferred write with multiple data directories. */
     @Test
-    public void testSubDirDeferredWrite()
-        throws Throwable {
+    public void testSubDirDeferredWrite() throws Throwable {
 
         doTestWork(true, false);
     }
 
     /* Test transactional environment with multiple data directories. */
     @Test
-    public void testSubDirTransactional()
-        throws Throwable {
+    public void testSubDirTransactional() throws Throwable {
 
         doTestWork(false, true);
     }
 
-    private void doTestWork(boolean deferredWrite, boolean transactional)
-        throws Throwable {
+    private void doTestWork(boolean deferredWrite, boolean transactional) throws Throwable {
 
         EnvironmentConfig envConfig = createEnvConfig(transactional);
         Environment env = new Environment(envHome, envConfig);
@@ -126,10 +121,8 @@ public class EnvMultiSubDirTest extends TestBase {
             File[] logFiles = subDir.listFiles();
             for (File logFile : logFiles) {
                 if (logFile.getName().endsWith("jdb") && logFile.isFile()) {
-                    String fileNumber = logFile.getName().substring
-                        (0, logFile.getName().indexOf("."));
-                    int number = 
-                        Integer.valueOf(Integer.parseInt(fileNumber, 16));
+                    String fileNumber = logFile.getName().substring(0, logFile.getName().indexOf("."));
+                    int number = Integer.valueOf(Integer.parseInt(fileNumber, 16));
                     assertTrue((number % N_DATA_DIRS) == (i - 1));
                 }
             }
@@ -142,20 +135,16 @@ public class EnvMultiSubDirTest extends TestBase {
         envConfig.setTransactional(transactional);
         envConfig.setDurability(Durability.COMMIT_NO_SYNC);
         DbInternal.disableParameterValidation(envConfig);
-        envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                 N_DATA_DIRS + "");
+        envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, N_DATA_DIRS + "");
         envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, "10000");
-        envConfig.setConfigParam(EnvironmentConfig.CHECKPOINTER_BYTES_INTERVAL,
-                                 "20000");
-        envConfig.setConfigParam(EnvironmentConfig.CLEANER_BYTES_INTERVAL,
-                                 "10000");
+        envConfig.setConfigParam(EnvironmentConfig.CHECKPOINTER_BYTES_INTERVAL, "20000");
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_BYTES_INTERVAL, "10000");
         return envConfig;
     }
 
     /* Test that log files should stay in the correct sub directory. */
     @Test
-    public void testLogFilesDirCheck()
-        throws Throwable {
+    public void testLogFilesDirCheck() throws Throwable {
 
         /* Generating some log files. */
         doTestWork(false, false);
@@ -169,13 +158,11 @@ public class EnvMultiSubDirTest extends TestBase {
                     copySubName = file.getName();
                 } else {
                     assertTrue(!copySubName.equals(file.getName()));
-                    SharedTestUtils.copyFiles
-                        (new File(envHome, copySubName),
-                         new File(envHome, file.getName()));
+                    SharedTestUtils.copyFiles(new File(envHome, copySubName), new File(envHome, file.getName()));
                     break;
                 }
             }
-        }           
+        }
 
         try {
             new Environment(envHome, createEnvConfig(false));
@@ -187,19 +174,15 @@ public class EnvMultiSubDirTest extends TestBase {
         }
     }
 
-    private void checkDbContents(Database db, int start, int end)
-        throws Exception {
+    private void checkDbContents(Database db, int start, int end) throws Exception {
 
         final DatabaseEntry key = new DatabaseEntry();
         final DatabaseEntry data = new DatabaseEntry();
         final Cursor c = db.openCursor(null, null);
         for (int i = start; i <= end; i++) {
-            assertEquals("i=" + i,
-                OperationStatus.SUCCESS,
-                c.getNext(key, data, null));
+            assertEquals("i=" + i, OperationStatus.SUCCESS, c.getNext(key, data, null));
             assertEquals(keyPrefix + i, StringBinding.entryToString(key));
-            assertEquals(dataValue + dataValue,
-                StringBinding.entryToString(data));
+            assertEquals(dataValue + dataValue, StringBinding.entryToString(data));
         }
         assertEquals(OperationStatus.NOTFOUND, c.getNext(key, data, null));
         c.close();

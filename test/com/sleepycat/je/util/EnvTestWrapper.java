@@ -25,42 +25,30 @@ import com.sleepycat.je.EnvironmentConfig;
 /**
  * This wrapper encapsulates environment operations used while running unit
  * tests. The encapsulation permits creation of standalone or replicated
- * environments as needed behind the wrapper, so that the test does not have
- * to deal with the mechanics of environment management in each case and can
- * focus on just the test logic itself.
- *
- *  It provides the following API needed to:
- *
- * 1) create new environments
- *
- * 2) Close open environments.
- *
- * 3) Clear out the test directory used to create environments for a test
- *
+ * environments as needed behind the wrapper, so that the test does not have to
+ * deal with the mechanics of environment management in each case and can focus
+ * on just the test logic itself. It provides the following API needed to: 1)
+ * create new environments 2) Close open environments. 3) Clear out the test
+ * directory used to create environments for a test
  */
-public abstract class EnvTestWrapper  {
+public abstract class EnvTestWrapper {
 
     /**
      * Creates the environment to be used by the test case. If the environment
-     * already exists on disk, it's reused. If not, it creates a new
-     * environment and returns it.
+     * already exists on disk, it's reused. If not, it creates a new environment
+     * and returns it.
      */
-    public abstract Environment create(File envHome,
-                                       EnvironmentConfig envConfig)
-        throws DatabaseException;
+    public abstract Environment create(File envHome, EnvironmentConfig envConfig) throws DatabaseException;
 
     /**
      * Closes the environment.
      *
      * @param environment the environment to be closed.
-     *
      * @throws DatabaseException
      */
-    public abstract void close(Environment environment)
-        throws DatabaseException;
+    public abstract void close(Environment environment) throws DatabaseException;
 
-    public abstract void closeNoCheckpoint(Environment environment)
-        throws DatabaseException;
+    public abstract void closeNoCheckpoint(Environment environment) throws DatabaseException;
 
     public abstract void abnormalClose(Environment env);
 
@@ -72,21 +60,17 @@ public abstract class EnvTestWrapper  {
      *
      * @throws Exception
      */
-    public abstract void destroy()
-        throws Exception;
+    public abstract void destroy() throws Exception;
 
     /**
      * A wrapper for local tests.
      */
     public static class LocalEnvWrapper extends EnvTestWrapper {
-        private File envDir;
-        private final Map<File, Environment> dirEnvMap =
-            new HashMap<File, Environment>();
+        private File                         envDir;
+        private final Map<File, Environment> dirEnvMap = new HashMap<File, Environment>();
 
         @Override
-        public Environment create(File envHome,
-                                  EnvironmentConfig envConfig)
-            throws DatabaseException {
+        public Environment create(File envHome, EnvironmentConfig envConfig) throws DatabaseException {
 
             this.envDir = envHome;
             Environment env = new Environment(envHome, envConfig);
@@ -95,22 +79,19 @@ public abstract class EnvTestWrapper  {
         }
 
         @Override
-        public void close(Environment env)
-            throws DatabaseException {
-            
+        public void close(Environment env) throws DatabaseException {
+
             env.close();
         }
 
         @Override
         public void resetNodeEqualityCheck() {
-            throw new UnsupportedOperationException
-                ("This opertaion is not supported by base environment.");
+            throw new UnsupportedOperationException("This opertaion is not supported by base environment.");
         }
 
         /* Provide the utility for closing without a checkpoint. */
         @Override
-        public void closeNoCheckpoint(Environment env) 
-            throws DatabaseException {
+        public void closeNoCheckpoint(Environment env) throws DatabaseException {
 
             DbInternal.getNonNullEnvImpl(env).close(false);
         }

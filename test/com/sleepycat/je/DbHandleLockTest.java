@@ -27,21 +27,18 @@ import com.sleepycat.je.util.TestUtils;
 import com.sleepycat.util.test.SharedTestUtils;
 
 /**
- * BDB's transactional DDL operations (database creation, truncation,
- * remove and rename) need special support through what we call "handle" locks.
- *
- * When a database is created, a write lock is taken. When the creation 
- * transaction is committed, that write lock should be turned into a read lock
- * and should be transferred to the database handle.
- *
- * Note that when this test is run in HA mode, environment creation results in
- * a different number of outstanding locks. And example of a HA specific lock
- * is that taken for the RepGroupDb, which holds replication group information.
- * Because of that, this test takes care to check for a relative number of 
- * locks, rather than an absolute number.
+ * BDB's transactional DDL operations (database creation, truncation, remove and
+ * rename) need special support through what we call "handle" locks. When a
+ * database is created, a write lock is taken. When the creation transaction is
+ * committed, that write lock should be turned into a read lock and should be
+ * transferred to the database handle. Note that when this test is run in HA
+ * mode, environment creation results in a different number of outstanding
+ * locks. And example of a HA specific lock is that taken for the RepGroupDb,
+ * which holds replication group information. Because of that, this test takes
+ * care to check for a relative number of locks, rather than an absolute number.
  */
 public class DbHandleLockTest extends DualTestCase {
-    private File envHome;
+    private File        envHome;
     private Environment env;
 
     public DbHandleLockTest() {
@@ -56,19 +53,17 @@ public class DbHandleLockTest extends DualTestCase {
     }
 
     @Test
-    public void testOpenHandle()
-        throws Throwable {
+    public void testOpenHandle() throws Throwable {
 
         try {
             openEnv();
-            Transaction txnA =
-                env.beginTransaction(null, TransactionConfig.DEFAULT);
+            Transaction txnA = env.beginTransaction(null, TransactionConfig.DEFAULT);
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setTransactional(true);
             dbConfig.setAllowCreate(true);
-           
+
             LockStats oldLockStat = env.getLockStats(null);
-             
+
             Database db = env.openDatabase(txnA, "foo", dbConfig);
 
             /*
@@ -76,34 +71,25 @@ public class DbHandleLockTest extends DualTestCase {
              * a read lock on the NameLN by the handle locker.
              */
             LockStats lockStat = env.getLockStats(null);
-            assertEquals(oldLockStat.getNTotalLocks() + 1, 
-                    lockStat.getNTotalLocks());
-            assertEquals(oldLockStat.getNWriteLocks() + 1, 
-                    lockStat.getNWriteLocks());
-            assertEquals(oldLockStat.getNReadLocks() + 1, 
-                    lockStat.getNReadLocks());
+            assertEquals(oldLockStat.getNTotalLocks() + 1, lockStat.getNTotalLocks());
+            assertEquals(oldLockStat.getNWriteLocks() + 1, lockStat.getNWriteLocks());
+            assertEquals(oldLockStat.getNReadLocks() + 1, lockStat.getNReadLocks());
 
             txnA.commit();
 
             lockStat = env.getLockStats(null);
-            assertEquals(oldLockStat.getNTotalLocks() + 1, 
-                    lockStat.getNTotalLocks());
-            assertEquals(oldLockStat.getNWriteLocks(), 
-                    lockStat.getNWriteLocks());
-            assertEquals(oldLockStat.getNReadLocks() + 1, 
-                    lockStat.getNReadLocks());
+            assertEquals(oldLockStat.getNTotalLocks() + 1, lockStat.getNTotalLocks());
+            assertEquals(oldLockStat.getNWriteLocks(), lockStat.getNWriteLocks());
+            assertEquals(oldLockStat.getNReadLocks() + 1, lockStat.getNReadLocks());
 
             /* Updating the root from another txn should be possible. */
             insertData(10, db);
             db.close();
 
             lockStat = env.getLockStats(null);
-            assertEquals(oldLockStat.getNTotalLocks(), 
-                    lockStat.getNTotalLocks());
-            assertEquals(oldLockStat.getNWriteLocks(), 
-                    lockStat.getNWriteLocks());
-            assertEquals(oldLockStat.getNReadLocks(), 
-                    lockStat.getNReadLocks());
+            assertEquals(oldLockStat.getNTotalLocks(), lockStat.getNTotalLocks());
+            assertEquals(oldLockStat.getNWriteLocks(), lockStat.getNWriteLocks());
+            assertEquals(oldLockStat.getNReadLocks(), lockStat.getNReadLocks());
             close(env);
             env = null;
         } catch (Throwable t) {
@@ -113,13 +99,11 @@ public class DbHandleLockTest extends DualTestCase {
     }
 
     @Test
-    public void testSR12068()
-        throws Throwable {
+    public void testSR12068() throws Throwable {
 
         try {
             openEnv();
-            Transaction txnA =
-                env.beginTransaction(null, TransactionConfig.DEFAULT);
+            Transaction txnA = env.beginTransaction(null, TransactionConfig.DEFAULT);
 
             DatabaseConfig dbConfig = new DatabaseConfig();
             dbConfig.setTransactional(true);
@@ -150,14 +134,12 @@ public class DbHandleLockTest extends DualTestCase {
         }
     }
 
-    private void insertData(int numRecs, Database db)
-        throws Throwable {
+    private void insertData(int numRecs, Database db) throws Throwable {
 
         for (int i = 0; i < numRecs; i++) {
             DatabaseEntry key = new DatabaseEntry(TestUtils.getTestArray(i));
             DatabaseEntry data = new DatabaseEntry(TestUtils.getTestArray(i));
-            assertEquals(OperationStatus.SUCCESS,
-                    db.put(null, key, data));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
         }
     }
 
@@ -198,8 +180,7 @@ public class DbHandleLockTest extends DualTestCase {
         env.checkpoint(new CheckpointConfig().setForce(true));
 
         final EnvironmentStats stats = env.getStats(null);
-        assertTrue(String.valueOf(stats.getNReadLocks()),
-                   stats.getNReadLocks() < (nDbs * 2));
+        assertTrue(String.valueOf(stats.getNReadLocks()), stats.getNReadLocks() < (nDbs * 2));
         for (final Database db : handles) {
             db.close();
         }

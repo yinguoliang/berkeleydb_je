@@ -38,12 +38,10 @@ import com.sleepycat.je.utilint.StatGroup;
 
 public class StatFile {
 
-    static final StatCaptureDefinitions csd = new StatCaptureDefinitions();
-    static final StatCaptureRepDefinitions rcsd =
-                                               new StatCaptureRepDefinitions();
+    static final StatCaptureDefinitions    csd  = new StatCaptureDefinitions();
+    static final StatCaptureRepDefinitions rcsd = new StatCaptureRepDefinitions();
 
-    public static SortedMap<String, Long> sumItUp(File dir, String fileprefix)
-        throws IOException {
+    public static SortedMap<String, Long> sumItUp(File dir, String fileprefix) throws IOException {
 
         Map<String, Boolean> isIncMap = setIncrementalMap();
         FindFile ff = new FindFile(fileprefix);
@@ -59,11 +57,8 @@ public class StatFile {
             for (Entry<String, Long> e : datamap.entrySet()) {
                 Long oldval = retmap.get(e.getKey());
                 if (oldval != null && getValue(isIncMap.get(e.getKey()))) {
-                    retmap.put(e.getKey(),
-                               new Long(oldval.longValue() +
-                               e.getValue().longValue()));
-                }
-                else {
+                    retmap.put(e.getKey(), new Long(oldval.longValue() + e.getValue().longValue()));
+                } else {
                     retmap.put(e.getKey(), e.getValue());
                 }
             }
@@ -71,8 +66,7 @@ public class StatFile {
         return retmap;
     }
 
-    public static SortedMap<String, Long> sumItUp(BufferedReader input)
-        throws IOException {
+    public static SortedMap<String, Long> sumItUp(BufferedReader input) throws IOException {
 
         try {
             SortedMap<String, Long> retmap = new TreeMap<String, Long>();
@@ -89,29 +83,25 @@ public class StatFile {
                     /* could be custom or java stats */
                     isIncremental[i] = false;
                 } else {
-                    isIncremental[i] =
-                        (sd.getType() == StatType.INCREMENTAL) ? true : false;
+                    isIncremental[i] = (sd.getType() == StatType.INCREMENTAL) ? true : false;
                 }
             }
 
             String row = null;
-            while ( (row = input.readLine()) != null) {
+            while ((row = input.readLine()) != null) {
                 String[] val = row.split(",");
-                assertTrue("header and row mismatch columns header " +
-                    header.length + " body columns " + val.length,
-                    val.length == header.length);
-                for (int i = 0; i<header.length; i++) {
+                assertTrue("header and row mismatch columns header " + header.length + " body columns " + val.length,
+                        val.length == header.length);
+                for (int i = 0; i < header.length; i++) {
                     try {
 
-                       long rv = Long.valueOf(val[i]);
-                       if (isIncremental[i]) {
-                           long cval = retmap.get(header[i]);
-                           assertTrue("value should be greater than zero." +
-                                       header[i] + "value " + cval,
-                                       cval >= 0);
-                           rv += retmap.get(header[i]);
-                       }
-                       retmap.put(header[i], rv);
+                        long rv = Long.valueOf(val[i]);
+                        if (isIncremental[i]) {
+                            long cval = retmap.get(header[i]);
+                            assertTrue("value should be greater than zero." + header[i] + "value " + cval, cval >= 0);
+                            rv += retmap.get(header[i]);
+                        }
+                        retmap.put(header[i], rv);
                     } catch (NumberFormatException e) {
                         /* ignore this row may not be numeric */
                     }
@@ -120,91 +110,84 @@ public class StatFile {
             return retmap;
         } finally {
             if (input != null) {
-                    input.close();
+                input.close();
             }
         }
     }
 
-   public static SortedMap<String, Long> sumItUp(File sf) throws IOException {
+    public static SortedMap<String, Long> sumItUp(File sf) throws IOException {
 
-       try {
-           if (!sf.exists()) {
-               return new TreeMap<String, Long>();
-           }
-           return sumItUp(new BufferedReader(new FileReader(sf)));
-       } catch (FileNotFoundException e) {
-           throw EnvironmentFailureException.unexpectedState(
-               "Unexpected Exception accessing file " +
-                sf.getAbsolutePath() + e.getMessage());
-       }
-   }
+        try {
+            if (!sf.exists()) {
+                return new TreeMap<String, Long>();
+            }
+            return sumItUp(new BufferedReader(new FileReader(sf)));
+        } catch (FileNotFoundException e) {
+            throw EnvironmentFailureException
+                    .unexpectedState("Unexpected Exception accessing file " + sf.getAbsolutePath() + e.getMessage());
+        }
+    }
 
-   public static SortedMap<String, Long> getMap(Collection<StatGroup> csg) {
+    public static SortedMap<String, Long> getMap(Collection<StatGroup> csg) {
 
-       TreeMap<String, Long> statsMap = new TreeMap<String, Long>();
-       for (StatGroup sg : csg) {
-           for (Entry<StatDefinition, Stat<?>> e :
-                sg.getStats().entrySet()) {
-               String mapName =
-                       (sg.getName() + ":" +
-                               e.getKey().getName()).intern();
-               Object val = e.getValue().get();
-               /* get stats back as strings. */
-               if (val instanceof Number) {
-                   statsMap.put(mapName,
-                                ((Number) val).longValue());
-               }
-           }
-       }
-       return statsMap;
-   }
+        TreeMap<String, Long> statsMap = new TreeMap<String, Long>();
+        for (StatGroup sg : csg) {
+            for (Entry<StatDefinition, Stat<?>> e : sg.getStats().entrySet()) {
+                String mapName = (sg.getName() + ":" + e.getKey().getName()).intern();
+                Object val = e.getValue().get();
+                /* get stats back as strings. */
+                if (val instanceof Number) {
+                    statsMap.put(mapName, ((Number) val).longValue());
+                }
+            }
+        }
+        return statsMap;
+    }
 
-   public static SortedMap<String, Stat<?>>
-       getNameValueMap(Collection<StatGroup> csg) {
+    public static SortedMap<String, Stat<?>> getNameValueMap(Collection<StatGroup> csg) {
 
-       TreeMap<String, Stat<?>> statsMap = new TreeMap<String, Stat<?>>();
-       for (StatGroup sg : csg) {
-           for (Entry<StatDefinition, Stat<?>> e : sg.getStats().entrySet()) {
-               String mapName =
-                   (sg.getName() + ":" + e.getKey().getName()).intern();
-               statsMap.put(mapName, e.getValue());
-           }
-       }
-       return statsMap;
-   }
+        TreeMap<String, Stat<?>> statsMap = new TreeMap<String, Stat<?>>();
+        for (StatGroup sg : csg) {
+            for (Entry<StatDefinition, Stat<?>> e : sg.getStats().entrySet()) {
+                String mapName = (sg.getName() + ":" + e.getKey().getName()).intern();
+                statsMap.put(mapName, e.getValue());
+            }
+        }
+        return statsMap;
+    }
 
-   private static Map<String, Boolean> setIncrementalMap() {
-       SortedSet<String> projections = rcsd.getStatisticProjections();
-       Map<String, Boolean> retmap = new HashMap<String, Boolean>();
-       for (String name : projections) {
-           StatDefinition sd = csd.getDefinition(name);
-           if (sd == null) {
-               sd = rcsd.getDefinition(name);
-           }
-           boolean isIncremental = false;
-           if (sd != null &&
-               sd.getType() == StatType.INCREMENTAL) {
-               isIncremental = true;
-           }
-           retmap.put(name, isIncremental);
-       }
-       return retmap;
-   }
+    private static Map<String, Boolean> setIncrementalMap() {
+        SortedSet<String> projections = rcsd.getStatisticProjections();
+        Map<String, Boolean> retmap = new HashMap<String, Boolean>();
+        for (String name : projections) {
+            StatDefinition sd = csd.getDefinition(name);
+            if (sd == null) {
+                sd = rcsd.getDefinition(name);
+            }
+            boolean isIncremental = false;
+            if (sd != null && sd.getType() == StatType.INCREMENTAL) {
+                isIncremental = true;
+            }
+            retmap.put(name, isIncremental);
+        }
+        return retmap;
+    }
 
-   private static boolean getValue(Boolean b) {
-       return (b == null) ? false : b;
-   }
+    private static boolean getValue(Boolean b) {
+        return (b == null) ? false : b;
+    }
 
-  static class FindFile implements FileFilter {
+    static class FindFile implements FileFilter {
 
-       String fileprefix;
-       FindFile(String fileprefix) {
-           this.fileprefix = fileprefix;
-       }
+        String fileprefix;
 
-       @Override
-       public boolean accept(File f) {
-           return f.getName().startsWith(fileprefix);
-       }
-   }
+        FindFile(String fileprefix) {
+            this.fileprefix = fileprefix;
+        }
+
+        @Override
+        public boolean accept(File f) {
+            return f.getName().startsWith(fileprefix);
+        }
+    }
 }

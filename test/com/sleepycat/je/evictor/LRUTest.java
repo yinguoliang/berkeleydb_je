@@ -43,17 +43,17 @@ import com.sleepycat.util.test.TestBase;
  */
 public class LRUTest extends TestBase {
 
-    private static final int N_DBS = 5;
-    private static final int ONE_MB = 1 << 20;
-    private static final int DB_CACHE_SIZE = ONE_MB;
-    private static final int ENV_CACHE_SIZE = N_DBS * DB_CACHE_SIZE;
-    private static final int MIN_DATA_SIZE = 50 * 1024;
+    private static final int N_DBS            = 5;
+    private static final int ONE_MB           = 1 << 20;
+    private static final int DB_CACHE_SIZE    = ONE_MB;
+    private static final int ENV_CACHE_SIZE   = N_DBS * DB_CACHE_SIZE;
+    private static final int MIN_DATA_SIZE    = 50 * 1024;
     private static final int LRU_ACCURACY_PCT = 70;
-    private static final int ENTRY_DATA_SIZE = 500;
+    private static final int ENTRY_DATA_SIZE  = 500;
 
-    private File envHome;
-    private Environment env;
-    private Database[] dbs = new Database[N_DBS];
+    private File             envHome;
+    private Environment      env;
+    private Database[]       dbs              = new Database[N_DBS];
 
     public LRUTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -61,7 +61,7 @@ public class LRUTest extends TestBase {
 
     @After
     public void tearDown() {
-        
+
         if (env != null) {
             try {
                 env.close();
@@ -84,18 +84,12 @@ public class LRUTest extends TestBase {
         envConfig.setAllowCreate(true);
         envConfig.setCacheSize(ENV_CACHE_SIZE);
         envConfig.setCacheMode(cacheMode);
-        envConfig.setConfigParam(
-            EnvironmentConfig.TREE_MIN_MEMORY, String.valueOf(MIN_DATA_SIZE));
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.TREE_MIN_MEMORY, String.valueOf(MIN_DATA_SIZE));
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
 
         env = new Environment(envHome, envConfig);
 
@@ -144,8 +138,7 @@ public class LRUTest extends TestBase {
             for (int i = 0; !done; i += 1) {
                 IntegerBinding.intToEntry(i, key);
                 for (int j = 0; j < N_DBS; j += 1) {
-                    if (dbs[j].get(null, key, data, null) !=
-                        OperationStatus.SUCCESS) {
+                    if (dbs[j].get(null, key, data, null) != OperationStatus.SUCCESS) {
                         done = true;
                     }
                 }
@@ -170,15 +163,12 @@ public class LRUTest extends TestBase {
             }
             long pct = (low * 100) / high;
             if (repeat > 75) {
-                assertTrue(
-                    "failed repeat=" + repeat + " " +
-                    " with pct=" + pct + buf,
-                    pct >= LRU_ACCURACY_PCT);
+                assertTrue("failed repeat=" + repeat + " " + " with pct=" + pct + buf, pct >= LRU_ACCURACY_PCT);
             }
             results[repeat] = pct;
         }
         Arrays.sort(results);
-//        System.out.println(Arrays.toString(results));
+        //        System.out.println(Arrays.toString(results));
     }
 
     @Test
@@ -219,8 +209,7 @@ public class LRUTest extends TestBase {
             for (int i = 0; !done; i += 1) {
                 IntegerBinding.intToEntry(i, key);
                 for (int j = 0; j < N_DBS; j += 1) {
-                    if (cursors[j].getSearchKey(key, data, null) !=
-                        OperationStatus.SUCCESS) {
+                    if (cursors[j].getSearchKey(key, data, null) != OperationStatus.SUCCESS) {
                         done = true;
                     }
                 }
@@ -239,7 +228,7 @@ public class LRUTest extends TestBase {
                 dbBytes[i] = getDatabaseCacheBytes(dbs[i], true);
                 buf.append(" db=" + i + " bytes=" + dbBytes[i]);
             }
-//            System.out.println(buf);
+            //            System.out.println(buf);
             assertTrue(dbBytes[0] < dbBytes[2]);
             assertTrue(dbBytes[0] < dbBytes[3]);
             assertTrue(dbBytes[0] < dbBytes[4]);
@@ -284,8 +273,7 @@ public class LRUTest extends TestBase {
             for (int i = 0; !done; i += 1) {
                 IntegerBinding.intToEntry(i, key);
                 for (int j = 0; j < N_DBS; j += 1) {
-                    if (cursors[j].getSearchKey(key, data, null) !=
-                        OperationStatus.SUCCESS) {
+                    if (cursors[j].getSearchKey(key, data, null) != OperationStatus.SUCCESS) {
                         done = true;
                     }
                 }
@@ -344,8 +332,7 @@ public class LRUTest extends TestBase {
             for (int i = 0; !done; i += 1) {
                 IntegerBinding.intToEntry(i, key);
                 for (int j = 0; j < N_DBS; j += 1) {
-                    if (cursors[j].getSearchKey(key, data, null) !=
-                        OperationStatus.SUCCESS) {
+                    if (cursors[j].getSearchKey(key, data, null) != OperationStatus.SUCCESS) {
                         done = true;
                     }
                 }
@@ -363,8 +350,7 @@ public class LRUTest extends TestBase {
             final long[] dbBytes = new long[N_DBS];
             for (int i = 0; i < N_DBS; i += 1) {
                 dbBytes[i] = getDatabaseCacheBytes(dbs[i], false);
-                buf.append(" db=").append(i).append(" bytes=").
-                    append(dbBytes[i]);
+                buf.append(" db=").append(i).append(" bytes=").append(dbBytes[i]);
             }
             final String msg = buf.toString();
 
@@ -406,8 +392,8 @@ public class LRUTest extends TestBase {
     }
 
     /**
-     * Writes enough records in the given envIndex environment to cause at
-     * least minSizeToWrite bytes to be used in the cache.
+     * Writes enough records in the given envIndex environment to cause at least
+     * minSizeToWrite bytes to be used in the cache.
      */
     private int write(Database db, int minSizeToWrite) {
 

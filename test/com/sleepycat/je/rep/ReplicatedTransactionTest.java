@@ -55,30 +55,24 @@ import com.sleepycat.util.test.TestBase;
 public class ReplicatedTransactionTest extends TestBase {
 
     /* Convenience constants depicting variations in durability */
-    static private final Durability SYNC_SYNC_ALL =
-        new Durability(SyncPolicy.SYNC,
-                       SyncPolicy.SYNC,
-                       ReplicaAckPolicy.ALL);
+    static private final Durability SYNC_SYNC_ALL    = new Durability(SyncPolicy.SYNC, SyncPolicy.SYNC,
+            ReplicaAckPolicy.ALL);
 
-    static private final Durability SYNC_SYNC_QUORUM =
-        new Durability(SyncPolicy.SYNC,
-                       SyncPolicy.SYNC,
-                       ReplicaAckPolicy.SIMPLE_MAJORITY);
+    static private final Durability SYNC_SYNC_QUORUM = new Durability(SyncPolicy.SYNC, SyncPolicy.SYNC,
+            ReplicaAckPolicy.SIMPLE_MAJORITY);
 
-    static private final Durability SYNC_SYNC_NONE =
-        new Durability(SyncPolicy.SYNC,
-                       SyncPolicy.SYNC,
-                       ReplicaAckPolicy.NONE);
+    static private final Durability SYNC_SYNC_NONE   = new Durability(SyncPolicy.SYNC, SyncPolicy.SYNC,
+            ReplicaAckPolicy.NONE);
 
-    private final File envRoot;
+    private final File              envRoot;
     /* min group size must be three */
-    private final int groupSize = 3;
+    private final int               groupSize        = 3;
 
     /* The replicators used for each test. */
-    RepEnvInfo[] repEnvInfo = null;
-    DatabaseConfig dbconfig;
-    final DatabaseEntry key = new DatabaseEntry(new byte[]{1});
-    final DatabaseEntry data = new DatabaseEntry(new byte[]{100});
+    RepEnvInfo[]                    repEnvInfo       = null;
+    DatabaseConfig                  dbconfig;
+    final DatabaseEntry             key              = new DatabaseEntry(new byte[] { 1 });
+    final DatabaseEntry             data             = new DatabaseEntry(new byte[] { 100 });
 
     public ReplicatedTransactionTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -86,8 +80,7 @@ public class ReplicatedTransactionTest extends TestBase {
 
     @Override
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         dbconfig = new DatabaseConfig();
         dbconfig.setAllowCreate(true);
@@ -95,8 +88,7 @@ public class ReplicatedTransactionTest extends TestBase {
         dbconfig.setSortedDuplicates(false);
 
         super.setUp();
-        repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, groupSize,
-                                               SYNC_SYNC_ALL);
+        repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, groupSize, SYNC_SYNC_ALL);
         /*
          * Avoid commits from group updates, that can result in assertion
          * failures in verifyReplicaStats.
@@ -116,8 +108,7 @@ public class ReplicatedTransactionTest extends TestBase {
 
     @SuppressWarnings("unused")
     /* For future tests */
-    private void waitForReplicaConnections(final ReplicatedEnvironment master)
-        throws DatabaseException {
+    private void waitForReplicaConnections(final ReplicatedEnvironment master) throws DatabaseException {
 
         assertTrue(master.getState().isMaster());
         Environment env = master;
@@ -129,9 +120,7 @@ public class ReplicatedTransactionTest extends TestBase {
 
     @Test
     public void testAutoCommitDatabaseCreation()
-        throws UnknownMasterException,
-               DatabaseException,
-               InterruptedException {
+            throws UnknownMasterException, DatabaseException, InterruptedException {
 
         ReplicatedEnvironment master = repEnvInfo[0].openEnv();
         State status = master.getState();
@@ -156,8 +145,7 @@ public class ReplicatedTransactionTest extends TestBase {
     }
 
     @Test
-    public void testReadonlyTxnBasic()
-        throws DatabaseException {
+    public void testReadonlyTxnBasic() throws DatabaseException {
 
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
         final Environment menv = master;
@@ -170,7 +158,7 @@ public class ReplicatedTransactionTest extends TestBase {
         final DatabaseEntry keyEntry = new DatabaseEntry();
         IntegerBinding.intToEntry(1, keyEntry);
         long lastTime = 0;
-        for (int i=0; i < 100; i++) {
+        for (int i = 0; i < 100; i++) {
             Transaction mt = menv.beginTransaction(null, mtc);
             Database db = menv.openDatabase(mt, "testDB", dbconfig);
             IntegerBinding.intToEntry(i, keyEntry);
@@ -183,16 +171,14 @@ public class ReplicatedTransactionTest extends TestBase {
         }
         State state = replicaInfo.openEnv().getState();
         /* Slow down the replay on the replica, so the transaction waits. */
-        RepImpl repImpl =  RepInternal.getNonNullRepImpl(replicaInfo.getEnv());
+        RepImpl repImpl = RepInternal.getNonNullRepImpl(replicaInfo.getEnv());
         repImpl.getRepNode().replica().setTestDelayMs(1);
         assertEquals(state, State.REPLICA);
 
         final Environment renv = replicaInfo.getEnv();
         final TransactionConfig rtc = new TransactionConfig();
         /* Ignore the lag */
-        rtc.setConsistencyPolicy
-            (new TimeConsistencyPolicy(Integer.MAX_VALUE,
-                                       TimeUnit.MILLISECONDS, 0, null));
+        rtc.setConsistencyPolicy(new TimeConsistencyPolicy(Integer.MAX_VALUE, TimeUnit.MILLISECONDS, 0, null));
 
         Transaction rt = renv.beginTransaction(null, rtc);
 
@@ -200,14 +186,11 @@ public class ReplicatedTransactionTest extends TestBase {
 
         rt.commit();
         /* Consistent within 2ms of master. */
-        rtc.setConsistencyPolicy
-            (new TimeConsistencyPolicy(2, TimeUnit.MILLISECONDS,
-                                       RepTestUtils.MINUTE_MS,
-                                       TimeUnit.MILLISECONDS));
+        rtc.setConsistencyPolicy(
+                new TimeConsistencyPolicy(2, TimeUnit.MILLISECONDS, RepTestUtils.MINUTE_MS, TimeUnit.MILLISECONDS));
         rt = renv.beginTransaction(null, rtc);
-        DatabaseEntry val= new DatabaseEntry();
-        OperationStatus status =
-            rdb.get(rt, keyEntry, val, LockMode.READ_COMMITTED);
+        DatabaseEntry val = new DatabaseEntry();
+        OperationStatus status = rdb.get(rt, keyEntry, val, LockMode.READ_COMMITTED);
         assertEquals(OperationStatus.SUCCESS, status);
         long entryTime = LongBinding.entryToLong(val);
         assertEquals(lastTime, entryTime);
@@ -220,8 +203,7 @@ public class ReplicatedTransactionTest extends TestBase {
      * scope is only entered if the current Ack policy can be satisfied.
      */
     @Test
-    public void testMasterTxnBegin()
-        throws DatabaseException {
+    public void testMasterTxnBegin() throws DatabaseException {
 
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
 
@@ -230,30 +212,29 @@ public class ReplicatedTransactionTest extends TestBase {
 
         ExpectNoException noException = new ExpectNoException() {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 t = env.beginTransaction(null, tc);
             }
         };
 
-        class ExpectInsufficientReplicasException
-            extends ExpectException<InsufficientReplicasException> {
+        class ExpectInsufficientReplicasException extends ExpectException<InsufficientReplicasException> {
             final int requiredNodeCount;
+
             ExpectInsufficientReplicasException(int requiredNodeCount) {
                 super(InsufficientReplicasException.class);
                 this.requiredNodeCount = requiredNodeCount;
             }
+
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 t = env.beginTransaction(null, tc);
             }
+
             @Override
             void checkException(InsufficientReplicasException e) {
-                assertEquals("Required node count",
-                             requiredNodeCount, e.getRequiredNodeCount());
+                assertEquals("Required node count", requiredNodeCount, e.getRequiredNodeCount());
             }
         }
 
@@ -268,10 +249,8 @@ public class ReplicatedTransactionTest extends TestBase {
         /* No exception with one less replica since we still have a quorum. */
         noException.exec();
 
-        DurabilityQuorum dq = RepInternal.getNonNullRepImpl(master).
-            getRepNode().getDurabilityQuorum();
-        final int quorumReplicas = dq.getCurrentRequiredAckCount
-            (Durability.ReplicaAckPolicy.SIMPLE_MAJORITY);
+        DurabilityQuorum dq = RepInternal.getNonNullRepImpl(master).getRepNode().getDurabilityQuorum();
+        final int quorumReplicas = dq.getCurrentRequiredAckCount(Durability.ReplicaAckPolicy.SIMPLE_MAJORITY);
         int liveReplicas = groupSize - 2 /* master + shutdown replica */;
 
         /* Shut them down until we cross the quorum threshold. */
@@ -291,21 +270,18 @@ public class ReplicatedTransactionTest extends TestBase {
      * Test auto commit operations. They are all positive tests.
      */
     @Test
-    public void testAutoTransactions()
-        throws DatabaseException {
+    public void testAutoTransactions() throws DatabaseException {
 
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
         final Environment env = master;
         new ExpectNoException() {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 db = env.openDatabase(null, "testDB", dbconfig);
                 db.put(null, key, data);
                 DatabaseEntry val = new DatabaseEntry();
-                OperationStatus status =
-                    db.get(null, key, val, LockMode.READ_COMMITTED);
+                OperationStatus status = db.get(null, key, val, LockMode.READ_COMMITTED);
                 assertEquals(OperationStatus.SUCCESS, status);
                 assertEquals(data, val);
             }
@@ -313,12 +289,9 @@ public class ReplicatedTransactionTest extends TestBase {
     }
 
     @Test
-    public void testReplicaAckPolicy()
-        throws UnknownMasterException,
-               DatabaseException {
+    public void testReplicaAckPolicy() throws UnknownMasterException, DatabaseException {
 
-        final ReplicatedEnvironment master =
-            RepTestUtils.joinGroup(repEnvInfo);
+        final ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
         final Environment env = master;
         final int repNodes = groupSize - 1;
 
@@ -326,8 +299,7 @@ public class ReplicatedTransactionTest extends TestBase {
         resetReplicaStats(repEnvInfo);
         new ExpectNoException() {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 TransactionConfig tc = new TransactionConfig();
                 tc.setDurability(SYNC_SYNC_ALL);
@@ -341,22 +313,19 @@ public class ReplicatedTransactionTest extends TestBase {
                 t.commit(SYNC_SYNC_ALL);
                 t = null;
                 /* Verify that all the replicas Ack'd the commit and synced. */
-                int replicas = verifyReplicaStats(new long[] {1, 1, 1, 0, 0});
+                int replicas = verifyReplicaStats(new long[] { 1, 1, 1, 0, 0 });
                 assertEquals(repNodes, replicas);
             }
         }.exec();
 
         resetReplicaStats(repEnvInfo);
 
-        DurabilityQuorum dq = RepInternal.getNonNullRepImpl(master).
-            getRepNode().getDurabilityQuorum();
-        final int quorumReplicas = dq.getCurrentRequiredAckCount
-            (Durability.ReplicaAckPolicy.SIMPLE_MAJORITY);
+        DurabilityQuorum dq = RepInternal.getNonNullRepImpl(master).getRepNode().getDurabilityQuorum();
+        final int quorumReplicas = dq.getCurrentRequiredAckCount(Durability.ReplicaAckPolicy.SIMPLE_MAJORITY);
 
         new ExpectNoException() {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 TransactionConfig tc = new TransactionConfig();
                 tc.setDurability(SYNC_SYNC_ALL);
@@ -371,7 +340,7 @@ public class ReplicatedTransactionTest extends TestBase {
                 t.commit(SYNC_SYNC_QUORUM);
                 t = null;
                 /* Verify that the replicas Ack'd the commit and synced. */
-                int replicas = verifyReplicaStats(new long[] {1, 1, 1, 0, 0});
+                int replicas = verifyReplicaStats(new long[] { 1, 1, 1, 0, 0 });
                 assertTrue(replicas >= quorumReplicas);
             }
         }.exec();
@@ -386,8 +355,7 @@ public class ReplicatedTransactionTest extends TestBase {
         resetReplicaStats(repEnvInfo);
         new ExpectNoException() {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 TransactionConfig tc = new TransactionConfig();
                 tc.setDurability(SYNC_SYNC_NONE);
@@ -406,39 +374,29 @@ public class ReplicatedTransactionTest extends TestBase {
     }
 
     /*
-     * Simple test to create a database and make some changes on a master
-     * with an explicit commit ACK policy.
+     * Simple test to create a database and make some changes on a master with
+     * an explicit commit ACK policy.
      */
     @Test
-    public void testReplicaCommitDurability()
-        throws UnknownMasterException,
-               DatabaseException {
+    public void testReplicaCommitDurability() throws UnknownMasterException, DatabaseException {
 
-        final ReplicatedEnvironment master =
-            RepTestUtils.joinGroup(repEnvInfo);
+        final ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
         final Environment env = master;
         int repNodes = groupSize - 1;
         final Durability[] durabilityTest = new Durability[] {
-            new Durability(SyncPolicy.SYNC, SyncPolicy.SYNC,
-                           ReplicaAckPolicy.ALL),
-            new Durability(SyncPolicy.SYNC, SyncPolicy.NO_SYNC,
-                           ReplicaAckPolicy.ALL),
-            new Durability(SyncPolicy.SYNC, SyncPolicy.WRITE_NO_SYNC,
-                           ReplicaAckPolicy.ALL)
-        };
+                new Durability(SyncPolicy.SYNC, SyncPolicy.SYNC, ReplicaAckPolicy.ALL),
+                new Durability(SyncPolicy.SYNC, SyncPolicy.NO_SYNC, ReplicaAckPolicy.ALL),
+                new Durability(SyncPolicy.SYNC, SyncPolicy.WRITE_NO_SYNC, ReplicaAckPolicy.ALL) };
 
         /* The expected commit statistics, for the above durability config. */
-        long[][] statistics = { {1, 1, 1, 0, 0},
-                                {1, 1, 0, 1, 0},
-                                {1, 1, 0, 0, 1}};
+        long[][] statistics = { { 1, 1, 1, 0, 0 }, { 1, 1, 0, 1, 0 }, { 1, 1, 0, 0, 1 } };
         createEmptyDB(env);
-        for (int i=0; i < durabilityTest.length; i++) {
+        for (int i = 0; i < durabilityTest.length; i++) {
             resetReplicaStats(repEnvInfo);
             final int testNo = i;
             new ExpectNoException() {
                 @Override
-                void test()
-                    throws DatabaseException {
+                void test() throws DatabaseException {
 
                     t = env.beginTransaction(null, null);
                     db = env.openDatabase(t, "testDB", dbconfig);
@@ -467,8 +425,7 @@ public class ReplicatedTransactionTest extends TestBase {
             Transaction rt = renv.beginTransaction(null, null);
             Database replicaDb = renv.openDatabase(rt, "testDB", dbconfig);
             DatabaseEntry val = new DatabaseEntry();
-            OperationStatus status =
-                replicaDb.get(rt, key, val, LockMode.READ_COMMITTED);
+            OperationStatus status = replicaDb.get(rt, key, val, LockMode.READ_COMMITTED);
             assertEquals(OperationStatus.SUCCESS, status);
             assertEquals(data, val);
             rt.commit();
@@ -483,8 +440,7 @@ public class ReplicatedTransactionTest extends TestBase {
         resetReplicaStats(repEnvInfo);
         new ExpectNoException() {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 t = env.beginTransaction(null, null);
                 db = env.openDatabase(t, "testDB", dbconfig);
@@ -499,19 +455,18 @@ public class ReplicatedTransactionTest extends TestBase {
     }
 
     /*
-     * A very basic test to ensure that "write" operations are disallowed on
-     * the replica db.
+     * A very basic test to ensure that "write" operations are disallowed on the
+     * replica db.
      */
     /*
      * TODO: need a more comprehensive test enumerating every type of write
      * operation on the Env and database. Is there an easy way to do this?
      */
     @Test
-    public void testReplicaReadonlyTransaction()
-        throws DatabaseException {
+    public void testReplicaReadonlyTransaction() throws DatabaseException {
 
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
-        {   /* Create a database for use in subsequent tests */
+        { /* Create a database for use in subsequent tests */
             Environment env = master;
             try {
                 Transaction t = env.beginTransaction(null, null);
@@ -527,11 +482,9 @@ public class ReplicatedTransactionTest extends TestBase {
 
         RepEnvInfo replicaInfo = findAReplica(repEnvInfo);
         final Environment renv = replicaInfo.getEnv();
-        new ExpectException<ReplicaWriteException>(ReplicaWriteException.class)
-        {
+        new ExpectException<ReplicaWriteException>(ReplicaWriteException.class) {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 t = renv.beginTransaction(null, null);
                 db = renv.openDatabase(t, "testDB", dbconfig);
@@ -539,11 +492,9 @@ public class ReplicatedTransactionTest extends TestBase {
             }
         }.exec();
 
-        new ExpectException<ReplicaWriteException>(ReplicaWriteException.class)
-        {
+        new ExpectException<ReplicaWriteException>(ReplicaWriteException.class) {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 t = renv.beginTransaction(null, null);
                 db = renv.openDatabase(t, "testDBRep", dbconfig);
@@ -551,16 +502,13 @@ public class ReplicatedTransactionTest extends TestBase {
         }.exec();
 
         /*
-         * A delete operation is tested specially below.  At one time a bug
-         * in LSN locking would allow a delete on a replica, due to a problem
-         * with the uncontended lock optimization (see CursorImpl.lockLN).
-         *
-         * In one case (encountered in stress testing and reproduced here), a
-         * NPE was thrown when logging the deletion, and the VLSNIndex
-         * attempted to bump the VLSN.
-         *
-         * In another case (encountered in McStress), the delete was logged
-         * successfully because the node transitioned to Master.  A
+         * A delete operation is tested specially below. At one time a bug in
+         * LSN locking would allow a delete on a replica, due to a problem with
+         * the uncontended lock optimization (see CursorImpl.lockLN). In one
+         * case (encountered in stress testing and reproduced here), a NPE was
+         * thrown when logging the deletion, and the VLSNIndex attempted to bump
+         * the VLSN. In another case (encountered in McStress), the delete was
+         * logged successfully because the node transitioned to Master. A
          * ReplicaWriteException was thrown after that, which caused an abort,
          * which threw an NPE because the undoDatabases field was not
          * initialized in Txn, because no write lock was taken.
@@ -572,11 +520,9 @@ public class ReplicatedTransactionTest extends TestBase {
         t.commit(SYNC_SYNC_ALL);
         testDb.close();
 
-        new ExpectException<ReplicaWriteException>(ReplicaWriteException.class)
-        {
+        new ExpectException<ReplicaWriteException>(ReplicaWriteException.class) {
             @Override
-            void test()
-                throws DatabaseException {
+            void test() throws DatabaseException {
 
                 t = renv.beginTransaction(null, null);
                 db = renv.openDatabase(t, "testDB", dbconfig);
@@ -586,9 +532,7 @@ public class ReplicatedTransactionTest extends TestBase {
     }
 
     @Test
-    public void testTxnCommitException()
-        throws UnknownMasterException,
-               DatabaseException {
+    public void testTxnCommitException() throws UnknownMasterException, DatabaseException {
 
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
         Environment env = master;
@@ -604,8 +548,8 @@ public class ReplicatedTransactionTest extends TestBase {
             db = env.openDatabase(t, "testDB", dbconfig);
 
             /*
-             * Should fail with ALL policy in place and a missing replica in
-             * the preLogCommitHook.
+             * Should fail with ALL policy in place and a missing replica in the
+             * preLogCommitHook.
              */
             t.commit(SYNC_SYNC_ALL);
             fail("expected CommitException");
@@ -629,20 +573,17 @@ public class ReplicatedTransactionTest extends TestBase {
     /*
      * Create an empty database for test purposes.
      */
-    private Database createEmptyDB(final Environment env)
-        throws DatabaseException {
+    private Database createEmptyDB(final Environment env) throws DatabaseException {
 
-        ExpectNoException ene =
-            new ExpectNoException() {
-                @Override
-                void test()
-                    throws DatabaseException {
+        ExpectNoException ene = new ExpectNoException() {
+            @Override
+            void test() throws DatabaseException {
 
-                    t = env.beginTransaction(null, null);
-                    db = env.openDatabase(t, "testDB", dbconfig);
-                    t.commit(SYNC_SYNC_ALL);
-                    t = null;
-                }
+                t = env.beginTransaction(null, null);
+                db = env.openDatabase(t, "testDB", dbconfig);
+                t.commit(SYNC_SYNC_ALL);
+                t = null;
+            }
         };
         ene.exec();
         return ene.db;
@@ -652,23 +593,18 @@ public class ReplicatedTransactionTest extends TestBase {
      * Shutdown some one replica and wait for the Master to shutdown its
      * associated feeder.
      */
-    private ReplicatedEnvironment
-        shutdownAReplica(ReplicatedEnvironment master,
-                         RepEnvInfo[] replicators)
-        throws DatabaseException {
+    private ReplicatedEnvironment shutdownAReplica(ReplicatedEnvironment master, RepEnvInfo[] replicators)
+            throws DatabaseException {
 
-        RepNode masterRepNode =
-            RepInternal.getNonNullRepImpl(master).getRepNode();
-        int replicaCount =
-            masterRepNode.feederManager().activeReplicas().size();
+        RepNode masterRepNode = RepInternal.getNonNullRepImpl(master).getRepNode();
+        int replicaCount = masterRepNode.feederManager().activeReplicas().size();
         final RepEnvInfo shutdownReplicaInfo = findAReplica(replicators);
         assertNotNull(shutdownReplicaInfo);
         shutdownReplicaInfo.getEnv().close();
 
         /* Wait for feeder to recognize it's gone. */
-        for (int i=0; i < 60; i++) {
-            int currReplicaCount =
-                masterRepNode.feederManager().activeReplicas().size();
+        for (int i = 0; i < 60; i++) {
+            int currReplicaCount = masterRepNode.feederManager().activeReplicas().size();
             if (currReplicaCount == replicaCount) {
                 try {
                     Thread.sleep(1000);
@@ -677,8 +613,7 @@ public class ReplicatedTransactionTest extends TestBase {
                 }
             }
         }
-        assertTrue
-        (masterRepNode.feederManager().activeReplicas().size() < replicaCount);
+        assertTrue(masterRepNode.feederManager().activeReplicas().size() < replicaCount);
 
         return null;
     }
@@ -686,13 +621,11 @@ public class ReplicatedTransactionTest extends TestBase {
     /**
      * Select from one amongst the active replicas and return it.
      */
-    private RepEnvInfo findAReplica(RepEnvInfo[] replicators)
-        throws DatabaseException {
+    private RepEnvInfo findAReplica(RepEnvInfo[] replicators) throws DatabaseException {
 
         for (RepEnvInfo repi : replicators) {
             ReplicatedEnvironment replicator = repi.getEnv();
-            if (!replicator.isValid() ||
-                replicator.getState().isMaster()) {
+            if (!replicator.isValid() || replicator.getState().isMaster()) {
                 continue;
             }
             return repi;
@@ -702,46 +635,37 @@ public class ReplicatedTransactionTest extends TestBase {
 
     /**
      * Resets the statistics associated with a Replica
+     * 
      * @param replicators
      * @throws DatabaseException
      */
-    private void resetReplicaStats(RepEnvInfo[] replicators)
-        throws DatabaseException {
+    private void resetReplicaStats(RepEnvInfo[] replicators) throws DatabaseException {
 
         for (RepEnvInfo repi : replicators) {
             ReplicatedEnvironment replicator = repi.getEnv();
-            if ((replicator == null) ||
-                 !replicator.isValid() ||
-                 replicator.getState().isMaster()) {
+            if ((replicator == null) || !replicator.isValid() || replicator.getState().isMaster()) {
                 continue;
             }
             RepInternal.getNonNullRepImpl(replicator).getReplay().resetStats();
         }
     }
 
-    private int verifyReplicaStats(long[] expected)
-        throws DatabaseException {
+    private int verifyReplicaStats(long[] expected) throws DatabaseException {
 
         int replicas = 0;
         for (RepEnvInfo repi : repEnvInfo) {
             ReplicatedEnvironment replicator = repi.getEnv();
 
-            if (!replicator.isValid() ||
-                replicator.getState().isMaster()) {
+            if (!replicator.isValid() || replicator.getState().isMaster()) {
                 continue;
             }
             replicas++;
-            ReplicatedEnvironmentStats actual =
-                replicator.getRepStats(StatsConfig.DEFAULT);
+            ReplicatedEnvironmentStats actual = replicator.getRepStats(StatsConfig.DEFAULT);
             assertEquals(expected[0], actual.getNReplayCommits());
             assertEquals(expected[1], actual.getNReplayCommitAcks());
 
-            assertEquals(expected[2],
-                         actual.getNReplayCommitSyncs() +
-                         actual.getNReplayGroupCommitTxns());
-            assertEquals(expected[3],
-                         actual.getNReplayCommitNoSyncs() -
-                         actual.getNReplayGroupCommitTxns());
+            assertEquals(expected[2], actual.getNReplayCommitSyncs() + actual.getNReplayGroupCommitTxns());
+            assertEquals(expected[3], actual.getNReplayCommitNoSyncs() - actual.getNReplayGroupCommitTxns());
             assertEquals(expected[4], actual.getNReplayCommitWriteNoSyncs());
         }
 
@@ -753,8 +677,8 @@ public class ReplicatedTransactionTest extends TestBase {
      */
     private abstract class ExpectException<T extends Throwable> {
         private final Class<T> exceptionClass;
-        Transaction t = null;
-        Database db = null;
+        Transaction            t  = null;
+        Database               db = null;
 
         ExpectException(Class<T> exceptionClass) {
             this.exceptionClass = exceptionClass;
@@ -762,8 +686,7 @@ public class ReplicatedTransactionTest extends TestBase {
 
         abstract void test() throws Throwable;
 
-        void exec()
-            throws DatabaseException {
+        void exec() throws DatabaseException {
 
             try {
                 test();
@@ -787,7 +710,7 @@ public class ReplicatedTransactionTest extends TestBase {
                 if (t != null) {
                     t.abort();
                 }
-                if (db != null){
+                if (db != null) {
                     db.close();
                 }
                 t = null;
@@ -795,20 +718,21 @@ public class ReplicatedTransactionTest extends TestBase {
             }
         }
 
-        void checkException(T th) { }
+        void checkException(T th) {
+        }
     }
 
     private abstract class ExpectNoException {
-        Transaction t = null;
-        Database db = null;
+        Transaction t  = null;
+        Database    db = null;
+
         abstract void test() throws Throwable;
 
-        void exec()
-            throws DatabaseException {
+        void exec() throws DatabaseException {
 
             try {
                 test();
-                if (t!= null) {
+                if (t != null) {
                     t.commit();
                 }
                 t = null;
@@ -819,7 +743,7 @@ public class ReplicatedTransactionTest extends TestBase {
                 if (t != null) {
                     t.abort();
                 }
-                if (db != null){
+                if (db != null) {
                     db.close();
                 }
             }

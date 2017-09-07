@@ -12,12 +12,13 @@
  */
 
 package com.sleepycat.je.dbi;
+
 import com.sleepycat.je.tree.BIN;
 import com.sleepycat.je.txn.Locker;
 
 /**
- * A NullCursor is used as a no-op object by tree unit tests, which
- * wish to speak directly to Tree methods.
+ * A NullCursor is used as a no-op object by tree unit tests, which wish to
+ * speak directly to Tree methods.
  */
 public class NullCursor extends CursorImpl {
     /**
@@ -28,7 +29,10 @@ public class NullCursor extends CursorImpl {
     }
 
     @Override
-    void addCursor(BIN bin) {}
+    void addCursor(BIN bin) {
+    }
+
     @Override
-    void addCursor() {}
+    void addCursor() {
+    }
 }

@@ -41,10 +41,10 @@ import com.sleepycat.utilint.StringUtils;
  */
 public class FileReaderBufferingTest extends TestBase {
 
-    private final File envHome;
-    private Environment env;
-    private EnvironmentImpl envImpl;
-    private ArrayList<Long> expectedLsns;
+    private final File        envHome;
+    private Environment       env;
+    private EnvironmentImpl   envImpl;
+    private ArrayList<Long>   expectedLsns;
     private ArrayList<String> expectedVals;
 
     public FileReaderBufferingTest() {
@@ -55,82 +55,68 @@ public class FileReaderBufferingTest extends TestBase {
      * Should overflow once and then grow.
      */
     @Test
-    public void testBasic()
-        throws Exception {
+    public void testBasic() throws Exception {
 
-        readLog(1050,   // starting size of object in entry
-                0,      // object growth increment
-                100,    // starting read buffer size
+        readLog(1050, // starting size of object in entry
+                0, // object growth increment
+                100, // starting read buffer size
                 "3000", // max read buffer size
-                0);     // expected number of overflows.
+                0); // expected number of overflows.
     }
 
     /**
      * Should overflow once and then grow.
      */
     @Test
-    public void testCantGrow()
-        throws Exception {
+    public void testCantGrow() throws Exception {
 
-        readLog(2000,   // starting size of object in entry
-                0,      // object growth increment
-                100,    // starting read buffer size
+        readLog(2000, // starting size of object in entry
+                0, // object growth increment
+                100, // starting read buffer size
                 "1000", // max read buffer size
-                10);    // expected number of overflows.
+                10); // expected number of overflows.
     }
 
     /**
      * Should overflow, grow, and then reach the max.
      */
     @Test
-    public void testReachMax()
-        throws Exception {
+    public void testReachMax() throws Exception {
 
-        readLog(1000,   // size of object in entry
-                1000,      // object growth increment
-                100,    // starting read buffer size
+        readLog(1000, // size of object in entry
+                1000, // object growth increment
+                100, // starting read buffer size
                 "3500", // max read buffer size
-                7);     // expected number of overflows.
+                7); // expected number of overflows.
     }
+
     /**
      *
      */
-    private void readLog(int entrySize,
-                         int entrySizeIncrement,
-                         int readBufferSize,
-                         String bufferMaxSize,
+    private void readLog(int entrySize, int entrySizeIncrement, int readBufferSize, String bufferMaxSize,
                          int expectedOverflows)
-        throws Exception {
+            throws Exception {
 
         try {
 
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setAllowCreate(true);
-            envConfig.setConfigParam
-                (EnvironmentParams.LOG_ITERATOR_MAX_SIZE.getName(),
-                 bufferMaxSize);
+            envConfig.setConfigParam(EnvironmentParams.LOG_ITERATOR_MAX_SIZE.getName(), bufferMaxSize);
             env = new Environment(envHome, envConfig);
 
             envImpl = DbInternal.getNonNullEnvImpl(env);
 
             /* Make a log file */
             createLogFile(10, entrySize, entrySizeIncrement);
-            SearchFileReader reader =
-                new SearchFileReader(envImpl,
-                                     readBufferSize,
-                                     true,
-                                     DbLsn.longToLsn
-                                     (expectedLsns.get(0)),
-                                     DbLsn.NULL_LSN,
-                                     LogEntryType.LOG_TRACE);
+            SearchFileReader reader = new SearchFileReader(envImpl, readBufferSize, true,
+                    DbLsn.longToLsn(expectedLsns.get(0)), DbLsn.NULL_LSN, LogEntryType.LOG_TRACE);
 
             Iterator<Long> lsnIter = expectedLsns.iterator();
             Iterator<String> valIter = expectedVals.iterator();
             while (reader.readNextEntry()) {
                 Trace rec = (Trace) reader.getLastObject();
                 assertTrue(lsnIter.hasNext());
-                assertEquals(reader.getLastLsn(),
-                             DbLsn.longToLsn(lsnIter.next()));
+                assertEquals(reader.getLastLsn(), DbLsn.longToLsn(lsnIter.next()));
                 assertEquals(valIter.next(), rec.getMessage());
             }
             assertEquals(10, reader.getNumRead());
@@ -145,12 +131,12 @@ public class FileReaderBufferingTest extends TestBase {
     }
 
     /**
-     * Write a logfile of entries, put the entries that we expect to
-     * read into a list for later verification.
+     * Write a logfile of entries, put the entries that we expect to read into a
+     * list for later verification.
+     * 
      * @return end of file LSN.
      */
-    private void createLogFile(int numItems, int size, int sizeIncrement)
-        throws IOException, DatabaseException {
+    private void createLogFile(int numItems, int size, int sizeIncrement) throws IOException, DatabaseException {
 
         LogManager logManager = envImpl.getLogManager();
         expectedLsns = new ArrayList<Long>();
@@ -160,7 +146,7 @@ public class FileReaderBufferingTest extends TestBase {
             /* Add a debug record just to be filler. */
             int recordSize = size + (i * sizeIncrement);
             byte[] filler = new byte[recordSize];
-            Arrays.fill(filler, (byte)i);
+            Arrays.fill(filler, (byte) i);
             String val = StringUtils.fromUTF8(filler);
 
             Trace rec = new Trace(val);

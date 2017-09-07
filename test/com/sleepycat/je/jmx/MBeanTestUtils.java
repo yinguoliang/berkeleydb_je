@@ -37,10 +37,7 @@ import junit.framework.TestCase;
  * A utility class for testing JE MBeans.
  */
 public class MBeanTestUtils extends TestCase {
-    public static void validateGetters(DynamicMBean mbean,
-                                       int numExpectedAttributes,
-                                       boolean DEBUG)
-        throws Throwable {
+    public static void validateGetters(DynamicMBean mbean, int numExpectedAttributes, boolean DEBUG) throws Throwable {
 
         MBeanInfo info = mbean.getMBeanInfo();
 
@@ -52,14 +49,11 @@ public class MBeanTestUtils extends TestCase {
             String name = attrs[i].getName();
             Object result = mbean.getAttribute(name);
             if (DEBUG) {
-                System.out.println("Attribute " + i +
-                                   " name=" + name +
-                                   " result=" + result);
+                System.out.println("Attribute " + i + " name=" + name + " result=" + result);
             }
             if (result != null) {
                 attributesWithValues++;
-                checkObjectType
-                    ("Attribute", name, attrs[i].getType(), result);
+                checkObjectType("Attribute", name, attrs[i].getType(), result);
             }
         }
 
@@ -69,10 +63,7 @@ public class MBeanTestUtils extends TestCase {
     /*
      * Check that there are the expected number of operations.
      */
-    public static void checkOpNum(DynamicMBean mbean,
-                                  int numExpectedOperations,
-                                  boolean DEBUG)
-        throws Throwable {
+    public static void checkOpNum(DynamicMBean mbean, int numExpectedOperations, boolean DEBUG) throws Throwable {
 
         MBeanInfo info = mbean.getMBeanInfo();
 
@@ -94,22 +85,15 @@ public class MBeanTestUtils extends TestCase {
 
         MBeanAttributeInfo[] attrs = info.getAttributes();
         for (int i = 0; i < attrs.length; i++) {
-            checkSerializable
-                ("Attribute", attrs[i].getName(), attrs[i].getType());
+            checkSerializable("Attribute", attrs[i].getName(), attrs[i].getType());
         }
 
         MBeanOperationInfo[] ops = info.getOperations();
         for (int i = 0; i < ops.length; i += 1) {
-            checkSerializable
-                ("Operation",
-                 ops[i].getName() + " return type",
-                 ops[i].getReturnType());
+            checkSerializable("Operation", ops[i].getName() + " return type", ops[i].getReturnType());
             MBeanParameterInfo[] params = ops[i].getSignature();
             for (int j = 0; j < params.length; j += 1) {
-                checkSerializable
-                    ("Operation",
-                     ops[i].getName() + " parameter " + j,
-                     params[j].getType());
+                checkSerializable("Operation", ops[i].getName() + " parameter " + j, params[j].getType());
             }
         }
 
@@ -117,10 +101,7 @@ public class MBeanTestUtils extends TestCase {
         for (int i = 0; i < ctors.length; i++) {
             MBeanParameterInfo[] params = ctors[i].getSignature();
             for (int j = 0; j < params.length; j += 1) {
-                checkSerializable
-                    ("Constructor",
-                     ctors[i].getName() + " parameter " + j,
-                     params[j].getType());
+                checkSerializable("Constructor", ctors[i].getName() + " parameter " + j, params[j].getType());
             }
         }
 
@@ -128,8 +109,7 @@ public class MBeanTestUtils extends TestCase {
         for (int i = 0; i < notifs.length; i++) {
             String[] types = notifs[i].getNotifTypes();
             for (int j = 0; j < types.length; j += 1) {
-                checkSerializable
-                    ("Notification", notifs[i].getName(), types[j]);
+                checkSerializable("Notification", notifs[i].getName(), types[j]);
             }
         }
     }
@@ -137,9 +117,7 @@ public class MBeanTestUtils extends TestCase {
     /**
      * Checks that a given type is serializable.
      */
-    private static void checkSerializable(String identifier,
-                                          String name,
-                                          String type) {
+    private static void checkSerializable(String identifier, String name, String type) {
 
         if ("void".equals(type)) {
             return;
@@ -160,10 +138,7 @@ public class MBeanTestUtils extends TestCase {
      * Checks that an object (parameter or return value) is of the type
      * specified in the BeanInfo.
      */
-    public static void checkObjectType(String identifier,
-                                       String name,
-                                       String type,
-                                       Object object) {
+    public static void checkObjectType(String identifier, String name, String type, Object object) {
         String msg = identifier + ' ' + name + " is type " + type;
         if ("void".equals(type)) {
             assertNull(msg + "-- should be null", object);
@@ -171,15 +146,14 @@ public class MBeanTestUtils extends TestCase {
         }
         try {
             Class cls = Class.forName(type);
-            assertTrue
-                (msg + " -- object class is " + object.getClass().getName(),
-                 cls.isAssignableFrom(object.getClass()));
+            assertTrue(msg + " -- object class is " + object.getClass().getName(),
+                    cls.isAssignableFrom(object.getClass()));
         } catch (Exception e) {
             fail(msg + " -- " + e);
         }
 
         /*
-         * The true test of serializable is to serialize.  This checks the a
+         * The true test of serializable is to serialize. This checks the a
          * elements of a list, for example.
          */
         try {
@@ -195,9 +169,7 @@ public class MBeanTestUtils extends TestCase {
         assertFalse(DbEnvPool.getInstance().isOpen(new File(environmentDir)));
     }
 
-    public static Environment openTxnalEnv(boolean isTransactional, 
-                                           File envHome) 
-        throws Exception {
+    public static Environment openTxnalEnv(boolean isTransactional, File envHome) throws Exception {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -207,16 +179,12 @@ public class MBeanTestUtils extends TestCase {
     }
 
     /*
-     * Check that there are the expected number of operations. If specified, 
+     * Check that there are the expected number of operations. If specified,
      * invoke and check the operations of JEMonitor and JEApplicationMBean.
      */
-    public static void validateMBeanOperations(DynamicMBean mbean,
-                                              int numExpectedOperations,
-                                              boolean tryInvoke,
-                                              String databaseName,
-                                              String[] expectedDatabases,
-                                              boolean DEBUG)
-        throws Throwable {
+    public static void validateMBeanOperations(DynamicMBean mbean, int numExpectedOperations, boolean tryInvoke,
+                                               String databaseName, String[] expectedDatabases, boolean DEBUG)
+            throws Throwable {
 
         checkOpNum(mbean, numExpectedOperations, DEBUG);
 
@@ -228,36 +196,26 @@ public class MBeanTestUtils extends TestCase {
                 String opName = ops[i].getName();
 
                 /* Try the per-database operations if specified. */
-                if ((databaseName != null) &&
-                    opName.equals(JEMBeanHelper.OP_DB_STAT)) {
+                if ((databaseName != null) && opName.equals(JEMBeanHelper.OP_DB_STAT)) {
                     /* Invoke with the name of the database. */
-                    Object result = mbean.invoke
-                        (opName,
-                         new Object[] {null, null, databaseName},
-                         null);
+                    Object result = mbean.invoke(opName, new Object[] { null, null, databaseName }, null);
                     assertTrue(result instanceof String);
-                    checkObjectType
-                        ("Operation", opName, ops[i].getReturnType(), result);
+                    checkObjectType("Operation", opName, ops[i].getReturnType(), result);
                 }
 
-                if ((expectedDatabases != null) &&
-                    opName.equals(JEMBeanHelper.OP_DB_NAMES)) {
+                if ((expectedDatabases != null) && opName.equals(JEMBeanHelper.OP_DB_NAMES)) {
                     Object result = mbean.invoke(opName, null, null);
                     List names = (List) result;
-                    assertTrue(Arrays.equals(expectedDatabases,
-                                             names.toArray()));
-                    checkObjectType
-                        ("Operation", opName, ops[i].getReturnType(), result);
+                    assertTrue(Arrays.equals(expectedDatabases, names.toArray()));
+                    checkObjectType("Operation", opName, ops[i].getReturnType(), result);
                 }
 
                 /*
-                 * Also invoke all operations with null params, to sanity
-                 * check.
+                 * Also invoke all operations with null params, to sanity check.
                  */
                 Object result = mbean.invoke(opName, null, null);
                 if (result != null) {
-                    checkObjectType
-                        ("Operation", opName, ops[i].getReturnType(), result);
+                    checkObjectType("Operation", opName, ops[i].getReturnType(), result);
                 }
             }
         }

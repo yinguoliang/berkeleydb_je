@@ -30,22 +30,19 @@ import com.sleepycat.util.test.TestBase;
 public class LogEntryTest extends TestBase {
 
     @Test
-    public void testEquality()
-        throws DatabaseException {
+    public void testEquality() throws DatabaseException {
 
         byte testTypeNum = LogEntryType.LOG_IN.getTypeNum();
 
         /* Look it up by type */
         LogEntryType foundType = LogEntryType.findType(testTypeNum);
         assertEquals(foundType, LogEntryType.LOG_IN);
-        assertTrue(foundType.getSharedLogEntry() instanceof
-                   com.sleepycat.je.log.entry.INLogEntry);
+        assertTrue(foundType.getSharedLogEntry() instanceof com.sleepycat.je.log.entry.INLogEntry);
 
         /* Look it up by type */
         foundType = LogEntryType.findType(testTypeNum);
         assertEquals(foundType, LogEntryType.LOG_IN);
-        assertTrue(foundType.getSharedLogEntry() instanceof
-                   com.sleepycat.je.log.entry.INLogEntry);
+        assertTrue(foundType.getSharedLogEntry() instanceof com.sleepycat.je.log.entry.INLogEntry);
 
         /* Get a new entry object */
         LogEntry sharedEntry = foundType.getSharedLogEntry();
@@ -65,17 +62,14 @@ public class LogEntryTest extends TestBase {
                 continue;
             }
             final ReplicableLogEntry repEntry = (ReplicableLogEntry) entry;
-            verifyLastFormatChange(
-                repEntry.getClass().getName(), repEntry.getLastFormatChange(),
-                repEntry.getEmbeddedLoggables());
+            verifyLastFormatChange(repEntry.getClass().getName(), repEntry.getLastFormatChange(),
+                    repEntry.getEmbeddedLoggables());
         }
     }
 
-    private void verifyLastFormatChange(
-        final String entryClassName,
-        final int entryLastFormatChange,
-        final Collection<VersionedWriteLoggable> embeddedLoggables)
-        throws Exception {
+    private void verifyLastFormatChange(final String entryClassName, final int entryLastFormatChange,
+                                        final Collection<VersionedWriteLoggable> embeddedLoggables)
+            throws Exception {
 
         assertNotNull(embeddedLoggables);
 
@@ -88,15 +82,11 @@ public class LogEntryTest extends TestBase {
             final int childLastFormatChange = child.getLastFormatChange();
 
             if (childLastFormatChange > entryLastFormatChange) {
-                fail(String.format(
-                    "Embedded %s version %d is GT entry %s version %d",
-                    child.getClass().getName(), childLastFormatChange,
-                    entryClassName, entryLastFormatChange));
+                fail(String.format("Embedded %s version %d is GT entry %s version %d", child.getClass().getName(),
+                        childLastFormatChange, entryClassName, entryLastFormatChange));
             }
 
-            verifyLastFormatChange(
-                entryClassName, entryLastFormatChange,
-                child.getEmbeddedLoggables());
+            verifyLastFormatChange(entryClassName, entryLastFormatChange, child.getEmbeddedLoggables());
         }
     }
 }

@@ -36,35 +36,30 @@ import com.sleepycat.util.test.TestBase;
 
 public class INEntryTestBase extends TestBase {
 
-    File envHome = SharedTestUtils.getTestDir();
+    File                    envHome             = SharedTestUtils.getTestDir();
 
-    EnvironmentConfig envConfig;
+    EnvironmentConfig       envConfig;
 
-    int nodeMaxEntries;
+    int                     nodeMaxEntries;
 
-    short compactMaxKeyLength = 0;
+    short                   compactMaxKeyLength = 0;
 
-    CacheMode cacheMode = CacheMode.DEFAULT;
+    CacheMode               cacheMode           = CacheMode.DEFAULT;
 
-    Environment env = null;
+    Environment             env                 = null;
 
-    protected static String DB_NAME = "TestDb";
+    protected static String DB_NAME             = "TestDb";
 
     @Before
-    public void setUp()  
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER,
-                                 "false");
-        envConfig.setConfigParam(EnvironmentConfig.TREE_COMPACT_MAX_KEY_LENGTH,
-                                 String.valueOf(compactMaxKeyLength));
-        nodeMaxEntries = Integer.parseInt
-            (envConfig.getConfigParam(EnvironmentConfig.NODE_MAX_ENTRIES));
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.TREE_COMPACT_MAX_KEY_LENGTH, String.valueOf(compactMaxKeyLength));
+        nodeMaxEntries = Integer.parseInt(envConfig.getConfigParam(EnvironmentConfig.NODE_MAX_ENTRIES));
         env = new Environment(envHome, envConfig);
     }
 
@@ -75,7 +70,7 @@ public class INEntryTestBase extends TestBase {
 
     /* Assumes the test creates just one IN node. */
     protected void verifyINMemorySize(DatabaseImpl dbImpl) {
-        BIN in = (BIN)(dbImpl.getTree().getFirstNode(cacheMode));
+        BIN in = (BIN) (dbImpl.getTree().getFirstNode(cacheMode));
         in.releaseLatch();
 
         final IN lastNode = dbImpl.getTree().getLastNode(cacheMode);
@@ -86,10 +81,7 @@ public class INEntryTestBase extends TestBase {
         TestUtils.validateNodeMemUsage(dbImpl.getEnv(), true);
     }
 
-    protected Database createDb(String dbName,
-                                int keySize,
-                                int count,
-                                boolean keyPrefixingEnabled) {
+    protected Database createDb(String dbName, int keySize, int count, boolean keyPrefixingEnabled) {
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
         dbConfig.setSortedDuplicates(false);
@@ -100,7 +92,7 @@ public class INEntryTestBase extends TestBase {
 
         DatabaseEntry key = new DatabaseEntry();
 
-        for (int i=0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             key.setData(createByteVal(i, keySize));
             db.put(null, key, key);
             verifyINMemorySize(dbImpl);
@@ -108,15 +100,11 @@ public class INEntryTestBase extends TestBase {
         return db;
     }
 
-    protected Database createDb(String dbName,
-                                int keySize,
-                                int count) {
+    protected Database createDb(String dbName, int keySize, int count) {
         return createDb(dbName, keySize, count, false);
     }
 
-    protected Database createDupDb(String dbName,
-                                   int keySize,
-                                   int count) {
+    protected Database createDupDb(String dbName, int keySize, int count) {
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
         dbConfig.setSortedDuplicates(true);

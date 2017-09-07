@@ -50,27 +50,25 @@ import com.sleepycat.util.test.TestBase;
 /**
  * Reproduces a problem to do with checkpointing and splits, and tests a fix.
  * The problem was introduced with the off-heap implementation, although JE was
- * never shipped with this bug.
- *
- * With the off-heap cache, when iterating over the INList to create the
- * checkpoint dirty set, we must select dirty BINs via their parent rather
- * than when they're encountered during the iteration. (This is explained in
- * DirtyINMap.selectForCheckpoint.) When a level 2 is split, the references to
- * half of the BINs go into the new sibling. Those dirty BINs weren't being
- * counted if the split happened in the middle of the INList iteration and the
- * new sibling did not happen to be iterated (ConcurrentHashMap doesn't
- * guarantee that newly added elements will be seen by an in-progress
- * iteration). The fix is to add the dirty BINs to the dirty set during the
- * split via the DirtyINMap.coordinateSplitWithCheckpoint method.
+ * never shipped with this bug. With the off-heap cache, when iterating over the
+ * INList to create the checkpoint dirty set, we must select dirty BINs via
+ * their parent rather than when they're encountered during the iteration. (This
+ * is explained in DirtyINMap.selectForCheckpoint.) When a level 2 is split, the
+ * references to half of the BINs go into the new sibling. Those dirty BINs
+ * weren't being counted if the split happened in the middle of the INList
+ * iteration and the new sibling did not happen to be iterated
+ * (ConcurrentHashMap doesn't guarantee that newly added elements will be seen
+ * by an in-progress iteration). The fix is to add the dirty BINs to the dirty
+ * set during the split via the DirtyINMap.coordinateSplitWithCheckpoint method.
  */
 public class Level2SplitBugTest extends TestBase {
 
-    private static final int NODE_MAX = 30;
+    private static final int NODE_MAX  = 30;
     private static final int N_RECORDS = 10 * NODE_MAX * NODE_MAX;
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
+    private final File       envHome;
+    private Environment      env;
+    private Database         db;
 
     public Level2SplitBugTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -92,18 +90,12 @@ public class Level2SplitBugTest extends TestBase {
 
         final EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(
-            EnvironmentConfig.NODE_MAX_ENTRIES, String.valueOf(NODE_MAX));
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.NODE_MAX_ENTRIES, String.valueOf(NODE_MAX));
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
         env = new Environment(envHome, envConfig);
 
         final DatabaseConfig dbConfig = new DatabaseConfig();
@@ -138,8 +130,7 @@ public class Level2SplitBugTest extends TestBase {
 
         try (final Cursor cursor = db.openCursor(null, null)) {
 
-            while (cursor.getNext(key, data, null) ==
-                    OperationStatus.SUCCESS) {
+            while (cursor.getNext(key, data, null) == OperationStatus.SUCCESS) {
 
                 assertEquals(expectKey, IntegerBinding.entryToInt(key));
                 assertEquals(expectKey, IntegerBinding.entryToInt(data));
@@ -163,8 +154,8 @@ public class Level2SplitBugTest extends TestBase {
         final int inListSize = envImpl.getInMemoryINs().getSize();
 
         /*
-         * After the write() call above, all BINs are dirty. Collect the level
-         * 2 INs in our DB and their dirty BIN children.
+         * After the write() call above, all BINs are dirty. Collect the level 2
+         * INs in our DB and their dirty BIN children.
          */
         final List<Pair<IN, List<BIN>>> list = new ArrayList<>();
 
@@ -198,17 +189,16 @@ public class Level2SplitBugTest extends TestBase {
         final Set<IN> newSiblings = new HashSet<>();
 
         /*
-         * Hook is called after examining each IN during dirty map creation.
-         * We must do the splits after the iteration starts, so that the INs
-         * added to the INList by the splits (or at least some of them) are not
-         * seen in the iteration.
-         *
-         * When we do the splits we add all new siblings to newSiblings. The
-         * INs seen by the the iteration are removed from this set. At the end,
-         * the set should be non-empty for the test to be valid.
+         * Hook is called after examining each IN during dirty map creation. We
+         * must do the splits after the iteration starts, so that the INs added
+         * to the INList by the splits (or at least some of them) are not seen
+         * in the iteration. When we do the splits we add all new siblings to
+         * newSiblings. The INs seen by the the iteration are removed from this
+         * set. At the end, the set should be non-empty for the test to be
+         * valid.
          */
         class MyHook implements TestHook<IN> {
-            int nIters = 0;
+            int     nIters    = 0;
             boolean didSplits = false;
 
             public void doHook(IN inIterated) {
@@ -244,8 +234,7 @@ public class Level2SplitBugTest extends TestBase {
 
                             assertTrue(parent.isRoot());
 
-                            final IN newSibling = child.split(
-                                parent, index, null /*grandParent*/, NODE_MAX);
+                            final IN newSibling = child.split(parent, index, null /* grandParent */, NODE_MAX);
 
                             newSiblings.add(newSibling);
 
@@ -267,24 +256,28 @@ public class Level2SplitBugTest extends TestBase {
                     throw new RuntimeException(e);
                 }
 
-//                System.out.println(
-//                    "newSiblings initial size=" + newSiblings.size());
+                //                System.out.println(
+                //                    "newSiblings initial size=" + newSiblings.size());
             }
 
             /* Unused methods. */
             public void doHook() {
                 throw new UnsupportedOperationException();
             }
+
             public IN getHookValue() {
                 throw new UnsupportedOperationException();
             }
+
             public void doIOHook() {
                 throw new UnsupportedOperationException();
             }
+
             public void hookSetup() {
                 throw new UnsupportedOperationException();
             }
-        };
+        }
+        ;
 
         final MyHook hook = new MyHook();
 
@@ -295,16 +288,15 @@ public class Level2SplitBugTest extends TestBase {
             Checkpointer.examineINForCheckpointHook = null;
         }
 
-//        System.out.println(
-//            "newSiblings final size=" + newSiblings.size());
+        //        System.out.println(
+        //            "newSiblings final size=" + newSiblings.size());
 
         assertTrue(hook.didSplits);
 
         if (newSiblings.isEmpty()) {
-            System.out.println(
-                "Unable to create conditions for test. ConcurrentHashMap " +
-                "(INList) iteration can't be relied on to return or not " +
-                "return items added during the iteration.");
+            System.out.println("Unable to create conditions for test. ConcurrentHashMap "
+                    + "(INList) iteration can't be relied on to return or not "
+                    + "return items added during the iteration.");
             close();
             return;
         }

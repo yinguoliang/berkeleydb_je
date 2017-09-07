@@ -41,17 +41,16 @@ import com.sleepycat.utilint.StringUtils;
  * Simple 2PC transaction testing.
  */
 public class TwoPCTest extends TestBase {
-    private final File envHome;
+    private final File    envHome;
     private XAEnvironment env;
-    private Database db;
+    private Database      db;
 
     public TwoPCTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -66,8 +65,7 @@ public class TwoPCTest extends TestBase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         db.close();
         env.close();
@@ -79,66 +77,65 @@ public class TwoPCTest extends TestBase {
     @Test
     public void testBasic2PC() {
         try {
-        TransactionStats stats =
-            env.getTransactionStats(TestUtils.FAST_STATS);
-        /*
-         * 3 commits for setting up XA env, opening cleaner dbs.
-         */
-        int numBegins = 3;
-        int numCommits = 3;
-        int numXAPrepares = 0;
-        int numXACommits = 0;
-        assertEquals(numBegins, stats.getNBegins());
-        assertEquals(numCommits, stats.getNCommits());
-        assertEquals(numXAPrepares, stats.getNXAPrepares());
-        assertEquals(numXACommits, stats.getNXACommits());
+            TransactionStats stats = env.getTransactionStats(TestUtils.FAST_STATS);
+            /*
+             * 3 commits for setting up XA env, opening cleaner dbs.
+             */
+            int numBegins = 3;
+            int numCommits = 3;
+            int numXAPrepares = 0;
+            int numXACommits = 0;
+            assertEquals(numBegins, stats.getNBegins());
+            assertEquals(numCommits, stats.getNCommits());
+            assertEquals(numXAPrepares, stats.getNXAPrepares());
+            assertEquals(numXACommits, stats.getNXACommits());
 
-        Transaction txn = env.beginTransaction(null, null);
-        stats = env.getTransactionStats(TestUtils.FAST_STATS);
-        numBegins++;
-        assertEquals(numBegins, stats.getNBegins());
-        assertEquals(numCommits, stats.getNCommits());
-        assertEquals(numXAPrepares, stats.getNXAPrepares());
-        assertEquals(numXACommits, stats.getNXACommits());
-        assertEquals(1, stats.getNActive());
+            Transaction txn = env.beginTransaction(null, null);
+            stats = env.getTransactionStats(TestUtils.FAST_STATS);
+            numBegins++;
+            assertEquals(numBegins, stats.getNBegins());
+            assertEquals(numCommits, stats.getNCommits());
+            assertEquals(numXAPrepares, stats.getNXAPrepares());
+            assertEquals(numXACommits, stats.getNXACommits());
+            assertEquals(1, stats.getNActive());
 
-        XidImpl xid = new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
-        env.setXATransaction(xid, txn);
-        stats = env.getTransactionStats(TestUtils.FAST_STATS);
-        assertEquals(numBegins, stats.getNBegins());
-        assertEquals(numCommits, stats.getNCommits());
-        assertEquals(numXAPrepares, stats.getNXAPrepares());
-        assertEquals(numXACommits, stats.getNXACommits());
-        assertEquals(1, stats.getNActive());
+            XidImpl xid = new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
+            env.setXATransaction(xid, txn);
+            stats = env.getTransactionStats(TestUtils.FAST_STATS);
+            assertEquals(numBegins, stats.getNBegins());
+            assertEquals(numCommits, stats.getNCommits());
+            assertEquals(numXAPrepares, stats.getNXAPrepares());
+            assertEquals(numXACommits, stats.getNXACommits());
+            assertEquals(1, stats.getNActive());
 
-        StringDbt key = new StringDbt("key");
-        StringDbt data = new StringDbt("data");
-        db.put(txn, key, data);
-        stats = env.getTransactionStats(TestUtils.FAST_STATS);
-        assertEquals(numBegins, stats.getNBegins());
-        assertEquals(numCommits, stats.getNCommits());
-        assertEquals(numXAPrepares, stats.getNXAPrepares());
-        assertEquals(numXACommits, stats.getNXACommits());
-        assertEquals(1, stats.getNActive());
+            StringDbt key = new StringDbt("key");
+            StringDbt data = new StringDbt("data");
+            db.put(txn, key, data);
+            stats = env.getTransactionStats(TestUtils.FAST_STATS);
+            assertEquals(numBegins, stats.getNBegins());
+            assertEquals(numCommits, stats.getNCommits());
+            assertEquals(numXAPrepares, stats.getNXAPrepares());
+            assertEquals(numXACommits, stats.getNXACommits());
+            assertEquals(1, stats.getNActive());
 
-        env.prepare(xid);
-        numXAPrepares++;
-        stats = env.getTransactionStats(TestUtils.FAST_STATS);
-        assertEquals(numBegins, stats.getNBegins());
-        assertEquals(numCommits, stats.getNCommits());
-        assertEquals(numXAPrepares, stats.getNXAPrepares());
-        assertEquals(numXACommits, stats.getNXACommits());
-        assertEquals(1, stats.getNActive());
+            env.prepare(xid);
+            numXAPrepares++;
+            stats = env.getTransactionStats(TestUtils.FAST_STATS);
+            assertEquals(numBegins, stats.getNBegins());
+            assertEquals(numCommits, stats.getNCommits());
+            assertEquals(numXAPrepares, stats.getNXAPrepares());
+            assertEquals(numXACommits, stats.getNXACommits());
+            assertEquals(1, stats.getNActive());
 
-        env.commit(xid, false);
-        numCommits++;
-        numXACommits++;
-        stats = env.getTransactionStats(TestUtils.FAST_STATS);
-        assertEquals(numBegins, stats.getNBegins());
-        assertEquals(numCommits, stats.getNCommits());
-        assertEquals(numXAPrepares, stats.getNXAPrepares());
-        assertEquals(numXACommits, stats.getNXACommits());
-        assertEquals(0, stats.getNActive());
+            env.commit(xid, false);
+            numCommits++;
+            numXACommits++;
+            stats = env.getTransactionStats(TestUtils.FAST_STATS);
+            assertEquals(numBegins, stats.getNBegins());
+            assertEquals(numCommits, stats.getNCommits());
+            assertEquals(numXAPrepares, stats.getNXAPrepares());
+            assertEquals(numXACommits, stats.getNXACommits());
+            assertEquals(0, stats.getNActive());
         } catch (Exception E) {
             System.out.println("caught " + E);
         }
@@ -164,8 +161,7 @@ public class TwoPCTest extends TestBase {
      * Test calling prepare twice (should throw exception).
      */
     @Test
-    public void testTwicePreparedTransaction()
-        throws Throwable {
+    public void testTwicePreparedTransaction() throws Throwable {
 
         Transaction txn = env.beginTransaction(null, null);
         XidImpl xid = new XidImpl(1, StringUtils.toUTF8("TwoPCTest2"), null);
@@ -187,8 +183,7 @@ public class TwoPCTest extends TestBase {
      * Test calling rollback(xid) on an unregistered xa txn.
      */
     @Test
-    public void testRollbackNonExistent()
-        throws Throwable {
+    public void testRollbackNonExistent() throws Throwable {
 
         Transaction txn = env.beginTransaction(null, null);
         StringDbt key = new StringDbt("key");
@@ -208,8 +203,7 @@ public class TwoPCTest extends TestBase {
      * Test calling commit(xid) on an unregistered xa txn.
      */
     @Test
-    public void testCommitNonExistent()
-        throws Throwable {
+    public void testCommitNonExistent() throws Throwable {
 
         Transaction txn = env.beginTransaction(null, null);
         StringDbt key = new StringDbt("key");

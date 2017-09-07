@@ -41,14 +41,14 @@ import com.sleepycat.util.test.TestBase;
  * Test that the background eviction threadpool state.
  */
 public class EvictionThreadPoolTest extends TestBase {
-    private static final String DB_NAME = "testDB";
-    private static final int ONE_MB = 1 << 20;
-    private static final int MIN_DATA_SIZE = 50 * 1024;
-    private static final int ENTRY_DATA_SIZE = 500;
+    private static final String DB_NAME         = "testDB";
+    private static final int    ONE_MB          = 1 << 20;
+    private static final int    MIN_DATA_SIZE   = 50 * 1024;
+    private static final int    ENTRY_DATA_SIZE = 500;
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
+    private final File          envHome;
+    private Environment         env;
+    private Database            db;
 
     public EvictionThreadPoolTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -68,8 +68,7 @@ public class EvictionThreadPoolTest extends TestBase {
     }
 
     @Test
-    public void testPoolState()
-        throws Exception {
+    public void testPoolState() throws Exception {
 
         final int corePoolSize = 3;
 
@@ -80,13 +79,9 @@ public class EvictionThreadPoolTest extends TestBase {
         DbConfigManager configManager = envImpl.getConfigManager();
 
         /* Check that the configurations to the pool are applied. */
-        assertEquals
-            (configManager.getInt(EnvironmentParams.EVICTOR_CORE_THREADS),
-             pool.getCorePoolSize());
-        assertEquals
-            (configManager.getInt(EnvironmentParams.EVICTOR_MAX_THREADS),
-             pool.getMaximumPoolSize());               
-                     
+        assertEquals(configManager.getInt(EnvironmentParams.EVICTOR_CORE_THREADS), pool.getCorePoolSize());
+        assertEquals(configManager.getInt(EnvironmentParams.EVICTOR_MAX_THREADS), pool.getMaximumPoolSize());
+
         /* Invoke the eviction thread. */
         for (int i = 1; i <= corePoolSize; i++) {
             envImpl.getEvictor().alert();
@@ -110,30 +105,26 @@ public class EvictionThreadPoolTest extends TestBase {
 
         /* Because of heavy eviction work, the pool should be full. */
         assertEquals(pool.getPoolSize(), pool.getMaximumPoolSize());
-        
+
         EnvironmentStats stats = env.getStats(null);
         /* There should be some threads rejected by the pool. */
         assertTrue(stats.getNThreadUnavailable() > 0);
 
-        /* 
-         * Most of the eviction should be done by the pool thread and critical. 
+        /*
+         * Most of the eviction should be done by the pool thread and critical.
          */
-        assertTrue(stats.getNBytesEvictedCritical() > 0 ||
-                   stats.getNBytesEvictedEvictorThread() > 0);
+        assertTrue(stats.getNBytesEvictedCritical() > 0 || stats.getNBytesEvictedEvictorThread() > 0);
     }
 
     /* Open the Environment and database for this test. */
-    private void openEnv(int corePoolSize)
-        throws Exception {
+    private void openEnv(int corePoolSize) throws Exception {
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
         envConfig.setCacheSize(ONE_MB);
-        envConfig.setConfigParam("je.tree.minMemory",
-                                 String.valueOf(MIN_DATA_SIZE));
+        envConfig.setConfigParam("je.tree.minMemory", String.valueOf(MIN_DATA_SIZE));
         /* Configure the core pool threads. */
-        envConfig.setConfigParam("je.evictor.coreThreads",
-                                 String.valueOf(corePoolSize));
+        envConfig.setConfigParam("je.evictor.coreThreads", String.valueOf(corePoolSize));
         env = new Environment(envHome, envConfig);
 
         DatabaseConfig dbConfig = new DatabaseConfig();
@@ -142,11 +133,10 @@ public class EvictionThreadPoolTest extends TestBase {
     }
 
     /**
-     * Writes enough records in the given envIndex environment to cause at
-     * least minSizeToWrite bytes to be used in the cache.
+     * Writes enough records in the given envIndex environment to cause at least
+     * minSizeToWrite bytes to be used in the cache.
      */
-    private int write(int minSizeToWrite)
-        throws Exception {
+    private int write(int minSizeToWrite) throws Exception {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry(new byte[ENTRY_DATA_SIZE]);
@@ -160,11 +150,10 @@ public class EvictionThreadPoolTest extends TestBase {
 
     /**
      * Reads alternating records from each env, reading all records from each
-     * env.  Checks that all environments use roughly equal portions of the
+     * env. Checks that all environments use roughly equal portions of the
      * cache.
      */
-    private void readEvenly(int nRecs)
-        throws Exception {
+    private void readEvenly(int nRecs) throws Exception {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();

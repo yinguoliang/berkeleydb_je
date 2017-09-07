@@ -37,14 +37,12 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * @excludeDualMode
- *
- * Instantiate and exercise the JEDiagnostics.
+ * @excludeDualMode Instantiate and exercise the JEDiagnostics.
  */
 public class JEDiagnosticsTest extends TestBase {
 
     private static final boolean DEBUG = false;
-    private File envHome;
+    private File                 envHome;
 
     public JEDiagnosticsTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -54,15 +52,14 @@ public class JEDiagnosticsTest extends TestBase {
      * Test JEDiagnostics' attribute getters.
      */
     @Test
-    public void testGetters()
-        throws Throwable {
+    public void testGetters() throws Throwable {
 
         Environment env = null;
         try {
             if (!this.getClass().getName().contains("rep")) {
                 env = openEnv();
                 DynamicMBean mbean = createMBean(env);
-                MBeanTestUtils.validateGetters(mbean, 2, DEBUG); 
+                MBeanTestUtils.validateGetters(mbean, 2, DEBUG);
                 env.close();
             }
 
@@ -91,8 +88,7 @@ public class JEDiagnosticsTest extends TestBase {
      * Test JEDiagnostics' attribute setters.
      */
     @Test
-    public void testSetters()
-        throws Throwable {
+    public void testSetters() throws Throwable {
 
         Environment env = null;
         try {
@@ -105,22 +101,12 @@ public class JEDiagnosticsTest extends TestBase {
             Class envImplClass = envImpl.getClass();
 
             /* Test setting ConsoleHandler's level. */
-            Method getConsoleHandler =
-                envImplClass.getMethod("getConsoleHandler", (Class[]) null);
-            checkAttribute(env,
-                           mbean,
-                           getConsoleHandler,
-                           "consoleHandlerLevel",
-                           "OFF");
+            Method getConsoleHandler = envImplClass.getMethod("getConsoleHandler", (Class[]) null);
+            checkAttribute(env, mbean, getConsoleHandler, "consoleHandlerLevel", "OFF");
 
             /* Test setting FileHandler's level. */
-            Method getFileHandler = 
-                envImplClass.getMethod("getFileHandler", (Class[]) null);
-            checkAttribute(env,
-                           mbean,
-                           getFileHandler,
-                           "fileHandlerLevel",
-                           "OFF");
+            Method getFileHandler = envImplClass.getMethod("getFileHandler", (Class[]) null);
+            checkAttribute(env, mbean, getFileHandler, "fileHandlerLevel", "OFF");
 
             env.close();
             MBeanTestUtils.checkForNoOpenHandles(environmentDir);
@@ -139,8 +125,7 @@ public class JEDiagnosticsTest extends TestBase {
      * Test JEDiagnostics' operations invocation.
      */
     @Test
-    public void testOperations() 
-        throws Throwable {
+    public void testOperations() throws Throwable {
 
         Environment env = null;
         try {
@@ -148,9 +133,9 @@ public class JEDiagnosticsTest extends TestBase {
             String environmentDir = env.getHome().getPath();
             DynamicMBean mbean = createMBean(env);
 
-            /* 
-             * RepJEDiagnostics has three operations while JEDiagnostics is
-             * lack of getRepStats operation.
+            /*
+             * RepJEDiagnostics has three operations while JEDiagnostics is lack
+             * of getRepStats operation.
              */
             validateOperations(mbean, env, 1);
             env.close();
@@ -168,13 +153,10 @@ public class JEDiagnosticsTest extends TestBase {
     }
 
     /* Verify the correction of JEDiagnostics' operations. */
-    private void validateOperations(DynamicMBean mbean,
-                                    Environment env,
-                                    int numExpectedOperations) 
-        throws Throwable {
+    private void validateOperations(DynamicMBean mbean, Environment env, int numExpectedOperations) throws Throwable {
 
         MBeanTestUtils.checkOpNum(mbean, numExpectedOperations, DEBUG);
-        
+
         MBeanInfo info = mbean.getMBeanInfo();
         MBeanOperationInfo[] ops = info.getOperations();
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
@@ -182,55 +164,48 @@ public class JEDiagnosticsTest extends TestBase {
             String opName = ops[i].getName();
             if (opName.equals("resetLoggerLevel")) {
 
-                /* 
+                /*
                  * If this method is invoked by RepJEDiagnostics, the logger
                  * name should contain RepImpl, not EnvironmentImpl.
                  */
-                Object[] params = new Object[] {"EnvironmentImpl", "OFF"};
+                Object[] params = new Object[] { "EnvironmentImpl", "OFF" };
                 if (this.getClass().getName().contains("rep")) {
-                    params = new Object[] {"RepImpl", "OFF"};
+                    params = new Object[] { "RepImpl", "OFF" };
                 }
-                Object result = mbean.invoke
-                    (opName, params,
-                     new String[] {"java.lang.String", "java.lang.String"});
+                Object result = mbean.invoke(opName, params, new String[] { "java.lang.String", "java.lang.String" });
                 assertEquals(envImpl.getLogger().getLevel(), Level.OFF);
                 assertTrue(result == null);
             } else {
 
-                /* 
+                /*
                  * Check the correction of the getRepStats operation that only
                  * in RepJEDiagnostics.
                  */
                 if (this.getClass().getName().contains("rep")) {
                     Object result = mbean.invoke(opName, null, null);
                     assertTrue(result instanceof String);
-                    MBeanTestUtils.checkObjectType
-                        ("Operation", opName, ops[i].getReturnType(), result);
+                    MBeanTestUtils.checkObjectType("Operation", opName, ops[i].getReturnType(), result);
                 }
             }
         }
     }
-                                   
+
     /* Test this MBean's serialization. */
     @Test
-    public void testSerializable() 
-        throws Throwable {
+    public void testSerializable() throws Throwable {
 
         Environment env = openEnv();
-        
+
         DynamicMBean mbean = createMBean(env);
         MBeanTestUtils.doTestSerializable(mbean);
 
         env.close();
     }
-    
-    /* Check this MBean's attributes. */ 
-    private void checkAttribute(Environment env,
-                                DynamicMBean mbean,
-                                Method getMethod,
-                                String attributeName,
+
+    /* Check this MBean's attributes. */
+    private void checkAttribute(Environment env, DynamicMBean mbean, Method getMethod, String attributeName,
                                 Object newValue)
-        throws Exception {
+            throws Exception {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         Object result = getMethod.invoke(envImpl, (Object[]) null);
@@ -249,8 +224,7 @@ public class JEDiagnosticsTest extends TestBase {
     /*
      * Helper to open an environment.
      */
-    protected Environment openEnv()
-        throws Exception {
+    protected Environment openEnv() throws Exception {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);

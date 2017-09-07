@@ -23,35 +23,33 @@ import com.sleepycat.je.utilint.LoggerUtils;
 public class WaitTestHook<T> extends TestHookAdapter<T> {
 
     /** Logger for this class. */
-    protected final Logger logger =
-        LoggerUtils.getLoggerFixedPrefix(getClass(), "Test");
+    protected final Logger logger      = LoggerUtils.getLoggerFixedPrefix(getClass(), "Test");
 
     /** Whether the hook is waiting. */
-    private boolean waiting = false;
+    private boolean        waiting     = false;
 
     /** Whether the hook should stop waiting. */
-    private boolean stopWaiting = false;
+    private boolean        stopWaiting = false;
 
     /**
-     * Creates a test hook that will cause {@link #awaitWaiting} to stop
-     * waiting when it starts waiting, and will itself stop waiting when {@link
-     * #stopWaiting()} is called.
+     * Creates a test hook that will cause {@link #awaitWaiting} to stop waiting
+     * when it starts waiting, and will itself stop waiting when
+     * {@link #stopWaiting()} is called.
      */
-    public WaitTestHook() { }
+    public WaitTestHook() {
+    }
 
     /**
      * Assert that the test hook is called and begins waiting within the
      * specified number of milliseconds.
      */
-    public synchronized void awaitWaiting(final long timeout)
-        throws InterruptedException {
+    public synchronized void awaitWaiting(final long timeout) throws InterruptedException {
 
         final long start = System.currentTimeMillis();
         while (!waiting && (start + timeout > System.currentTimeMillis())) {
             wait(10000);
         }
-        logger.info(this + ": Awaited waiting for " +
-                    (System.currentTimeMillis() - start) + " milliseconds");
+        logger.info(this + ": Awaited waiting for " + (System.currentTimeMillis() - start) + " milliseconds");
         assertTrue(this + ": Should be waiting", waiting);
     }
 

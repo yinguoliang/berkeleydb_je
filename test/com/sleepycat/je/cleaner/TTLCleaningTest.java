@@ -61,9 +61,9 @@ import junit.framework.Assert;
  */
 public class TTLCleaningTest extends TestBase {
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
+    private final File      envHome;
+    private Environment     env;
+    private Database        db;
     private EnvironmentImpl envImpl;
 
     public TTLCleaningTest() {
@@ -91,20 +91,15 @@ public class TTLCleaningTest extends TestBase {
         envConfig.setTransactional(true);
         envConfig.setDurability(Durability.COMMIT_NO_SYNC);
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
 
         return envConfig;
     }
@@ -222,8 +217,8 @@ public class TTLCleaningTest extends TestBase {
         /*
          * Before writing and measuring the change in LSN, we must ensure an
          * insertion will not write the first BIN or cause a split. Do a put
-         * (with no TTL) to write the first BIN, and assert that we won't
-         * insert more records that will fit in one BIN.
+         * (with no TTL) to write the first BIN, and assert that we won't insert
+         * more records that will fit in one BIN.
          */
         assertTrue(ttls.length < 120);
         IntegerBinding.intToEntry(Integer.MAX_VALUE, key);
@@ -231,8 +226,8 @@ public class TTLCleaningTest extends TestBase {
         db.put(null, key, data, Put.OVERWRITE, null);
 
         /*
-         * Write a record for each specified TTL, measuring its size. Keep
-         * track of the max expiration time and whether any units are in hours.
+         * Write a record for each specified TTL, measuring its size. Keep track
+         * of the max expiration time and whether any units are in hours.
          */
         final WriteOptions options = new WriteOptions().setUpdateTTL(true);
         final int[] sizes = new int[ttls.length];
@@ -256,18 +251,18 @@ public class TTLCleaningTest extends TestBase {
 
             sizes[i] = (int) (offset1 - offset0); // size of LN alone
 
-            maxExpireTime = Math.max(
-                maxExpireTime, getExpireTime(ttls[i], units[i]));
+            maxExpireTime = Math.max(maxExpireTime, getExpireTime(ttls[i], units[i]));
 
             if (units[i] == TimeUnit.HOURS) {
                 anyHours = true;
             }
         }
 
-        /* Everything should be in one file.
-        assertEquals(0, fileManager.getCurrentFileNum());
-
-        /* Moving to a new file will update the expiration profile. */
+        /*
+         * Everything should be in one file. assertEquals(0,
+         * fileManager.getCurrentFileNum()); /* Moving to a new file will update
+         * the expiration profile.
+         */
         envImpl.forceLogFileFlip();
 
         /*
@@ -281,8 +276,7 @@ public class TTLCleaningTest extends TestBase {
          * The interval that data expires depends on whether any TTL units are
          * in hours.
          */
-        final long ttlInterval = anyHours ?
-            TimeUnit.HOURS.toMillis(1) : TimeUnit.DAYS.toMillis(1);
+        final long ttlInterval = anyHours ? TimeUnit.HOURS.toMillis(1) : TimeUnit.DAYS.toMillis(1);
 
         /*
          * Check 5 minute intervals, in time order, starting with the current
@@ -292,20 +286,17 @@ public class TTLCleaningTest extends TestBase {
         final long startCheckTime = TTL.currentSystemTime();
         final long checkInterval = TimeUnit.MINUTES.toMillis(5);
 
-        for (long checkTime = startCheckTime;
-             checkTime <= maxCheckTime;
-             checkTime += checkInterval) {
+        for (long checkTime = startCheckTime; checkTime <= maxCheckTime; checkTime += checkInterval) {
 
             /*
              * Check that our estimated expiration bytes agrees with the
              * expiration profile, and with the expiration tracker.
              */
             profile.refresh(checkTime);
-            final int profileBytes = profile.getExpiredBytes(0 /*file*/);
+            final int profileBytes = profile.getExpiredBytes(0 /* file */);
             final int trackerBytes = tracker.getExpiredBytes(checkTime);
 
-            final int expiredBytes =
-                getExpiredBytes(ttls, units, sizes, checkTime);
+            final int expiredBytes = getExpiredBytes(ttls, units, sizes, checkTime);
 
             assertEquals(expiredBytes, profileBytes);
             assertEquals(expiredBytes, trackerBytes);
@@ -318,22 +309,19 @@ public class TTLCleaningTest extends TestBase {
                 continue;
             }
 
-            final long intervalStartTime =
-                checkTime - (checkTime % ttlInterval);
+            final long intervalStartTime = checkTime - (checkTime % ttlInterval);
 
             final long prevIntervalStart = intervalStartTime - ttlInterval;
 
-            final int prevExpiredBytes = (prevIntervalStart < startCheckTime) ?
-                0 : tracker.getExpiredBytes(prevIntervalStart);
+            final int prevExpiredBytes = (prevIntervalStart < startCheckTime) ? 0
+                    : tracker.getExpiredBytes(prevIntervalStart);
 
             final int newlyExpiredBytes = expiredBytes - prevExpiredBytes;
             final long newMs = checkTime - intervalStartTime;
 
-            final long expectGradualBytes = prevExpiredBytes +
-                ((newlyExpiredBytes * newMs) / ttlInterval);
+            final long expectGradualBytes = prevExpiredBytes + ((newlyExpiredBytes * newMs) / ttlInterval);
 
-            final int gradualBytes = profile.getExpiredBytes(
-                0 /*file*/, checkTime).second();
+            final int gradualBytes = profile.getExpiredBytes(0 /* file */, checkTime).second();
 
             assertEquals(expectGradualBytes, gradualBytes);
         }
@@ -361,11 +349,7 @@ public class TTLCleaningTest extends TestBase {
         }
 
         /* Check that TTL methods agree. */
-        assertEquals(
-            time,
-            TTL.expirationToSystemTime(
-                TTL.ttlToExpiration(ttl, unit),
-                unit == TimeUnit.HOURS));
+        assertEquals(time, TTL.expirationToSystemTime(TTL.ttlToExpiration(ttl, unit), unit == TimeUnit.HOURS));
 
         return time;
     }
@@ -374,10 +358,7 @@ public class TTLCleaningTest extends TestBase {
      * Returns the number of bytes that expire on or after the given system
      * time.
      */
-    private int getExpiredBytes(final int[] ttls,
-                                final TimeUnit units[],
-                                final int[] sizes,
-                                final long sysTime) {
+    private int getExpiredBytes(final int[] ttls, final TimeUnit units[], final int[] sizes, final long sysTime) {
         int bytes = 0;
         for (int i = 0; i < ttls.length; i += 1) {
             final long expireTime = getExpireTime(ttls[i], units[i]);
@@ -389,11 +370,9 @@ public class TTLCleaningTest extends TestBase {
     }
 
     /**
-     * Checks that cleaning occurs when LNs expire.
-     *
-     * Also checks that no two-pass or revisal runs occur, because this test
-     * does not make LNs obsolete, so there is little overlap between expired
-     * and obsolete data.
+     * Checks that cleaning occurs when LNs expire. Also checks that no two-pass
+     * or revisal runs occur, because this test does not make LNs obsolete, so
+     * there is little overlap between expired and obsolete data.
      */
     @Test
     public void testCleanLNs() {
@@ -401,22 +380,20 @@ public class TTLCleaningTest extends TestBase {
         /*
          * Use start time near the end of the hour period. If the beginning of
          * the period were used, when two hours passes and all data expires at
-         * once, only a small portion would be considered expired due to
-         * gradual expiration.
+         * once, only a small portion would be considered expired due to gradual
+         * expiration.
          */
         TTLTest.setFixedTimeHook(TTL.MILLIS_PER_HOUR - 100);
 
         final EnvironmentConfig envConfig = createEnvConfig();
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FILE_MAX,
-            String.valueOf(10 * 1024 * 1024));
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, String.valueOf(10 * 1024 * 1024));
 
         open(envConfig);
 
         /*
-         * Write 10 files, using 1024 byte records so there are no embedded
-         * LNs, and giving all records a TTL.
+         * Write 10 files, using 1024 byte records so there are no embedded LNs,
+         * and giving all records a TTL.
          */
         writeFiles(10, 4, 1024, 1);
 
@@ -440,12 +417,11 @@ public class TTLCleaningTest extends TestBase {
 
     /**
      * Checks that cleaning occurs when BIN slots expire, using embedded LNs to
-     * remove LN expiration from the picture.
-     *
-     * We don't check for revisal or two-pass runs here because they are
-     * unlikely but difficult to predict. They are unlikely because with
-     * embedded LNs, normal cleaning, due to BINs made obsolete by checkpoints
-     * and splits, will often clean expired data as well.
+     * remove LN expiration from the picture. We don't check for revisal or
+     * two-pass runs here because they are unlikely but difficult to predict.
+     * They are unlikely because with embedded LNs, normal cleaning, due to BINs
+     * made obsolete by checkpoints and splits, will often clean expired data as
+     * well.
      */
     @Test
     public void testCleanBINs() {
@@ -455,16 +431,12 @@ public class TTLCleaningTest extends TestBase {
 
         final EnvironmentConfig envConfig = createEnvConfig();
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FILE_MAX,
-            String.valueOf(10 * 1024 * 1024));
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, String.valueOf(10 * 1024 * 1024));
 
         open(envConfig);
 
         if (DbInternal.getNonNullEnvImpl(env).getMaxEmbeddedLN() < 16) {
-            System.out.println(
-                "testCleanBasicINs not applicable when embedded LNs " +
-                "are disabled");
+            System.out.println("testCleanBasicINs not applicable when embedded LNs " + "are disabled");
             close();
             return;
         }
@@ -495,10 +467,10 @@ public class TTLCleaningTest extends TestBase {
     }
 
     /**
-     * Checks that two-pass cleaning is used when:
-     *  + expired and obsolete data partially overlap, and
-     *  + max utilization per-file is over the two-pass threshold, but
-     *  + the true utilization of the files is below the threshold.
+     * Checks that two-pass cleaning is used when: + expired and obsolete data
+     * partially overlap, and + max utilization per-file is over the two-pass
+     * threshold, but + the true utilization of the files is below the
+     * threshold.
      *
      * @see EnvironmentParams#CLEANER_TWO_PASS_GAP
      * @see EnvironmentParams#CLEANER_TWO_PASS_THRESHOLD
@@ -511,9 +483,7 @@ public class TTLCleaningTest extends TestBase {
 
         final EnvironmentConfig envConfig = createEnvConfig();
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FILE_MAX,
-            String.valueOf(10 * 1024 * 1024));
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, String.valueOf(10 * 1024 * 1024));
 
         open(envConfig);
 
@@ -546,10 +516,10 @@ public class TTLCleaningTest extends TestBase {
     }
 
     /**
-     * Checks that a revisal run (not true cleaning) is used when:
-     *  + expired and obsolete data mostly overlap, and
-     *  + max utilization per-file is over the two-pass threshold, and
-     *  + the true utilization of the files is also above the threshold.
+     * Checks that a revisal run (not true cleaning) is used when: + expired and
+     * obsolete data mostly overlap, and + max utilization per-file is over the
+     * two-pass threshold, and + the true utilization of the files is also above
+     * the threshold.
      *
      * @see EnvironmentParams#CLEANER_TWO_PASS_GAP
      * @see EnvironmentParams#CLEANER_TWO_PASS_THRESHOLD
@@ -562,9 +532,7 @@ public class TTLCleaningTest extends TestBase {
 
         final EnvironmentConfig envConfig = createEnvConfig();
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FILE_MAX,
-            String.valueOf(10 * 1024 * 1024));
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, String.valueOf(10 * 1024 * 1024));
 
         open(envConfig);
 
@@ -610,14 +578,12 @@ public class TTLCleaningTest extends TestBase {
      * Checks that cleaning is gradual rather than spiking on expiration time
      * boundaries. Hours is used here but the same test applies to days and the
      * histogram tests ensure that data expires gradually for days and hours.
-     *
-     * Cleaning will not itself occur gradually in this test,
-     * unfortunately, because the data in all files expires at the same
-     * time, so once utilization drops below 50 all files are cleaned.
-     * This is unlike the real world, where data will expire at different
-     * times. Therefore, we test gradual cleaning by looking at the
-     * predictedMinUtilization, which is used to drive cleaning. This should
-     * decrease gradually.
+     * Cleaning will not itself occur gradually in this test, unfortunately,
+     * because the data in all files expires at the same time, so once
+     * utilization drops below 50 all files are cleaned. This is unlike the real
+     * world, where data will expire at different times. Therefore, we test
+     * gradual cleaning by looking at the predictedMinUtilization, which is used
+     * to drive cleaning. This should decrease gradually.
      */
     @Test
     public void testGradualExpiration() {
@@ -631,9 +597,7 @@ public class TTLCleaningTest extends TestBase {
 
         final EnvironmentConfig envConfig = createEnvConfig();
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FILE_MAX,
-            String.valueOf(10 * 1024 * 1024));
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, String.valueOf(10 * 1024 * 1024));
 
         open(envConfig);
 
@@ -644,8 +608,7 @@ public class TTLCleaningTest extends TestBase {
         int nFilesCleaned = env.cleanLog();
         assertTrue(String.valueOf(nFilesCleaned), nFilesCleaned <= 1);
 
-        final UtilizationCalculator calculator =
-            envImpl.getCleaner().getUtilizationCalculator();
+        final UtilizationCalculator calculator = envImpl.getCleaner().getUtilizationCalculator();
 
         /*
          * Collect predictedMinUtilization values as we bump the time by one
@@ -656,9 +619,7 @@ public class TTLCleaningTest extends TestBase {
         final long checkInterval = TimeUnit.MINUTES.toMillis(1);
         final Deque<Integer> predictedUtils = new LinkedList<>();
 
-        for (long time = checkStartTime;
-             time <= checkEndTime;
-             time += checkInterval) {
+        for (long time = checkStartTime; time <= checkEndTime; time += checkInterval) {
 
             TTLTest.fixedSystemTime = time;
             env.cleanLog();
@@ -673,9 +634,7 @@ public class TTLCleaningTest extends TestBase {
         final int firstUtil = predictedUtils.getFirst();
         final int lastUtil = predictedUtils.getLast();
 
-        assertTrue(
-            "firstUtil=" + firstUtil + " lastUtil=" + lastUtil,
-            firstUtil > 90 && lastUtil < 10);
+        assertTrue("firstUtil=" + firstUtil + " lastUtil=" + lastUtil, firstUtil > 90 && lastUtil < 10);
 
         int prevUtil = predictedUtils.removeFirst();
 
@@ -683,9 +642,7 @@ public class TTLCleaningTest extends TestBase {
 
             final int decrease = prevUtil - util;
 
-            assertTrue(
-                "util=" + util + " prevUtil=" + prevUtil,
-                decrease >= 0 && decrease < 5);
+            assertTrue("util=" + util + " prevUtil=" + prevUtil, decrease >= 0 && decrease < 5);
 
             prevUtil = util;
         }
@@ -701,12 +658,9 @@ public class TTLCleaningTest extends TestBase {
 
         final EnvironmentConfig envConfig = createEnvConfig();
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FILE_MAX,
-            String.valueOf(10 * 1024 * 1024));
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, String.valueOf(10 * 1024 * 1024));
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_EXPIRATION_ENABLED, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_EXPIRATION_ENABLED, "false");
 
         open(envConfig);
 
@@ -741,8 +695,7 @@ public class TTLCleaningTest extends TestBase {
         assertEquals(nRecords, count);
 
         /* Enable expiration and expect cleaning and filtering of all data. */
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_EXPIRATION_ENABLED, "true");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_EXPIRATION_ENABLED, "true");
 
         env.setMutableConfig(envConfig);
 
@@ -765,9 +718,7 @@ public class TTLCleaningTest extends TestBase {
 
         final EnvironmentConfig envConfig = createEnvConfig();
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FILE_MAX,
-            String.valueOf(1000000));
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, String.valueOf(1000000));
 
         open(envConfig);
 
@@ -779,25 +730,19 @@ public class TTLCleaningTest extends TestBase {
         final AtomicBoolean phaseSeen = new AtomicBoolean(false);
         final AtomicLong numSeen = new AtomicLong(0);
 
-        envConfig.setRecoveryProgressListener(
-            new ProgressListener<RecoveryProgress>() {
-                @Override
-                public boolean progress(
-                    RecoveryProgress phase,
-                    long n,
-                    long total) {
+        envConfig.setRecoveryProgressListener(new ProgressListener<RecoveryProgress>() {
+            @Override
+            public boolean progress(RecoveryProgress phase, long n, long total) {
 
-                    if (phase ==
-                        RecoveryProgress.POPULATE_EXPIRATION_PROFILE) {
+                if (phase == RecoveryProgress.POPULATE_EXPIRATION_PROFILE) {
 
-                        phaseSeen.set(true);
-                        numSeen.incrementAndGet();
-                    }
-
-                    return true;
+                    phaseSeen.set(true);
+                    numSeen.incrementAndGet();
                 }
+
+                return true;
             }
-        );
+        });
 
         open(envConfig);
 
@@ -811,10 +756,7 @@ public class TTLCleaningTest extends TestBase {
      * Inserts records with the given size until the given number of files are
      * added. Every expireNth record is assigned a 1 hour TTL.
      */
-    private void writeFiles(final int nFiles,
-                            final int keySize,
-                            final int dataSize,
-                            final int expireNth) {
+    private void writeFiles(final int nFiles, final int keySize, final int dataSize, final int expireNth) {
 
         assert keySize >= 4;
 
@@ -838,9 +780,7 @@ public class TTLCleaningTest extends TestBase {
             keyOut.writeInt(i);
             key.setData(keyBytes);
 
-            options.setTTL(
-                (i % expireNth == 0) ? 1 : 0,
-                TimeUnit.HOURS);
+            options.setTTL((i % expireNth == 0) ? 1 : 0, TimeUnit.HOURS);
 
             db.put(null, key, data, Put.OVERWRITE, options);
         }

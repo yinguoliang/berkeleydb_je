@@ -54,23 +54,23 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 public class RecoveryTestBase extends TestBase {
-    private static final boolean DEBUG = false;
+    private static final boolean  DEBUG                   = false;
 
-    protected static final int NUM_RECS = 257;
-    protected static final int N_DUPLICATES_PER_KEY = 28;
-    protected static final int NUM_DBS = 3;
-    protected static final int TREE_FANOUT = 6;
+    protected static final int    NUM_RECS                = 257;
+    protected static final int    N_DUPLICATES_PER_KEY    = 28;
+    protected static final int    NUM_DBS                 = 3;
+    protected static final int    TREE_FANOUT             = 6;
 
-    protected static final String DB_NAME = "testDb";
+    protected static final String DB_NAME                 = "testDb";
 
-    protected File envHome;
-    protected Environment env;
-    protected Database[] dbs;
-    protected EnvironmentConfig envConfig;
-    protected CheckpointConfig forceConfig;
-    protected Comparator<byte[]> btreeComparisonFunction = null;
+    protected File                envHome;
+    protected Environment         env;
+    protected Database[]          dbs;
+    protected EnvironmentConfig   envConfig;
+    protected CheckpointConfig    forceConfig;
+    protected Comparator<byte[]>  btreeComparisonFunction = null;
 
-    protected int treeFanout;
+    protected int                 treeFanout;
 
     public RecoveryTestBase() {
         init();
@@ -78,8 +78,7 @@ public class RecoveryTestBase extends TestBase {
 
     public RecoveryTestBase(boolean reduceMemory) {
         init();
-        envConfig.setConfigParam(EnvironmentParams.MAX_MEMORY.getName(),
-                                 new Long(1 << 24).toString());
+        envConfig.setConfigParam(EnvironmentParams.MAX_MEMORY.getName(), new Long(1 << 24).toString());
     }
 
     private void init() {
@@ -91,10 +90,9 @@ public class RecoveryTestBase extends TestBase {
         treeFanout = TREE_FANOUT;
     }
 
-
     @After
     public void tearDown() {
-        
+
         if (env != null) {
             try {
                 env.close();
@@ -112,38 +110,27 @@ public class RecoveryTestBase extends TestBase {
      * Running with or without the checkpoint daemon changes how recovery is
      * exercised.
      */
-    protected void createEnv(int fileSize, boolean runCheckpointDaemon)
-        throws DatabaseException {
+    protected void createEnv(int fileSize, boolean runCheckpointDaemon) throws DatabaseException {
 
         createEnvInternal(fileSize, runCheckpointDaemon, false, false);
     }
 
-    private void createEnvInternal(int fileSize,
-                                   boolean runCheckpointDaemon,
-                                   boolean createXAEnv,
-                                   boolean checkLeaks)
-        throws DatabaseException {
+    private void createEnvInternal(int fileSize, boolean runCheckpointDaemon, boolean createXAEnv, boolean checkLeaks)
+            throws DatabaseException {
 
         /* Make an environment and open it. */
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
         envConfig.setTxnNoSync(Boolean.getBoolean(TestUtils.NO_SYNC));
-        envConfig.
-            setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                           Integer.toString(fileSize));
-        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(),
-                                 (checkLeaks ? " true" : "false"));
-        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                 Integer.toString(treeFanout));
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(),
-                                 "false");
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(),
-                                 "false");
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(fileSize));
+        envConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), (checkLeaks ? " true" : "false"));
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), Integer.toString(treeFanout));
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
 
         if (!runCheckpointDaemon) {
-            envConfig.setConfigParam
-                (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+            envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         }
         setExtraProperties();
         if (createXAEnv) {
@@ -155,26 +142,23 @@ public class RecoveryTestBase extends TestBase {
 
     /**
      * Overriden by using class.
+     * 
      * @throws DatabaseException from subclasses.
      */
-    protected void setExtraProperties()
-        throws DatabaseException {
+    protected void setExtraProperties() throws DatabaseException {
     }
 
     /**
      * Open/create databases.
      */
-    protected void createDbs(Transaction txn, int numDbs)
-        throws DatabaseException {
+    protected void createDbs(Transaction txn, int numDbs) throws DatabaseException {
 
         /* Make a db and open it. */
         dbs = new Database[numDbs];
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         if (btreeComparisonFunction != null) {
-            dbConfig.setBtreeComparator
-                ((Class<? extends Comparator<byte[]>>)
-                 btreeComparisonFunction.getClass());
+            dbConfig.setBtreeComparator((Class<? extends Comparator<byte[]>>) btreeComparisonFunction.getClass());
         }
         dbConfig.setTransactional(true);
         dbConfig.setAllowCreate(true);
@@ -199,34 +183,22 @@ public class RecoveryTestBase extends TestBase {
     /**
      * Make an environment and databases.
      */
-    protected void  createEnvAndDbs(int fileSize,
-                                   boolean runCheckpointerDaemon,
-                                   int numDbs)
-        throws DatabaseException {
+    protected void createEnvAndDbs(int fileSize, boolean runCheckpointerDaemon, int numDbs) throws DatabaseException {
 
-        createEnvAndDbsInternal(fileSize, runCheckpointerDaemon,
-                                numDbs, false, false);
+        createEnvAndDbsInternal(fileSize, runCheckpointerDaemon, numDbs, false, false);
     }
 
-    protected void createXAEnvAndDbs(int fileSize,
-                                     boolean runCheckpointerDaemon,
-                                     int numDbs,
-                                     boolean checkLeaks)
-        throws DatabaseException {
+    protected void createXAEnvAndDbs(int fileSize, boolean runCheckpointerDaemon, int numDbs, boolean checkLeaks)
+            throws DatabaseException {
 
-        createEnvAndDbsInternal(fileSize, runCheckpointerDaemon,
-                                numDbs, true, checkLeaks);
+        createEnvAndDbsInternal(fileSize, runCheckpointerDaemon, numDbs, true, checkLeaks);
     }
 
-    protected void createEnvAndDbsInternal(int fileSize,
-                                           boolean runCheckpointerDaemon,
-                                           int numDbs,
-                                           boolean createXAEnv,
+    protected void createEnvAndDbsInternal(int fileSize, boolean runCheckpointerDaemon, int numDbs, boolean createXAEnv,
                                            boolean checkLeaks)
-        throws DatabaseException {
+            throws DatabaseException {
 
-        createEnvInternal(fileSize, runCheckpointerDaemon,
-                          createXAEnv, checkLeaks);
+        createEnvInternal(fileSize, runCheckpointerDaemon, createXAEnv, checkLeaks);
         Transaction txn = env.beginTransaction(null, null);
         createDbs(txn, numDbs);
         txn.commit();
@@ -235,22 +207,19 @@ public class RecoveryTestBase extends TestBase {
     /**
      * Throw away the environment so the next open will cause a recovery.
      */
-    protected void closeEnv()
-        throws DatabaseException {
+    protected void closeEnv() throws DatabaseException {
 
-        TestUtils.validateNodeMemUsage(DbInternal.getNonNullEnvImpl(env),
-                                      false);
+        TestUtils.validateNodeMemUsage(DbInternal.getNonNullEnvImpl(env), false);
 
         /* Close the environment. */
         closeDbs();
         forceCloseEnvOnly();
     }
 
-    /* Force the environment to be closed even if with outstanding handles.*/
-    protected void forceCloseEnvOnly()
-        throws DatabaseException {
+    /* Force the environment to be closed even if with outstanding handles. */
+    protected void forceCloseEnvOnly() throws DatabaseException {
 
-        /* Close w/out checkpointing, in order to exercise recovery better.*/
+        /* Close w/out checkpointing, in order to exercise recovery better. */
         DbInternal.getNonNullEnvImpl(env).close(false);
         env = null;
     }
@@ -259,61 +228,42 @@ public class RecoveryTestBase extends TestBase {
      * Recover the databases and check the data. Return a list of the
      * RecoveryInfos generated by each recovery.
      */
-    protected List<StartupTracker> recoverAndVerify(Map<TestData,
-                                                  Set<TestData>> expectedData,
-                                                  int numDbs)
-        throws DatabaseException {
+    protected List<StartupTracker> recoverAndVerify(Map<TestData, Set<TestData>> expectedData, int numDbs)
+            throws DatabaseException {
 
-        return recoverAndVerifyInternal(expectedData, numDbs,
-                                        false,  // XA
-                                        false); // readOnly
+        return recoverAndVerifyInternal(expectedData, numDbs, false, // XA
+                false); // readOnly
     }
 
-    protected List<StartupTracker>
-        recoverROAndVerify(Map<TestData,
-                           Set<TestData>> expectedData,
-                           int numDbs)
-        throws DatabaseException {
+    protected List<StartupTracker> recoverROAndVerify(Map<TestData, Set<TestData>> expectedData, int numDbs)
+            throws DatabaseException {
 
-        return recoverAndVerifyInternal(expectedData, numDbs,
-                                        false,  // XA
-                                        true);  // readOnly
+        return recoverAndVerifyInternal(expectedData, numDbs, false, // XA
+                true); // readOnly
     }
 
     /*
      * Recover the databases and check the data. Return a list of the
      * RecoveryInfos generated by each recovery.
      */
-    protected List<StartupTracker>
-        xaRecoverAndVerify(Map<TestData,
-                           Set<TestData>> expectedData,
-                           int numDbs)
-        throws DatabaseException {
+    protected List<StartupTracker> xaRecoverAndVerify(Map<TestData, Set<TestData>> expectedData, int numDbs)
+            throws DatabaseException {
 
-        return recoverAndVerifyInternal(expectedData, 
-                                        numDbs,
-                                        true,   // XA
-                                        false); // readOnly
+        return recoverAndVerifyInternal(expectedData, numDbs, true, // XA
+                false); // readOnly
     }
 
-    private List<StartupTracker>
-        recoverAndVerifyInternal(Map<TestData,
-                                 Set<TestData>> expectedData,
-                                 int numDbs,
-                                 boolean createXAEnv,
-                                 boolean readOnlyMode)
-        throws DatabaseException {
+    private List<StartupTracker> recoverAndVerifyInternal(Map<TestData, Set<TestData>> expectedData, int numDbs,
+                                                          boolean createXAEnv, boolean readOnlyMode)
+            throws DatabaseException {
 
-        List<StartupTracker> infoList =
-            recoverOnlyInternal(createXAEnv, readOnlyMode);
+        List<StartupTracker> infoList = recoverOnlyInternal(createXAEnv, readOnlyMode);
         verifyData(expectedData, numDbs);
-        TestUtils.validateNodeMemUsage(DbInternal.getNonNullEnvImpl(env),
-                                       false);
+        TestUtils.validateNodeMemUsage(DbInternal.getNonNullEnvImpl(env), false);
         /* Run verify again. */
         DbInternal.getNonNullEnvImpl(env).close(false);
         env = new Environment(envHome, getRecoveryConfig(readOnlyMode));
-        EnvironmentImpl envImpl =
-            DbInternal.getNonNullEnvImpl(env);
+        EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
         infoList.add(envImpl.getStartupTracker());
         verifyData(expectedData, numDbs);
         TestUtils.validateNodeMemUsage(envImpl, false);
@@ -323,46 +273,36 @@ public class RecoveryTestBase extends TestBase {
 
     private EnvironmentConfig getRecoveryConfig(boolean readOnlyMode) {
         EnvironmentConfig recoveryConfig = TestUtils.initEnvConfig();
-        recoveryConfig.setConfigParam
-            (EnvironmentParams.NODE_MAX.getName(), "6");
-        recoveryConfig.setConfigParam
-            (EnvironmentParams.MAX_MEMORY.getName(),
-             new Long(1 << 24).toString());
+        recoveryConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
+        recoveryConfig.setConfigParam(EnvironmentParams.MAX_MEMORY.getName(), new Long(1 << 24).toString());
         recoveryConfig.setReadOnly(readOnlyMode);
 
         /*
          * Don't run checkLeaks, because verify is running while the system is
          * not quiescent. The other daemons are running.
          */
-        recoveryConfig.setConfigParam
-            (EnvironmentParams.ENV_CHECK_LEAKS.getName(), "false");
-        recoveryConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        recoveryConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        recoveryConfig.setConfigParam(EnvironmentParams.ENV_CHECK_LEAKS.getName(), "false");
+        recoveryConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        recoveryConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
 
         recoveryConfig.setTransactional(true);
         return recoveryConfig;
     }
 
-    protected List<StartupTracker> recoverOnly()
-        throws DatabaseException {
+    protected List<StartupTracker> recoverOnly() throws DatabaseException {
 
-        return recoverOnlyInternal(false,   // XA
-                                   false);  // read only
+        return recoverOnlyInternal(false, // XA
+                false); // read only
     }
 
-    protected List<StartupTracker> xaRecoverOnly()
-        throws DatabaseException {
+    protected List<StartupTracker> xaRecoverOnly() throws DatabaseException {
 
-        return recoverOnlyInternal(true,   // XA
-                                   false); // read only
+        return recoverOnlyInternal(true, // XA
+                false); // read only
     }
 
-    private List<StartupTracker> 
-         recoverOnlyInternal(boolean createXAEnv,
-                             boolean readOnlyMode)
-        throws DatabaseException {
+    private List<StartupTracker> recoverOnlyInternal(boolean createXAEnv, boolean readOnlyMode)
+            throws DatabaseException {
 
         List<StartupTracker> infoList = new ArrayList<StartupTracker>();
 
@@ -372,11 +312,9 @@ public class RecoveryTestBase extends TestBase {
         } else {
             env = new Environment(envHome, getRecoveryConfig(readOnlyMode));
         }
-        TestUtils.validateNodeMemUsage(DbInternal.getNonNullEnvImpl(env),
-                                      false);
+        TestUtils.validateNodeMemUsage(DbInternal.getNonNullEnvImpl(env), false);
 
-        infoList.add
-            (DbInternal.getNonNullEnvImpl(env).getStartupTracker());
+        infoList.add(DbInternal.getNonNullEnvImpl(env).getStartupTracker());
 
         return infoList;
     }
@@ -385,10 +323,7 @@ public class RecoveryTestBase extends TestBase {
      * Compare the data in the databases agains the data in the expected data
      * set.
      */
-    protected void verifyData(Map<TestData,
-                              Set<TestData>> expectedData,
-                              int numDbs)
-        throws DatabaseException  {
+    protected void verifyData(Map<TestData, Set<TestData>> expectedData, int numDbs) throws DatabaseException {
 
         verifyData(expectedData, true, numDbs);
     }
@@ -397,20 +332,15 @@ public class RecoveryTestBase extends TestBase {
      * Compare the data in the databases against the data in the expected data
      * set.
      */
-    protected void verifyData(Map<TestData, Set<TestData>> expectedData,
-                              boolean checkInList,
-                              int numDbs)
-        throws DatabaseException  {
+    protected void verifyData(Map<TestData, Set<TestData>> expectedData, boolean checkInList, int numDbs)
+            throws DatabaseException {
 
         verifyData(expectedData, checkInList, 0, numDbs);
     }
 
     @SuppressWarnings("unchecked")
-    protected void verifyData(Map<TestData, Set<TestData>> expectedData,
-                              boolean checkInList,
-                              int startDb,
-                              int endDb)
-        throws DatabaseException  {
+    protected void verifyData(Map<TestData, Set<TestData>> expectedData, boolean checkInList, int startDb, int endDb)
+            throws DatabaseException {
 
         /* Run verify. */
         if (checkInList) {
@@ -421,20 +351,17 @@ public class RecoveryTestBase extends TestBase {
 
         /*
          * Get a deep copy of expected data (cloning the data sets, not the
-         * items within dataSet, since verifyData will remove items, and we
-         * need to keep the expectedData set intact because we call verify
+         * items within dataSet, since verifyData will remove items, and we need
+         * to keep the expectedData set intact because we call verify
          * repeatedly.
          */
-        Map<TestData, Set<TestData>> useData =
-            new HashMap<TestData, Set<TestData>>();
+        Map<TestData, Set<TestData>> useData = new HashMap<TestData, Set<TestData>>();
 
-        Iterator<Map.Entry<TestData, Set<TestData>>> iter =
-            expectedData.entrySet().iterator();
+        Iterator<Map.Entry<TestData, Set<TestData>>> iter = expectedData.entrySet().iterator();
 
         while (iter.hasNext()) {
             Map.Entry<TestData, Set<TestData>> entry = iter.next();
-            Set<TestData> clone =
-                (Set<TestData>) ((HashSet<TestData>)entry.getValue()).clone();
+            Set<TestData> clone = (Set<TestData>) ((HashSet<TestData>) entry.getValue()).clone();
             useData.put(entry.getKey(), clone);
         }
 
@@ -444,21 +371,17 @@ public class RecoveryTestBase extends TestBase {
         /* Check each db in turn. */
         DatabaseConfig dbConfig = new DatabaseConfig();
         if (btreeComparisonFunction != null) {
-            dbConfig.setBtreeComparator
-                ((Class<? extends Comparator<byte[]>>)
-                 btreeComparisonFunction.getClass());
+            dbConfig.setBtreeComparator((Class<? extends Comparator<byte[]>>) btreeComparisonFunction.getClass());
         }
         dbConfig.setTransactional(env.getConfig().getTransactional());
         dbConfig.setSortedDuplicates(true);
         dbConfig.setReadOnly(true);
         for (int d = startDb; d < endDb; d++) {
-            Database checkDb = env.openDatabase(null, DB_NAME + d,
-                                                dbConfig);
+            Database checkDb = env.openDatabase(null, DB_NAME + d, dbConfig);
             Cursor myCursor = checkDb.openCursor(null, null);
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
-            OperationStatus status =
-                myCursor.getFirst(key, data, LockMode.DEFAULT);
+            OperationStatus status = myCursor.getFirst(key, data, LockMode.DEFAULT);
             DbInternal.getNonNullEnvImpl(env).verifyCursors();
             int numSeen = 0;
 
@@ -469,9 +392,8 @@ public class RecoveryTestBase extends TestBase {
 
                 /* The count should be right. */
                 int count = myCursor.count();
-                assertEquals("Count not right for key " +
-                             TestUtils.dumpByteArray(key.getData()),
-                             getExpectedCount(countMap, d, key), count);
+                assertEquals("Count not right for key " + TestUtils.dumpByteArray(key.getData()),
+                        getExpectedCount(countMap, d, key), count);
 
                 status = myCursor.getNext(key, data, LockMode.DEFAULT);
                 numSeen++;
@@ -481,7 +403,7 @@ public class RecoveryTestBase extends TestBase {
 
             /* Should be nothing left in the expected data map. */
             if (DEBUG) {
-                System.out.println("Finished db" + d + " numSeen=" +numSeen);
+                System.out.println("Finished db" + d + " numSeen=" + numSeen);
                 dumpExpected(useData);
             }
             checkDb.close();
@@ -494,8 +416,7 @@ public class RecoveryTestBase extends TestBase {
      * Process the expected data map to generate expected counts. For each
      * database, make a map of key value to count.
      */
-    private Map<TestData, Integer>
-        generateCountMap(Map<TestData, Set<TestData>> expectedData) {
+    private Map<TestData, Integer> generateCountMap(Map<TestData, Set<TestData>> expectedData) {
 
         Map<TestData, Integer> countMap = new HashMap<TestData, Integer>();
 
@@ -510,7 +431,7 @@ public class RecoveryTestBase extends TestBase {
                 if (count == null) {
                     countMap.put(countKey, new Integer(1));
                 } else {
-                    countMap.put(countKey, new Integer(count.intValue()+1));
+                    countMap.put(countKey, new Integer(count.intValue() + 1));
                 }
             }
         }
@@ -520,42 +441,25 @@ public class RecoveryTestBase extends TestBase {
     /**
      * @return the expected count value for a given key in a given db.
      */
-    private int getExpectedCount(Map<TestData, Integer> countMap,
-                                 int whichDb,
-                                 DatabaseEntry key) {
+    private int getExpectedCount(Map<TestData, Integer> countMap, int whichDb, DatabaseEntry key) {
         return countMap.get(new TestData(whichDb, key.getData())).intValue();
     }
 
     /**
      * Insert data over many databases.
      */
-    protected void insertData(Transaction txn,
-                              int startVal,
-                              int endVal,
-                              Map<TestData, Set<TestData>> expectedData,
-                              int nDuplicatesPerKey,
-                              boolean addToExpectedData,
-                              int numDbs)
-        throws DatabaseException {
+    protected void insertData(Transaction txn, int startVal, int endVal, Map<TestData, Set<TestData>> expectedData,
+                              int nDuplicatesPerKey, boolean addToExpectedData, int numDbs)
+            throws DatabaseException {
 
-        insertData(txn, startVal, endVal, expectedData,
-                   nDuplicatesPerKey, false, addToExpectedData,
-                   0, numDbs);
+        insertData(txn, startVal, endVal, expectedData, nDuplicatesPerKey, false, addToExpectedData, 0, numDbs);
     }
 
-    protected void insertData(Transaction txn,
-                              int startVal,
-                              int endVal,
-                              Map<TestData, Set<TestData>> expectedData,
-                              int nDuplicatesPerKey,
-                              boolean addToExpectedData,
-                              int startDb,
-                              int endDb)
-        throws DatabaseException {
+    protected void insertData(Transaction txn, int startVal, int endVal, Map<TestData, Set<TestData>> expectedData,
+                              int nDuplicatesPerKey, boolean addToExpectedData, int startDb, int endDb)
+            throws DatabaseException {
 
-        insertData(txn, startVal, endVal, expectedData,
-                   nDuplicatesPerKey, false, addToExpectedData,
-                   startDb, endDb);
+        insertData(txn, startVal, endVal, expectedData, nDuplicatesPerKey, false, addToExpectedData, startDb, endDb);
     }
 
     /**
@@ -563,18 +467,11 @@ public class RecoveryTestBase extends TestBase {
      *
      * @param toggle if true, insert every other value.
      */
-    protected void insertData(Transaction txn,
-                              int startVal,
-                              int endVal,
-                              Map<TestData, Set<TestData>> expectedData,
-                              int nDuplicatesPerKey,
-                              boolean toggle,
-                              boolean addToExpectedData,
-                              int numDbs)
-        throws DatabaseException {
+    protected void insertData(Transaction txn, int startVal, int endVal, Map<TestData, Set<TestData>> expectedData,
+                              int nDuplicatesPerKey, boolean toggle, boolean addToExpectedData, int numDbs)
+            throws DatabaseException {
 
-        insertData(txn, startVal, endVal, expectedData, nDuplicatesPerKey,
-                   toggle, addToExpectedData, 0, numDbs);
+        insertData(txn, startVal, endVal, expectedData, nDuplicatesPerKey, toggle, addToExpectedData, 0, numDbs);
     }
 
     /**
@@ -582,16 +479,9 @@ public class RecoveryTestBase extends TestBase {
      *
      * @param toggle if true, insert every other value.
      */
-    protected void insertData(Transaction txn,
-                              int startVal,
-                              int endVal,
-                              Map<TestData, Set<TestData>> expectedData,
-                              int nDuplicatesPerKey,
-                              boolean toggle,
-                              boolean addToExpectedData,
-                              int startDb,
-                              int endDb)
-        throws DatabaseException {
+    protected void insertData(Transaction txn, int startVal, int endVal, Map<TestData, Set<TestData>> expectedData,
+                              int nDuplicatesPerKey, boolean toggle, boolean addToExpectedData, int startDb, int endDb)
+            throws DatabaseException {
 
         Cursor[] cursors = getCursors(txn, startDb, endDb);
 
@@ -602,13 +492,11 @@ public class RecoveryTestBase extends TestBase {
         int incVal = (toggle) ? 2 : 1;
         if (startVal < endVal) {
             for (int i = startVal; i <= endVal; i += incVal) {
-                insertOneRecord(cursors, i, expectedData,
-                                nDuplicatesPerKey, addToExpectedData);
+                insertOneRecord(cursors, i, expectedData, nDuplicatesPerKey, addToExpectedData);
             }
         } else {
             for (int i = startVal; i >= endVal; i -= incVal) {
-                insertOneRecord(cursors, i, expectedData,
-                                nDuplicatesPerKey, addToExpectedData);
+                insertOneRecord(cursors, i, expectedData, nDuplicatesPerKey, addToExpectedData);
             }
         }
 
@@ -620,15 +508,9 @@ public class RecoveryTestBase extends TestBase {
     /**
      * Insert data over many databases.
      */
-    protected void insertRandomData(Transaction txn,
-                                    Random rng,
-                                    int numRecs,
-                                    Map<TestData, Set<TestData>> expectedData,
-                                    int nDuplicatesPerKey,
-                                    boolean evictBINs,
-                                    int startDb,
-                                    int endDb)
-        throws DatabaseException {
+    protected void insertRandomData(Transaction txn, Random rng, int numRecs, Map<TestData, Set<TestData>> expectedData,
+                                    int nDuplicatesPerKey, boolean evictBINs, int startDb, int endDb)
+            throws DatabaseException {
 
         Cursor[] cursors = getCursors(txn, startDb, endDb);
 
@@ -640,8 +522,7 @@ public class RecoveryTestBase extends TestBase {
 
         for (int i = 0; i < numRecs; i += 1) {
             int keyVal = rng.nextInt();
-            insertOneRecord(cursors, keyVal, expectedData,
-                            nDuplicatesPerKey, true);
+            insertOneRecord(cursors, keyVal, expectedData, nDuplicatesPerKey, true);
         }
 
         for (int i = 0; i < cursors.length; i++) {
@@ -654,11 +535,8 @@ public class RecoveryTestBase extends TestBase {
      * object that wraps db number and key, and points to sets of TestData
      * objects that wrap db number, key, and data.
      */
-    protected void addExpectedData(Map<TestData, Set<TestData>> expectedData,
-                                   int dbNum,
-                                   DatabaseEntry key,
-                                   DatabaseEntry data,
-                                   boolean expectCommit) {
+    protected void addExpectedData(Map<TestData, Set<TestData>> expectedData, int dbNum, DatabaseEntry key,
+                                   DatabaseEntry data, boolean expectCommit) {
         if (expectCommit) {
             TestData keyTestData = new TestData(dbNum, key, null);
             Set<TestData> dataSet = expectedData.get(keyTestData);
@@ -674,19 +552,14 @@ public class RecoveryTestBase extends TestBase {
     /**
      * Remove from the set of expected results.
      */
-    private void removeExpectedData(Map<TestData, Set<TestData>> expectedData,
-                                    int dbNum,
-                                    DatabaseEntry key,
-                                    DatabaseEntry data,
-                                    boolean expectCommit) {
+    private void removeExpectedData(Map<TestData, Set<TestData>> expectedData, int dbNum, DatabaseEntry key,
+                                    DatabaseEntry data, boolean expectCommit) {
         if (expectCommit) {
             TestData keyTestData = new TestData(dbNum, key, null);
             Set<TestData> dataSet = expectedData.get(keyTestData);
-            assertTrue("Should be a data set for " + keyTestData,
-                       (dataSet != null));
-            assertTrue("Should be able to remove key " + key +
-                       " from expected data ",
-                       dataSet.remove(new TestData(dbNum, key, data)));
+            assertTrue("Should be a data set for " + keyTestData, (dataSet != null));
+            assertTrue("Should be able to remove key " + key + " from expected data ",
+                    dataSet.remove(new TestData(dbNum, key, data)));
             if (dataSet.size() == 0) {
                 expectedData.remove(keyTestData);
             }
@@ -696,8 +569,7 @@ public class RecoveryTestBase extends TestBase {
     /**
      * @return a set of cursors for the test databases.
      */
-    private Cursor[] getCursors(Transaction txn, int startDb, int endDb)
-        throws DatabaseException {
+    private Cursor[] getCursors(Transaction txn, int startDb, int endDb) throws DatabaseException {
 
         Cursor[] cursors = new Cursor[endDb - startDb];
         for (int i = 0; i < cursors.length; i++) {
@@ -709,12 +581,9 @@ public class RecoveryTestBase extends TestBase {
     /**
      * Insert the given record into all databases.
      */
-    private void insertOneRecord(Cursor[] cursors,
-                                 int val,
-                                 Map<TestData, Set<TestData>> expectedData,
-                                 int nDuplicatesPerKey,
-                                 boolean expectCommit)
-        throws DatabaseException {
+    private void insertOneRecord(Cursor[] cursors, int val, Map<TestData, Set<TestData>> expectedData,
+                                 int nDuplicatesPerKey, boolean expectCommit)
+            throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -733,10 +602,8 @@ public class RecoveryTestBase extends TestBase {
 
                 //System.out.println("Inserting record with key: " + testVal);
 
-                assertEquals("Insertion of key " +
-                             TestUtils.dumpByteArray(keyData),
-                             OperationStatus.SUCCESS,
-                             cursors[c].putNoDupData(key, data));
+                assertEquals("Insertion of key " + TestUtils.dumpByteArray(keyData), OperationStatus.SUCCESS,
+                        cursors[c].putNoDupData(key, data));
 
                 addExpectedData(expectedData, c, key, data, expectCommit);
             }
@@ -746,26 +613,21 @@ public class RecoveryTestBase extends TestBase {
     /**
      * Delete either every other or all data.
      */
-    protected void deleteData(Transaction txn,
-                              Map<TestData, Set<TestData>> expectedData,
-                              boolean all,
-                              boolean expectCommit,
-                              int numDbs)
-        throws DatabaseException {
+    protected void deleteData(Transaction txn, Map<TestData, Set<TestData>> expectedData, boolean all,
+                              boolean expectCommit, int numDbs)
+            throws DatabaseException {
 
         Cursor[] cursors = getCursors(txn, 0, numDbs);
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
 
         for (int d = 0; d < cursors.length; d++) {
-            OperationStatus status =
-                cursors[d].getFirst(key, data, LockMode.DEFAULT);
+            OperationStatus status = cursors[d].getFirst(key, data, LockMode.DEFAULT);
             boolean toggle = true;
             int deleteCount = 0;
             while (status == OperationStatus.SUCCESS) {
                 if (toggle) {
-                    removeExpectedData(expectedData, d, key, data,
-                                       expectCommit);
+                    removeExpectedData(expectedData, d, key, data, expectCommit);
                     assertEquals(OperationStatus.SUCCESS, cursors[d].delete());
                     deleteCount++;
                     toggle = all;
@@ -785,20 +647,17 @@ public class RecoveryTestBase extends TestBase {
 
     /**
      * Modify data
+     * 
      * @param txn owning txn
      * @param endVal end point of the modification range
      * @param expectedData store of expected values for verification at end
      * @param increment used to modify the data.
-     * @param expectCommit if true, reflect change in expected map. Sometimes
-     *         we don't want to do this because we plan to make the txn abort.
+     * @param expectCommit if true, reflect change in expected map. Sometimes we
+     *            don't want to do this because we plan to make the txn abort.
      */
-    protected void modifyData(Transaction txn,
-                              int endVal,
-                              Map<TestData, Set<TestData>> expectedData,
-                              int increment,
-                              boolean expectCommit,
-                              int numDbs)
-        throws DatabaseException {
+    protected void modifyData(Transaction txn, int endVal, Map<TestData, Set<TestData>> expectedData, int increment,
+                              boolean expectCommit, int numDbs)
+            throws DatabaseException {
 
         Cursor[] cursors = getCursors(txn, 0, numDbs);
         DatabaseEntry key = new DatabaseEntry();
@@ -807,8 +666,7 @@ public class RecoveryTestBase extends TestBase {
         for (int d = 0; d < cursors.length; d++) {
 
             /* Position cursor at the start value. */
-            OperationStatus status =
-                cursors[d].getFirst(key, data, LockMode.DEFAULT);
+            OperationStatus status = cursors[d].getFirst(key, data, LockMode.DEFAULT);
 
             /* For each record within the range, change the data. */
             int modCount = 0;
@@ -842,14 +700,11 @@ public class RecoveryTestBase extends TestBase {
     /**
      * Print the contents of the databases out for debugging
      */
-    protected void dumpData(int numDbs)
-        throws DatabaseException {
+    protected void dumpData(int numDbs) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         if (btreeComparisonFunction != null) {
-            dbConfig.setBtreeComparator
-                ((Class<? extends Comparator<byte[]>>)
-                 btreeComparisonFunction.getClass());
+            dbConfig.setBtreeComparator((Class<? extends Comparator<byte[]>>) btreeComparisonFunction.getClass());
         }
         dbConfig.setSortedDuplicates(true);
         dbConfig.setTransactional(true);
@@ -859,19 +714,14 @@ public class RecoveryTestBase extends TestBase {
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
 
-            OperationStatus status =
-                myCursor.getFirst(key, data, LockMode.DEFAULT);
+            OperationStatus status = myCursor.getFirst(key, data, LockMode.DEFAULT);
             while (status == OperationStatus.SUCCESS) {
-                System.out.println("Database " + d +
-                                   " seen = " +
-                                   /*
-                                      new String(key.getData(), UTF8) +
-                                      "/" +
-                                      new String(data.getData(), UTF8));
-                                   */
-                                   TestUtils.dumpByteArray(key.getData()) +
-                                   "/" +
-                                   TestUtils.dumpByteArray(data.getData()));
+                System.out.println("Database " + d + " seen = " +
+                /*
+                 * new String(key.getData(), UTF8) + "/" + new
+                 * String(data.getData(), UTF8));
+                 */
+                        TestUtils.dumpByteArray(key.getData()) + "/" + TestUtils.dumpByteArray(data.getData()));
                 status = myCursor.getNext(key, data, LockMode.DEFAULT);
             }
             myCursor.close();
@@ -882,7 +732,7 @@ public class RecoveryTestBase extends TestBase {
      * Print the contents of the expected map for debugging.
      */
     protected void dumpExpected(Map<TestData, Set<TestData>> expectedData) {
-        System.out.println("Expected = " );
+        System.out.println("Expected = ");
         Iterator<Set<TestData>> iter = expectedData.values().iterator();
         while (iter.hasNext()) {
             Set<TestData> dataSet = iter.next();
@@ -895,7 +745,7 @@ public class RecoveryTestBase extends TestBase {
     }
 
     protected class TestData {
-        public int dbNum;
+        public int    dbNum;
         public byte[] key;
         public byte[] data;
 
@@ -915,16 +765,14 @@ public class RecoveryTestBase extends TestBase {
         }
 
         @Override
-        public boolean equals(Object o ) {
+        public boolean equals(Object o) {
             if (this == o)
                 return true;
             if (!(o instanceof TestData))
                 return false;
 
             TestData other = (TestData) o;
-            if ((dbNum == other.dbNum) &&
-                Arrays.equals(key, other.key) &&
-                Arrays.equals(data, other.data)) {
+            if ((dbNum == other.dbNum) && Arrays.equals(key, other.key) && Arrays.equals(data, other.data)) {
                 return true;
             } else
                 return false;
@@ -933,12 +781,9 @@ public class RecoveryTestBase extends TestBase {
         @Override
         public String toString() {
             if (data == null) {
-                return "db=" + dbNum +
-                    " k=" + TestUtils.dumpByteArray(key);
+                return "db=" + dbNum + " k=" + TestUtils.dumpByteArray(key);
             } else {
-                return "db=" + dbNum +
-                    " k=" + TestUtils.dumpByteArray(key) +
-                    " d=" + TestUtils.dumpByteArray(data);
+                return "db=" + dbNum + " k=" + TestUtils.dumpByteArray(key) + " d=" + TestUtils.dumpByteArray(data);
             }
         }
 

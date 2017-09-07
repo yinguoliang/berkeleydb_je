@@ -32,10 +32,10 @@ import com.sleepycat.util.test.SharedTestUtils;
  */
 public class GetSearchBothRangeTest extends DualTestCase {
 
-    private File envHome;
+    private File        envHome;
     private Environment env;
-    private Database db;
-    private boolean dups;
+    private Database    db;
+    private boolean     dups;
 
     public GetSearchBothRangeTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -44,21 +44,18 @@ public class GetSearchBothRangeTest extends DualTestCase {
     /**
      * Open environment and database.
      */
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         openEnvWithComparator(null);
     }
 
-    private void openEnvWithComparator(Class comparatorClass)
-        throws DatabaseException {
+    private void openEnvWithComparator(Class comparatorClass) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
         //*
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         //*/
         env = create(envHome, envConfig);
 
@@ -75,8 +72,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     /**
      * Close environment and database.
      */
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         db.close();
         db = null;
@@ -85,8 +81,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSearchKeyRangeWithDupTree()
-        throws Exception {
+    public void testSearchKeyRangeWithDupTree() throws Exception {
 
         dups = true;
         openEnv();
@@ -117,8 +112,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSearchBothWithNoDupTree()
-        throws Exception {
+    public void testSearchBothWithNoDupTree() throws Exception {
 
         dups = true;
         openEnv();
@@ -165,8 +159,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSuccess()
-        throws DatabaseException {
+    public void testSuccess() throws DatabaseException {
 
         openEnv();
         insert(1, 1);
@@ -202,8 +195,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSuccessDup()
-        throws DatabaseException {
+    public void testSuccessDup() throws DatabaseException {
 
         dups = true;
 
@@ -237,8 +229,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testNotFound()
-        throws DatabaseException {
+    public void testNotFound() throws DatabaseException {
 
         openEnv();
         insert(1, 0);
@@ -266,16 +257,14 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testNotFoundDup()
-        throws DatabaseException {
+    public void testNotFoundDup() throws DatabaseException {
 
         dups = true;
         testNotFound();
     }
 
     @Test
-    public void testSearchBefore()
-        throws DatabaseException {
+    public void testSearchBefore() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -301,8 +290,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSearchBeforeDups()
-        throws DatabaseException {
+    public void testSearchBeforeDups() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -353,8 +341,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSearchAfterDups()
-        throws DatabaseException {
+    public void testSearchAfterDups() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -383,8 +370,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSearchAfterDupsWithComparator()
-        throws DatabaseException {
+    public void testSearchAfterDupsWithComparator() throws DatabaseException {
 
         dups = true;
         openEnvWithComparator(NormalComparator.class);
@@ -413,8 +399,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSearchAfterDeletedDup()
-        throws DatabaseException {
+    public void testSearchAfterDeletedDup() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -447,8 +432,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
     }
 
     @Test
-    public void testSingleDatumBug()
-        throws DatabaseException {
+    public void testSingleDatumBug() throws DatabaseException {
 
         dups = true;
         openEnv();
@@ -484,8 +468,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
         return entry;
     }
 
-    private void insert(int keyVal, int dataVal)
-        throws DatabaseException {
+    private void insert(int keyVal, int dataVal) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -495,7 +478,7 @@ public class GetSearchBothRangeTest extends DualTestCase {
         if (dups) {
             status = db.putNoDupData(null, key, data);
         } else {
-            status= db.putNoOverwrite(null, key, data);
+            status = db.putNoOverwrite(null, key, data);
         }
         assertEquals(OperationStatus.SUCCESS, status);
     }

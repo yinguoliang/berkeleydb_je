@@ -30,21 +30,20 @@ import com.sleepycat.util.test.TestBase;
 
 public class StoredClassCatalogTest extends TestBase {
     private static final String dbName = "catalogDb";
-    private final File envRoot;
-    private RepEnvInfo[] repEnvInfo;
+    private final File          envRoot;
+    private RepEnvInfo[]        repEnvInfo;
 
     public StoredClassCatalogTest() {
         envRoot = SharedTestUtils.getTestDir();
     }
 
     /*
-     * Test that opening the StoredClassCatalog on the replicas after the 
-     * database used for store the ClassCatalog is created doesn't throw a 
+     * Test that opening the StoredClassCatalog on the replicas after the
+     * database used for store the ClassCatalog is created doesn't throw a
      * ReplicaWriteException, see SR 18938.
      */
     @Test
-    public void testOpenClassCatalogOnReplicas()
-        throws Exception {
+    public void testOpenClassCatalogOnReplicas() throws Exception {
 
         repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3);
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
@@ -57,17 +56,16 @@ public class StoredClassCatalogTest extends TestBase {
         Database catalogDb = master.openDatabase(null, dbName, dbConfig);
         StoredClassCatalog catalog = new StoredClassCatalog(catalogDb);
 
-        /* 
-         * Sync the whole group to make sure the database has been created on 
-         * the replicas. 
+        /*
+         * Sync the whole group to make sure the database has been created on
+         * the replicas.
          */
         RepTestUtils.syncGroupToLastCommit(repEnvInfo, repEnvInfo.length);
 
         /* Check we can open the catalog db on the replicas. */
         Database repCatalogDb = null;
         try {
-            repCatalogDb = 
-                repEnvInfo[1].getEnv().openDatabase(null, dbName, dbConfig);
+            repCatalogDb = repEnvInfo[1].getEnv().openDatabase(null, dbName, dbConfig);
         } catch (Exception e) {
             e.printStackTrace();
             fail("unexpected exception: " + e);

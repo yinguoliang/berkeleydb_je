@@ -12,6 +12,7 @@
  */
 
 package com.sleepycat.je.rep;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -34,8 +35,7 @@ import com.sleepycat.je.rep.utilint.RepTestUtils;
 public class GroupCommitTest extends RepTestBase {
 
     @Override
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         /* need just one replica for this test. */
         groupSize = 2;
@@ -44,12 +44,11 @@ public class GroupCommitTest extends RepTestBase {
     }
 
     /**
-     * Verify that group commits can be initiated by either exceeding the
-     * time interval, or the group commit size.
+     * Verify that group commits can be initiated by either exceeding the time
+     * interval, or the group commit size.
      */
     @Test
-    public void testBasic()
-        throws InterruptedException {
+    public void testBasic() throws InterruptedException {
 
         /* Use a very generous full second for the group commit interval. */
         final long intervalNs = TimeUnit.SECONDS.toNanos(1);
@@ -104,17 +103,14 @@ public class GroupCommitTest extends RepTestBase {
         assertEquals(maxGroupCommit + 1, rstats.getNReplayCommitNoSyncs());
     }
 
-    private void initGroupCommitConfig(final long intervalMs,
-                                       final int maxGroupCommit)
-        throws IllegalArgumentException {
+    private void initGroupCommitConfig(final long intervalMs, final int maxGroupCommit)
+            throws IllegalArgumentException {
 
-        for (int i=0; i < groupSize; i++) {
-            repEnvInfo[i].getRepConfig().
-                setConfigParam(ReplicationConfig.REPLICA_GROUP_COMMIT_INTERVAL,
-                               intervalMs + " ns");
-            repEnvInfo[i].getRepConfig().
-                setConfigParam(ReplicationConfig.REPLICA_MAX_GROUP_COMMIT,
-                               Integer.toString(maxGroupCommit));
+        for (int i = 0; i < groupSize; i++) {
+            repEnvInfo[i].getRepConfig().setConfigParam(ReplicationConfig.REPLICA_GROUP_COMMIT_INTERVAL,
+                    intervalMs + " ns");
+            repEnvInfo[i].getRepConfig().setConfigParam(ReplicationConfig.REPLICA_MAX_GROUP_COMMIT,
+                    Integer.toString(maxGroupCommit));
         }
     }
 
@@ -122,8 +118,7 @@ public class GroupCommitTest extends RepTestBase {
      * Verify that group commits can be turned off.
      */
     @Test
-    public void testGroupCommitOff()
-        throws InterruptedException {
+    public void testGroupCommitOff() throws InterruptedException {
 
         /* Now turn off group commits on the replica */
         initGroupCommitConfig(Integer.MAX_VALUE, 0);
@@ -152,17 +147,16 @@ public class GroupCommitTest extends RepTestBase {
         assertEquals(0, rstats.getNReplayCommitNoSyncs());
     }
 
-    void doWrites(ReplicatedEnvironment menv, int count)
-        throws InterruptedException {
+    void doWrites(ReplicatedEnvironment menv, int count) throws InterruptedException {
 
         final WriteThread wt[] = new WriteThread[count];
 
-        for (int i=0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             wt[i] = new WriteThread(menv);
             wt[i].start();
         }
 
-        for (int i=0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             wt[i].join(60000);
         }
     }
@@ -186,9 +180,7 @@ public class GroupCommitTest extends RepTestBase {
             final TransactionConfig mtc = new TransactionConfig();
             mtc.setDurability(RepTestUtils.SYNC_SYNC_ALL_DURABILITY);
             Transaction mt = menv.beginTransaction(null, mtc);
-            Database db = menv.openDatabase(mt,
-                                            "testDB" + dbId.incrementAndGet(),
-                                            dbconfig);
+            Database db = menv.openDatabase(mt, "testDB" + dbId.incrementAndGet(), dbconfig);
             mt.commit();
             db.close();
         }

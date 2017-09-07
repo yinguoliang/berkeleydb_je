@@ -13,7 +13,6 @@
 
 package com.sleepycat.je.cleaner;
 
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -50,24 +49,23 @@ public class RMWLockingTest extends CleanerTestBase {
 
     private static final int NUM_RECS = 5;
 
-    private Database db;
-    private DatabaseEntry key;
-    private DatabaseEntry data;
+    private Database         db;
+    private DatabaseEntry    key;
+    private DatabaseEntry    data;
 
     public RMWLockingTest(boolean multiSubDir) {
         envMultiSubDir = multiSubDir;
-        customName = envMultiSubDir ? "multi-sub-dir" : null ;
+        customName = envMultiSubDir ? "multi-sub-dir" : null;
     }
-    
+
     @Parameters
     public static List<Object[]> genParams() {
-        
-        return getEnv(new boolean[] {false, true});
+
+        return getEnv(new boolean[] { false, true });
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
+    public void tearDown() throws Exception {
 
         if (db != null) {
             db.close();
@@ -79,15 +77,13 @@ public class RMWLockingTest extends CleanerTestBase {
     }
 
     @Test
-    public void testBasic()
-        throws DatabaseException {
+    public void testBasic() throws DatabaseException {
 
         init();
         insertRecords();
         rmwModify();
 
-        UtilizationProfile up =
-            DbInternal.getNonNullEnvImpl(env).getUtilizationProfile();
+        UtilizationProfile up = DbInternal.getNonNullEnvImpl(env).getUtilizationProfile();
 
         /*
          * Checkpoint the environment to flush all utilization tracking
@@ -102,13 +98,12 @@ public class RMWLockingTest extends CleanerTestBase {
 
     /**
      * Tests that we can load a log file containing offsets that correspond to
-     * non-obsolete LNs.  The bad log file was created using testBasic run
-     * against JE 2.0.54.  It contains version 1 FSLNs, one of which has an
+     * non-obsolete LNs. The bad log file was created using testBasic run
+     * against JE 2.0.54. It contains version 1 FSLNs, one of which has an
      * offset which is not obsolete.
      */
     @Test
-    public void testBadLog()
-        throws DatabaseException, IOException {
+    public void testBadLog() throws DatabaseException, IOException {
 
         /* Copy a log file with bad offsets to log file zero. */
         String resName = "rmw_bad_offsets.jdb";
@@ -123,33 +118,29 @@ public class RMWLockingTest extends CleanerTestBase {
         envConfig.setAllowCreate(false);
         envConfig.setReadOnly(true);
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
 
         /*
-         * Verify the UP of the bad log.  Prior to adding the code in
+         * Verify the UP of the bad log. Prior to adding the code in
          * FileSummaryLN.postFetchInit that discards version 1 offsets, this
          * assertion failed.
          */
-        UtilizationProfile up =
-            DbInternal.getNonNullEnvImpl(env).getUtilizationProfile();
+        UtilizationProfile up = DbInternal.getNonNullEnvImpl(env).getUtilizationProfile();
         assertTrue(up.verifyFileSummaryDatabase());
 
         env.close();
         env = null;
     }
 
-    private void init()
-        throws DatabaseException {
+    private void init() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         if (envMultiSubDir) {
-            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES,
-                                     DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
         env = new Environment(envHome, envConfig);
 
@@ -160,8 +151,7 @@ public class RMWLockingTest extends CleanerTestBase {
     }
 
     /* Insert records. */
-    private void insertRecords()
-        throws DatabaseException {
+    private void insertRecords() throws DatabaseException {
 
         key = new DatabaseEntry();
         data = new DatabaseEntry();
@@ -175,20 +165,16 @@ public class RMWLockingTest extends CleanerTestBase {
     }
 
     /* lock two records with RMW, only modify one. */
-    private void rmwModify()
-        throws DatabaseException {
+    private void rmwModify() throws DatabaseException {
 
         Transaction txn = env.beginTransaction(null, null);
         IntegerBinding.intToEntry(0, key);
-        assertEquals(OperationStatus.SUCCESS,
-                     db.get(txn, key, data, LockMode.RMW));
+        assertEquals(OperationStatus.SUCCESS, db.get(txn, key, data, LockMode.RMW));
         IntegerBinding.intToEntry(1, key);
-        assertEquals(OperationStatus.SUCCESS,
-                     db.get(txn, key, data, LockMode.RMW));
+        assertEquals(OperationStatus.SUCCESS, db.get(txn, key, data, LockMode.RMW));
 
         IntegerBinding.intToEntry(200, data);
-        assertEquals(OperationStatus.SUCCESS,
-                     db.put(txn, key, data));
+        assertEquals(OperationStatus.SUCCESS, db.put(txn, key, data));
         txn.commit();
     }
 }

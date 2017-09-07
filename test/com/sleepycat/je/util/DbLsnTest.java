@@ -40,8 +40,7 @@ public class DbLsnTest extends TestBase {
         for (int i = 0; i < values.length; i++) {
             long value = values[i];
             long lsn = DbLsn.makeLsn(value, value);
-            assertTrue((DbLsn.getFileNumber(lsn) == value) &&
-                       (DbLsn.getFileOffset(lsn) == value));
+            assertTrue((DbLsn.getFileNumber(lsn) == value) && (DbLsn.getFileOffset(lsn) == value));
         }
     }
 
@@ -59,10 +58,8 @@ public class DbLsnTest extends TestBase {
         }
 
         /* Check NULL_LSN. */
-        assertTrue(DbLsn.makeLsn(values[lastValue],
-                                 values[lastValue]) ==
-                   DbLsn.makeLsn(values[lastValue],
-                                 values[lastValue]));
+        assertTrue(DbLsn.makeLsn(values[lastValue], values[lastValue]) == DbLsn.makeLsn(values[lastValue],
+                values[lastValue]));
     }
 
     @Test
@@ -121,8 +118,7 @@ public class DbLsnTest extends TestBase {
             long lsn1 = DbLsn.makeLsn(value, value);
             long lsn2 = DbLsn.makeLsn(value, 0);
             /* Can't compareTo(NULL_LSN). */
-            if (lsn1 != DbLsn.NULL_LSN &&
-                lsn2 != DbLsn.NULL_LSN) {
+            if (lsn1 != DbLsn.NULL_LSN && lsn2 != DbLsn.NULL_LSN) {
                 assertTrue(DbLsn.compareTo(lsn1, lsn2) == 1);
                 assertTrue(DbLsn.compareTo(lsn2, lsn1) == -1);
             }
@@ -142,8 +138,7 @@ public class DbLsnTest extends TestBase {
     }
 
     @Test
-    public void testWithCleaningDistance()
-        throws Exception {
+    public void testWithCleaningDistance() throws Exception {
 
         /* Try with non-consecutive files (due to cleaning). */
 
@@ -156,8 +151,7 @@ public class DbLsnTest extends TestBase {
         Environment env = new Environment(envHome, envConfig);
 
         try {
-            final FileManager fileManager =
-                DbInternal.getNonNullEnvImpl(env).getFileManager();
+            final FileManager fileManager = DbInternal.getNonNullEnvImpl(env).getFileManager();
 
             createFile(fileManager, 1L, 0);
             createFile(fileManager, 3L, 0);
@@ -165,23 +159,15 @@ public class DbLsnTest extends TestBase {
             final long a = DbLsn.makeLsn(1, 10);
             final long b = DbLsn.makeLsn(3, 40);
 
-            assertEquals(
-                130,
-                DbLsn.getWithCleaningDistance(b, a, 100, fileManager));
+            assertEquals(130, DbLsn.getWithCleaningDistance(b, a, 100, fileManager));
 
-            assertEquals(
-                130,
-                DbLsn.getWithCleaningDistance(a, b, 100, fileManager));
+            assertEquals(130, DbLsn.getWithCleaningDistance(a, b, 100, fileManager));
 
             final long c = DbLsn.makeLsn(1, 50);
 
-            assertEquals(
-                40,
-                DbLsn.getWithCleaningDistance(a, c, 100, fileManager));
+            assertEquals(40, DbLsn.getWithCleaningDistance(a, c, 100, fileManager));
 
-            assertEquals(
-                40,
-                DbLsn.getWithCleaningDistance(c, a, 100, fileManager));
+            assertEquals(40, DbLsn.getWithCleaningDistance(c, a, 100, fileManager));
 
             env.close();
             env = null;
@@ -197,8 +183,7 @@ public class DbLsnTest extends TestBase {
     }
 
     @Test
-    public void testTrueDistance()
-        throws Exception {
+    public void testTrueDistance() throws Exception {
 
         /* Try with non-consecutive files (due to cleaning). */
 
@@ -211,8 +196,7 @@ public class DbLsnTest extends TestBase {
         Environment env = new Environment(envHome, envConfig);
 
         try {
-            final FileManager fileManager =
-                DbInternal.getNonNullEnvImpl(env).getFileManager();
+            final FileManager fileManager = DbInternal.getNonNullEnvImpl(env).getFileManager();
 
             createFile(fileManager, 1L, 100);
             createFile(fileManager, 3L, 300);
@@ -250,19 +234,12 @@ public class DbLsnTest extends TestBase {
         }
     }
 
-    private void expectTrueDistance(final long expectValue,
-                                    final long lsn1,
-                                    final long lsn2,
+    private void expectTrueDistance(final long expectValue, final long lsn1, final long lsn2,
                                     final FileManager fileManager) {
-        assertEquals(
-            expectValue,
-            DbLsn.getTrueDistance(lsn1, lsn2, fileManager));
+        assertEquals(expectValue, DbLsn.getTrueDistance(lsn1, lsn2, fileManager));
     }
 
-    private void createFile(final FileManager fileManager,
-                            final long fileNum,
-                            final int length)
-        throws IOException {
+    private void createFile(final FileManager fileManager, final long fileNum, final int length) throws IOException {
 
         final String path = fileManager.getFullFileName(fileNum);
         final File file = new File(path);

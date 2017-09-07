@@ -28,49 +28,32 @@ import com.sleepycat.je.util.TestUtils;
 
 /**
  * Measure the amount of actual (RSS) memory used by the off-heap allocator.
- *
- * Usage:
- *   java com.sleepycat.je.evictor.MeasureOffHeapMemory \
- *    number-of-blocks
- *    min-block-size
- *    max-block-size
- *    number-of-threads
- *    create-new-threads (true or false)
- *
- * Allocates a given number of blocks. Then the loops forever freeing and
+ * Usage: java com.sleepycat.je.evictor.MeasureOffHeapMemory \ number-of-blocks
+ * min-block-size max-block-size number-of-threads create-new-threads (true or
+ * false) Allocates a given number of blocks. Then the loops forever freeing and
  * allocating every other block. Each malloc uses a random size between the
- * given min/max sizes (if equal, the size is fixed).
- *
- * Blocks allocated by one thread are freed by another, to mimic JE off-heap
- * cache usage. Half the blocks are allocated at the beginning and never freed,
- * to mimic hot data that stays in cache.
- *
- * If create-new-threads is true, each time number-of-blocks is allocated, all
- * threads are discarded and new threads are created. This is a worst case
- * scenario for malloc's per-thread allocation pools, which can cause behavior
- * that looks like a memory leak when blocks outlive the thread that allocated
- * them.
- *
- * The Java heap must be large enough to hold an array of block pointers, each
- * of which uses 8 bytes, so 8 * number-of-blocks.
- *
- * Example run to use around 220 GB:
- *  java -Xmx4g -cp test.jar com.sleepycat.je.evictor.MeasureOffHeapMemory \
- *    400000000 40 1040 4 false
- *
- * Output includes the estimated space used by off-heap blocks (JE's cache
- * usage statistic) and the actual memory usage calculated by subtracting the
- * initial RSS from the current RSS. Ops/s is also included, where one op is
- * an alloc and a free; however, each op is just an alloc during ramp-up.
- *
- * It runs forever, with output every number-of-blocks ops. To stop it, kill
- * the process.
+ * given min/max sizes (if equal, the size is fixed). Blocks allocated by one
+ * thread are freed by another, to mimic JE off-heap cache usage. Half the
+ * blocks are allocated at the beginning and never freed, to mimic hot data that
+ * stays in cache. If create-new-threads is true, each time number-of-blocks is
+ * allocated, all threads are discarded and new threads are created. This is a
+ * worst case scenario for malloc's per-thread allocation pools, which can cause
+ * behavior that looks like a memory leak when blocks outlive the thread that
+ * allocated them. The Java heap must be large enough to hold an array of block
+ * pointers, each of which uses 8 bytes, so 8 * number-of-blocks. Example run to
+ * use around 220 GB: java -Xmx4g -cp test.jar
+ * com.sleepycat.je.evictor.MeasureOffHeapMemory \ 400000000 40 1040 4 false
+ * Output includes the estimated space used by off-heap blocks (JE's cache usage
+ * statistic) and the actual memory usage calculated by subtracting the initial
+ * RSS from the current RSS. Ops/s is also included, where one op is an alloc
+ * and a free; however, each op is just an alloc during ramp-up. It runs
+ * forever, with output every number-of-blocks ops. To stop it, kill the
+ * process.
  */
 public class MeasureOffHeapMemory {
 
-    private static final DateFormat DATE_FORMAT =
-        new SimpleDateFormat("MM-dd HH:mm:ss.SSS");
-    private static final Date DATE = new Date();
+    private static final DateFormat DATE_FORMAT = new SimpleDateFormat("MM-dd HH:mm:ss.SSS");
+    private static final Date       DATE        = new Date();
 
     public static void main(final String[] args) {
         try {
@@ -82,16 +65,16 @@ public class MeasureOffHeapMemory {
         }
     }
 
-    private final long[] ids;
-    private final int minSize;
-    private final int range;
-    private final int nThreads;
-    private final int blocksPerThread;
+    private final long[]           ids;
+    private final int              minSize;
+    private final int              range;
+    private final int              nThreads;
+    private final int              blocksPerThread;
     private final OffHeapAllocator allocator;
-    private final String[] psCommand;
-    private final Random rnd;
-    private final boolean createNewThreads;
-    private CyclicBarrier barrier;
+    private final String[]         psCommand;
+    private final Random           rnd;
+    private final boolean          createNewThreads;
+    private CyclicBarrier          barrier;
 
     private MeasureOffHeapMemory(final String[] args) throws Exception {
 
@@ -104,8 +87,7 @@ public class MeasureOffHeapMemory {
         blocksPerThread = ids.length / nThreads;
 
         if (ids.length % nThreads != 0) {
-            throw new IllegalArgumentException(
-                "Number of blocks not evenly divisible by number of threads");
+            throw new IllegalArgumentException("Number of blocks not evenly divisible by number of threads");
         }
 
         final OffHeapAllocatorFactory factory = new OffHeapAllocatorFactory();
@@ -124,9 +106,7 @@ public class MeasureOffHeapMemory {
         final long[] endRssAndVsz = new long[2];
         getRssAndVsz(startRssAndVsz);
 
-        System.out.format(
-            "Initial RSS: %,d VSZ: %,d\n",
-            startRssAndVsz[0], startRssAndVsz[1]);
+        System.out.format("Initial RSS: %,d VSZ: %,d\n", startRssAndVsz[0], startRssAndVsz[1]);
 
         final AtomicLong startTime = new AtomicLong(0L);
         final AtomicBoolean rampUp = new AtomicBoolean(true);
@@ -140,18 +120,11 @@ public class MeasureOffHeapMemory {
                     final long endTime = System.currentTimeMillis();
                     getRssAndVsz(endRssAndVsz);
 
-                    final long rate =
-                        (ids.length * (1000L / 2)) /
-                        (endTime - startTime.get());
+                    final long rate = (ids.length * (1000L / 2)) / (endTime - startTime.get());
 
-                    System.out.format(
-                        "%s Estimate: %,d RSS: %,d VSZ: %,d Ops/s: %,d %s\n",
-                        getDate(endTime),
-                        allocator.getUsedBytes(),
-                        endRssAndVsz[0] - startRssAndVsz[0],
-                        endRssAndVsz[1] - startRssAndVsz[1],
-                        rate,
-                        rampUp.get() ? "(ramp-up)" : "");
+                    System.out.format("%s Estimate: %,d RSS: %,d VSZ: %,d Ops/s: %,d %s\n", getDate(endTime),
+                            allocator.getUsedBytes(), endRssAndVsz[0] - startRssAndVsz[0],
+                            endRssAndVsz[1] - startRssAndVsz[1], rate, rampUp.get() ? "(ramp-up)" : "");
 
                     rampUp.set(false);
 
@@ -160,8 +133,7 @@ public class MeasureOffHeapMemory {
                         startTime.set(System.currentTimeMillis());
 
                         for (int i = 0; i < nThreads; i += 1) {
-                            threads[i] = new Runner(
-                                threads[i].getRangeNumber(), false /*doInit*/);
+                            threads[i] = new Runner(threads[i].getRangeNumber(), false /* doInit */);
                             threads[i].start();
                         }
                     } else {
@@ -181,7 +153,7 @@ public class MeasureOffHeapMemory {
         startTime.set(System.currentTimeMillis());
 
         for (int i = 0; i < nThreads; i += 1) {
-            threads[i] = new Runner(i, true /*doInit*/);
+            threads[i] = new Runner(i, true /* doInit */);
             threads[i].start();
         }
 
@@ -196,9 +168,9 @@ public class MeasureOffHeapMemory {
     class Runner extends Thread {
 
         final boolean doInit;
-        int rangeNum;
-        int startBlock;
-        int endBlock;
+        int           rangeNum;
+        int           startBlock;
+        int           endBlock;
 
         Runner(int num, boolean doInit) {
             this.doInit = doInit;
@@ -230,9 +202,7 @@ public class MeasureOffHeapMemory {
                 if (doInit) {
                     for (int i = startBlock; i < endBlock; i += 1) {
 
-                        final int size =
-                            (range == 0) ? minSize : (minSize + rnd.nextInt(range));
-
+                        final int size = (range == 0) ? minSize : (minSize + rnd.nextInt(range));
 
                         try {
                             ids[i] = allocator.allocate(size);
@@ -258,8 +228,7 @@ public class MeasureOffHeapMemory {
 
                         allocator.free(ids[i]);
 
-                        final int size = (range == 0) ?
-                            minSize : (minSize + rnd.nextInt(range));
+                        final int size = (range == 0) ? minSize : (minSize + rnd.nextInt(range));
 
                         try {
                             ids[i] = allocator.allocate(size);
@@ -301,12 +270,10 @@ public class MeasureOffHeapMemory {
         final ProcessBuilder pBuilder = new ProcessBuilder(psCommand);
         final Process process = pBuilder.start();
 
-        final BufferedReader reader = new BufferedReader(
-            new InputStreamReader(process.getInputStream()));
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 
         String result = "";
-        for (String line = reader.readLine(); line != null;
-             line = reader.readLine()) {
+        for (String line = reader.readLine(); line != null; line = reader.readLine()) {
             result += line;
         }
 

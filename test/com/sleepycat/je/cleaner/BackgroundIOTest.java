@@ -42,7 +42,7 @@ import com.sleepycat.je.utilint.TestHook;
 @RunWith(Parameterized.class)
 public class BackgroundIOTest extends CleanerTestBase {
 
-    final static int FILE_SIZE = 1000000;
+    final static int                FILE_SIZE = 1000000;
 
     private static CheckpointConfig forceConfig;
     static {
@@ -50,26 +50,25 @@ public class BackgroundIOTest extends CleanerTestBase {
         forceConfig.setForce(true);
     }
 
-    private int readLimit;
-    private int writeLimit;
-    private int nSleeps;
+    private int     readLimit;
+    private int     writeLimit;
+    private int     nSleeps;
 
     private boolean embeddedLNs = false;
 
     public BackgroundIOTest(boolean multiSubDir) {
         envMultiSubDir = multiSubDir;
-        customName = envMultiSubDir ? "multi-sub-dir" : null ;
+        customName = envMultiSubDir ? "multi-sub-dir" : null;
     }
-    
+
     @Parameters
     public static List<Object[]> genParams() {
-        
-        return getEnv(new boolean[] {false, true});
+
+        return getEnv(new boolean[] { false, true });
     }
 
     @Test
-    public void testBackgroundIO1()
-        throws DatabaseException {
+    public void testBackgroundIO1() throws DatabaseException {
 
         openEnv(10, 10);
         if (isCkptHighPriority()) {
@@ -84,8 +83,7 @@ public class BackgroundIOTest extends CleanerTestBase {
     }
 
     @Test
-    public void testBackgroundIO2()
-        throws DatabaseException {
+    public void testBackgroundIO2() throws DatabaseException {
 
         openEnv(10, 5);
         if (isCkptHighPriority()) {
@@ -100,8 +98,7 @@ public class BackgroundIOTest extends CleanerTestBase {
     }
 
     @Test
-    public void testBackgroundIO3()
-        throws DatabaseException {
+    public void testBackgroundIO3() throws DatabaseException {
 
         openEnv(5, 10);
         if (isCkptHighPriority()) {
@@ -116,8 +113,7 @@ public class BackgroundIOTest extends CleanerTestBase {
     }
 
     @Test
-    public void testBackgroundIO4()
-        throws DatabaseException {
+    public void testBackgroundIO4() throws DatabaseException {
 
         openEnv(5, 5);
         if (isCkptHighPriority()) {
@@ -131,15 +127,12 @@ public class BackgroundIOTest extends CleanerTestBase {
         }
     }
 
-    private boolean isCkptHighPriority()
-        throws DatabaseException {
+    private boolean isCkptHighPriority() throws DatabaseException {
 
-        return "true".equals(env.getConfig().getConfigParam
-            (EnvironmentParams.CHECKPOINTER_HIGH_PRIORITY.getName()));
+        return "true".equals(env.getConfig().getConfigParam(EnvironmentParams.CHECKPOINTER_HIGH_PRIORITY.getName()));
     }
 
-    private void openEnv(int readLimit, int writeLimit)
-        throws DatabaseException {
+    private void openEnv(int readLimit, int writeLimit) throws DatabaseException {
 
         this.readLimit = readLimit;
         this.writeLimit = writeLimit;
@@ -147,34 +140,21 @@ public class BackgroundIOTest extends CleanerTestBase {
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
 
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
 
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_BUFFER_MAX_SIZE.getName(),
-             Integer.toString(1024));
+        envConfig.setConfigParam(EnvironmentParams.LOG_BUFFER_MAX_SIZE.getName(), Integer.toString(1024));
 
-        envConfig.setConfigParam
-            (EnvironmentParams.LOG_FILE_MAX.getName(),
-             Integer.toString(FILE_SIZE));
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(FILE_SIZE));
 
-        envConfig.setConfigParam
-            (EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "60");
+        envConfig.setConfigParam(EnvironmentParams.CLEANER_MIN_UTILIZATION.getName(), "60");
         //*
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_BACKGROUND_READ_LIMIT.getName(),
-             String.valueOf(readLimit));
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_BACKGROUND_WRITE_LIMIT.getName(),
-             String.valueOf(writeLimit));
+        envConfig.setConfigParam(EnvironmentParams.ENV_BACKGROUND_READ_LIMIT.getName(), String.valueOf(readLimit));
+        envConfig.setConfigParam(EnvironmentParams.ENV_BACKGROUND_WRITE_LIMIT.getName(), String.valueOf(writeLimit));
 
         if (envMultiSubDir) {
-            envConfig.setConfigParam
-                (EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
+            envConfig.setConfigParam(EnvironmentConfig.LOG_N_DATA_DIRECTORIES, DATA_DIRS + "");
         }
 
         //*/
@@ -185,30 +165,32 @@ public class BackgroundIOTest extends CleanerTestBase {
         embeddedLNs = (envImpl.getMaxEmbeddedLN() >= 4);
     }
 
-    private void doTest(int minSleeps, int maxSleeps)
-        throws DatabaseException {
+    private void doTest(int minSleeps, int maxSleeps) throws DatabaseException {
 
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
-        envImpl.setBackgroundSleepHook(
-            new TestHook() {
-                public void doHook() {
-                    nSleeps += 1;
-                    assertEquals(0, LatchSupport.nBtreeLatchesHeld());
-                }
-                public Object getHookValue() {
-                    throw new UnsupportedOperationException();
-                }
-                public void doIOHook() {
-                    throw new UnsupportedOperationException();
-                }
-                public void hookSetup() {
-                    throw new UnsupportedOperationException();
-                }
-                public void doHook(Object obj) {
-                    throw new UnsupportedOperationException();
-                }
-            });
+        envImpl.setBackgroundSleepHook(new TestHook() {
+            public void doHook() {
+                nSleeps += 1;
+                assertEquals(0, LatchSupport.nBtreeLatchesHeld());
+            }
+
+            public Object getHookValue() {
+                throw new UnsupportedOperationException();
+            }
+
+            public void doIOHook() {
+                throw new UnsupportedOperationException();
+            }
+
+            public void hookSetup() {
+                throw new UnsupportedOperationException();
+            }
+
+            public void doHook(Object obj) {
+                throw new UnsupportedOperationException();
+            }
+        });
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -221,12 +203,12 @@ public class BackgroundIOTest extends CleanerTestBase {
         final int recSize = keySize + dataSize + 35 /* LN overhead */;
 
         /* 3 * (1,000,000 / 65) = 46,153 */
-        final int nRecords = nFiles * (FILE_SIZE / recSize); 
+        final int nRecords = nFiles * (FILE_SIZE / recSize);
 
         /*
-         * Insert records first so we will have a sizeable checkpoint.  Insert
-         * interleaved because sequential inserts flush the BINs, and we want
-         * to defer BIN flushing until the checkpoint.
+         * Insert records first so we will have a sizeable checkpoint. Insert
+         * interleaved because sequential inserts flush the BINs, and we want to
+         * defer BIN flushing until the checkpoint.
          */
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry(new byte[dataSize]);
@@ -258,11 +240,8 @@ public class BackgroundIOTest extends CleanerTestBase {
         env = null;
 
         String msg;
-        msg = "readLimit=" + readLimit +
-              " writeLimit=" + writeLimit +
-              " minSleeps=" + minSleeps +
-              " maxSleeps=" + maxSleeps +
-              " actualSleeps=" + nSleeps;
+        msg = "readLimit=" + readLimit + " writeLimit=" + writeLimit + " minSleeps=" + minSleeps + " maxSleeps="
+                + maxSleeps + " actualSleeps=" + nSleeps;
         //System.out.println(msg);
 
         //*

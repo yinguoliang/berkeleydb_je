@@ -24,12 +24,11 @@ import com.sleepycat.util.test.TestBase;
 public class LSNArrayTest extends TestBase {
     private static final int N_ELTS = 128;
 
-    private IN theIN;
+    private IN               theIN;
 
     @Before
-    public void setUp() 
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         super.setUp();
         theIN = new IN();
     }
@@ -73,10 +72,8 @@ public class LSNArrayTest extends TestBase {
             long thisLsn = DbLsn.makeLsn(i, i);
             theIN.setLsnInternal(i, thisLsn);
             if (theIN.getLsn(i) != thisLsn) {
-                System.out.println(i + " found: " +
-                                   DbLsn.toString(theIN.getLsn(i)) +
-                                   " expected: " +
-                                   DbLsn.toString(thisLsn));
+                System.out.println(
+                        i + " found: " + DbLsn.toString(theIN.getLsn(i)) + " expected: " + DbLsn.toString(thisLsn));
             }
             assertTrue(theIN.getLsn(i) == thisLsn);
         }

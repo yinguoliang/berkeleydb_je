@@ -47,7 +47,7 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * A unit test for testing JE logging programatically. 
+ * A unit test for testing JE logging programatically.
  */
 public class LoggerUtilsTest extends TestBase {
 
@@ -55,63 +55,57 @@ public class LoggerUtilsTest extends TestBase {
      * If a logging config file is specified, this test cannot expect the
      * logging properties to have default settings.
      */
-    private static final boolean DEFAULT_LOGGING_PROPERTIES =
-        System.getProperty("java.util.logging.config.file", "").equals("");
+    private static final boolean DEFAULT_LOGGING_PROPERTIES = System.getProperty("java.util.logging.config.file", "")
+            .equals("");
 
-    private final File envHome;
-    private static final String loggerPrefix = "com.sleepycat.je.";
+    private final File           envHome;
+    private static final String  loggerPrefix               = "com.sleepycat.je.";
     /* Logging configure properties file name. */
-    private static final String fileName = "logging.properties";
+    private static final String  fileName                   = "logging.properties";
     /* Logging settings in the properties file. */
-    private static final String consoleLevel =
-        "com.sleepycat.je.util.ConsoleHandler.level=INFO";
-    private static final String fileLevel =
-        "com.sleepycat.je.util.FileHandler.level=WARNING";
+    private static final String  consoleLevel               = "com.sleepycat.je.util.ConsoleHandler.level=INFO";
+    private static final String  fileLevel                  = "com.sleepycat.je.util.FileHandler.level=WARNING";
 
     public LoggerUtilsTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
-    /* 
-     * Remove the named files from the environment directory. 
+    /*
+     * Remove the named files from the environment directory.
      */
     private void removeFiles(File envDir, String name) {
         File[] files = envDir.listFiles();
         for (File file : files) {
             if (file.getName().contains(name)) {
-                assertTrue("couldn't delete " + name + "for " + envDir,
-                           file.delete());
+                assertTrue("couldn't delete " + name + "for " + envDir, file.delete());
             }
         }
     }
 
-    /* 
-     * Test whether a JE logger's level can be set programmatically. 
+    /*
+     * Test whether a JE logger's level can be set programmatically.
      */
     @Test
-    public void testLoggerLevelsRWEnv()
-        throws Exception {
-        
+    public void testLoggerLevelsRWEnv() throws Exception {
+
         changeLoggerLevels(false /* readOnly */);
     }
 
-    /* 
+    /*
      * Test whether a JE logger's level can be set programmatically, and that
-     * logging works in a read only environment. 
+     * logging works in a read only environment.
      */
     @Test
-    public void testLoggerLevelsROEnv()
-        throws Exception {
+    public void testLoggerLevelsROEnv() throws Exception {
 
         changeLoggerLevels(true /* readOnly */);
     }
 
-    private void changeLoggerLevels(boolean readOnlyEnv)
-        throws Exception {
+    private void changeLoggerLevels(boolean readOnlyEnv) throws Exception {
 
-        /* 
-         * Set the parent's level to OFF, so all logging messages shouldn't be 
-         * written to je.info files. 
+        /*
+         * Set the parent's level to OFF, so all logging messages shouldn't be
+         * written to je.info files.
          */
         Logger parent = Logger.getLogger("com.sleepycat.je");
         parent.setLevel(Level.OFF);
@@ -137,16 +131,16 @@ public class LoggerUtilsTest extends TestBase {
         /* Log the test messages. */
         logMsg(DbInternal.getNonNullEnvImpl(env), messages);
 
-        /* 
+        /*
          * The loggers were turned off with a level setting of OFF, so there is
          * should be nothing in the je.info files.
          */
         ArrayList<String> readMsgs = readFromInfoFile(readOnlyEnv);
         assertTrue(readMsgs.size() == 0);
 
-        /* 
-         * Reset the parent level to ALL, so that all logging messages should 
-         * be logged. 
+        /*
+         * Reset the parent level to ALL, so that all logging messages should be
+         * logged.
          */
         parent.setLevel(Level.ALL);
 
@@ -158,9 +152,9 @@ public class LoggerUtilsTest extends TestBase {
 
         /*
          * Since JE logger's level has been set to ALL, additional JE logging
-         * messages from normal operations may also be written to je.info
-         * files. We should check that the actual messages in je.info should be
-         * equal to or larger than the size we directly log.
+         * messages from normal operations may also be written to je.info files.
+         * We should check that the actual messages in je.info should be equal
+         * to or larger than the size we directly log.
          */
         if (readOnlyEnv) {
             /* Read only Environment won't log anything to JE FileHandler. */
@@ -168,10 +162,10 @@ public class LoggerUtilsTest extends TestBase {
         } else {
 
             /*
-             * Since JE logger's level has been set to ALL, additional JE 
+             * Since JE logger's level has been set to ALL, additional JE
              * logging messages from normal operations may also be written to
-             * je.info files. We should check that the actual messages in 
-             * je.info files should be equal to or larger than the size we 
+             * je.info files. We should check that the actual messages in
+             * je.info files should be equal to or larger than the size we
              * directly log.
              */
             assertTrue(readMsgs.size() >= messages.size());
@@ -195,8 +189,7 @@ public class LoggerUtilsTest extends TestBase {
 
     /* Check the level for all JE loggers. */
     private void checkLoggerLevel() {
-        Enumeration<String> loggerNames =
-            LogManager.getLogManager().getLoggerNames();
+        Enumeration<String> loggerNames = LogManager.getLogManager().getLoggerNames();
         while (loggerNames.hasMoreElements()) {
             String loggerName = loggerNames.nextElement();
             if (loggerName.startsWith(loggerPrefix)) {
@@ -215,8 +208,7 @@ public class LoggerUtilsTest extends TestBase {
     }
 
     /* Read the contents in the je.info files. */
-    private ArrayList<String> readFromInfoFile(boolean readOnlyEnv) 
-        throws Exception {
+    private ArrayList<String> readFromInfoFile(boolean readOnlyEnv) throws Exception {
 
         /* Get the file for je.info.0. */
         File[] files = envHome.listFiles();
@@ -247,12 +239,11 @@ public class LoggerUtilsTest extends TestBase {
         return messages;
     }
 
-    /* 
-     * Test FileHandler and ConsoleHandler level setting. 
+    /*
+     * Test FileHandler and ConsoleHandler level setting.
      */
     @Test
-    public void testHandlerLevels()
-        throws Exception {
+    public void testHandlerLevels() throws Exception {
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
@@ -268,12 +259,10 @@ public class LoggerUtilsTest extends TestBase {
         }
 
         env.close();
-        
+
         /* Reopen the Environment with params setting. */
-        envConfig.setConfigParam(EnvironmentConfig.CONSOLE_LOGGING_LEVEL, 
-                                 "WARNING");
-        envConfig.setConfigParam(EnvironmentConfig.FILE_LOGGING_LEVEL, 
-                                 "SEVERE");
+        envConfig.setConfigParam(EnvironmentConfig.CONSOLE_LOGGING_LEVEL, "WARNING");
+        envConfig.setConfigParam(EnvironmentConfig.FILE_LOGGING_LEVEL, "SEVERE");
         env = new Environment(envHome, envConfig);
         envImpl = DbInternal.getNonNullEnvImpl(env);
         Level newConsoleHandlerLevel = envImpl.getConsoleHandler().getLevel();
@@ -291,37 +280,34 @@ public class LoggerUtilsTest extends TestBase {
         env.close();
     }
 
-    /* 
-     * Test whether the configurations inside the properties file are set 
-     * correctly in JE Environment. 
+    /*
+     * Test whether the configurations inside the properties file are set
+     * correctly in JE Environment.
      */
     @Test
-    public void testPropertiesSetting() 
-        throws Exception {
+    public void testPropertiesSetting() throws Exception {
 
         invokeProcess(false);
     }
 
     /**
-     *  Start the process and check the exit value. 
+     * Start the process and check the exit value.
      *
-     *  @param bothSetting presents whether the logging configuration and JE
-     *                     params are both set on a same Environment.
+     * @param bothSetting presents whether the logging configuration and JE
+     *            params are both set on a same Environment.
      */
-    private void invokeProcess(boolean bothSetting) 
-        throws Exception {
+    private void invokeProcess(boolean bothSetting) throws Exception {
 
         /* Create a property file and write configurations into the file. */
         String propertiesFile = createPropertiesFile();
 
-        /* 
-         * If bothSetting is true, which means we need to set JE params, so 
+        /*
+         * If bothSetting is true, which means we need to set JE params, so
          * obviously we need to add another two arguments.
          */
         String[] envCommand = bothSetting ? new String[8] : new String[6];
         envCommand[0] = "-Djava.util.logging.config.file=" + propertiesFile;
-        envCommand[1] = "com.sleepycat.je.utilint.LoggerUtilsTest$" +
-                        "PropertiesSettingProcess";
+        envCommand[1] = "com.sleepycat.je.utilint.LoggerUtilsTest$" + "PropertiesSettingProcess";
         envCommand[2] = envHome.getAbsolutePath();
         envCommand[3] = "INFO";
         envCommand[4] = "WARNING";
@@ -333,8 +319,7 @@ public class LoggerUtilsTest extends TestBase {
         }
 
         /* Start a process. */
-        JUnitProcessThread thread =
-            new JUnitProcessThread("PropertiesSettingProcess", envCommand);
+        JUnitProcessThread thread = new JUnitProcessThread("PropertiesSettingProcess", envCommand);
         thread.start();
 
         try {
@@ -351,14 +336,11 @@ public class LoggerUtilsTest extends TestBase {
     }
 
     /* Create a properties file for use. */
-    private String createPropertiesFile() 
-        throws Exception {
+    private String createPropertiesFile() throws Exception {
 
-        String name = envHome.getAbsolutePath() + 
-                      System.getProperty("file.separator") + fileName;
+        String name = envHome.getAbsolutePath() + System.getProperty("file.separator") + fileName;
         File file = new File(name);
-        PrintWriter out = 
-            new PrintWriter(new BufferedWriter(new FileWriter(file)));
+        PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(file)));
         out.println(consoleLevel);
         out.println(fileLevel);
         out.close();
@@ -368,15 +350,12 @@ public class LoggerUtilsTest extends TestBase {
 
     /*
      * Test that JE ConsoleHandler and FileHandler get the correct level when
-     * their levels are set both by the java.util.logging properties file and 
-     * JE params.
-     *
-     * We want JE params to override the levels set by the standard 
+     * their levels are set both by the java.util.logging properties file and JE
+     * params. We want JE params to override the levels set by the standard
      * properties file.
      */
     @Test
-    public void testPropertiesAndParamSetting()
-        throws Exception {
+    public void testPropertiesAndParamSetting() throws Exception {
 
         invokeProcess(true);
     }
@@ -385,15 +364,12 @@ public class LoggerUtilsTest extends TestBase {
      * Test that handler levels are mutable.
      */
     @Test
-    public void testMutableConfig()
-        throws Exception {
+    public void testMutableConfig() throws Exception {
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(EnvironmentConfig.CONSOLE_LOGGING_LEVEL,
-                                 "WARNING");
-        envConfig.setConfigParam(EnvironmentConfig.FILE_LOGGING_LEVEL,
-                                 "SEVERE");
+        envConfig.setConfigParam(EnvironmentConfig.CONSOLE_LOGGING_LEVEL, "WARNING");
+        envConfig.setConfigParam(EnvironmentConfig.FILE_LOGGING_LEVEL, "SEVERE");
         Environment env = new Environment(envHome, envConfig);
 
         /* Check the init handlers' level setting. */
@@ -405,10 +381,8 @@ public class LoggerUtilsTest extends TestBase {
 
         /* Change the handler param setting for an open Environment. */
         EnvironmentMutableConfig mutableConfig = env.getMutableConfig();
-        mutableConfig.setConfigParam(EnvironmentConfig.CONSOLE_LOGGING_LEVEL,
-                                     "SEVERE");
-        mutableConfig.setConfigParam(EnvironmentConfig.FILE_LOGGING_LEVEL,
-                                     "WARNING");
+        mutableConfig.setConfigParam(EnvironmentConfig.CONSOLE_LOGGING_LEVEL, "SEVERE");
+        mutableConfig.setConfigParam(EnvironmentConfig.FILE_LOGGING_LEVEL, "WARNING");
         env.setMutableConfig(mutableConfig);
 
         /* Check the handler's level has changed. */
@@ -432,28 +406,24 @@ public class LoggerUtilsTest extends TestBase {
         env.close();
     }
 
-    /* 
-     * A process for starting a JE Environment with properties file or 
-     * configured JE params. 
+    /*
+     * A process for starting a JE Environment with properties file or
+     * configured JE params.
      */
     static class PropertiesSettingProcess {
-        private final File envHome;
+        private final File    envHome;
         /* Handler levels set through properties configuration file. */
-        private final Level propertyConsole;
-        private final Level propertyFile;
+        private final Level   propertyConsole;
+        private final Level   propertyFile;
         /* Handler levels set through JE params. */
-        private final Level paramConsole;
-        private final Level paramFile;
+        private final Level   paramConsole;
+        private final Level   paramFile;
         /* Indicates whether property file and params are both set. */
         private final boolean bothSetting;
-        private Environment env;
+        private Environment   env;
 
-        public PropertiesSettingProcess(File envHome, 
-                                        Level propertyConsole, 
-                                        Level propertyFile,
-                                        boolean bothSetting,
-                                        Level paramConsole,
-                                        Level paramFile) {
+        public PropertiesSettingProcess(File envHome, Level propertyConsole, Level propertyFile, boolean bothSetting,
+                                        Level paramConsole, Level paramFile) {
             this.envHome = envHome;
             this.propertyConsole = propertyConsole;
             this.propertyFile = propertyFile;
@@ -470,12 +440,8 @@ public class LoggerUtilsTest extends TestBase {
 
                 /* If bothSetting is true, set the JE params. */
                 if (bothSetting) {
-                    envConfig.setConfigParam
-                        (EnvironmentConfig.CONSOLE_LOGGING_LEVEL, 
-                         paramConsole.toString());
-                    envConfig.setConfigParam
-                        (EnvironmentConfig.FILE_LOGGING_LEVEL,
-                         paramFile.toString());
+                    envConfig.setConfigParam(EnvironmentConfig.CONSOLE_LOGGING_LEVEL, paramConsole.toString());
+                    envConfig.setConfigParam(EnvironmentConfig.FILE_LOGGING_LEVEL, paramFile.toString());
                 }
 
                 env = new Environment(envHome, envConfig);
@@ -497,8 +463,7 @@ public class LoggerUtilsTest extends TestBase {
         private void doCheck(Level cLevel, Level fLevel) {
             try {
                 EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-                assertTrue
-                    (envImpl.getConsoleHandler().getLevel() == cLevel);
+                assertTrue(envImpl.getConsoleHandler().getLevel() == cLevel);
                 assertTrue(envImpl.getFileHandler().getLevel() == fLevel);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -518,19 +483,15 @@ public class LoggerUtilsTest extends TestBase {
                     paramFile = Level.parse(args[5]);
                 }
 
-                process = new PropertiesSettingProcess(new File(args[0]), 
-                                                       Level.parse(args[1]), 
-                                                       Level.parse(args[2]),
-                                                       new Boolean(args[3]),
-                                                       paramConsole,
-                                                       paramFile);
+                process = new PropertiesSettingProcess(new File(args[0]), Level.parse(args[1]), Level.parse(args[2]),
+                        new Boolean(args[3]), paramConsole, paramFile);
             } catch (Exception e) {
                 e.printStackTrace();
                 System.exit(3);
             }
-            
+
             if (process == null) {
-        	throw new RuntimeException("Process should have been created");
+                throw new RuntimeException("Process should have been created");
             }
             process.openEnv();
             process.check();
@@ -538,8 +499,8 @@ public class LoggerUtilsTest extends TestBase {
     }
 
     /**
-     * Set up two environments with configured handlers, and make sure
-     * that they only log records from the appropriate environment.
+     * Set up two environments with configured handlers, and make sure that they
+     * only log records from the appropriate environment.
      */
     @Test
     public void testConfiguredHandler() {
@@ -547,18 +508,12 @@ public class LoggerUtilsTest extends TestBase {
         TestInfo infoB = setupMultipleEnvs("B");
         int numTestMsgs = 10;
         try {
-            Logger loggerA = LoggerUtils.getLogger
-                (com.sleepycat.je.utilint.LoggerUtils.class);
-            Logger loggerB = LoggerUtils.getLogger
-                (com.sleepycat.je.utilint.LoggerUtils.class);
+            Logger loggerA = LoggerUtils.getLogger(com.sleepycat.je.utilint.LoggerUtils.class);
+            Logger loggerB = LoggerUtils.getLogger(com.sleepycat.je.utilint.LoggerUtils.class);
 
             for (int i = 0; i < numTestMsgs; i++) {
-                LoggerUtils.logMsg(loggerA, 
-                                   infoA.envImpl,
-                                   Level.SEVERE, infoA.prefix + i);
-                LoggerUtils.logMsg(loggerB, 
-                                   infoB.envImpl,
-                                   Level.SEVERE, infoB.prefix + i);
+                LoggerUtils.logMsg(loggerA, infoA.envImpl, Level.SEVERE, infoA.prefix + i);
+                LoggerUtils.logMsg(loggerB, infoB.envImpl, Level.SEVERE, infoB.prefix + i);
             }
 
             infoA.handler.verify(numTestMsgs);
@@ -576,7 +531,7 @@ public class LoggerUtilsTest extends TestBase {
     }
 
     private TestInfo setupMultipleEnvs(String name) {
-        String testPrefix  = "TEXT" + name;
+        String testPrefix = "TEXT" + name;
         File dir = new File(envHome, name);
         dir.mkdirs();
 
@@ -592,13 +547,12 @@ public class LoggerUtilsTest extends TestBase {
 
     private class TestInfo {
         EnvironmentImpl envImpl;
-        Environment env;
-        String prefix;
-        TestHandler handler;
-        File dir;
+        Environment     env;
+        String          prefix;
+        TestHandler     handler;
+        File            dir;
 
-        TestInfo(Environment env, TestHandler handler, 
-                 String testPrefix, File dir) {
+        TestInfo(Environment env, TestHandler handler, String testPrefix, File dir) {
             this.env = env;
             this.envImpl = DbInternal.getNonNullEnvImpl(env);
             this.handler = handler;
@@ -608,8 +562,8 @@ public class LoggerUtilsTest extends TestBase {
     }
 
     private class TestHandler extends Handler {
-        
-        private final String prefix;
+
+        private final String       prefix;
         private final List<String> logged;
 
         TestHandler(String prefix) {

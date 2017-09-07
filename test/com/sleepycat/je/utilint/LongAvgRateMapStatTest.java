@@ -28,19 +28,16 @@ import com.sleepycat.util.test.TestBase;
 /** Test the LongAvgRateMapStat class */
 public class LongAvgRateMapStatTest extends TestBase {
 
-    private static final StatGroup statGroup =
-        new StatGroup("TestGroup", "Test group");
-    private static int statDefCount;
+    private static final StatGroup statGroup = new StatGroup("TestGroup", "Test group");
+    private static int             statDefCount;
 
-    private LongAvgRateMapStat map;
+    private LongAvgRateMapStat     map;
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
-        map = new LongAvgRateMapStat(
-            statGroup, getStatDef(), 3000, MILLISECONDS);
+        map = new LongAvgRateMapStat(statGroup, getStatDef(), 3000, MILLISECONDS);
     }
 
     private StatDefinition getStatDef() {
@@ -102,21 +99,15 @@ public class LongAvgRateMapStatTest extends TestBase {
         assertTrue(interval.isNotSet());
 
         /*
-         * Consider all combinations of entries with a value, an unset entry,
-         * no entry, and a removed entry:
-         *
-         * a: present with non-zero value
-         * b: present with zero/cleared value
-         * c: absent
-         * d: removed
-         *
-         * If both maps have an entry for the same key, then they should be
-         * merged.  If the newer of the two maps has no entry, then the result
-         * should not include one.  The removed case is one where the removal
-         * can make the map newer even though it has no entries present to
-         * prove it.  If the maps have the same modification time -- an
-         * unlikely case in practice -- then the this argument controls which
-         * entries appear.
+         * Consider all combinations of entries with a value, an unset entry, no
+         * entry, and a removed entry: a: present with non-zero value b: present
+         * with zero/cleared value c: absent d: removed If both maps have an
+         * entry for the same key, then they should be merged. If the newer of
+         * the two maps has no entry, then the result should not include one.
+         * The removed case is one where the removal can make the map newer even
+         * though it has no entries present to prove it. If the maps have the
+         * same modification time -- an unlikely case in practice -- then the
+         * this argument controls which entries appear.
          */
         LongAvgRate comp1a2a = map.createStat("1a2a");
         LongAvgRate comp1a2b = map.createStat("1a2b");
@@ -149,18 +140,16 @@ public class LongAvgRateMapStatTest extends TestBase {
         map.removeStat("1d2a", 2001);
 
         interval = map.computeInterval(other);
-        assertEquals("1a2a=3;1a2b=6;1a2c=9;1a2d=12",
-                     interval.get());
+        assertEquals("1a2a=3;1a2b=6;1a2c=9;1a2d=12", interval.get());
         interval = other.computeInterval(map);
-        assertEquals("1a2a=3;1a2b=6;1a2c=9;1a2d=12",
-                     interval.get());
+        assertEquals("1a2a=3;1a2b=6;1a2c=9;1a2d=12", interval.get());
 
         /* Test with other map newer */
         otherComp1a2a.add(10000, 4000);
         otherComp1a2a.add(40000, 5000);
         otherComp1a2d.add(10000, 4000);
         otherComp1a2d.add(70000, 5000);
-        other.removeStat("1a2d",5001);
+        other.removeStat("1a2d", 5001);
         otherComp1b2a.add(10000, 4000);
         otherComp1b2a.add(100000, 5000);
         otherComp1c2a.add(10000, 4000);
@@ -169,11 +158,9 @@ public class LongAvgRateMapStatTest extends TestBase {
         otherComp1d2a.add(160000, 5000);
 
         interval = map.computeInterval(other);
-        assertEquals("1a2a=20;1a2b=6;1b2a=90;1c2a=120;1d2a=150",
-                     interval.get());
+        assertEquals("1a2a=20;1a2b=6;1b2a=90;1c2a=120;1d2a=150", interval.get());
         interval = other.computeInterval(map);
-        assertEquals("1a2a=20;1a2b=6;1b2a=90;1c2a=120;1d2a=150",
-                     interval.get());
+        assertEquals("1a2a=20;1a2b=6;1b2a=90;1c2a=120;1d2a=150", interval.get());
 
         /* Test with other map older */
         comp1a2a.clear();
@@ -213,11 +200,9 @@ public class LongAvgRateMapStatTest extends TestBase {
         otherComp1d2a.add(160000, 2000);
 
         interval = map.computeInterval(other);
-        assertEquals("1a2a=13;1a2b=6;1a2c=9;1a2d=12;1b2a=90",
-                     interval.get());
+        assertEquals("1a2a=13;1a2b=6;1a2c=9;1a2d=12;1b2a=90", interval.get());
         interval = other.computeInterval(map);
-        assertEquals("1a2a=13;1a2b=6;1a2c=9;1a2d=12;1b2a=90",
-                     interval.get());
+        assertEquals("1a2a=13;1a2b=6;1a2c=9;1a2d=12;1b2a=90", interval.get());
 
         /*
          * Remove an entry from map using the same timestamp as on the other
@@ -226,11 +211,9 @@ public class LongAvgRateMapStatTest extends TestBase {
          */
         other.removeStat("1a2a", 5001);
         interval = map.computeInterval(other);
-        assertEquals("1a2a=3;1a2b=6;1a2c=9;1a2d=12;1b2a=90",
-                     interval.get());
+        assertEquals("1a2a=3;1a2b=6;1a2c=9;1a2d=12;1b2a=90", interval.get());
         interval = other.computeInterval(map);
-        assertEquals("1a2b=6;1b2a=90;1c2a=120;1d2a=150",
-                     interval.get());
+        assertEquals("1a2b=6;1b2a=90;1c2a=120;1d2a=150", interval.get());
 
         /*
          * Now remove everything from the older map, and make sure makes the

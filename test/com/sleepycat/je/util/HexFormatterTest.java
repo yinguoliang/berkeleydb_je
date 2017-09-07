@@ -25,7 +25,7 @@ import com.sleepycat.util.test.TestBase;
  * number.
  */
 public class HexFormatterTest extends TestBase {
-    
+
     @Test
     public void testFormatLong() {
         assertTrue(HexFormatter.formatLong(0).equals("0x0000000000000000"));

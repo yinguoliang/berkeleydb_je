@@ -52,10 +52,10 @@ import com.sleepycat.util.test.TestBase;
  */
 public class MasterChangeTest extends TestBase {
 
-    private final boolean verbose = Boolean.getBoolean("verbose");
+    private final boolean       verbose = Boolean.getBoolean("verbose");
     private static final String DB_NAME = "testDb";
-    private final File envRoot;
-    private final Logger logger;
+    private final File          envRoot;
+    private final Logger        logger;
 
     public MasterChangeTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -64,14 +64,13 @@ public class MasterChangeTest extends TestBase {
     }
 
     /**
-     * Checks that a master node that becomes a replica functions
-     * properly as a replica. Preexisting transactions will be closed and any
-     * attempt to do more writes, or to commit or abort old transactions will
-     * result in a ReplicaWriteException.
+     * Checks that a master node that becomes a replica functions properly as a
+     * replica. Preexisting transactions will be closed and any attempt to do
+     * more writes, or to commit or abort old transactions will result in a
+     * ReplicaWriteException.
      */
     @Test
-    public void testMasterBecomesReplica()
-        throws Exception {
+    public void testMasterBecomesReplica() throws Exception {
 
         RepEnvInfo[] repEnvInfo = null;
         Database db = null;
@@ -80,12 +79,11 @@ public class MasterChangeTest extends TestBase {
         Transaction oldMasterIncompleteTxn3 = null;
         Transaction newMasterIncompleteTxn5 = null;
         try {
-            repEnvInfo = RepTestUtils.setupEnvInfos
-                (envRoot, numNodes, RepTestUtils.SYNC_SYNC_NONE_DURABILITY);
+            repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, numNodes, RepTestUtils.SYNC_SYNC_NONE_DURABILITY);
 
             /*
-             * Start the master first, to ensure that it is the master, and
-             * then start the rest of the group.
+             * Start the master first, to ensure that it is the master, and then
+             * start the rest of the group.
              */
             ReplicatedEnvironment firstMaster = repEnvInfo[0].openEnv();
             assert firstMaster != null;
@@ -100,13 +98,13 @@ public class MasterChangeTest extends TestBase {
 
             /*
              * After node1 and node2 join, make sure that their presence in the
-             * rep group db is propagated before we do a forceMaster, by doing
-             * a consistent read. When a node calls for an election, it must
-             * have its own id available to itself from the rep group db on
-             * disk. If it doesn't, it will send an election request with an
-             * illegal node id. In real life, this can never happen, because a
-             * node that does not have its own id won't win mastership, since
-             * others will be ahead of it.
+             * rep group db is propagated before we do a forceMaster, by doing a
+             * consistent read. When a node calls for an election, it must have
+             * its own id available to itself from the rep group db on disk. If
+             * it doesn't, it will send an election request with an illegal node
+             * id. In real life, this can never happen, because a node that does
+             * not have its own id won't win mastership, since others will be
+             * ahead of it.
              */
             Transaction oldMasterTxn2 = doInsert(firstMaster, 2, true);
             makeReplicasConsistent(oldMasterTxn2, repEnvInfo[1], repEnvInfo[2]);
@@ -119,7 +117,7 @@ public class MasterChangeTest extends TestBase {
             WaitForMasterListener masterWaiter = new WaitForMasterListener();
             ReplicatedEnvironment forcedMaster = repEnvInfo[lastIndex].getEnv();
             forcedMaster.setStateChangeListener(masterWaiter);
-            RepNode lastRepNode =  repEnvInfo[lastIndex].getRepNode();
+            RepNode lastRepNode = repEnvInfo[lastIndex].getRepNode();
 
             WaitForReplicaListener replicaWaiter = new WaitForReplicaListener();
             firstMaster.setStateChangeListener(replicaWaiter);
@@ -137,24 +135,21 @@ public class MasterChangeTest extends TestBase {
             lastRepNode.forceMaster(true);
             masterWaiter.awaitMastership();
 
-            /* 
-             * Write record 4 on the new master, node3. Insert and commit on
-             * the new master. 
+            /*
+             * Write record 4 on the new master, node3. Insert and commit on the
+             * new master.
              */
             doInsert(forcedMaster, 4, true);
 
             /*
              * We expect the old master to have become a replica, and for the
-             * same environment handle to still be valid. Use the old handle
-             * to be sure it's still valid. The old transactions should be
-             * aborted.
+             * same environment handle to still be valid. Use the old handle to
+             * be sure it's still valid. The old transactions should be aborted.
              */
             replicaWaiter.awaitReplica();
             assertEquals(State.REPLICA, firstMaster.getState());
-            assertEquals(Transaction.State.ABORTED, 
-                         oldMasterIncompleteTxn1.getState());
-            assertEquals(Transaction.State.ABORTED, 
-                         oldMasterIncompleteTxn3.getState());
+            assertEquals(Transaction.State.ABORTED, oldMasterIncompleteTxn1.getState());
+            assertEquals(Transaction.State.ABORTED, oldMasterIncompleteTxn3.getState());
 
             /*
              * Sync up the group. We should now see records 2 and 4 on all
@@ -162,8 +157,7 @@ public class MasterChangeTest extends TestBase {
              * aborted.
              */
             logger.info("sync group");
-            VLSN commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo,
-                                                                 numNodes);
+            VLSN commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo, numNodes);
 
             /*
              * Make sure we can do a transactional cursor scan of the data on
@@ -175,20 +169,20 @@ public class MasterChangeTest extends TestBase {
             logger.info("run check");
 
             RepTestUtils.checkNodeEquality(commitVLSN, verbose, repEnvInfo);
-            
-            /* 
+
+            /*
              * Now return mastership back to node 1, and make sure it can serve
              * as master.
              */
             newMasterIncompleteTxn5 = doInsert(forcedMaster, 5, false);
             RepTestUtils.syncGroup(repEnvInfo);
-            WaitForMasterListener oldMasterWaiter =
-                new WaitForMasterListener();
+            WaitForMasterListener oldMasterWaiter = new WaitForMasterListener();
             firstMaster.setStateChangeListener(oldMasterWaiter);
 
-            /* Make it possible to check that node3 has become a replica again*/
-            WaitForReplicaListener newReplicaWaiter =
-                new WaitForReplicaListener();
+            /*
+             * Make it possible to check that node3 has become a replica again
+             */
+            WaitForReplicaListener newReplicaWaiter = new WaitForReplicaListener();
             forcedMaster.setStateChangeListener(newReplicaWaiter);
 
             logger.info("returning mastership to first node");
@@ -200,13 +194,11 @@ public class MasterChangeTest extends TestBase {
             oldMasterWaiter.awaitMastership();
             newReplicaWaiter.awaitReplica();
             logger.info("transition done");
-            assertEquals(Transaction.State.ABORTED, 
-                         newMasterIncompleteTxn5.getState());
+            assertEquals(Transaction.State.ABORTED, newMasterIncompleteTxn5.getState());
 
             /* Insert and commit on the old, original master */
             doInsert(firstMaster, 6, true);
-            commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo,
-                                                            numNodes);
+            commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo, numNodes);
             scanData(repEnvInfo, 2, 4, 6);
         } catch (Exception e) {
             logger.info("Unexpected failure");
@@ -217,17 +209,17 @@ public class MasterChangeTest extends TestBase {
                 /* Should still be valid to call abort */
                 oldMasterIncompleteTxn1.abort();
             }
-            
+
             if (oldMasterIncompleteTxn3 != null) {
                 /* Should still be valid to call abort */
                 oldMasterIncompleteTxn3.abort();
             }
-            
+
             if (newMasterIncompleteTxn5 != null) {
                 /* Should still be valid to call abort */
                 newMasterIncompleteTxn5.abort();
             }
-            
+
             if (db != null) {
                 db.close();
                 db = null;
@@ -235,25 +227,24 @@ public class MasterChangeTest extends TestBase {
             RepTestUtils.shutdownRepEnvs(repEnvInfo);
         }
     }
-    
+
     /**
      * Move mastership around a group by feigning network partitions.
+     * 
      * @throws Throwable
      */
     @Test
-    public void testTransitions() 
-        throws Throwable {
+    public void testTransitions() throws Throwable {
 
         RepEnvInfo[] repEnvInfo = null;
         Database db = null;
         int numNodes = 3;
 
-        repEnvInfo = RepTestUtils.setupEnvInfos
-            (envRoot, numNodes, RepTestUtils.SYNC_SYNC_NONE_DURABILITY);
+        repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, numNodes, RepTestUtils.SYNC_SYNC_NONE_DURABILITY);
 
         /*
-         * Start the master first, to ensure that it is the master, and
-         * then start the rest of the group.
+         * Start the master first, to ensure that it is the master, and then
+         * start the rest of the group.
          */
         ReplicatedEnvironment firstMaster = repEnvInfo[0].openEnv();
         assert firstMaster != null;
@@ -270,31 +261,26 @@ public class MasterChangeTest extends TestBase {
         int numSwitches = 5;
         int firstIndex = 0;
         AtomicInteger useVal = new AtomicInteger();
-        /* 
+        /*
          * Do a round of switching masters, by mimicking network partitions.
          * Check that open txns are aborted if they have writes, and left open
-         * if they only did reads. 
+         * if they only did reads.
          */
         while (numSwitches-- > 0) {
-            WorkGenerator generator = new WorkGenerator(expectedValues, 
-                                                        useVal);
+            WorkGenerator generator = new WorkGenerator(expectedValues, useVal);
             int targetIndex = (firstIndex == 2) ? 0 : firstIndex + 1;
-            logger.fine("==> Switching from " + firstIndex + " to " + 
-                        targetIndex + " starting with record " + useVal.get());
+            logger.fine("==> Switching from " + firstIndex + " to " + targetIndex + " starting with record "
+                    + useVal.get());
             startTxnAndSwitch(repEnvInfo, firstIndex, targetIndex, generator);
             firstIndex = targetIndex;
         }
         RepTestUtils.shutdownRepEnvs(repEnvInfo);
     }
 
-    private void startTxnAndSwitch(RepEnvInfo[] repEnvInfo,
-                                   int currentIndex,
-                                   int targetIndex,
-                                   WorkGenerator generator) 
-        throws DatabaseException, InterruptedException {
+    private void startTxnAndSwitch(RepEnvInfo[] repEnvInfo, int currentIndex, int targetIndex, WorkGenerator generator)
+            throws DatabaseException, InterruptedException {
 
-        ReplicatedEnvironment currentMaster = 
-            repEnvInfo[currentIndex].getEnv();
+        ReplicatedEnvironment currentMaster = repEnvInfo[currentIndex].getEnv();
 
         try {
             /*
@@ -305,15 +291,13 @@ public class MasterChangeTest extends TestBase {
             generator.doWorkOnOldMaster(currentMaster);
 
             /*
-             * Mimic a network partition by forcing a replica to become the
-             * new master. Keep the old master alive; don't shoot it, because
-             * we want to test master->replica transitions.
+             * Mimic a network partition by forcing a replica to become the new
+             * master. Keep the old master alive; don't shoot it, because we
+             * want to test master->replica transitions.
              */
             WaitForMasterListener masterWaiter = new WaitForMasterListener();
-            WaitForReplicaListener replicaWaiter = 
-                new WaitForReplicaListener();
-            ReplicatedEnvironment targetMaster = 
-                repEnvInfo[targetIndex].getEnv();
+            WaitForReplicaListener replicaWaiter = new WaitForReplicaListener();
+            ReplicatedEnvironment targetMaster = repEnvInfo[targetIndex].getEnv();
             targetMaster.setStateChangeListener(masterWaiter);
             currentMaster.setStateChangeListener(replicaWaiter);
             RepNode targetRepNode = repEnvInfo[targetIndex].getRepNode();
@@ -331,14 +315,12 @@ public class MasterChangeTest extends TestBase {
             /* Insert and commit on the new master. */
             generator.doWorkOnNewMaster(targetMaster);
 
-            /* 
-             * Sync up the group before checking that it holds committed
-             * records only.
-             */ 
+            /*
+             * Sync up the group before checking that it holds committed records
+             * only.
+             */
             logger.info("sync group");
-            VLSN commitVLSN = 
-                RepTestUtils.syncGroupToLastCommit(repEnvInfo,
-                                                   repEnvInfo.length);
+            VLSN commitVLSN = RepTestUtils.syncGroupToLastCommit(repEnvInfo, repEnvInfo.length);
             /*
              * Make sure we can do a transactional cursor scan of the data on
              * all nodes. This will ensure that we don't have any dangling
@@ -348,14 +330,15 @@ public class MasterChangeTest extends TestBase {
             logger.info("run check");
             RepTestUtils.checkNodeEquality(commitVLSN, verbose, repEnvInfo);
         } finally {
-            /* 
-             * Check that all the non-committed transactions from the old
-             * master are not usable anymore. 
+            /*
+             * Check that all the non-committed transactions from the old master
+             * are not usable anymore.
              */
             generator.assertIncompleteTxnsInvalidated();
 
-            /* In this test, there should be no recoveries. TODO, better
-               test? */
+            /*
+             * In this test, there should be no recoveries. TODO, better test?
+             */
             generator.assertNoRestarts(repEnvInfo);
 
             /* Close off the old transactions */
@@ -364,27 +347,25 @@ public class MasterChangeTest extends TestBase {
     }
 
     /**
-     * Do a transactional cursor scan and check each node to see if the 
-     * expected records are there. Using a transactional cursor means we'll 
-     * check for dangling locks.  If a lock is left over, it will cause a 
-     * deadlock.
+     * Do a transactional cursor scan and check each node to see if the expected
+     * records are there. Using a transactional cursor means we'll check for
+     * dangling locks. If a lock is left over, it will cause a deadlock.
      */
     private void scanData(RepEnvInfo[] repEnvInfo, int... expected) {
-        for (RepEnvInfo info: repEnvInfo) {
+        for (RepEnvInfo info : repEnvInfo) {
 
             Database db = openDb(info.getEnv());
             Cursor c = db.openCursor(null, CursorConfig.READ_COMMITTED);
-            DatabaseEntry key = new  DatabaseEntry();
+            DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
 
             for (int val : expected) {
-                assertEquals(OperationStatus.SUCCESS, 
-                             c.getNext(key, data, null));
+                assertEquals(OperationStatus.SUCCESS, c.getNext(key, data, null));
                 assertEquals(val, IntegerBinding.entryToInt(key));
             }
 
             /* Assert that there are no other records */
-            assertEquals(OperationStatus.NOTFOUND,  c.getNext(key, data, null));
+            assertEquals(OperationStatus.NOTFOUND, c.getNext(key, data, null));
 
             c.close();
             db.close();
@@ -401,7 +382,7 @@ public class MasterChangeTest extends TestBase {
 
     private Database openDb(ReplicatedEnvironment master, boolean allowCreate) {
 
-        Transaction txn = master.beginTransaction(null,null);
+        Transaction txn = master.beginTransaction(null, null);
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(allowCreate);
         dbConfig.setTransactional(true);
@@ -413,9 +394,7 @@ public class MasterChangeTest extends TestBase {
     /**
      * @return the transaction for the unfinished txn
      */
-    private Transaction doInsert(ReplicatedEnvironment master,
-                                 int val,
-                                 boolean doCommit) {
+    private Transaction doInsert(ReplicatedEnvironment master, int val, boolean doCommit) {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -436,11 +415,8 @@ public class MasterChangeTest extends TestBase {
         return txn;
     }
 
-
     /** Just do an insert, transactions are managed outside this method. */
-    private void doInsert(ReplicatedEnvironment master,
-                          final Transaction txn,
-                          final int val) {
+    private void doInsert(ReplicatedEnvironment master, final Transaction txn, final int val) {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
@@ -456,13 +432,10 @@ public class MasterChangeTest extends TestBase {
      * Ensure that the specified nodes are consistent.with the specified
      * transaction.
      */
-    private void makeReplicasConsistent(Transaction targetTxn,
-                                        RepEnvInfo... repEnvInfo) {
+    private void makeReplicasConsistent(Transaction targetTxn, RepEnvInfo... repEnvInfo) {
         TransactionConfig txnConfig = new TransactionConfig();
-        txnConfig.setConsistencyPolicy(new CommitPointConsistencyPolicy
-                                       (targetTxn.getCommitToken(),
-                                        1000,
-                                        TimeUnit.SECONDS));
+        txnConfig.setConsistencyPolicy(
+                new CommitPointConsistencyPolicy(targetTxn.getCommitToken(), 1000, TimeUnit.SECONDS));
 
         for (RepEnvInfo info : repEnvInfo) {
 
@@ -476,28 +449,24 @@ public class MasterChangeTest extends TestBase {
     }
 
     /**
-     * Generates a different work load for each test iteration. The pattern is
-     *    - bring up a group, nodeA is the master
-     *    - call doWorkOnOldMaster() to execute a variety of committed and
-     *      uncommited transactions on nodeA
-     *    - force the mastership of the group to nodeB, leaving nodeA up
-     *    - call doWorkOnNewMaster on nodeA
-     *    - sync up the group
-     *    - call scanData to make sure all nodes have the proper set of 
-     *      committed data, and don't see any uncommitted data
-     *    - make sure that the transactions used from doWorkOnOldMaster are
-     *      invalid, and that the application can no longer use them.
+     * Generates a different work load for each test iteration. The pattern is -
+     * bring up a group, nodeA is the master - call doWorkOnOldMaster() to
+     * execute a variety of committed and uncommited transactions on nodeA -
+     * force the mastership of the group to nodeB, leaving nodeA up - call
+     * doWorkOnNewMaster on nodeA - sync up the group - call scanData to make
+     * sure all nodes have the proper set of committed data, and don't see any
+     * uncommitted data - make sure that the transactions used from
+     * doWorkOnOldMaster are invalid, and that the application can no longer use
+     * them.
      */
     public class WorkGenerator {
 
-        protected final Set<Transaction> oldMasterIncompleteTxns = 
-            new HashSet<Transaction>();
-        protected final Set<Transaction> oldMasterUnusedTxns = 
-            new HashSet<Transaction>();
-        protected final Set<Integer> committedValues;
-        protected final AtomicInteger useVal;
-        private Cursor oldMasterCursor;
-        private Database oldMasterDb;
+        protected final Set<Transaction> oldMasterIncompleteTxns = new HashSet<Transaction>();
+        protected final Set<Transaction> oldMasterUnusedTxns     = new HashSet<Transaction>();
+        protected final Set<Integer>     committedValues;
+        protected final AtomicInteger    useVal;
+        private Cursor                   oldMasterCursor;
+        private Database                 oldMasterDb;
 
         WorkGenerator(Set<Integer> committedValues, AtomicInteger useVal) {
             this.committedValues = committedValues;
@@ -507,8 +476,7 @@ public class MasterChangeTest extends TestBase {
         public void assertNoRestarts(RepEnvInfo[] repEnvInfo) {
             for (RepEnvInfo rInfo : repEnvInfo) {
                 ReplicatedEnvironment.State state = rInfo.getEnv().getState();
-                assert (state == State.MASTER) || (state == State.REPLICA) :
-                    "state is unexpectedly " + state;
+                assert (state == State.MASTER) || (state == State.REPLICA) : "state is unexpectedly " + state;
             }
         }
 
@@ -524,35 +492,31 @@ public class MasterChangeTest extends TestBase {
             int recordVal = useVal.incrementAndGet();
             doInsert(master, t2, recordVal);
             committedValues.add(recordVal);
-            
+
             /* not committed */
             doInsert(master, t1, useVal.incrementAndGet());
-            
+
             recordVal = useVal.incrementAndGet();
             doInsert(master, t2, recordVal);
             committedValues.add(recordVal);
 
             oldMasterIncompleteTxns.add(t1);
-            assertEquals("txn " + tUnused.getId(), 0, 
-                         DbInternal.getTxn(tUnused).getWriteLockIds().size());
-            assertEquals("txn " + tUnused.getId(), 0, 
-                         DbInternal.getTxn(tUnused).getReadLockIds().size());
+            assertEquals("txn " + tUnused.getId(), 0, DbInternal.getTxn(tUnused).getWriteLockIds().size());
+            assertEquals("txn " + tUnused.getId(), 0, DbInternal.getTxn(tUnused).getReadLockIds().size());
             oldMasterUnusedTxns.add(tUnused);
             t2.commit();
 
             /* Get read locks */
             oldMasterDb = openDb(master);
-            oldMasterCursor = 
-                oldMasterDb.openCursor(t1, CursorConfig.READ_COMMITTED);
+            oldMasterCursor = oldMasterDb.openCursor(t1, CursorConfig.READ_COMMITTED);
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
 
-            while (oldMasterCursor.getNext(key, data, null) == 
-                   OperationStatus.SUCCESS) {
+            while (oldMasterCursor.getNext(key, data, null) == OperationStatus.SUCCESS) {
                 logger.fine("scanning " + IntegerBinding.entryToInt(key));
             }
         }
-        
+
         public void doWorkOnNewMaster(ReplicatedEnvironment currentMaster) {
             Transaction t1 = currentMaster.beginTransaction(null, null);
             int recordVal = useVal.incrementAndGet();
@@ -563,7 +527,7 @@ public class MasterChangeTest extends TestBase {
 
         public void scanData(RepEnvInfo[] repEnvInfo) {
 
-            for (RepEnvInfo info: repEnvInfo) {
+            for (RepEnvInfo info : repEnvInfo) {
                 Database db = openDb(info.getEnv());
                 Cursor c = db.openCursor(null, CursorConfig.READ_COMMITTED);
 
@@ -578,15 +542,12 @@ public class MasterChangeTest extends TestBase {
                 c.close();
                 db.close();
 
-                logger.fine("Node " + info.getEnv().getNodeName() + 
-                            " contains " + results);
-                assert results.containsAll(committedValues) :
-                    "Results do not contain all committed values. " +       
-                    "results=" + results + " committed=" + committedValues;
-                       
-                    assert committedValues.containsAll(results) :
-                        "CommittedValues do not contain all results. " +
-                        "results=" + results + " committed=" + committedValues;
+                logger.fine("Node " + info.getEnv().getNodeName() + " contains " + results);
+                assert results.containsAll(committedValues) : "Results do not contain all committed values. "
+                        + "results=" + results + " committed=" + committedValues;
+
+                assert committedValues.containsAll(results) : "CommittedValues do not contain all results. "
+                        + "results=" + results + " committed=" + committedValues;
             }
         }
 
@@ -608,7 +569,7 @@ public class MasterChangeTest extends TestBase {
             for (Transaction txn : oldMasterUnusedTxns) {
                 txn.abort();
             }
-            
+
             if (oldMasterCursor != null) {
                 oldMasterCursor.close();
             }

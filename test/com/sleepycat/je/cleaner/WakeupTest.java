@@ -36,21 +36,18 @@ import com.sleepycat.util.test.TestBase;
 
 /**
  * Checks that the cleaner wakes up at certain times even when there is no
- * logging:
- *  - startup
- *  - change to minUtilization
- *  - DB remove/truncate
- * Also checks that checkpointing and file deletion occur when writing stops.
+ * logging: - startup - change to minUtilization - DB remove/truncate Also
+ * checks that checkpointing and file deletion occur when writing stops.
  */
 public class WakeupTest extends TestBase {
 
-    private static final int FILE_SIZE = 1000000;
-    private static final String DB_NAME = "WakeupTest";
+    private static final int    FILE_SIZE = 1000000;
+    private static final String DB_NAME   = "WakeupTest";
 
-    private final File envHome;
-    private Environment env;
-    private Database db;
-    
+    private final File          envHome;
+    private Environment         env;
+    private Database            db;
+
     public WakeupTest() {
         envHome = SharedTestUtils.getTestDir();
     }
@@ -58,29 +55,21 @@ public class WakeupTest extends TestBase {
     private void open(final boolean runCleaner) {
 
         /*
-         * Use a cleaner/checkpointer byte interval that is much larger than
-         * the amount we will write.
+         * Use a cleaner/checkpointer byte interval that is much larger than the
+         * amount we will write.
          */
         final String veryLargeWriteSize = String.valueOf(Long.MAX_VALUE);
 
         final EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
-        envConfig.setConfigParam(
-            EnvironmentConfig.LOG_FILE_MAX, Integer.toString(FILE_SIZE));
-        envConfig.setConfigParam(
-            EnvironmentConfig.CLEANER_MIN_UTILIZATION, "50");
-        envConfig.setConfigParam(
-            EnvironmentConfig.CLEANER_MIN_FILE_UTILIZATION, "0");
-        envConfig.setConfigParam(
-            EnvironmentConfig.CLEANER_WAKEUP_INTERVAL, "1 s");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, runCleaner ? "true" : "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.CLEANER_BYTES_INTERVAL, veryLargeWriteSize);
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.CHECKPOINTER_BYTES_INTERVAL, veryLargeWriteSize);
+        envConfig.setConfigParam(EnvironmentConfig.LOG_FILE_MAX, Integer.toString(FILE_SIZE));
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_MIN_UTILIZATION, "50");
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_MIN_FILE_UTILIZATION, "0");
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_WAKEUP_INTERVAL, "1 s");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, runCleaner ? "true" : "false");
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_BYTES_INTERVAL, veryLargeWriteSize);
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.CHECKPOINTER_BYTES_INTERVAL, veryLargeWriteSize);
         env = new Environment(envHome, envConfig);
 
         final DatabaseConfig dbConfig = new DatabaseConfig();
@@ -114,11 +103,11 @@ public class WakeupTest extends TestBase {
     @Test
     public void testCleanAtStartup() {
 
-        open(false /*runCleaner*/);
-        writeFiles(0 /*nActive*/, 10 /*nObsolete*/);
+        open(false /* runCleaner */);
+        writeFiles(0 /* nActive */, 10 /* nObsolete */);
         close();
 
-        open(true /*runCleaner*/);
+        open(true /* runCleaner */);
         expectBackgroundCleaning();
         close();
     }
@@ -126,13 +115,12 @@ public class WakeupTest extends TestBase {
     @Test
     public void testCleanAfterMinUtilizationChange() {
 
-        open(true /*runCleaner*/);
-        writeFiles(4 /*nActive*/, 3 /*nObsolete*/);
+        open(true /* runCleaner */);
+        writeFiles(4 /* nActive */, 3 /* nObsolete */);
         expectNothingToClean();
 
         final EnvironmentConfig envConfig = env.getConfig();
-        envConfig.setConfigParam(
-            EnvironmentConfig.CLEANER_MIN_UTILIZATION, "90");
+        envConfig.setConfigParam(EnvironmentConfig.CLEANER_MIN_UTILIZATION, "90");
         env.setMutableConfig(envConfig);
 
         expectBackgroundCleaning();
@@ -140,18 +128,16 @@ public class WakeupTest extends TestBase {
     }
 
     /**
-     * Tests cleaner wakeup after writing stops.
-     *
-     * Only a small amount is logged by removeDatabase, which is not enough to
-     * motivate cleaning. As of JE 7.1 the cleaner wakes up periodically and
-     * cleans writing has stopped but there was at least some writing since the
-     * last cleaner activation.
+     * Tests cleaner wakeup after writing stops. Only a small amount is logged
+     * by removeDatabase, which is not enough to motivate cleaning. As of JE 7.1
+     * the cleaner wakes up periodically and cleans writing has stopped but
+     * there was at least some writing since the last cleaner activation.
      */
     @Test
     public void testCleanAfterWritingStops() {
 
-        open(true /*runCleaner*/);
-        writeFiles(5 /*nActive*/, 0 /*nObsolete*/);
+        open(true /* runCleaner */);
+        writeFiles(5 /* nActive */, 0 /* nObsolete */);
         expectNothingToClean();
         db.close();
         db = null;
@@ -163,17 +149,15 @@ public class WakeupTest extends TestBase {
 
     /**
      * Tests cleaner wakeup and file deletion, which requires a checkpoint,
-     * after writing stops.
-     *
-     * Only a small amount is logged by truncateDatabase, which is not enough
-     * to motivate cleaning. Plus, . As of JE 7.1 the cleaner wakes up periodically and
-     * cleans writing has stopped but there was at least some writing since the
-     * last cleaner activation.
+     * after writing stops. Only a small amount is logged by truncateDatabase,
+     * which is not enough to motivate cleaning. Plus, . As of JE 7.1 the
+     * cleaner wakes up periodically and cleans writing has stopped but there
+     * was at least some writing since the last cleaner activation.
      */
     @Test
     public void testFileDeletionAfterWritingStops() {
-        open(true /*runCleaner*/);
-        writeFiles(5 /*nActive*/, 0 /*nObsolete*/);
+        open(true /* runCleaner */);
+        writeFiles(5 /* nActive */, 0 /* nObsolete */);
         expectNothingToClean();
         db.close();
         db = null;
@@ -182,8 +166,7 @@ public class WakeupTest extends TestBase {
         env.getStats(StatsConfig.CLEAR);
 
         final EnvironmentConfig envConfig = env.getConfig();
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "true");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "true");
         env.setMutableConfig(envConfig);
 
         env.truncateDatabase(null, DB_NAME, false);
@@ -195,10 +178,9 @@ public class WakeupTest extends TestBase {
     private void expectNothingToClean() {
         env.cleanLog();
         final EnvironmentStats stats = env.getStats(null);
-        final String msg = String.format("%d probes, %d non-probes",
-            stats.getNCleanerProbeRuns(), stats.getNCleanerRuns());
-        assertEquals(msg, 0,
-            stats.getNCleanerRuns() - stats.getNCleanerProbeRuns());
+        final String msg = String.format("%d probes, %d non-probes", stats.getNCleanerProbeRuns(),
+                stats.getNCleanerRuns());
+        assertEquals(msg, 0, stats.getNCleanerRuns() - stats.getNCleanerProbeRuns());
     }
 
     private void expectBackgroundCleaning() {
@@ -218,8 +200,7 @@ public class WakeupTest extends TestBase {
         EnvironmentStats stats = null;
         while (System.currentTimeMillis() < endTime) {
             stats = env.getStats(null);
-            if (stats.getNCheckpoints() > 0 &&
-                stats.getNCleanerDeletions() > 0) {
+            if (stats.getNCheckpoints() > 0 && stats.getNCleanerDeletions() > 0) {
                 return;
             }
         }

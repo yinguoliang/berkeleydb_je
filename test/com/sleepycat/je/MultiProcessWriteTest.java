@@ -31,10 +31,9 @@ import org.junit.Test;
 
 /**
  * [#16348] JE file handle leak when multi-process writing a same environment.
- *
- * This test would create two process through two threads, one process open
- * the environment in r/w mode, then the other thread tries to get the write
- * lock of the je.lck, to check whether there exists file handle leak.
+ * This test would create two process through two threads, one process open the
+ * environment in r/w mode, then the other thread tries to get the write lock of
+ * the je.lck, to check whether there exists file handle leak.
  */
 public class MultiProcessWriteTest extends TestBase {
     private final File envHome;
@@ -46,9 +45,8 @@ public class MultiProcessWriteTest extends TestBase {
     @Test
     public void testMultiEnvWrite() {
         /* Initiate the environment. */
-        MainWrite.main
-            (new String[]{"-envHome", SharedTestUtils.getTestDir().getAbsolutePath(),
-                          "-init", "-initSize", "1000"});
+        MainWrite.main(new String[] { "-envHome", SharedTestUtils.getTestDir().getAbsolutePath(), "-init", "-initSize",
+                "1000" });
 
         /* Command for process 1. */
         String[] command1 = new String[8];
@@ -73,10 +71,8 @@ public class MultiProcessWriteTest extends TestBase {
         command2[7] = "2";
 
         /* Create and start the two threads. */
-        JUnitProcessThread thread1 =
-            new JUnitProcessThread("process1", command1);
-        JUnitProcessThread thread2 =
-            new JUnitProcessThread("process2", 40, null, command2);
+        JUnitProcessThread thread1 = new JUnitProcessThread("process1", command1);
+        JUnitProcessThread thread2 = new JUnitProcessThread("process2", 40, null, command2);
 
         thread1.start();
 
@@ -102,21 +98,19 @@ public class MultiProcessWriteTest extends TestBase {
     }
 
     /**
-     * Write records into the environment.
-     *
-     * It can run initialization and run in process 1 mode, process 2 mode
-     * as specified.
+     * Write records into the environment. It can run initialization and run in
+     * process 1 mode, process 2 mode as specified.
      */
     static class MainWrite {
-        private static final int CACHE_LIMIT = 50000;
-        private int procNum;
+        private static final int                 CACHE_LIMIT = 50000;
+        private int                              procNum;
 
-        private final File envHome;
-        private ArrayList<TestObject> objectList = new ArrayList<TestObject>();
+        private final File                       envHome;
+        private ArrayList<TestObject>            objectList  = new ArrayList<TestObject>();
 
         private PrimaryIndex<String, TestObject> objectBySid;
-        private Environment env;
-        private EntityStore store;
+        private Environment                      env;
+        private EntityStore                      store;
 
         public MainWrite(File envHome) {
             this.envHome = envHome;
@@ -141,8 +135,7 @@ public class MultiProcessWriteTest extends TestBase {
 
                 store = new EntityStore(env, "EntityStore", storeConfig);
 
-                objectBySid =
-                    store.getPrimaryIndex(String.class, TestObject.class);
+                objectBySid = store.getPrimaryIndex(String.class, TestObject.class);
 
                 open = true;
             } catch (EnvironmentLockedException e) {
@@ -229,8 +222,7 @@ public class MultiProcessWriteTest extends TestBase {
         }
 
         public static void usage() {
-            System.out.println("java MainWrite -envHome <home> " +
-                               "-init|-write -numOps <Integer> -procNum <1|2>");
+            System.out.println("java MainWrite -envHome <home> " + "-init|-write -numOps <Integer> -procNum <1|2>");
             System.exit(-1);
         }
 
@@ -252,8 +244,7 @@ public class MultiProcessWriteTest extends TestBase {
                 if (!args[3].equals("-numOps")) {
                     usage();
                 } else {
-                    if (!(args[6].equals("1") ||
-                        args[6].equals("2"))) {
+                    if (!(args[6].equals("1") || args[6].equals("2"))) {
                         usage();
                     }
 

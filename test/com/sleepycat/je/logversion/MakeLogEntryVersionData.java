@@ -54,19 +54,21 @@ import com.sleepycat.utilint.StringUtils;
 /**
  * This standalone command line program generates log files named je-x.y.z.jdb
  * and je-x.y.z.txt, where x.y.z is the version of JE used to run the program.
- * This program needs to be run for the current version of JE when we release
- * a new major version of JE.  It does not need to be run again for older
- * versions of JE, unless it is changed to generate new types of log entries
- * and we need to verify those log entries for all versions of JE.  In that
- * case the LogEntryVersionTest may also need to be changed.
- *
- * <p>Run this program with the desired version of JE in the classpath and pass
- * a home directory as the single command line argument.  After running this
+ * This program needs to be run for the current version of JE when we release a
+ * new major version of JE. It does not need to be run again for older versions
+ * of JE, unless it is changed to generate new types of log entries and we need
+ * to verify those log entries for all versions of JE. In that case the
+ * LogEntryVersionTest may also need to be changed.
+ * <p>
+ * Run this program with the desired version of JE in the classpath and pass a
+ * home directory as the single command line argument. After running this
  * program move the je-x.y.z.* files to the directory of this source package.
  * When adding je-x.y.z.jdb to CVS make sure to use -kb since it is a binary
- * file.</p>
- *
- * <p>This program can be run using the logversiondata ant target.</p>
+ * file.
+ * </p>
+ * <p>
+ * This program can be run using the logversiondata ant target.
+ * </p>
  *
  * @see LogEntryVersionTest
  */
@@ -78,8 +80,7 @@ public class MakeLogEntryVersionData {
     private MakeLogEntryVersionData() {
     }
 
-    public static void main(String[] args)
-        throws Exception {
+    public static void main(String[] args) throws Exception {
 
         if (args.length != 1) {
             throw new Exception("Home directory arg is required.");
@@ -87,14 +88,11 @@ public class MakeLogEntryVersionData {
 
         File homeDir = new File(args[0]);
         File logFile = new File(homeDir, TestUtils.LOG_FILE_NAME);
-        File renamedLogFile = new File(homeDir, "je-" +
-            JEVersion.CURRENT_VERSION.getNumericVersionString() + ".jdb");
-        File summaryFile = new File(homeDir, "je-" +
-            JEVersion.CURRENT_VERSION.getNumericVersionString() + ".txt");
+        File renamedLogFile = new File(homeDir, "je-" + JEVersion.CURRENT_VERSION.getNumericVersionString() + ".jdb");
+        File summaryFile = new File(homeDir, "je-" + JEVersion.CURRENT_VERSION.getNumericVersionString() + ".txt");
 
         if (logFile.exists()) {
-            throw new Exception("Home directory (" + homeDir +
-                                ") must be empty of log files.");
+            throw new Exception("Home directory (" + homeDir + ") must be empty of log files.");
         }
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
@@ -102,34 +100,25 @@ public class MakeLogEntryVersionData {
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
         /* Make as small a log as possible to save space in CVS. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         /* Use a 100 MB log file size to ensure only one file is written. */
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 Integer.toString(100 * (1 << 20)));
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(100 * (1 << 20)));
         /* Force BIN-delta. */
-        envConfig.setConfigParam
-            (EnvironmentParams.BIN_DELTA_PERCENT.getName(),
-             Integer.toString(75));
+        envConfig.setConfigParam(EnvironmentParams.BIN_DELTA_PERCENT.getName(), Integer.toString(75));
         /* Ensure that we create two BINs with N_ENTRIES LNs. */
-        envConfig.setConfigParam
-            (EnvironmentParams.NODE_MAX.getName(),
-             Integer.toString(N_ENTRIES));
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), Integer.toString(N_ENTRIES));
 
         CheckpointConfig forceCheckpoint = new CheckpointConfig();
         forceCheckpoint.setForce(true);
 
         XAEnvironment env = new XAEnvironment(homeDir, envConfig);
 
-        /* 
-         * Make two shadow database. Database 1 is transactional and has
-         * aborts, database 2 is not transactional.
+        /*
+         * Make two shadow database. Database 1 is transactional and has aborts,
+         * database 2 is not transactional.
          */
         for (int i = 0; i < 2; i += 1) {
             boolean transactional = (i == 0);
@@ -187,17 +176,15 @@ public class MakeLogEntryVersionData {
                 throw new Exception("Expected SUCCESS but got: " + status);
             }
             if (Utils.value(key) != 3 || Utils.value(data) != 0) {
-                throw new Exception("Expected {3,0} but got: {" +
-                                    Utils.value(key) + ',' +
-                                    Utils.value(data) + '}');
+                throw new Exception("Expected {3,0} but got: {" + Utils.value(key) + ',' + Utils.value(data) + '}');
             }
         } finally {
             cursor.close();
         }
         db.close();
 
-        /* 
-         * Make database 3, which is transactional and has some explicit 
+        /*
+         * Make database 3, which is transactional and has some explicit
          * transaction commit record.
          */
         dbConfig = new DatabaseConfig();
@@ -206,16 +193,15 @@ public class MakeLogEntryVersionData {
         Transaction txn = env.beginTransaction(null, null);
         db = env.openDatabase(null, Utils.DB3_NAME, dbConfig);
         OperationStatus status = db.put(txn, Utils.entry(99), Utils.entry(79));
-        assert status == OperationStatus.SUCCESS: "status=" + status;
+        assert status == OperationStatus.SUCCESS : "status=" + status;
         db.close();
         txn.commit();
-        
+
         /*
          * Generate an XA txn Prepare. The transaction must be non-empty in
          * order to actually log the Prepare.
          */
-        XidImpl xid =
-            new XidImpl(1, StringUtils.toUTF8("MakeLogEntryVersionData"), null);
+        XidImpl xid = new XidImpl(1, StringUtils.toUTF8("MakeLogEntryVersionData"), null);
         env.start(xid, XAResource.TMNOFLAGS);
         /* Re-write the existing {3,0} record. */
         dbConfig = new DatabaseConfig();
@@ -232,17 +218,12 @@ public class MakeLogEntryVersionData {
         EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
 
         /* Log a RollbackStart entry. */
-        LogEntry entry = 
-            SingleItemEntry.create(LogEntryType.LOG_ROLLBACK_START, 
-                                   new RollbackStart(VLSN.NULL_VLSN,
-                                                     DbLsn.NULL_LSN,
-                                                     new HashSet<Long>()));
+        LogEntry entry = SingleItemEntry.create(LogEntryType.LOG_ROLLBACK_START,
+                new RollbackStart(VLSN.NULL_VLSN, DbLsn.NULL_LSN, new HashSet<Long>()));
         envImpl.getLogManager().log(entry, ReplicationContext.NO_REPLICATE);
 
         /* Log a RollbackEnd entry. */
-        entry = SingleItemEntry.create(LogEntryType.LOG_ROLLBACK_END,
-                                       new RollbackEnd(DbLsn.NULL_LSN, 
-                                                       DbLsn.NULL_LSN));
+        entry = SingleItemEntry.create(LogEntryType.LOG_ROLLBACK_END, new RollbackEnd(DbLsn.NULL_LSN, DbLsn.NULL_LSN));
         envImpl.getLogManager().log(entry, ReplicationContext.NO_REPLICATE);
 
         /* Log a Matchpoint entry. */
@@ -250,20 +231,18 @@ public class MakeLogEntryVersionData {
         envImpl.getLogManager().log(entry, ReplicationContext.NO_REPLICATE);
 
         /* Log an ImmutableFile entry. */
-        entry = SingleItemEntry.create(LogEntryType.LOG_IMMUTABLE_FILE,
-                                       new EmptyLogEntry());
+        entry = SingleItemEntry.create(LogEntryType.LOG_IMMUTABLE_FILE, new EmptyLogEntry());
         envImpl.getLogManager().log(entry, ReplicationContext.NO_REPLICATE);
 
         env.close();
 
         /*
-         * Get the set of all log entry types we expect to output.  We exclude
-         * several types:
-         * - MapLN_TX: MapLN (non-transactional) is now used instead.
-         * - INDelete: root compression is no longer used.
-         * - LN, LN_TX: deprecated and replaced by LN_INS/UPD/DEL, etc.
-         * - DelDupLN, DelDupLN_TX, DupCountLN, DupCountLN_TX, DIN, DBIN,
-         *   DupBINDelta, INDupDelete: deprecated, dup tree is no longer used.
+         * Get the set of all log entry types we expect to output. We exclude
+         * several types: - MapLN_TX: MapLN (non-transactional) is now used
+         * instead. - INDelete: root compression is no longer used. - LN, LN_TX:
+         * deprecated and replaced by LN_INS/UPD/DEL, etc. - DelDupLN,
+         * DelDupLN_TX, DupCountLN, DupCountLN_TX, DIN, DBIN, DupBINDelta,
+         * INDupDelete: deprecated, dup tree is no longer used.
          */
         Set<LogEntryType> expectedTypes = LogEntryType.getAllTypes();
         expectedTypes.remove(LogEntryType.LOG_MAPLN_TRANSACTIONAL);
@@ -283,14 +262,11 @@ public class MakeLogEntryVersionData {
         /* Open read-only and write all LogEntryType names to a text file. */
         envConfig.setReadOnly(true);
         Environment env2 = new Environment(homeDir, envConfig);
-        PrintWriter writer = new PrintWriter
-            (new BufferedOutputStream(new FileOutputStream(summaryFile)));
-        TestUtilLogReader reader = new TestUtilLogReader
-            (DbInternal.getNonNullEnvImpl(env2));
+        PrintWriter writer = new PrintWriter(new BufferedOutputStream(new FileOutputStream(summaryFile)));
+        TestUtilLogReader reader = new TestUtilLogReader(DbInternal.getNonNullEnvImpl(env2));
         while (reader.readNextEntry()) {
             LogEntryType type = reader.getEntryType();
-            writer.println(type.toStringNoVersion() + '/' +
-                           reader.getEntryVersion());
+            writer.println(type.toStringNoVersion() + '/' + reader.getEntryVersion());
             expectedTypes.remove(type);
         }
         writer.close();
@@ -305,8 +281,7 @@ public class MakeLogEntryVersionData {
         }
 
         if (!logFile.renameTo(renamedLogFile)) {
-            throw new Exception
-                ("Could not rename: " + logFile + " to " + renamedLogFile);
+            throw new Exception("Could not rename: " + logFile + " to " + renamedLogFile);
         }
 
         System.out.println("Created: " + renamedLogFile);

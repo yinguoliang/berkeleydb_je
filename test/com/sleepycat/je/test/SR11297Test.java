@@ -36,30 +36,31 @@ import com.sleepycat.util.test.SharedTestUtils;
 import com.sleepycat.util.test.TestBase;
 
 /**
- * Fix for SR11297.  When the first BIN in database was empty,
+ * Fix for SR11297. When the first BIN in database was empty,
  * CursorImpl.positionFirstOrLast(true, null) was returning false, causing
- * Cursor.getFirst to return NOTFOUND.  This test reproduces that problem by
+ * Cursor.getFirst to return NOTFOUND. This test reproduces that problem by
  * creating a database with the first BIN empty and the second BIN non-empty.
- *
- * <p>A specific sequence where partial compression takes place is necessary to
- * reproduce the problem.  A duplicate is added as the first entry in the first
- * BIN, then that BIN is filled and one entry is added to the next BIN.  Then
- * all records in the first BIN are deleted.  compress() is called once, which
+ * <p>
+ * A specific sequence where partial compression takes place is necessary to
+ * reproduce the problem. A duplicate is added as the first entry in the first
+ * BIN, then that BIN is filled and one entry is added to the next BIN. Then all
+ * records in the first BIN are deleted. compress() is called once, which
  * deletes the duplicate tree and all entries in the first BIN, but the first
- * BIN will not be deleted until the next compression.  At that point in time,
- * getFirst failed to find the record in the second BIN.</p>
+ * BIN will not be deleted until the next compression. At that point in time,
+ * getFirst failed to find the record in the second BIN.
+ * </p>
  */
 public class SR11297Test extends TestBase {
 
     /* Minimum child entries per BIN. */
-    private static int N_ENTRIES = 4;
+    private static int              N_ENTRIES       = 4;
 
     private static CheckpointConfig forceCheckpoint = new CheckpointConfig();
     static {
         forceCheckpoint.setForce(true);
     }
 
-    private File envHome;
+    private File        envHome;
     private Environment env;
 
     public SR11297Test() {
@@ -80,45 +81,33 @@ public class SR11297Test extends TestBase {
         env = null;
     }
 
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         DbInternal.disableParameterValidation(envConfig);
         envConfig.setAllowCreate(true);
         /* Make as small a log as possible to save space in CVS. */
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
-        envConfig.setConfigParam
-            (EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CLEANER.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_EVICTOR.getName(), "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_CHECKPOINTER.getName(), "false");
         /* Use a 100 MB log file size to ensure only one file is written. */
-        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(),
-                                 Integer.toString(100 * (1 << 20)));
+        envConfig.setConfigParam(EnvironmentParams.LOG_FILE_MAX.getName(), Integer.toString(100 * (1 << 20)));
         /* Force BIN-delta. */
-        envConfig.setConfigParam
-            (EnvironmentParams.BIN_DELTA_PERCENT.getName(),
-             Integer.toString(75));
+        envConfig.setConfigParam(EnvironmentParams.BIN_DELTA_PERCENT.getName(), Integer.toString(75));
         /* Force INDelete. */
-        envConfig.setConfigParam
-            (EnvironmentParams.NODE_MAX.getName(),
-             Integer.toString(N_ENTRIES));
+        envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), Integer.toString(N_ENTRIES));
         env = new Environment(envHome, envConfig);
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         env.close();
         env = null;
     }
 
     @Test
-    public void test11297()
-        throws DatabaseException {
+    public void test11297() throws DatabaseException {
 
         openEnv();
 
@@ -153,8 +142,7 @@ public class SR11297Test extends TestBase {
     /**
      * First and only record in db1 should be {3,0}.
      */
-    private void checkFirstRecord()
-        throws DatabaseException {
+    private void checkFirstRecord() throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(false);

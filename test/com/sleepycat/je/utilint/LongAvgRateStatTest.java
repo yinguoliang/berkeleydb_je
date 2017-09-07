@@ -25,19 +25,16 @@ import com.sleepycat.util.test.TestBase;
 /** Test the LongAvgRateStat class. */
 public class LongAvgRateStatTest extends TestBase {
 
-    private static final StatGroup statGroup =
-        new StatGroup("TestGroup", "Test group");
-    private static int statDefCount;
+    private static final StatGroup statGroup = new StatGroup("TestGroup", "Test group");
+    private static int             statDefCount;
 
-    private LongAvgRateStat stat;
+    private LongAvgRateStat        stat;
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
-        stat = new LongAvgRateStat(
-            statGroup, getStatDef(), 3000, MILLISECONDS);
+        stat = new LongAvgRateStat(statGroup, getStatDef(), 3000, MILLISECONDS);
     }
 
     private static StatDefinition getStatDef() {

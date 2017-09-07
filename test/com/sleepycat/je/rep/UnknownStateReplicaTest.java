@@ -37,9 +37,9 @@ import com.sleepycat.util.test.TestBase;
  */
 public class UnknownStateReplicaTest extends TestBase {
 
-    private final File envRoot;
+    private final File          envRoot;
     private static final String DB_NAME = "testDB";
-    private RepEnvInfo[] repEnvInfo;
+    private RepEnvInfo[]        repEnvInfo;
 
     public UnknownStateReplicaTest() {
         envRoot = SharedTestUtils.getTestDir();
@@ -49,8 +49,7 @@ public class UnknownStateReplicaTest extends TestBase {
      * Check a replica works in Unknown state.
      */
     @Test
-    public void testBasic()
-        throws Throwable {
+    public void testBasic() throws Throwable {
 
         try {
             repEnvInfo = RepTestUtils.setupEnvInfos(envRoot, 3);
@@ -78,31 +77,28 @@ public class UnknownStateReplicaTest extends TestBase {
                 repEnvInfo[i].closeEnv();
             }
 
-            /* 
-             * Configure the replica work in Unknown state and use the 
-             * NoConsistencyPolicy for read. 
+            /*
+             * Configure the replica work in Unknown state and use the
+             * NoConsistencyPolicy for read.
              */
-            repEnvInfo[0].getRepConfig().setConfigParam
-                (ReplicationConfig.ALLOW_UNKNOWN_STATE_ENV_OPEN, "true");
-            repEnvInfo[0].getRepConfig().setConsistencyPolicy
-                (new NoConsistencyRequiredPolicy());
+            repEnvInfo[0].getRepConfig().setConfigParam(ReplicationConfig.ALLOW_UNKNOWN_STATE_ENV_OPEN, "true");
+            repEnvInfo[0].getRepConfig().setConsistencyPolicy(new NoConsistencyRequiredPolicy());
 
             /* Reopen the replica, and make sure its state is Unknown. */
-            repEnvInfo[0].openEnv();            
-            assertTrue(repEnvInfo[0].isUnknown());            
+            repEnvInfo[0].openEnv();
+            assertTrue(repEnvInfo[0].isUnknown());
 
             /* Read the database to make sure the content is correct. */
             db = repEnvInfo[0].getEnv().openDatabase(null, DB_NAME, dbConfig);
             for (int i = 1; i <= 10; i++) {
                 IntegerBinding.intToEntry(i, key);
                 db.get(null, key, data, null);
-                assertEquals
-                    ("herococo" + i, StringBinding.entryToString(data));
+                assertEquals("herococo" + i, StringBinding.entryToString(data));
             }
 
-            /* 
-             * Do some write and expect to see ReplicaWriteException, because 
-             * it's not a master. 
+            /*
+             * Do some write and expect to see ReplicaWriteException, because
+             * it's not a master.
              */
             try {
                 IntegerBinding.intToEntry(11, key);
@@ -121,9 +117,9 @@ public class UnknownStateReplicaTest extends TestBase {
             ValidStateListener stateListener = new ValidStateListener();
             repEnvInfo[0].getEnv().setStateChangeListener(stateListener);
 
-            /* 
-             * Open another replica and check to see whether the state has 
-             * changed, because this is a three nodes group. 
+            /*
+             * Open another replica and check to see whether the state has
+             * changed, because this is a three nodes group.
              */
             repEnvInfo[1].openEnv();
             assertTrue(repEnvInfo[1].isMaster() || repEnvInfo[1].isReplica());
@@ -157,18 +153,16 @@ public class UnknownStateReplicaTest extends TestBase {
             repEnvInfo[2].openEnv();
             assertTrue(repEnvInfo[2].isReplica());
 
-            /* 
-             * Open the database on all replicas and make sure the database 
-             * contents are correct. 
+            /*
+             * Open the database on all replicas and make sure the database
+             * contents are correct.
              */
             for (int i = 0; i < repEnvInfo.length; i++) {
-                db = repEnvInfo[i].getEnv().openDatabase
-                    (null, DB_NAME, dbConfig);
+                db = repEnvInfo[i].getEnv().openDatabase(null, DB_NAME, dbConfig);
                 for (int j = 1; j <= 20; j++) {
                     IntegerBinding.intToEntry(j, key);
                     db.get(null, key, data, null);
-                    assertEquals
-                        ("herococo" + j, StringBinding.entryToString(data));
+                    assertEquals("herococo" + j, StringBinding.entryToString(data));
                 }
                 db.close();
             }

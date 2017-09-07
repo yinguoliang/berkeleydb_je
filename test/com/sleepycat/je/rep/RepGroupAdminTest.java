@@ -45,31 +45,25 @@ public class RepGroupAdminTest extends RepTestBase {
         ReplicatedEnvironment master = repEnvInfo[0].getEnv();
         assertTrue(master.getState().isMaster());
 
-        RepEnvInfo rmMember = repEnvInfo[repEnvInfo.length-1];
-        Set<InetSocketAddress> helperSockets =
-            rmMember.getRepImpl().getHelperSockets();
+        RepEnvInfo rmMember = repEnvInfo[repEnvInfo.length - 1];
+        Set<InetSocketAddress> helperSockets = rmMember.getRepImpl().getHelperSockets();
         final String rmName = rmMember.getRepNode().getNodeName();
         rmMember.closeEnv();
 
-        ReplicationGroupAdmin groupAdmin =
-            new ReplicationGroupAdmin
-            (RepTestUtils.TEST_REP_GROUP_NAME, helperSockets,
-             RepTestUtils.readRepNetConfig());
-        assertEquals(groupSize,
-                     master.getGroup().getElectableNodes().size());
+        ReplicationGroupAdmin groupAdmin = new ReplicationGroupAdmin(RepTestUtils.TEST_REP_GROUP_NAME, helperSockets,
+                RepTestUtils.readRepNetConfig());
+        assertEquals(groupSize, master.getGroup().getElectableNodes().size());
         groupAdmin.removeMember(rmName);
-        assertEquals(groupSize-1,
-                     master.getGroup().getElectableNodes().size());
+        assertEquals(groupSize - 1, master.getGroup().getElectableNodes().size());
 
         try {
             rmMember.openEnv();
             fail("Expected exception");
         } catch (EnvironmentFailureException e) {
-            assertEquals(EnvironmentFailureReason.HANDSHAKE_ERROR,
-                         e.getReason());
+            assertEquals(EnvironmentFailureReason.HANDSHAKE_ERROR, e.getReason());
         }
 
-        /* Exception tests.  We currently allow either IAE or EFE. */
+        /* Exception tests. We currently allow either IAE or EFE. */
         try {
             groupAdmin.removeMember("unknown node");
             fail("Expected exception");
@@ -98,20 +92,16 @@ public class RepGroupAdminTest extends RepTestBase {
         final ReplicatedEnvironment master = repEnvInfo[0].getEnv();
         assertTrue(master.getState().isMaster());
 
-        final RepEnvInfo delMember = repEnvInfo[repEnvInfo.length-1];
-        final Set<InetSocketAddress> helperSockets =
-            delMember.getRepImpl().getHelperSockets();
+        final RepEnvInfo delMember = repEnvInfo[repEnvInfo.length - 1];
+        final Set<InetSocketAddress> helperSockets = delMember.getRepImpl().getHelperSockets();
         final String delName = delMember.getRepNode().getNodeName();
         delMember.closeEnv();
 
-        final ReplicationGroupAdmin groupAdmin = new ReplicationGroupAdmin(
-            RepTestUtils.TEST_REP_GROUP_NAME, helperSockets,
-            RepTestUtils.readRepNetConfig());
-        assertEquals(groupSize,
-                     master.getGroup().getElectableNodes().size());
+        final ReplicationGroupAdmin groupAdmin = new ReplicationGroupAdmin(RepTestUtils.TEST_REP_GROUP_NAME,
+                helperSockets, RepTestUtils.readRepNetConfig());
+        assertEquals(groupSize, master.getGroup().getElectableNodes().size());
         groupAdmin.deleteMember(delName);
-        assertEquals(groupSize-1,
-                     master.getGroup().getElectableNodes().size());
+        assertEquals(groupSize - 1, master.getGroup().getElectableNodes().size());
 
         /* The deleted member automatically rejoins when reopened */
         delMember.openEnv();
@@ -150,35 +140,25 @@ public class RepGroupAdminTest extends RepTestBase {
     }
 
     @Test
-    public void testAddMonitor()
-        throws DatabaseException, InterruptedException {
+    public void testAddMonitor() throws DatabaseException, InterruptedException {
 
         ReplicatedEnvironment master = RepTestUtils.joinGroup(repEnvInfo);
-        RepImpl lastImpl = RepInternal.getNonNullRepImpl(
-            repEnvInfo[repEnvInfo.length-1].getEnv());
+        RepImpl lastImpl = RepInternal.getNonNullRepImpl(repEnvInfo[repEnvInfo.length - 1].getEnv());
 
-        Set<InetSocketAddress> helperSockets =
-            new HashSet<InetSocketAddress>();
+        Set<InetSocketAddress> helperSockets = new HashSet<InetSocketAddress>();
         for (RepEnvInfo repi : repEnvInfo) {
             ReplicatedEnvironment rep = repi.getEnv();
             helperSockets.add(RepInternal.getNonNullRepImpl(rep).getSocket());
         }
 
         DbConfigManager lastConfigMgr = lastImpl.getConfigManager();
-        ReplicationGroupAdmin groupAdmin =
-            new ReplicationGroupAdmin(lastConfigMgr.get(GROUP_NAME),
-                                      helperSockets,
-                                      RepTestUtils.readRepNetConfig());
+        ReplicationGroupAdmin groupAdmin = new ReplicationGroupAdmin(lastConfigMgr.get(GROUP_NAME), helperSockets,
+                RepTestUtils.readRepNetConfig());
         int lastId = lastImpl.getNodeId();
-        final short monitorId = (short)(lastId+1);
+        final short monitorId = (short) (lastId + 1);
 
-        RepNodeImpl monitorNode =
-            new RepNodeImpl(new NameIdPair("monitor" + monitorId,
-                                           monitorId),
-                            NodeType.MONITOR,
-                            lastImpl.getHostName(),
-                            lastImpl.getPort()+1,
-                            null);
+        RepNodeImpl monitorNode = new RepNodeImpl(new NameIdPair("monitor" + monitorId, monitorId), NodeType.MONITOR,
+                lastImpl.getHostName(), lastImpl.getPort() + 1, null);
         groupAdmin.ensureMonitor(monitorNode);
 
         /* Second ensure should not result in errors. */
@@ -189,21 +169,15 @@ public class RepGroupAdminTest extends RepTestBase {
         /* All nodes should know about the new monitor. */
         for (RepEnvInfo repi : repEnvInfo) {
             ReplicatedEnvironment rep = repi.getEnv();
-            RepGroupImpl repGroup =
-                RepInternal.getNonNullRepImpl(rep).getRepNode().getGroup();
+            RepGroupImpl repGroup = RepInternal.getNonNullRepImpl(rep).getRepNode().getGroup();
             RepNodeImpl monitor = repGroup.getMember(monitorId);
             assertNotNull(monitor);
             assertTrue(monitorNode.equivalent(monitor));
         }
 
         /* Catch incorrect use of an existing non-monitor node name */
-        RepNodeImpl badMonitorNode =
-            new RepNodeImpl(
-                new NameIdPair(repEnvInfo[1].getRepConfig().getNodeName()),
-                NodeType.MONITOR,
-                lastImpl.getHostName(),
-                lastImpl.getPort(),
-                null);
+        RepNodeImpl badMonitorNode = new RepNodeImpl(new NameIdPair(repEnvInfo[1].getRepConfig().getNodeName()),
+                NodeType.MONITOR, lastImpl.getHostName(), lastImpl.getPort(), null);
         try {
             groupAdmin.ensureMonitor(badMonitorNode);
             fail("expected exception");
@@ -212,12 +186,8 @@ public class RepGroupAdminTest extends RepTestBase {
         }
 
         /* test exception from adding a non-monitor node. */
-        badMonitorNode =
-            new RepNodeImpl(new NameIdPair("monitor" + monitorId, monitorId),
-                            NodeType.ELECTABLE,
-                            lastImpl.getHostName(),
-                            lastImpl.getPort(),
-                            null);
+        badMonitorNode = new RepNodeImpl(new NameIdPair("monitor" + monitorId, monitorId), NodeType.ELECTABLE,
+                lastImpl.getHostName(), lastImpl.getPort(), null);
         try {
             groupAdmin.ensureMonitor(badMonitorNode);
             fail("expected exception");

@@ -43,7 +43,7 @@ public class BitMapTest extends TestBase {
             bmap.set(index);
         }
 
-        assertEquals((endBit - startBit +1), bmap.cardinality());
+        assertEquals((endBit - startBit + 1), bmap.cardinality());
         assertEquals((endBit - startBit + 1), bmap.getNumSegments());
 
         /* should be set. */
@@ -60,7 +60,7 @@ public class BitMapTest extends TestBase {
         }
 
         /* checking for non-set bits should not create more segments. */
-        assertEquals((endBit - startBit +1), bmap.cardinality());
+        assertEquals((endBit - startBit + 1), bmap.cardinality());
         assertEquals((endBit - startBit + 1), bmap.getNumSegments());
     }
 

@@ -48,110 +48,179 @@ import com.sleepycat.je.util.TestUtils;
 public class JoinTest extends MultiKeyTxnTestCase {
 
     /*
-     * DATA sets are pairs of arrays for each record. The first array is
-     * the record data and has three values in the 0/1/2 positions for the
-     * secondary key values with key IDs 0/1/2.  second array contains a single
-     * value which is the primary key.
-     *
-     * JOIN sets are also pairs of arrays.  The first array in each pair has 3
-     * values for setting the input cursors.  Entries 0/1/2 in that array are
-     * for secondary keys 0/1/2.  The second array is the set of primary keys
-     * that are expected to match in the join operation.
-     *
-     * A zero value for an index key means "don't index", so zero values are
-     * never used for join index keys since we wouldn't be able to successfully
-     * position the input cursor.
-     *
-     * These values are all stored as bytes, not ints, in the actual records,
-     * so all values must be within the range of a signed byte.
+     * DATA sets are pairs of arrays for each record. The first array is the
+     * record data and has three values in the 0/1/2 positions for the secondary
+     * key values with key IDs 0/1/2. second array contains a single value which
+     * is the primary key. JOIN sets are also pairs of arrays. The first array
+     * in each pair has 3 values for setting the input cursors. Entries 0/1/2 in
+     * that array are for secondary keys 0/1/2. The second array is the set of
+     * primary keys that are expected to match in the join operation. A zero
+     * value for an index key means "don't index", so zero values are never used
+     * for join index keys since we wouldn't be able to successfully position
+     * the input cursor. These values are all stored as bytes, not ints, in the
+     * actual records, so all values must be within the range of a signed byte.
      */
-    private static final int[][][] ALL = {
-        /* Data set #1 - single match possible per record. */
-        {
-            {1, 1, 1}, {11},
-            {2, 2, 2}, {12},
-            {3, 3, 3}, {13},
-        }, {
-            {1, 1, 1}, {11},
-            {2, 2, 2}, {12},
-            {3, 3, 3}, {13},
-            {1, 2, 3}, {},
-            {1, 1, 2}, {},
-            {3, 2, 2}, {},
-        },
-        /* Data set #2 - no match possible when all indices are not present
-         * (when some are zero). */
-        {
-            {1, 1, 0}, {11},
-            {2, 0, 2}, {12},
-            {0, 3, 3}, {13},
-            {3, 2, 1}, {14},
-        }, {
-            {1, 1, 1}, {},
-            {2, 2, 2}, {},
-            {3, 3, 3}, {},
-        },
-        /* Data set #3 - one match in the presence of non-matching records
-         * (with missing/zero index keys). */
-        {
-            {1, 0, 0}, {11},
-            {1, 1, 0}, {12},
-            {1, 1, 1}, {13},
-            {0, 0, 0}, {14},
-        }, {
-            {1, 1, 1}, {13},
-        },
-        /* Data set #4 - one match in the presence of non-matching records
-         * (with non-matching but non-zero values). */
-        {
-            {1, 2, 3}, {11},
-            {1, 1, 3}, {12},
-            {1, 1, 1}, {13},
-            {3, 2, 1}, {14},
-        }, {
-            {1, 1, 1}, {13},
-        },
-        /* Data set #5 - two matches in the presence of non-matching records.
-         */
-        {
-            {1, 2, 3}, {11},
-            {1, 1, 3}, {12},
-            {1, 1, 1}, {13},
-            {1, 2, 3}, {14},
-        }, {
-            {1, 2, 3}, {11, 14},
-        },
-        /* Data set #6 - three matches in the presence of non-matching records.
-         * Also used to verify that cursors are sorted by count: 2, 1, 0 */
-        {
-            {1, 2, 3}, {11},
-            {1, 1, 3}, {12},
-            {1, 1, 1}, {13},
-            {1, 2, 3}, {14},
-            {1, 1, 1}, {15},
-            {1, 0, 0}, {16},
-            {1, 1, 0}, {17},
-            {1, 1, 1}, {18},
-            {0, 0, 0}, {19},
-            {3, 2, 1}, {20},
-        }, {
-            {1, 1, 1}, {13, 15, 18},
-        },
-        /* Data set #7 - three matches by themselves. */
-        {
-            {1, 2, 3}, {11},
-            {1, 2, 3}, {12},
-            {1, 2, 3}, {13},
-        }, {
-            {1, 2, 3}, {11, 12, 13},
-        },
-    };
+    private static final int[][][]   ALL              = {
+                                                                                                                      /*
+                                                                                                                       * Data
+                                                                                                                       * set
+                                                                                                                       * #1
+                                                                                                                       * -
+                                                                                                                       * single
+                                                                                                                       * match
+                                                                                                                       * possible
+                                                                                                                       * per
+                                                                                                                       * record.
+                                                                                                                       */
+            { { 1, 1, 1 }, { 11 }, { 2, 2, 2 }, { 12 }, { 3, 3, 3 }, { 13 }, },
+            { { 1, 1, 1 }, { 11 }, { 2, 2, 2 }, { 12 }, { 3, 3, 3 }, { 13 }, { 1, 2, 3 }, {}, { 1, 1, 2 }, {},
+                    { 3, 2, 2 }, {}, },
+                                                                                                                      /*
+                                                                                                                       * Data
+                                                                                                                       * set
+                                                                                                                       * #2
+                                                                                                                       * -
+                                                                                                                       * no
+                                                                                                                       * match
+                                                                                                                       * possible
+                                                                                                                       * when
+                                                                                                                       * all
+                                                                                                                       * indices
+                                                                                                                       * are
+                                                                                                                       * not
+                                                                                                                       * present
+                                                                                                                       * (when
+                                                                                                                       * some
+                                                                                                                       * are
+                                                                                                                       * zero
+                                                                                                                       * )
+                                                                                                                       * .
+                                                                                                                       */
+            { { 1, 1, 0 }, { 11 }, { 2, 0, 2 }, { 12 }, { 0, 3, 3 }, { 13 }, { 3, 2, 1 }, { 14 }, },
+            { { 1, 1, 1 }, {}, { 2, 2, 2 }, {}, { 3, 3, 3 }, {}, },
+                                                                                                                      /*
+                                                                                                                       * Data
+                                                                                                                       * set
+                                                                                                                       * #3
+                                                                                                                       * -
+                                                                                                                       * one
+                                                                                                                       * match
+                                                                                                                       * in
+                                                                                                                       * the
+                                                                                                                       * presence
+                                                                                                                       * of
+                                                                                                                       * non
+                                                                                                                       * -
+                                                                                                                       * matching
+                                                                                                                       * records
+                                                                                                                       * (with
+                                                                                                                       * missing
+                                                                                                                       * /
+                                                                                                                       * zero
+                                                                                                                       * index
+                                                                                                                       * keys
+                                                                                                                       * )
+                                                                                                                       * .
+                                                                                                                       */
+            { { 1, 0, 0 }, { 11 }, { 1, 1, 0 }, { 12 }, { 1, 1, 1 }, { 13 }, { 0, 0, 0 }, { 14 }, },
+            { { 1, 1, 1 }, { 13 }, },
+                                                                                                                      /*
+                                                                                                                       * Data
+                                                                                                                       * set
+                                                                                                                       * #4
+                                                                                                                       * -
+                                                                                                                       * one
+                                                                                                                       * match
+                                                                                                                       * in
+                                                                                                                       * the
+                                                                                                                       * presence
+                                                                                                                       * of
+                                                                                                                       * non
+                                                                                                                       * -
+                                                                                                                       * matching
+                                                                                                                       * records
+                                                                                                                       * (with
+                                                                                                                       * non
+                                                                                                                       * -
+                                                                                                                       * matching
+                                                                                                                       * but
+                                                                                                                       * non
+                                                                                                                       * -
+                                                                                                                       * zero
+                                                                                                                       * values
+                                                                                                                       * )
+                                                                                                                       * .
+                                                                                                                       */
+            { { 1, 2, 3 }, { 11 }, { 1, 1, 3 }, { 12 }, { 1, 1, 1 }, { 13 }, { 3, 2, 1 }, { 14 }, },
+            { { 1, 1, 1 }, { 13 }, },
+                                                                                                                      /*
+                                                                                                                       * Data
+                                                                                                                       * set
+                                                                                                                       * #5
+                                                                                                                       * -
+                                                                                                                       * two
+                                                                                                                       * matches
+                                                                                                                       * in
+                                                                                                                       * the
+                                                                                                                       * presence
+                                                                                                                       * of
+                                                                                                                       * non
+                                                                                                                       * -
+                                                                                                                       * matching
+                                                                                                                       * records.
+                                                                                                                       */
+            { { 1, 2, 3 }, { 11 }, { 1, 1, 3 }, { 12 }, { 1, 1, 1 }, { 13 }, { 1, 2, 3 }, { 14 }, },
+            { { 1, 2, 3 }, { 11, 14 }, },
+                                                                                                                      /*
+                                                                                                                       * Data
+                                                                                                                       * set
+                                                                                                                       * #6
+                                                                                                                       * -
+                                                                                                                       * three
+                                                                                                                       * matches
+                                                                                                                       * in
+                                                                                                                       * the
+                                                                                                                       * presence
+                                                                                                                       * of
+                                                                                                                       * non
+                                                                                                                       * -
+                                                                                                                       * matching
+                                                                                                                       * records.
+                                                                                                                       * Also
+                                                                                                                       * used
+                                                                                                                       * to
+                                                                                                                       * verify
+                                                                                                                       * that
+                                                                                                                       * cursors
+                                                                                                                       * are
+                                                                                                                       * sorted
+                                                                                                                       * by
+                                                                                                                       * count:
+                                                                                                                       * 2,
+                                                                                                                       * 1,
+                                                                                                                       * 0
+                                                                                                                       */
+            { { 1, 2, 3 }, { 11 }, { 1, 1, 3 }, { 12 }, { 1, 1, 1 }, { 13 }, { 1, 2, 3 }, { 14 }, { 1, 1, 1 }, { 15 },
+                    { 1, 0, 0 }, { 16 }, { 1, 1, 0 }, { 17 }, { 1, 1, 1 }, { 18 }, { 0, 0, 0 }, { 19 }, { 3, 2, 1 },
+                    { 20 }, },
+            { { 1, 1, 1 }, { 13, 15, 18 }, },
+                                                                                                                      /*
+                                                                                                                       * Data
+                                                                                                                       * set
+                                                                                                                       * #7
+                                                                                                                       * -
+                                                                                                                       * three
+                                                                                                                       * matches
+                                                                                                                       * by
+                                                                                                                       * themselves.
+                                                                                                                       */
+            { { 1, 2, 3 }, { 11 }, { 1, 2, 3 }, { 12 }, { 1, 2, 3 }, { 13 }, }, { { 1, 2, 3 }, { 11, 12, 13 }, }, };
 
     /* Used for testing the cursors are sorted by count. */
-    private static final int CURSOR_ORDER_SET = 6;
-    private static final int[] CURSOR_ORDER = {2, 1, 0};
+    private static final int         CURSOR_ORDER_SET = 6;
+    private static final int[]       CURSOR_ORDER     = { 2, 1, 0 };
 
-    private static EnvironmentConfig envConfig = TestUtils.initEnvConfig();
+    private static EnvironmentConfig envConfig        = TestUtils.initEnvConfig();
     static {
         envConfig.setAllowCreate(true);
     }
@@ -170,13 +239,13 @@ public class JoinTest extends MultiKeyTxnTestCase {
         final String[] txnTypes = getTxnTypes(null, rep);
         final List<Object[]> newParams = new ArrayList<Object[]>();
         for (final String type : txnTypes) {
-            newParams.add(new Object[] {type, true});
-            newParams.add(new Object[] {type, false});
+            newParams.add(new Object[] { type, true });
+            newParams.add(new Object[] { type, false });
         }
         return newParams;
     }
-    
-    public JoinTest(String type, boolean multiKey){
+
+    public JoinTest(String type, boolean multiKey) {
         super.envConfig = envConfig;
         txnType = type;
         useMultiKey = multiKey;
@@ -185,11 +254,9 @@ public class JoinTest extends MultiKeyTxnTestCase {
     }
 
     @Test
-    public void testJoin()
-        throws DatabaseException {
+    public void testJoin() throws DatabaseException {
 
-        for (CursorConfig config :
-             new CursorConfig[] { null, CursorConfig.READ_UNCOMMITTED }) {
+        for (CursorConfig config : new CursorConfig[] { null, CursorConfig.READ_UNCOMMITTED }) {
             for (boolean withData : new boolean[] { false, true }) {
                 for (int i = 0; i < ALL.length; i += 2) {
                     doJoin(ALL[i], ALL[i + 1], (i / 2) + 1, withData, config);
@@ -198,12 +265,8 @@ public class JoinTest extends MultiKeyTxnTestCase {
         }
     }
 
-    private void doJoin(int[][] dataSet,
-                        int[][] joinSet,
-                        int setNum,
-                        boolean withData,
-                        CursorConfig cursorConfig)
-        throws DatabaseException {
+    private void doJoin(int[][] dataSet, int[][] joinSet, int setNum, boolean withData, CursorConfig cursorConfig)
+            throws DatabaseException {
 
         String name = "Set#" + setNum;
         Database priDb = openPrimary("pri");
@@ -231,7 +294,7 @@ public class JoinTest extends MultiKeyTxnTestCase {
         SecondaryCursor c0 = secDb0.openSecondaryCursor(txn, cursorConfig);
         SecondaryCursor c1 = secDb1.openSecondaryCursor(txn, cursorConfig);
         SecondaryCursor c2 = secDb2.openSecondaryCursor(txn, cursorConfig);
-        SecondaryCursor[] cursors = {c0, c1, c2};
+        SecondaryCursor[] cursors = { c0, c1, c2 };
 
         for (int i = 0; i < joinSet.length; i += 2) {
             int[] indexKeys = joinSet[i];
@@ -240,8 +303,7 @@ public class JoinTest extends MultiKeyTxnTestCase {
             for (int k = 0; k < 3; k += 1) {
                 String msg = prefix + " k=" + k + " ikey=" + indexKeys[k];
                 setKey(key, indexKeys[k]);
-                status = cursors[k].getSearchKey(key, data,
-                                                 LockMode.DEFAULT);
+                status = cursors[k].getSearchKey(key, data, LockMode.DEFAULT);
                 assertEquals(msg, OperationStatus.SUCCESS, status);
             }
             for (int j = 0; j < 2; j += 1) {
@@ -264,8 +326,7 @@ public class JoinTest extends MultiKeyTxnTestCase {
                             int priKey = dataSet[m + 1][0];
                             if (priKey == priKeys[k]) {
                                 for (int n = 0; n < 3; n += 1) {
-                                    assertEquals(msg, vals[n],
-                                                 data.getData()[n]);
+                                    assertEquals(msg, vals[n], data.getData()[n]);
                                     dataFound = true;
                                 }
                             }
@@ -323,13 +384,12 @@ public class JoinTest extends MultiKeyTxnTestCase {
 
     /**
      * Checks that a join operation does not block writers from inserting
-     * duplicates with the same main key as the search key.  Writers were being
-     * blocked before we changed join() to use READ_UNCOMMITTED when getting
-     * the duplicate count for each cursor.  [#11833]
+     * duplicates with the same main key as the search key. Writers were being
+     * blocked before we changed join() to use READ_UNCOMMITTED when getting the
+     * duplicate count for each cursor. [#11833]
      */
     @Test
-    public void testWriteDuringJoin()
-        throws DatabaseException {
+    public void testWriteDuringJoin() throws DatabaseException {
 
         Database priDb = openPrimary("pri");
         SecondaryDatabase secDb0 = openSecondary(priDb, "sec0", true, 0);
@@ -357,12 +417,11 @@ public class JoinTest extends MultiKeyTxnTestCase {
         SecondaryCursor c0 = secDb0.openSecondaryCursor(txn, null);
         SecondaryCursor c1 = secDb1.openSecondaryCursor(txn, null);
         SecondaryCursor c2 = secDb2.openSecondaryCursor(txn, null);
-        SecondaryCursor[] cursors = {c0, c1, c2};
+        SecondaryCursor[] cursors = { c0, c1, c2 };
 
         for (int i = 0; i < 3; i += 1) {
             setKey(key, 1);
-            status = cursors[i].getSearchKey(key, data,
-                                             LockMode.READ_UNCOMMITTED);
+            status = cursors[i].getSearchKey(key, data, LockMode.READ_UNCOMMITTED);
             assertEquals(OperationStatus.SUCCESS, status);
         }
 
@@ -409,8 +468,7 @@ public class JoinTest extends MultiKeyTxnTestCase {
         priDb.close();
     }
 
-    private Database openPrimary(String name)
-        throws DatabaseException {
+    private Database openPrimary(String name) throws DatabaseException {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(isTransactional);
@@ -424,17 +482,15 @@ public class JoinTest extends MultiKeyTxnTestCase {
         }
     }
 
-    private SecondaryDatabase openSecondary(Database priDb, String dbName,
-                                            boolean dups, int keyId)
-        throws DatabaseException {
+    private SecondaryDatabase openSecondary(Database priDb, String dbName, boolean dups, int keyId)
+            throws DatabaseException {
 
         SecondaryConfig dbConfig = new SecondaryConfig();
         dbConfig.setTransactional(isTransactional);
         dbConfig.setAllowCreate(true);
         dbConfig.setSortedDuplicates(dups);
         if (useMultiKey) {
-            dbConfig.setMultiKeyCreator
-                (new SimpleMultiKeyCreator(new MyKeyCreator(keyId)));
+            dbConfig.setMultiKeyCreator(new SimpleMultiKeyCreator(new MyKeyCreator(keyId)));
         } else {
             dbConfig.setKeyCreator(new MyKeyCreator(keyId));
         }
@@ -454,8 +510,7 @@ public class JoinTest extends MultiKeyTxnTestCase {
         key.setData(a);
     }
 
-    private static void setData(DatabaseEntry data,
-                                int key1, int key2, int key3) {
+    private static void setData(DatabaseEntry data, int key1, int key2, int key3) {
 
         byte[] a = new byte[4];
         a[0] = (byte) key1;
@@ -473,9 +528,7 @@ public class JoinTest extends MultiKeyTxnTestCase {
             this.keyId = keyId;
         }
 
-        public boolean createSecondaryKey(SecondaryDatabase secondary,
-                                          DatabaseEntry key,
-                                          DatabaseEntry data,
+        public boolean createSecondaryKey(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data,
                                           DatabaseEntry result) {
             byte val = data.getData()[keyId];
             if (val != 0) {

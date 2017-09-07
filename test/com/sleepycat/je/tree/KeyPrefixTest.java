@@ -52,9 +52,9 @@ import com.sleepycat.utilint.StringUtils;
 
 public class KeyPrefixTest extends DualTestCase {
 
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database db;
+    private Database    db;
 
     public KeyPrefixTest() {
         System.setProperty("longAckTimeout", "true");
@@ -62,21 +62,18 @@ public class KeyPrefixTest extends DualTestCase {
     }
 
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         super.tearDown();
         db = null;
         env = null;
     }
 
-    private void initEnv(int nodeMax)
-        throws DatabaseException {
+    private void initEnv(int nodeMax) throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         if (nodeMax > 0) {
-            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(),
-                                     Integer.toString(nodeMax));
+            envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), Integer.toString(nodeMax));
         }
         envConfig.setAllowCreate(true);
         envConfig.setTransactional(true);
@@ -103,22 +100,19 @@ public class KeyPrefixTest extends DualTestCase {
         }
     }
 
-    private static final String[] keys = {
-        "aaa", "aab", "aac", "aae",                // BIN1
-        "aaf", "aag", "aah", "aaj",                // BIN2
-        "aak", "aala", "aalb", "aam",              // BIN3
-        "aan", "aao", "aap", "aas",                // BIN4
-        "aat", "aau", "aav", "aaz",                // BIN5
-        "baa", "bab", "bac", "bam",                // BIN6
-        "ban", "bax", "bay", "baz",                // BIN7
-        "caa", "cab", "cay", "caz",                // BIN8
-        "daa", "eaa", "faa", "fzz",                // BIN10
-        "Aaza", "Aazb", "aal", "aama"
-    };
+    private static final String[] keys = { "aaa", "aab", "aac", "aae", // BIN1
+            "aaf", "aag", "aah", "aaj", // BIN2
+            "aak", "aala", "aalb", "aam", // BIN3
+            "aan", "aao", "aap", "aas", // BIN4
+            "aat", "aau", "aav", "aaz", // BIN5
+            "baa", "bab", "bac", "bam", // BIN6
+            "ban", "bax", "bay", "baz", // BIN7
+            "caa", "cab", "cay", "caz", // BIN8
+            "daa", "eaa", "faa", "fzz", // BIN10
+            "Aaza", "Aazb", "aal", "aama" };
 
     @Test
-    public void testPrefixBasic()
-        throws Exception {
+    public void testPrefixBasic() throws Exception {
 
         initEnv(5);
         Key.DUMP_TYPE = DumpType.TEXT;
@@ -127,10 +121,7 @@ public class KeyPrefixTest extends DualTestCase {
             /* Build up a tree. */
             for (String key : keys) {
                 assertEquals(OperationStatus.SUCCESS,
-                             db.put(null,
-                                    new DatabaseEntry
-                                    (StringUtils.toUTF8(key)),
-                                    new DatabaseEntry(new byte[] { 1 })));
+                        db.put(null, new DatabaseEntry(StringUtils.toUTF8(key)), new DatabaseEntry(new byte[] { 1 })));
             }
 
             String[] sortedKeys = new String[keys.length];
@@ -146,13 +137,9 @@ public class KeyPrefixTest extends DualTestCase {
                 DatabaseEntry data = new DatabaseEntry();
 
                 boolean somePrefixSeen = false;
-                while (cursor.getNext(key, data, LockMode.DEFAULT) ==
-                       OperationStatus.SUCCESS) {
-                    assertEquals(StringUtils.fromUTF8(key.getData()),
-                                 sortedKeys[i++]);
-                    byte[] prefix =
-                        DbInternal.getCursorImpl(cursor).getBIN().
-                        getKeyPrefix();
+                while (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
+                    assertEquals(StringUtils.fromUTF8(key.getData()), sortedKeys[i++]);
+                    byte[] prefix = DbInternal.getCursorImpl(cursor).getBIN().getKeyPrefix();
                     if (prefix != null) {
                         somePrefixSeen = true;
                     }
@@ -178,21 +165,18 @@ public class KeyPrefixTest extends DualTestCase {
     }
 
     @Test
-    public void testPrefixManyRandom()
-        throws Exception {
+    public void testPrefixManyRandom() throws Exception {
 
         doTestPrefixMany(true);
     }
 
     @Test
-    public void testPrefixManySequential()
-        throws Exception {
+    public void testPrefixManySequential() throws Exception {
 
         doTestPrefixMany(false);
     }
 
-    private void doTestPrefixMany(boolean random)
-        throws Exception {
+    private void doTestPrefixMany(boolean random) throws Exception {
 
         initEnv(0);
         final int N_EXTRA_ENTRIES = 1000;
@@ -235,8 +219,7 @@ public class KeyPrefixTest extends DualTestCase {
                 cursor.close();
                 cursor = db.openCursor(txn, CursorConfig.READ_UNCOMMITTED);
                 verifyEntries(0, N_EXTRA_ENTRIES, cursor, 1);
-                assertEquals(OperationStatus.SUCCESS,
-                             cursor.getNext(key, data, LockMode.DEFAULT));
+                assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, LockMode.DEFAULT));
                 assertEquals(end, LongBinding.entryToLong(key));
             } finally {
                 if (cursor != null) {
@@ -257,11 +240,7 @@ public class KeyPrefixTest extends DualTestCase {
         }
     }
 
-    private int insertTimestamps(long start,
-                                 long end,
-                                 long inc,
-                                 boolean random)
-        throws DatabaseException {
+    private int insertTimestamps(long start, long end, long inc, boolean random) throws DatabaseException {
 
         int nEntries = (int) ((end - start) / inc);
         List<Long> keyList = new ArrayList<Long>(nEntries);
@@ -292,49 +271,41 @@ public class KeyPrefixTest extends DualTestCase {
                 LongBinding.longToEntry(i, key);
             }
             j++;
-            assertEquals(OperationStatus.SUCCESS,
-                         db.put(null, key, data));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
         }
         return j;
     }
 
-    private void insertExtraTimestamps(long start, int nExtraEntries)
-        throws DatabaseException {
+    private void insertExtraTimestamps(long start, int nExtraEntries) throws DatabaseException {
 
-        /* Add (more than one node's worth) to the left side of the tree.*/
+        /* Add (more than one node's worth) to the left side of the tree. */
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry(new byte[] { 0 });
         long next = start;
         for (int i = 0; i < nExtraEntries; i++) {
             LongBinding.longToEntry(next, key);
-            assertEquals(OperationStatus.SUCCESS,
-                         db.put(null, key, data));
+            assertEquals(OperationStatus.SUCCESS, db.put(null, key, data));
             next++;
         }
     }
 
-    private void deleteEntries(Transaction txn, long start, int nEntries)
-        throws DatabaseException {
+    private void deleteEntries(Transaction txn, long start, int nEntries) throws DatabaseException {
 
         /*
          * READ_UNCOMMITTED is used here as a trick to reduce the amount of
-         * memory taken by locks.  Because we don't lock the record before
-         * deleting it, we don't lock the LSN, which reduces the number of
-         * locks by half.
+         * memory taken by locks. Because we don't lock the record before
+         * deleting it, we don't lock the LSN, which reduces the number of locks
+         * by half.
          */
         Cursor cursor = db.openCursor(txn, null);
         try {
             DatabaseEntry key = new DatabaseEntry();
             DatabaseEntry data = new DatabaseEntry();
             LongBinding.longToEntry(start, key);
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getSearchKey(key, data,
-                                             LockMode.READ_UNCOMMITTED));
+            assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(key, data, LockMode.READ_UNCOMMITTED));
             for (int i = 0; i < nEntries; i++) {
                 assertEquals(OperationStatus.SUCCESS, cursor.delete());
-                assertEquals(OperationStatus.SUCCESS,
-                             cursor.getNext(key, data,
-                                            LockMode.READ_UNCOMMITTED));
+                assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, LockMode.READ_UNCOMMITTED));
             }
         } finally {
             if (cursor != null) {
@@ -343,18 +314,13 @@ public class KeyPrefixTest extends DualTestCase {
         }
     }
 
-    private void verifyEntries(long start,
-                               int nEntries,
-                               Cursor cursor,
-                               long inc)
-        throws DatabaseException {
+    private void verifyEntries(long start, int nEntries, Cursor cursor, long inc) throws DatabaseException {
 
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         long check = start;
         for (int i = 0; i < nEntries; i++) {
-            assertEquals(OperationStatus.SUCCESS,
-                         cursor.getNext(key, data, LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, cursor.getNext(key, data, LockMode.DEFAULT));
             long keyInfo = LongBinding.entryToLong(key);
             assertTrue(keyInfo == check);
             check += inc;
@@ -368,9 +334,7 @@ public class KeyPrefixTest extends DualTestCase {
     public void testRLEComparator() {
         initEnv(0);
         db.close();
-        db =  env.openDatabase
-            (null, "testKeyComparator",
-             configDatabaseWithComparator(new RLEKeyComparator()));
+        db = env.openDatabase(null, "testKeyComparator", configDatabaseWithComparator(new RLEKeyComparator()));
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         final int keyCount = 1000;
@@ -378,7 +342,7 @@ public class KeyPrefixTest extends DualTestCase {
         /* seed the database. */
         Random rand = new Random(0);
 
-        for (int i=0; i < keyCount; i++) {
+        for (int i = 0; i < keyCount; i++) {
             String str = Long.toString(rand.nextLong());
             final byte[] keyBytes = strToRLEbytes(str);
 
@@ -397,8 +361,7 @@ public class KeyPrefixTest extends DualTestCase {
         try {
             cursor = db.openCursor(txn, CursorConfig.READ_UNCOMMITTED);
             BIN pbin = null;
-            while (cursor.getNext(key, data, LockMode.DEFAULT) ==
-                   OperationStatus.SUCCESS) {
+            while (cursor.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
 
                 final BIN bin = DbInternal.getCursorImpl(cursor).getBIN();
                 if (bin != pbin) {
@@ -417,7 +380,7 @@ public class KeyPrefixTest extends DualTestCase {
 
         /* Verify that expected keys are all present in the database. */
         rand = new Random(0);
-        for (int i=0; i < keyCount; i++) {
+        for (int i = 0; i < keyCount; i++) {
             String str = Long.toString(rand.nextLong());
 
             final byte[] keyBytes = strToRLEbytes(str);
@@ -434,7 +397,7 @@ public class KeyPrefixTest extends DualTestCase {
         ByteBuffer bb = ByteBuffer.wrap(encodedBytes);
         StringBuffer sb = new StringBuffer();
 
-        while (bb.remaining() > 0){
+        while (bb.remaining() > 0) {
             int length = bb.getInt();
             final char c = bb.getChar();
             while (length-- > 0) {
@@ -449,7 +412,7 @@ public class KeyPrefixTest extends DualTestCase {
         ByteBuffer bb = ByteBuffer.allocate(1000);
         for (int i = 0; i < str.length(); i++) {
             int length = 1;
-            while ((i+1) < str.length() && str.charAt(i) == str.charAt(i+1)) {
+            while ((i + 1) < str.length() && str.charAt(i) == str.charAt(i + 1)) {
                 length++;
                 i++;
             }
@@ -462,8 +425,7 @@ public class KeyPrefixTest extends DualTestCase {
         return encodedBytes;
     }
 
-    static class RLEKeyComparator
-        implements Comparator<byte[]>, Serializable {
+    static class RLEKeyComparator implements Comparator<byte[]>, Serializable {
         private static final long serialVersionUID = 1L;
 
         @Override
@@ -474,8 +436,7 @@ public class KeyPrefixTest extends DualTestCase {
         }
     }
 
-    private DatabaseConfig configDatabaseWithComparator
-        (Comparator<byte[]> testKeyComparator) {
+    private DatabaseConfig configDatabaseWithComparator(Comparator<byte[]> testKeyComparator) {
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -489,21 +450,23 @@ public class KeyPrefixTest extends DualTestCase {
     /**
      * Tests key prefixing with a key comparator that causes keys to be sorted
      * such that the first and last keys in a range do not represent the first
-     * last values if instead they were sorted byte-by-byte.  For example,
-     * string keys might be stored with a preceding 1 byte integer length:
+     * last values if instead they were sorted byte-by-byte. For example, string
+     * keys might be stored with a preceding 1 byte integer length:
+     * 
      * <pre>
      *  2, "aa"
      *  2, "bb"
      *  4, "cccc"
      *  2, "dd"
      * </pre>
-     * If prefixing were performed by only considering the first and last key
-     * in the range, the first byte would be in common and used as the prefix.
-     * But this prefix would be incorrect for the middle key.
+     * 
+     * If prefixing were performed by only considering the first and last key in
+     * the range, the first byte would be in common and used as the prefix. But
+     * this prefix would be incorrect for the middle key.
      * <p>
      * The test uses these four keys, rather than just three, because the old
      * (incorrect) code checked the first two keys and the last keys to
-     * determine the prefix.  In this test case, the first byte has the same
+     * determine the prefix. In this test case, the first byte has the same
      * value (2) for these three keys.
      * <p>
      * [#21405]
@@ -589,8 +552,7 @@ public class KeyPrefixTest extends DualTestCase {
         }
     }
 
-    static class LeadingLengthKeyComparator
-        implements Comparator<byte[]>, Serializable {
+    static class LeadingLengthKeyComparator implements Comparator<byte[]>, Serializable {
 
         public int compare(byte[] k1, byte[] k2) {
             String s1 = getLeadingLengthKeyString(k1);

@@ -26,7 +26,7 @@ import com.sleepycat.je.utilint.Timestamp;
 import com.sleepycat.util.test.TestBase;
 
 /**
- *  Test basic marshalling utilities
+ * Test basic marshalling utilities
  */
 public class LogUtilsTest extends TestBase {
 
@@ -73,14 +73,12 @@ public class LogUtilsTest extends TestBase {
         assertEquals(longData, LogUtils.readLong(dest));
 
         // byte arrays
-        byte[] byteData = new byte[] {1,2,3,4,5,6,7,8,9,10,11,12};
+        byte[] byteData = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
         dest.clear();
         LogUtils.writeByteArray(dest, byteData);
         assertEquals(LogUtils.getPackedIntLogSize(12) + 12, dest.position());
         dest.flip();
-        assertTrue(Arrays.equals(byteData,
-                                 LogUtils.readByteArray(dest,
-                                                        false/*unpacked*/)));
+        assertTrue(Arrays.equals(byteData, LogUtils.readByteArray(dest, false/* unpacked */)));
 
         // Strings
         String stringData = "Hello world!";
@@ -88,9 +86,7 @@ public class LogUtilsTest extends TestBase {
         LogUtils.writeString(dest, stringData);
         assertEquals(LogUtils.getPackedIntLogSize(12) + 12, dest.position());
         dest.flip();
-        assertEquals(stringData,
-                     LogUtils.readString
-                     (dest, false/*unpacked*/, LogEntryType.LOG_VERSION));
+        assertEquals(stringData, LogUtils.readString(dest, false/* unpacked */, LogEntryType.LOG_VERSION));
 
         // String with multi-byte char, a Euro sign represented as 3 UTF bytes
         String multiByteData = "Hello Euro!\u20ac";
@@ -98,17 +94,13 @@ public class LogUtilsTest extends TestBase {
         LogUtils.writeString(dest, multiByteData);
         assertEquals(LogUtils.getPackedIntLogSize(14) + 14, dest.position());
         dest.flip();
-        assertEquals(multiByteData,
-            LogUtils.readString(
-                dest, false/*unpacked*/, LogEntryType.LOG_VERSION));
+        assertEquals(multiByteData, LogUtils.readString(dest, false/* unpacked */, LogEntryType.LOG_VERSION));
 
         // Timestamps
-        Timestamp timestampData =
-            new Timestamp(Calendar.getInstance().getTimeInMillis());
+        Timestamp timestampData = new Timestamp(Calendar.getInstance().getTimeInMillis());
         dest.clear();
         LogUtils.writeTimestamp(dest, timestampData);
-        assertEquals(LogUtils.getTimestampLogSize(timestampData),
-                     dest.position());
+        assertEquals(LogUtils.getTimestampLogSize(timestampData), dest.position());
         dest.flip();
         assertEquals(timestampData, LogUtils.readTimestamp(dest, false));
 

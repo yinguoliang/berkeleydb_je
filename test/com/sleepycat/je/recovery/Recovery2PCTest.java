@@ -37,17 +37,17 @@ import com.sleepycat.utilint.StringUtils;
 
 @RunWith(Theories.class)
 public class Recovery2PCTest extends RecoveryTestBase {
-    private boolean explicitTxn;
-    private boolean commit;
-    private boolean recover;
-    
+    private boolean       explicitTxn;
+    private boolean       commit;
+    private boolean       recover;
+
     /* We only need to test XARecoveryAPI for implicit and explicit. */
     @DataPoint
-    public static boolean enable = true;
-    
+    public static boolean enable  = true;
+
     @DataPoint
     public static boolean disable = false;
-    
+
     private String opName() {
         StringBuilder sb = new StringBuilder();
 
@@ -77,35 +77,29 @@ public class Recovery2PCTest extends RecoveryTestBase {
     }
 
     @Theory
-    public void testDetectUnfinishedXATxns(boolean implicit, 
-                                           boolean commitFlag,
-                                           boolean recoverFlag)
-        throws Throwable {
+    public void testDetectUnfinishedXATxns(boolean implicit, boolean commitFlag, boolean recoverFlag) throws Throwable {
 
         Assume.assumeTrue(implicit);
         Assume.assumeTrue(commitFlag);
         Assume.assumeTrue(recoverFlag);
-        
+
         explicitTxn = implicit;
         commit = commitFlag;
         recover = recoverFlag;
-        
-        customName = opName();
-        
-        System.out.println("TestCase: Recovery2PCTest-" +
-        		"testDetectUnfinishedXATxns-" + customName);
 
-        createXAEnvAndDbs(1 << 20, false/*runCheckpointerDaemon*/, 1, false);
+        customName = opName();
+
+        System.out.println("TestCase: Recovery2PCTest-" + "testDetectUnfinishedXATxns-" + customName);
+
+        createXAEnvAndDbs(1 << 20, false/* runCheckpointerDaemon */, 1, false);
         XAEnvironment xaEnv = (XAEnvironment) env;
         int numRecs = 2;
 
         try {
-            Map<TestData, Set<TestData>> expectedData =
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             /* Insert all the data. */
-            XidImpl xid =
-                new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
+            XidImpl xid = new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
             Transaction txn = env.beginTransaction(null, null);
             xaEnv.setXATransaction(xid, txn);
             insertData(txn, 0, numRecs, expectedData, 1, commit, 1);
@@ -119,8 +113,7 @@ public class Recovery2PCTest extends RecoveryTestBase {
             } catch (IllegalStateException DE) {
                 if (!DE.getMessage().contains("There is")) {
                     DE.printStackTrace(System.out);
-                    fail("expected open XA message, but got " +
-                         DE.getMessage());
+                    fail("expected open XA message, but got " + DE.getMessage());
                 }
             }
         } catch (Throwable t) {
@@ -130,32 +123,26 @@ public class Recovery2PCTest extends RecoveryTestBase {
     }
 
     @Theory
-    public void testBasic(boolean implicit, 
-                          boolean commitFlag,          
-                          boolean recoverFlag)
-        throws Throwable {
-        
+    public void testBasic(boolean implicit, boolean commitFlag, boolean recoverFlag) throws Throwable {
+
         explicitTxn = implicit;
         commit = commitFlag;
         recover = recoverFlag;
-        
+
         customName = opName();
-        
+
         System.out.println("TestCase: Recovery2PCTest-testBasic-" + customName);
 
-        createXAEnvAndDbs(1 << 20, false/*runCheckpointerDaemon*/,
-                          NUM_DBS, !recover);
+        createXAEnvAndDbs(1 << 20, false/* runCheckpointerDaemon */, NUM_DBS, !recover);
         XAEnvironment xaEnv = (XAEnvironment) env;
         int numRecs = NUM_RECS * 3;
 
         try {
             /* Set up an repository of expected data. */
-            Map<TestData, Set<TestData>> expectedData =
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             /* Insert all the data. */
-            XidImpl xid =
-                new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
+            XidImpl xid = new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
             Transaction txn = null;
             if (explicitTxn) {
                 txn = env.beginTransaction(null, null);
@@ -197,95 +184,77 @@ public class Recovery2PCTest extends RecoveryTestBase {
     }
 
     @Theory
-    public void testXARecoverAPI(boolean implicit, 
-                                 boolean commitFlag,          
-                                 boolean recoverFlag)
-         throws Throwable {
-        
+    public void testXARecoverAPI(boolean implicit, boolean commitFlag, boolean recoverFlag) throws Throwable {
+
         Assume.assumeTrue(commitFlag);
         Assume.assumeTrue(recoverFlag);
         explicitTxn = implicit;
         commit = commitFlag;
         recover = recoverFlag;
-        
+
         customName = opName();
-        
-        System.out.println("TestCase: Recovery2PCTest-testXARecoverAPI-" + 
-                           customName);
-        
-        createXAEnvAndDbs(1 << 20, false/*runCheckpointerDaemon*/,
-                          NUM_DBS << 1, false);
+
+        System.out.println("TestCase: Recovery2PCTest-testXARecoverAPI-" + customName);
+
+        createXAEnvAndDbs(1 << 20, false/* runCheckpointerDaemon */, NUM_DBS << 1, false);
         final XAEnvironment xaEnv = (XAEnvironment) env;
         final int numRecs = NUM_RECS * 3;
 
         try {
             /* Set up an repository of expected data. */
-            final Map<TestData, Set<TestData>> expectedData1 =
-                new HashMap<TestData, Set<TestData>>();
+            final Map<TestData, Set<TestData>> expectedData1 = new HashMap<TestData, Set<TestData>>();
 
-            final Map<TestData, Set<TestData>> expectedData2 =
-                new HashMap<TestData, Set<TestData>>();
+            final Map<TestData, Set<TestData>> expectedData2 = new HashMap<TestData, Set<TestData>>();
 
             /* Insert all the data. */
-            final Transaction txn1 =
-                (explicitTxn ?
-                 env.beginTransaction(null, null) :
-                 null);
-            final Transaction txn2 =
-                (explicitTxn ?
-                 env.beginTransaction(null, null) :
-                 null);
-            final XidImpl xid1 =
-                new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
-            final XidImpl xid2 =
-                new XidImpl(1, StringUtils.toUTF8("TwoPCTest2"), null);
+            final Transaction txn1 = (explicitTxn ? env.beginTransaction(null, null) : null);
+            final Transaction txn2 = (explicitTxn ? env.beginTransaction(null, null) : null);
+            final XidImpl xid1 = new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
+            final XidImpl xid2 = new XidImpl(1, StringUtils.toUTF8("TwoPCTest2"), null);
 
             Thread thread1 = new Thread() {
-                    @Override
-                    public void run() {
-                        try {
-                            if (explicitTxn) {
-                                xaEnv.setXATransaction(xid1, txn1);
-                            } else {
-                                xaEnv.start(xid1, XAResource.TMNOFLAGS);
-                            }
-                            Thread.yield();
-                            insertData(txn1, 0, numRecs - 1, expectedData1, 1,
-                                       true, 0, NUM_DBS);
-                            Thread.yield();
-                            if (!explicitTxn) {
-                                xaEnv.end(xid1, XAResource.TMSUCCESS);
-                            }
-                            Thread.yield();
-                        } catch (Exception E) {
-                            fail("unexpected: " + E);
+                @Override
+                public void run() {
+                    try {
+                        if (explicitTxn) {
+                            xaEnv.setXATransaction(xid1, txn1);
+                        } else {
+                            xaEnv.start(xid1, XAResource.TMNOFLAGS);
                         }
+                        Thread.yield();
+                        insertData(txn1, 0, numRecs - 1, expectedData1, 1, true, 0, NUM_DBS);
+                        Thread.yield();
+                        if (!explicitTxn) {
+                            xaEnv.end(xid1, XAResource.TMSUCCESS);
+                        }
+                        Thread.yield();
+                    } catch (Exception E) {
+                        fail("unexpected: " + E);
                     }
-                };
+                }
+            };
 
             Thread thread2 = new Thread() {
-                    @Override
-                    public void run() {
-                        try {
-                            if (explicitTxn) {
-                                xaEnv.setXATransaction(xid2, txn2);
-                            } else {
-                                xaEnv.start(xid2, XAResource.TMNOFLAGS);
-                            }
-                            Thread.yield();
-                            insertData(txn2, numRecs, numRecs << 1,
-                                       expectedData2, 1, false, NUM_DBS,
-                                       NUM_DBS << 1);
-                            Thread.yield();
-                            if (!explicitTxn) {
-                                xaEnv.end(xid2, XAResource.TMSUCCESS);
-                            }
-                            Thread.yield();
-                        } catch (Exception E) {
-                            fail("unexpected: " + E);
+                @Override
+                public void run() {
+                    try {
+                        if (explicitTxn) {
+                            xaEnv.setXATransaction(xid2, txn2);
+                        } else {
+                            xaEnv.start(xid2, XAResource.TMNOFLAGS);
                         }
+                        Thread.yield();
+                        insertData(txn2, numRecs, numRecs << 1, expectedData2, 1, false, NUM_DBS, NUM_DBS << 1);
+                        Thread.yield();
+                        if (!explicitTxn) {
+                            xaEnv.end(xid2, XAResource.TMSUCCESS);
+                        }
+                        Thread.yield();
+                    } catch (Exception E) {
+                        fail("unexpected: " + E);
                     }
-                };
+                }
+            };
 
             thread1.start();
             thread2.start();
@@ -368,31 +337,25 @@ public class Recovery2PCTest extends RecoveryTestBase {
     }
 
     @Theory
-    public void testXARecoverArgCheck(boolean implicit, 
-                                      boolean commitFlag,          
-                                      boolean recoverFlag)
-         throws Throwable {
+    public void testXARecoverArgCheck(boolean implicit, boolean commitFlag, boolean recoverFlag) throws Throwable {
 
         Assume.assumeTrue(implicit);
         Assume.assumeTrue(commitFlag);
         Assume.assumeTrue(recoverFlag);
-        
+
         explicitTxn = implicit;
         commit = commitFlag;
         recover = recoverFlag;
-        
+
         customName = opName();
-        
-        System.out.println("TestCase: Recovery2PCTest-testXARecoverArgCheck-" 
-                            + customName);
-        
-        createXAEnvAndDbs(1 << 20, false/*runCheckpointerDaemon*/,
-                          NUM_DBS, false);
+
+        System.out.println("TestCase: Recovery2PCTest-testXARecoverArgCheck-" + customName);
+
+        createXAEnvAndDbs(1 << 20, false/* runCheckpointerDaemon */, NUM_DBS, false);
         XAEnvironment xaEnv = (XAEnvironment) env;
 
         try {
-            XidImpl xid =
-                new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
+            XidImpl xid = new XidImpl(1, StringUtils.toUTF8("TwoPCTest1"), null);
 
             /* Check that only one of TMJOIN and TMRESUME can be set. */
             try {
@@ -559,8 +522,8 @@ public class Recovery2PCTest extends RecoveryTestBase {
             xaEnv.commit(xid, false);
 
             /*
-             * Check start(); end(SUSPEND); end(SUCCESS).  This is a case that
-             * JBoss causes to happen.  It should succeed.
+             * Check start(); end(SUSPEND); end(SUCCESS). This is a case that
+             * JBoss causes to happen. It should succeed.
              */
             xid = new XidImpl(1, StringUtils.toUTF8("TwoPCTest7"), null);
             xaEnv.start(xid, XAResource.TMNOFLAGS);
@@ -569,8 +532,8 @@ public class Recovery2PCTest extends RecoveryTestBase {
             xaEnv.commit(xid, false);
 
             /*
-             * Check end(SUSPEND, SUCCESS, FAIL) with no start() call.
-             * This should fail.
+             * Check end(SUSPEND, SUCCESS, FAIL) with no start() call. This
+             * should fail.
              */
             try {
                 xid = new XidImpl(1, StringUtils.toUTF8("TwoPCTest8"), null);

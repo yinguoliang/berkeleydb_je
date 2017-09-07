@@ -48,11 +48,11 @@ import com.sleepycat.je.utilint.TestHook;
 public class FetchWithNoLatchTest extends TestBase {
     static private final boolean DEBUG = false;
 
-    private final File envHome;
-    private Environment env;
-    private Database db1;
-    private Database db2;
-    private Database db3;
+    private final File           envHome;
+    private Environment          env;
+    private Database             db1;
+    private Database             db2;
+    private Database             db3;
 
     public FetchWithNoLatchTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -61,16 +61,15 @@ public class FetchWithNoLatchTest extends TestBase {
     }
 
     @Before
-    public void setUp() 
-        throws Exception {
-        
+    public void setUp() throws Exception {
+
         super.setUp();
         initEnv();
     }
 
     @After
     public void tearDown() {
-        
+
         try {
             db1.close();
             db2.close();
@@ -80,24 +79,18 @@ public class FetchWithNoLatchTest extends TestBase {
         }
     }
 
-    private void initEnv()
-        throws DatabaseException {
+    private void initEnv() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "4");
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
 
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CLEANER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-        envConfig.setConfigParam(
-            EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_OFFHEAP_EVICTOR, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+        envConfig.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
 
         env = new Environment(envHome, envConfig);
 
@@ -125,8 +118,7 @@ public class FetchWithNoLatchTest extends TestBase {
     }
 
     @Test
-    public void testSplit1()
-        throws Exception {
+    public void testSplit1() throws Exception {
 
         Key.DUMP_TYPE = DumpType.BINARY;
         final Database db = db1;
@@ -141,22 +133,20 @@ public class FetchWithNoLatchTest extends TestBase {
             final IN bin = pair.second();
 
             /*
-             * Refetch B (via getParentINForChildIN() below) while splitting
-             * its sibling and parent (BINs 11 and 13) at the "same" time. The
-             * split is done via the test hook below, which is executed right
-             * after IN.fetchIN() releases the latch on B's parent in order to
-             * fetch B. The split causes B's parent to change.
+             * Refetch B (via getParentINForChildIN() below) while splitting its
+             * sibling and parent (BINs 11 and 13) at the "same" time. The split
+             * is done via the test hook below, which is executed right after
+             * IN.fetchIN() releases the latch on B's parent in order to fetch
+             * B. The split causes B's parent to change.
              */
-            FetchINTestHook fetchINHook = new FetchINTestHook(
-                db, parent, 66, true, false);
+            FetchINTestHook fetchINHook = new FetchINTestHook(db, parent, 66, true, false);
 
             parent.setFetchINHook(fetchINHook);
             tree.setFetchINHook(fetchINHook);
 
             bin.latch();
-            SearchResult result = tree.getParentINForChildIN(
-                bin, false, /*useTargetLevel*/ true, /*doFetch*/
-                CacheMode.UNCHANGED);
+            SearchResult result = tree.getParentINForChildIN(bin, false, /* useTargetLevel */ true, /* doFetch */
+                    CacheMode.UNCHANGED);
 
             result.parent.releaseLatch();
 
@@ -172,10 +162,8 @@ public class FetchWithNoLatchTest extends TestBase {
         }
     }
 
-
     @Test
-    public void testSplit2()
-        throws Exception {
+    public void testSplit2() throws Exception {
 
         Key.DUMP_TYPE = DumpType.BINARY;
         final Database db = db2;
@@ -194,23 +182,21 @@ public class FetchWithNoLatchTest extends TestBase {
              * itself and its parent (BIN 13) at the "same" time. The split is
              * done via the FetchINTestHook, which is executed right after
              * IN.fetchIN() releases the latch on B's parent in order to fetch
-             * B. The split does not change B's parent. However, the version
-             * B that fetchIN() is fetching becomes obsolete as a result of
-             * the split, and should not be attached to the tree. This is 
-             * indeed avaoided because fetchIN() will find B's new version
-             * in the tree, and will return that one instead of the one just
-             * fetched from disk.
+             * B. The split does not change B's parent. However, the version B
+             * that fetchIN() is fetching becomes obsolete as a result of the
+             * split, and should not be attached to the tree. This is indeed
+             * avaoided because fetchIN() will find B's new version in the tree,
+             * and will return that one instead of the one just fetched from
+             * disk.
              */
-            FetchINTestHook fetchINHook = new FetchINTestHook(
-                 db, parent, 33, true, false);
+            FetchINTestHook fetchINHook = new FetchINTestHook(db, parent, 33, true, false);
 
             parent.setFetchINHook(fetchINHook);
             tree.setFetchINHook(fetchINHook);
 
             bin.latch();
-            SearchResult result = tree.getParentINForChildIN(
-                bin, false, /*useTargetLevel*/ true, /*doFetch*/
-                CacheMode.UNCHANGED);
+            SearchResult result = tree.getParentINForChildIN(bin, false, /* useTargetLevel */ true, /* doFetch */
+                    CacheMode.UNCHANGED);
 
             /* Make sure everything went fine. */
             assertTrue(fetchINHook.foundNullChild);
@@ -227,10 +213,8 @@ public class FetchWithNoLatchTest extends TestBase {
         }
     }
 
-
     @Test
-    public void testSplit3()
-        throws Exception {
+    public void testSplit3() throws Exception {
 
         Key.DUMP_TYPE = DumpType.BINARY;
         final Database db = db3;
@@ -249,24 +233,22 @@ public class FetchWithNoLatchTest extends TestBase {
              * itself and its parent (BIN 13) at the "same" time. The split is
              * done via the FetchINTestHook, which is executed right after
              * IN.fetchIN() releases the latch on B's parent in order to fetch
-             * B. The split does not change B's parent. However, the version
-             * B that fetchIN() is fetching becomes obsolete as a result of
-             * the split, and should not be attached to the tree. In this test,
+             * B. The split does not change B's parent. However, the version B
+             * that fetchIN() is fetching becomes obsolete as a result of the
+             * split, and should not be attached to the tree. In this test,
              * after B is split, we evict B before resuming with fetchIN().
              * fetchIN() will not attach the fetched (obsolete) version in the
              * tree because the parent slot has an LSN that is different than
              * the fetched LSN.
              */
-            FetchINTestHook fetchINHook = new FetchINTestHook(
-                db, parent, 66, true, true);
+            FetchINTestHook fetchINHook = new FetchINTestHook(db, parent, 66, true, true);
 
             parent.setFetchINHook(fetchINHook);
             tree.setFetchINHook(fetchINHook);
 
             bin.latch();
-            SearchResult result = tree.getParentINForChildIN(
-                bin, false, /*useTargetLevel*/ true, /*doFetch*/
-                CacheMode.UNCHANGED);
+            SearchResult result = tree.getParentINForChildIN(bin, false, /* useTargetLevel */ true, /* doFetch */
+                    CacheMode.UNCHANGED);
 
             result.parent.releaseLatch();
 
@@ -284,8 +266,7 @@ public class FetchWithNoLatchTest extends TestBase {
     }
 
     @Test
-    public void testSplit4()
-        throws Exception {
+    public void testSplit4() throws Exception {
 
         Key.DUMP_TYPE = DumpType.BINARY;
         final Database db = db2;
@@ -299,29 +280,23 @@ public class FetchWithNoLatchTest extends TestBase {
             final IN parent = pair.first();
 
             /*
-             * Execute search(110) while splitting B (but not its parent) at
-             * the "same" time. The split is done via the FetchINTestHook,
-             * which is executed right after IN.fetchIN() (called from
-             * search(110)) releases the latch on B's parent in order to
-             * fetch B. The split does not change B's parent. However,
-             * the key we are looking for is now in B's new sibling and
-             * fetchIN() should return that sibling without causing a
-             * restart of the search.
+             * Execute search(110) while splitting B (but not its parent) at the
+             * "same" time. The split is done via the FetchINTestHook, which is
+             * executed right after IN.fetchIN() (called from search(110))
+             * releases the latch on B's parent in order to fetch B. The split
+             * does not change B's parent. However, the key we are looking for
+             * is now in B's new sibling and fetchIN() should return that
+             * sibling without causing a restart of the search.
              */
-            FetchINTestHook fetchINHook = new FetchINTestHook(
-                 db, parent, 126, false, false);
+            FetchINTestHook fetchINHook = new FetchINTestHook(db, parent, 126, false, false);
 
             parent.setFetchINHook(fetchINHook);
             //parent.setIdentifierKey(new byte[]{(byte)40});
 
             Cursor cursor = db.openCursor(null, CursorConfig.DEFAULT);
 
-            assertEquals(
-                OperationStatus.SUCCESS,
-                cursor.getSearchKey(
-                    new DatabaseEntry(new byte[]{(byte)110}),
-                    new DatabaseEntry(),
-                    LockMode.DEFAULT));
+            assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(new DatabaseEntry(new byte[] { (byte) 110 }),
+                    new DatabaseEntry(), LockMode.DEFAULT));
 
             cursor.close();
 
@@ -332,26 +307,20 @@ public class FetchWithNoLatchTest extends TestBase {
     }
 
     /*
-     * A test hook assigned to a givan IN P and triggerred when P.fetchIN()
-     * is called to fetch a missing child of P, after P is unlatched. The
-     * doHook() method causes P to split by inserting a given key in one of
-     * P's children.
+     * A test hook assigned to a givan IN P and triggerred when P.fetchIN() is
+     * called to fetch a missing child of P, after P is unlatched. The doHook()
+     * method causes P to split by inserting a given key in one of P's children.
      */
     class FetchINTestHook implements TestHook {
 
         Database db;
-        IN parent;
-        int newKey;
-        boolean parentSplits;
-        boolean evict;
-        boolean foundNullChild = false;
+        IN       parent;
+        int      newKey;
+        boolean  parentSplits;
+        boolean  evict;
+        boolean  foundNullChild = false;
 
-        FetchINTestHook(
-            Database db,
-            IN parent,
-            int newKey,
-            boolean parentSplits,
-            boolean evict) {
+        FetchINTestHook(Database db, IN parent, int newKey, boolean parentSplits, boolean evict) {
 
             this.db = db;
             this.parent = parent;
@@ -368,14 +337,11 @@ public class FetchWithNoLatchTest extends TestBase {
             int numEntries = parent.getNEntries();
 
             /* split the parent of the missing bin. */
-            assertEquals(
-                OperationStatus.SUCCESS,
-                db.put(null,
-                       new DatabaseEntry(new byte[]{(byte)newKey}),
-                       new DatabaseEntry(new byte[] {1})));
+            assertEquals(OperationStatus.SUCCESS,
+                    db.put(null, new DatabaseEntry(new byte[] { (byte) newKey }), new DatabaseEntry(new byte[] { 1 })));
 
             if (parentSplits) {
-                assert(numEntries > parent.getNEntries());
+                assert (numEntries > parent.getNEntries());
             }
 
             if (evict) {
@@ -383,83 +349,59 @@ public class FetchWithNoLatchTest extends TestBase {
             }
         }
 
-        @Override public void doHook(Object obj) {
+        @Override
+        public void doHook(Object obj) {
             assertFalse(foundNullChild);
             foundNullChild = true;
         }
 
-        @Override public void hookSetup() { }
-        @Override public void doIOHook() { }
-        
-        @Override public Object getHookValue() { return foundNullChild; }
+        @Override
+        public void hookSetup() {
+        }
+
+        @Override
+        public void doIOHook() {
+        }
+
+        @Override
+        public Object getHookValue() {
+            return foundNullChild;
+        }
     };
 
     /*
-     * Create a tree that looks like this:
-     *
-     *                                   ---------------------
-     *                                   | nid: 12 - key: 70 |
-     *                                   |...................|
-     *                                   |    70    |   110  |
-     *                                   ---------------------
-     *                                        /          \
-     *                                       /            \
-     *                           ----------------------    .. Subtree shown
-     *                           | nid: 13 - key: 70  |       below.
-     *                           |....................|
-     *                           |  40  |  50  |  80  |
-     *                           ----------------------
-     *                              /      |       \   80 <= k < 110
-     *            ------------------       |        -----------------
-     *            |                        |                        |
-     *  ---------------------    ---------------------   ----------------------
-     *  | nid: 14 - key: 40 |    | nid: 11 - key: 70 |   | nid: 10 - key: 100 |
-     *  |...................|    |...................|   |....................|
-     *  | 10 | 20 | 30 | 40 |    | 50 | 60 | 65 | 70 |   | 80 | 90 | 95 | 100 |
-     *  ---------------------    ---------------------   ----------------------
-     *
-     *
-     *            ---------------------- 
-     *            | nid: 8 - key: 160  |
-     *            |....................|
-     *            |    110   |   140   |
-     *            ----------------------
-     *                /              \ 
-     *               /                \
-     *              /                  \
-     *  -------------------------    ------------------------
-     *  |   nid: 9 - key: 130   |    |   nid: 7 - key: 160  |
-     *  |.......................|    |......................|
-     *  | 110 | 120 | 125 | 130 |    | 140  |  150  |  160  |
-     *  -------------------------    ------------------------
+     * Create a tree that looks like this: --------------------- | nid: 12 -
+     * key: 70 | |...................| | 70 | 110 | --------------------- / \ /
+     * \ ---------------------- .. Subtree shown | nid: 13 - key: 70 | below.
+     * |....................| | 40 | 50 | 80 | ---------------------- / | \ 80
+     * <= k < 110 ------------------ | ----------------- | | |
+     * --------------------- --------------------- ---------------------- | nid:
+     * 14 - key: 40 | | nid: 11 - key: 70 | | nid: 10 - key: 100 |
+     * |...................| |...................| |....................| | 10 |
+     * 20 | 30 | 40 | | 50 | 60 | 65 | 70 | | 80 | 90 | 95 | 100 |
+     * --------------------- --------------------- ----------------------
+     * ---------------------- | nid: 8 - key: 160 | |....................| | 110
+     * | 140 | ---------------------- / \ / \ / \ -------------------------
+     * ------------------------ | nid: 9 - key: 130 | | nid: 7 - key: 160 |
+     * |.......................| |......................| | 110 | 120 | 125 |
+     * 130 | | 140 | 150 | 160 | -------------------------
+     * ------------------------
      */
     Tree createTree(Database db) {
 
-        for (int i = 160; i > 0; i-= 10) {
-            assertEquals(
-                OperationStatus.SUCCESS,
-                db.put(null,
-                       new DatabaseEntry(new byte[] { (byte) i }),
-                       new DatabaseEntry(new byte[] {1})));
+        for (int i = 160; i > 0; i -= 10) {
+            assertEquals(OperationStatus.SUCCESS,
+                    db.put(null, new DatabaseEntry(new byte[] { (byte) i }), new DatabaseEntry(new byte[] { 1 })));
         }
 
-        assertEquals(
-            OperationStatus.SUCCESS,
-            db.put(null,
-                   new DatabaseEntry(new byte[]{(byte)65}),
-                   new DatabaseEntry(new byte[] {1})));
+        assertEquals(OperationStatus.SUCCESS,
+                db.put(null, new DatabaseEntry(new byte[] { (byte) 65 }), new DatabaseEntry(new byte[] { 1 })));
 
-        assertEquals(
-            OperationStatus.SUCCESS,
-            db.put(null,
-                   new DatabaseEntry(new byte[]{(byte)95}),
-                   new DatabaseEntry(new byte[] {1})));
+        assertEquals(OperationStatus.SUCCESS,
+                db.put(null, new DatabaseEntry(new byte[] { (byte) 95 }), new DatabaseEntry(new byte[] { 1 })));
 
-       assertEquals(
-            OperationStatus.SUCCESS,
-            db.put(null,
-                   new DatabaseEntry(new byte[]{(byte)125}),
-                   new DatabaseEntry(new byte[] {1})));
+        assertEquals(OperationStatus.SUCCESS,
+                db.put(null, new DatabaseEntry(new byte[] { (byte) 125 }), new DatabaseEntry(new byte[] { 1 })));
 
         Tree tree = DbInternal.getDbImpl(db).getTree();
 
@@ -488,16 +430,13 @@ public class FetchWithNoLatchTest extends TestBase {
 
         DatabaseEntry key = new DatabaseEntry(new byte[] { (byte) keyVal });
         DatabaseEntry data = new DatabaseEntry();
-        assertEquals(
-            OperationStatus.SUCCESS,
-            cursor.getSearchKey(key, data, LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKey(key, data, LockMode.DEFAULT));
 
         IN bin = cursorImpl.getBIN();
         bin.latch();
 
-        SearchResult result = tree.getParentINForChildIN(
-            bin, false, /*useTargetLevel*/ true, /*doFetch*/
-            CacheMode.UNCHANGED);
+        SearchResult result = tree.getParentINForChildIN(bin, false, /* useTargetLevel */ true, /* doFetch */
+                CacheMode.UNCHANGED);
 
         assertTrue(result.exactParentFound);
 
@@ -518,9 +457,7 @@ public class FetchWithNoLatchTest extends TestBase {
         Cursor cursor = db.openCursor(null, CursorConfig.DEFAULT);
         DatabaseEntry key = new DatabaseEntry(new byte[] { (byte) 10 });
         DatabaseEntry data = new DatabaseEntry();
-        assertEquals(
-            OperationStatus.SUCCESS,
-            cursor.getSearchKeyRange(key, data, LockMode.DEFAULT));
+        assertEquals(OperationStatus.SUCCESS, cursor.getSearchKeyRange(key, data, LockMode.DEFAULT));
 
         OperationStatus status = OperationStatus.SUCCESS;
         int keyVal = 0;
@@ -528,7 +465,7 @@ public class FetchWithNoLatchTest extends TestBase {
         do {
             status = cursor.getNext(key, data, LockMode.DEFAULT);
 
-            keyVal = (int)(key.getData()[0]);
+            keyVal = (int) (key.getData()[0]);
             if (keyVal > 100) {
                 break;
             }
@@ -536,7 +473,7 @@ public class FetchWithNoLatchTest extends TestBase {
             ++numKeys;
             System.out.println(keyVal);
         } while (status == OperationStatus.SUCCESS);
-        
+
         cursor.close();
 
         assertEquals(numKeys, 12);

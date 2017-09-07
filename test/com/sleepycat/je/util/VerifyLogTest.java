@@ -41,12 +41,12 @@ import com.sleepycat.util.test.SharedTestUtils;
 public class VerifyLogTest extends DualTestCase {
 
     private static final String SAVE_DIR = "save";
-    private static final int BUF_SIZE = 2048;
-    private static final int NUM_RECS = 5000;
+    private static final int    BUF_SIZE = 2048;
+    private static final int    NUM_RECS = 5000;
 
-    private final File envHome;
-    private final File tempDir;
-    private Environment env;
+    private final File          envHome;
+    private final File          tempDir;
+    private Environment         env;
 
     public VerifyLogTest() {
         envHome = SharedTestUtils.getTestDir();
@@ -55,8 +55,7 @@ public class VerifyLogTest extends DualTestCase {
 
     @Override
     @After
-    public void tearDown()
-        throws Exception {
+    public void tearDown() throws Exception {
 
         super.tearDown();
         try {
@@ -69,8 +68,7 @@ public class VerifyLogTest extends DualTestCase {
     }
 
     @Test
-    public void testVerify()
-        throws Throwable {
+    public void testVerify() throws Throwable {
 
         openEnv();
         writeData();
@@ -85,7 +83,7 @@ public class VerifyLogTest extends DualTestCase {
         verifyFiles(fileNames, env.getHome());
         clearTempDir();
         copyFiles(env, fileNames, tempDir, BUF_SIZE);
-        diffFiles(fileNames, tempDir, false /*allowShorterLastFile*/);
+        diffFiles(fileNames, tempDir, false /* allowShorterLastFile */);
         verifyFiles(fileNames, tempDir);
 
         /*
@@ -93,11 +91,11 @@ public class VerifyLogTest extends DualTestCase {
          */
         clearTempDir();
         copyFilesNIO(env, fileNames, tempDir, BUF_SIZE);
-        diffFiles(fileNames, tempDir, false /*allowShorterLastFile*/);
+        diffFiles(fileNames, tempDir, false /* allowShorterLastFile */);
         verifyFiles(fileNames, tempDir);
 
         /*
-         * Modify a byte at a time and expect a verification exception.  To
+         * Modify a byte at a time and expect a verification exception. To
          * prevent this from running for a very long time, use the first file
          * only and limit the maximum file verifications to 5000.
          */
@@ -113,9 +111,9 @@ public class VerifyLogTest extends DualTestCase {
             /* Replace byte with bitwise complement. */
             raf.write(~val);
             try {
-                verifyFiles(new String[] {fileName}, tempDir);
-                fail(String.format("Expected verify of %s to fail, " +
-                     "offset: 0x%X, val: 0x%X", fileName, offset, val));
+                verifyFiles(new String[] { fileName }, tempDir);
+                fail(String.format("Expected verify of %s to fail, " + "offset: 0x%X, val: 0x%X", fileName, offset,
+                        val));
             } catch (LogVerificationException expected) {
             }
             /* Repair the damage we did above. */
@@ -127,7 +125,7 @@ public class VerifyLogTest extends DualTestCase {
         raf.seek(fileLen);
         raf.write(0);
         try {
-            verifyFiles(new String[] {fileName}, tempDir);
+            verifyFiles(new String[] { fileName }, tempDir);
             fail("Expected verify to fail after append: " + fileName);
         } catch (LogVerificationException expected) {
         }
@@ -136,7 +134,7 @@ public class VerifyLogTest extends DualTestCase {
         final int lastByte = raf.read();
         raf.setLength(fileLen - 1);
         try {
-            verifyFiles(new String[] {fileName}, tempDir);
+            verifyFiles(new String[] { fileName }, tempDir);
             fail("Expected verify to fail after truncate: " + fileName);
         } catch (LogVerificationException expected) {
         }
@@ -151,8 +149,7 @@ public class VerifyLogTest extends DualTestCase {
         raf.close();
     }
 
-    private void openEnv()
-        throws DatabaseException {
+    private void openEnv() throws DatabaseException {
 
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setAllowCreate(true);
@@ -163,8 +160,7 @@ public class VerifyLogTest extends DualTestCase {
         env = create(envHome, envConfig);
     }
 
-    private void closeEnv()
-        throws DatabaseException {
+    private void closeEnv() throws DatabaseException {
 
         if (env != null) {
             try {
@@ -194,12 +190,11 @@ public class VerifyLogTest extends DualTestCase {
     }
 
     /**
-     * Add records of sizes varying from small to large, increasing the size
-     * one byte at a time for each record.  This creates log entries with
-     * varied sizes and buffer boundaries.
+     * Add records of sizes varying from small to large, increasing the size one
+     * byte at a time for each record. This creates log entries with varied
+     * sizes and buffer boundaries.
      */
-    private void writeData()
-        throws DatabaseException {
+    private void writeData() throws DatabaseException {
 
         final DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
@@ -222,17 +217,16 @@ public class VerifyLogTest extends DualTestCase {
      * For every given file name in dir1, compare it to the same file name in
      * the environment home directory.
      *
-     * @param allowShorterLastFile is true if the last file in the array in
-     * dir1 may be shorter than the corresponding file in the environment home
-     * directory, because writing is still active in the environment.
+     * @param allowShorterLastFile is true if the last file in the array in dir1
+     *            may be shorter than the corresponding file in the environment
+     *            home directory, because writing is still active in the
+     *            environment.
      */
-    private void diffFiles(final String[] fileNames,
-                           final File dir1,
-                           final boolean allowShorterLastFile)
-        throws IOException, DatabaseException {
-  
+    private void diffFiles(final String[] fileNames, final File dir1, final boolean allowShorterLastFile)
+            throws IOException, DatabaseException {
+
         final File dir2 = env.getHome();
-  
+
         for (final String fileName : fileNames) {
             final File file1 = new File(dir1, fileName);
             final FileInputStream is1 = new FileInputStream(file1);
@@ -242,7 +236,7 @@ public class VerifyLogTest extends DualTestCase {
                 try {
                     final byte[] buf1 = new byte[4096];
                     final byte[] buf2 = new byte[4096];
-      
+
                     long offset = 0;
                     while (true) {
                         final int len1 = is1.read(buf1);
@@ -251,15 +245,13 @@ public class VerifyLogTest extends DualTestCase {
                             break;
                         }
                         if (len1 != len2) {
-                            fail(String.format("Length mismatch file: %s " +
-                                 "offset: 0x%X len1: 0x%X len2: 0x%X",
-                                 fileName, offset, len1, len2));
+                            fail(String.format("Length mismatch file: %s " + "offset: 0x%X len1: 0x%X len2: 0x%X",
+                                    fileName, offset, len1, len2));
                         }
                         for (int i = 0; i < len1; i += 1) {
                             if (buf1[i] != buf2[i]) {
-                                fail(String.format("Data mismatch file: %s " +
-                                     "offset: 0x%X byte1: 0x%X byte2: 0x%X",
-                                     fileName, offset + i, buf1[i], buf2[i]));
+                                fail(String.format("Data mismatch file: %s " + "offset: 0x%X byte1: 0x%X byte2: 0x%X",
+                                        fileName, offset + i, buf1[i], buf2[i]));
                             }
                         }
                         offset += len1;
@@ -275,29 +267,25 @@ public class VerifyLogTest extends DualTestCase {
 
     /**
      * Copy specified log files to a given directory. This method is also
-     * present in the class javadoc of LogVerificationInputStream.  This method
+     * present in the class javadoc of LogVerificationInputStream. This method
      * should be kept in sync with the documented method in order to test it.
      */
-    void copyFiles(final Environment env,
-                   final String[] fileNames,
-                   final File destDir,
-                   final int bufSize)
-        throws IOException, DatabaseException {
-  
+    void copyFiles(final Environment env, final String[] fileNames, final File destDir, final int bufSize)
+            throws IOException, DatabaseException {
+
         final File srcDir = env.getHome();
-  
+
         for (final String fileName : fileNames) {
-  
+
             final File destFile = new File(destDir, fileName);
             final FileOutputStream fos = new FileOutputStream(destFile);
-  
+
             final File srcFile = new File(srcDir, fileName);
             final FileInputStream fis = new FileInputStream(srcFile);
-            final LogVerificationInputStream vis =
-                new LogVerificationInputStream(env, fis, fileName);
-  
+            final LogVerificationInputStream vis = new LogVerificationInputStream(env, fis, fileName);
+
             final byte[] buf = new byte[bufSize];
-  
+
             try {
                 while (true) {
                     final int len = vis.read(buf);
@@ -314,16 +302,13 @@ public class VerifyLogTest extends DualTestCase {
     }
 
     /**
-     * Copy specified log files to a given directory using NIO channels.  This
+     * Copy specified log files to a given directory using NIO channels. This
      * method is also present in the class javadoc of
      * LogVerificationReadableByteChannel, and should be kept in sync with the
      * documented method in order to test it.
      */
-    void copyFilesNIO(final Environment env,
-                      final String[] fileNames,
-                      final File destDir,
-                      final int bufSize)
-        throws IOException, DatabaseException {
+    void copyFilesNIO(final Environment env, final String[] fileNames, final File destDir, final int bufSize)
+            throws IOException, DatabaseException {
 
         final File srcDir = env.getHome();
 
@@ -336,8 +321,7 @@ public class VerifyLogTest extends DualTestCase {
             final File srcFile = new File(srcDir, fileName);
             final FileInputStream fis = new FileInputStream(srcFile);
             final FileChannel fic = fis.getChannel();
-            final LogVerificationReadableByteChannel vic =
-                new LogVerificationReadableByteChannel(env, fic, fileName);
+            final LogVerificationReadableByteChannel vic = new LogVerificationReadableByteChannel(env, fic, fileName);
 
             final ByteBuffer buf = ByteBuffer.allocateDirect(bufSize);
 
@@ -361,14 +345,12 @@ public class VerifyLogTest extends DualTestCase {
     /**
      * Verifies the given files without copying them.
      */
-    private void verifyFiles(final String[] fileNames, final File dir)
-        throws IOException {
-  
+    private void verifyFiles(final String[] fileNames, final File dir) throws IOException {
+
         for (final String fileName : fileNames) {
             final File file = new File(dir, fileName);
             final FileInputStream fis = new FileInputStream(file);
-            final LogVerificationInputStream vis =
-                new LogVerificationInputStream(env, fis, fileName);
+            final LogVerificationInputStream vis = new LogVerificationInputStream(env, fis, fileName);
             final byte[] buf = new byte[BUF_SIZE];
             try {
                 while (true) {

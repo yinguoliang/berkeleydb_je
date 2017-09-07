@@ -20,8 +20,7 @@ import java.util.StringTokenizer;
 public class InfoFileFilter implements FilenameFilter {
 
     /**
-     * Accept files of this format:
-     * je.info.#
+     * Accept files of this format: je.info.#
      */
     public boolean accept(File dir, String name) {
         boolean ok = false;

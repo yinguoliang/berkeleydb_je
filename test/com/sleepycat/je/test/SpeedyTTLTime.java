@@ -18,17 +18,15 @@ import com.sleepycat.je.dbi.TTL;
 import com.sleepycat.je.utilint.TestHook;
 
 /**
- * Sets a TTL.timeTestHook that provides a time that elapses at a different
- * rate than normal. Every fakeMillisPerHour after calling this method, JE
- * TTL processing will behave as if one hour has elapsed.
- *
- * In unit tests using this class, add the following to tearDown:
- *  TTL.setTimeTestHook(null);
+ * Sets a TTL.timeTestHook that provides a time that elapses at a different rate
+ * than normal. Every fakeMillisPerHour after calling this method, JE TTL
+ * processing will behave as if one hour has elapsed. In unit tests using this
+ * class, add the following to tearDown: TTL.setTimeTestHook(null);
  */
 public class SpeedyTTLTime {
 
     private final long fakeMillisPerHour;
-    private long baseTime;
+    private long       baseTime;
 
     public SpeedyTTLTime(final long fakeMillisPerHour) {
         this.fakeMillisPerHour = fakeMillisPerHour;
@@ -40,8 +38,7 @@ public class SpeedyTTLTime {
 
         final long elapsed = realTime - baseTime;
 
-        return baseTime +
-            (TTL.MILLIS_PER_HOUR * (elapsed / fakeMillisPerHour));
+        return baseTime + (TTL.MILLIS_PER_HOUR * (elapsed / fakeMillisPerHour));
 
     }
 

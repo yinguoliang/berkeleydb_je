@@ -37,23 +37,21 @@ import com.sleepycat.util.test.TestBase;
 
 public class ValidateSubtreeDeleteTest extends TestBase {
 
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
-    private Database testDb;
+    private Database    testDb;
 
     public ValidateSubtreeDeleteTest() {
         envHome = SharedTestUtils.getTestDir();
     }
 
     @Before
-    public void setUp()
-        throws Exception {
+    public void setUp() throws Exception {
 
         super.setUp();
         EnvironmentConfig envConfig = TestUtils.initEnvConfig();
         envConfig.setTransactional(true);
-        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(),
-                                 "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
         envConfig.setConfigParam(EnvironmentParams.NODE_MAX.getName(), "6");
         envConfig.setAllowCreate(true);
         env = new Environment(envHome, envConfig);
@@ -66,9 +64,8 @@ public class ValidateSubtreeDeleteTest extends TestBase {
     }
 
     @After
-    public void tearDown() 
-        throws Exception {
-        
+    public void tearDown() throws Exception {
+
         testDb.close();
         if (env != null) {
             try {
@@ -79,8 +76,7 @@ public class ValidateSubtreeDeleteTest extends TestBase {
     }
 
     @Test
-    public void testBasic()
-        throws Exception  {
+    public void testBasic() throws Exception {
         try {
             /* Make a 3 level tree full of data */
             DatabaseEntry key = new DatabaseEntry();
@@ -90,7 +86,7 @@ public class ValidateSubtreeDeleteTest extends TestBase {
             data.setData(testData);
 
             Transaction txn = env.beginTransaction(null, null);
-            for (int i = 0; i < 15; i ++) {
+            for (int i = 0; i < 15; i++) {
                 key.setData(TestUtils.getTestArray(i));
                 testDb.put(txn, key, data);
             }
@@ -111,11 +107,11 @@ public class ValidateSubtreeDeleteTest extends TestBase {
              * Try explicit deletes.
              */
             txn = env.beginTransaction(null, null);
-            for (int i = 0; i < 15; i ++) {
+            for (int i = 0; i < 15; i++) {
                 key.setData(TestUtils.getTestArray(i));
                 testDb.put(txn, key, data);
             }
-            for (int i = 0; i < 15; i ++) {
+            for (int i = 0; i < 15; i++) {
                 key.setData(TestUtils.getTestArray(i));
                 testDb.delete(txn, key);
             }
@@ -132,8 +128,7 @@ public class ValidateSubtreeDeleteTest extends TestBase {
     }
 
     @Test
-    public void testDuplicates()
-        throws Exception  {
+    public void testDuplicates() throws Exception {
         try {
             /* Make a 3 level tree full of data */
             DatabaseEntry key = new DatabaseEntry();
@@ -143,7 +138,7 @@ public class ValidateSubtreeDeleteTest extends TestBase {
             key.setData(testData);
 
             Transaction txn = env.beginTransaction(null, null);
-            for (int i = 0; i < 4; i ++) {
+            for (int i = 0; i < 4; i++) {
                 data.setData(TestUtils.getTestArray(i));
                 testDb.put(txn, key, data);
             }
@@ -153,8 +148,8 @@ public class ValidateSubtreeDeleteTest extends TestBase {
             assertFalse(tree.validateDelete(0));
 
             /*
-             * Should be able to delete, the txn is aborted and the data
-             * isn't there.
+             * Should be able to delete, the txn is aborted and the data isn't
+             * there.
              */
             txn.abort();
             assertTrue(tree.validateDelete(0));

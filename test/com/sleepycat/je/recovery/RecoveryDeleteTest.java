@@ -27,27 +27,25 @@ public class RecoveryDeleteTest extends RecoveryTestBase {
 
     @Override
     protected void setExtraProperties() {
-        envConfig.setConfigParam(
-                      EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(),
-                      "false");
+        envConfig.setConfigParam(EnvironmentParams.ENV_RUN_INCOMPRESSOR.getName(), "false");
     }
 
-    /* Make sure that we can recover after the entire tree is compressed away. */
+    /*
+     * Make sure that we can recover after the entire tree is compressed away.
+     */
     @Test
-    public void testDeleteAllAndCompress()
-        throws Throwable {
+    public void testDeleteAllAndCompress() throws Throwable {
 
         createEnvAndDbs(1 << 20, false, NUM_DBS);
         int numRecs = 10;
 
         try {
             // Set up an repository of expected data
-            Map<TestData, Set<TestData>> expectedData =
-                new HashMap<TestData, Set<TestData>>();
+            Map<TestData, Set<TestData>> expectedData = new HashMap<TestData, Set<TestData>>();
 
             // insert all the data
             Transaction txn = env.beginTransaction(null, null);
-            insertData(txn, 0, numRecs -1 , expectedData, 1, true, NUM_DBS);
+            insertData(txn, 0, numRecs - 1, expectedData, 1, true, NUM_DBS);
             txn.commit();
 
             /*

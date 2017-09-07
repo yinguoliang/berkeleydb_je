@@ -28,11 +28,11 @@ import com.sleepycat.je.util.TestUtils;
 import com.sleepycat.util.test.SharedTestUtils;
 
 /**
- * Check that the Database and Cursor classes properly use read-uncommitted
- * when specified.
+ * Check that the Database and Cursor classes properly use read-uncommitted when
+ * specified.
  */
 public class DirtyReadTest extends DualTestCase {
-    private final File envHome;
+    private final File  envHome;
     private Environment env;
 
     public DirtyReadTest() {
@@ -40,8 +40,7 @@ public class DirtyReadTest extends DualTestCase {
     }
 
     @Test
-    public void testReadUncommitted()
-        throws Throwable {
+    public void testReadUncommitted() throws Throwable {
 
         Database db = null;
         Transaction txnA = null;
@@ -72,23 +71,18 @@ public class DirtyReadTest extends DualTestCase {
             DatabaseEntry foundKey = new DatabaseEntry();
             DatabaseEntry foundData = new DatabaseEntry();
 
-            Cursor nonTxnCursor =
-                db.openCursor(null, CursorConfig.DEFAULT);
+            Cursor nonTxnCursor = db.openCursor(null, CursorConfig.DEFAULT);
             try {
-                nonTxnCursor.getSearchKey
-                    (key, foundData, LockMode.READ_UNCOMMITTED);
-                nonTxnCursor.getSearchKey
-                    (key, foundData, LockMode.READ_UNCOMMITTED_ALL);
+                nonTxnCursor.getSearchKey(key, foundData, LockMode.READ_UNCOMMITTED);
+                nonTxnCursor.getSearchKey(key, foundData, LockMode.READ_UNCOMMITTED_ALL);
 
                 /*
                  * Make sure we get a deadlock exception without
                  * read-uncommitted.
                  */
                 try {
-                    nonTxnCursor.getSearchKey
-                        (key, foundData, LockMode.DEFAULT);
-                    fail("Should throw LockConflict if non-txnl, " +
-                         "non-readUnc.");
+                    nonTxnCursor.getSearchKey(key, foundData, LockMode.DEFAULT);
+                    fail("Should throw LockConflict if non-txnl, " + "non-readUnc.");
                 } catch (LockConflictException expected) {
                 }
             } finally {
@@ -111,17 +105,14 @@ public class DirtyReadTest extends DualTestCase {
             assertEquals(OperationStatus.SUCCESS, status);
             assertTrue(Arrays.equals(data.getData(), foundData.getData()));
 
-            status = db.get(
-                null, key, foundData, LockMode.READ_UNCOMMITTED_ALL);
+            status = db.get(null, key, foundData, LockMode.READ_UNCOMMITTED_ALL);
             assertEquals(OperationStatus.SUCCESS, status);
             assertTrue(Arrays.equals(data.getData(), foundData.getData()));
 
-            status = db.getSearchBoth
-                (null, key, data, LockMode.READ_UNCOMMITTED);
+            status = db.getSearchBoth(null, key, data, LockMode.READ_UNCOMMITTED);
             assertEquals(OperationStatus.SUCCESS, status);
 
-            status = db.getSearchBoth
-                (null, key, data, LockMode.READ_UNCOMMITTED_ALL);
+            status = db.getSearchBoth(null, key, data, LockMode.READ_UNCOMMITTED_ALL);
             assertEquals(OperationStatus.SUCCESS, status);
 
             Transaction txn = null;
@@ -131,14 +122,12 @@ public class DirtyReadTest extends DualTestCase {
 
             cursor = db.openCursor(txn, CursorConfig.DEFAULT);
 
-            status = cursor.getFirst(
-                foundKey, foundData, LockMode.READ_UNCOMMITTED);
+            status = cursor.getFirst(foundKey, foundData, LockMode.READ_UNCOMMITTED);
             assertEquals(OperationStatus.SUCCESS, status);
             assertTrue(Arrays.equals(key.getData(), foundKey.getData()));
             assertTrue(Arrays.equals(data.getData(), foundData.getData()));
 
-            status = cursor.getFirst(
-                foundKey, foundData, LockMode.READ_UNCOMMITTED_ALL);
+            status = cursor.getFirst(foundKey, foundData, LockMode.READ_UNCOMMITTED_ALL);
             assertEquals(OperationStatus.SUCCESS, status);
             assertTrue(Arrays.equals(key.getData(), foundKey.getData()));
             assertTrue(Arrays.equals(data.getData(), foundData.getData()));
@@ -150,16 +139,13 @@ public class DirtyReadTest extends DualTestCase {
              */
             TransactionConfig txnConfig = new TransactionConfig();
             txnConfig.setReadUncommitted(true);
-            Transaction readUncommittedTxn =
-                env.beginTransaction(null, txnConfig);
+            Transaction readUncommittedTxn = env.beginTransaction(null, txnConfig);
 
-            status = db.get
-                (readUncommittedTxn, key, foundData, LockMode.DEFAULT);
+            status = db.get(readUncommittedTxn, key, foundData, LockMode.DEFAULT);
             assertEquals(OperationStatus.SUCCESS, status);
             assertTrue(Arrays.equals(data.getData(), foundData.getData()));
 
-            status = db.getSearchBoth
-                (readUncommittedTxn, key, data,LockMode.DEFAULT);
+            status = db.getSearchBoth(readUncommittedTxn, key, data, LockMode.DEFAULT);
             assertEquals(OperationStatus.SUCCESS, status);
 
             cursor = db.openCursor(readUncommittedTxn, CursorConfig.DEFAULT);
@@ -188,8 +174,8 @@ public class DirtyReadTest extends DualTestCase {
             assertTrue(Arrays.equals(data.getData(), foundData.getData()));
 
             /*
-             * Open through the compatiblity method, should accept dirty
-             * read (but ignores it)
+             * Open through the compatiblity method, should accept dirty read
+             * (but ignores it)
              */
             // Database compatDb = new Database(env);
             // compatDb.open(null, null, "foo", DbConstants.DB_BTREE,

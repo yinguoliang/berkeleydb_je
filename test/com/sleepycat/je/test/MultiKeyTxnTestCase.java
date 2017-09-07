@@ -34,8 +34,7 @@ public abstract class MultiKeyTxnTestCase extends TxnTestCase {
      * Wraps a single key creator to exercise the multi-key code for tests that
      * only create a single secondary key.
      */
-    static class SimpleMultiKeyCreator
-        implements SecondaryMultiKeyCreator {
+    static class SimpleMultiKeyCreator implements SecondaryMultiKeyCreator {
 
         private SecondaryKeyCreator keyCreator;
 
@@ -43,11 +42,8 @@ public abstract class MultiKeyTxnTestCase extends TxnTestCase {
             this.keyCreator = keyCreator;
         }
 
-        public void createSecondaryKeys(SecondaryDatabase secondary,
-                                        DatabaseEntry key,
-                                        DatabaseEntry data,
-                                        Set results)
-            throws DatabaseException {
+        public void createSecondaryKeys(SecondaryDatabase secondary, DatabaseEntry key, DatabaseEntry data, Set results)
+                throws DatabaseException {
 
             DatabaseEntry result = new DatabaseEntry();
             if (keyCreator.createSecondaryKey(secondary, key, data, result)) {

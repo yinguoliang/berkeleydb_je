@@ -42,8 +42,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
      * really deleted.
      */
     @Test
-    public void testSimpleDelete()
-        throws DatabaseException {
+    public void testSimpleDelete() throws DatabaseException {
 
         initEnv(false);
         doSimpleCursorPuts();
@@ -78,13 +77,12 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
 
     /**
      * Put a small number of data items into the database in a specific order.
-     * For each one: delete, getCurrent (make sure failure), reinsert
-     * (success), delete (success).  Once iterated through all of them,
-     * reinsert and make sure successful.
+     * For each one: delete, getCurrent (make sure failure), reinsert (success),
+     * delete (success). Once iterated through all of them, reinsert and make
+     * sure successful.
      */
     @Test
-    public void testSimpleDeleteInsert()
-        throws DatabaseException {
+    public void testSimpleDeleteInsert() throws DatabaseException {
 
         initEnv(false);
         doSimpleCursorPuts();
@@ -95,15 +93,11 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
                     cursor.delete();
                     deletedEntries++;
                     assertEquals(OperationStatus.KEYEMPTY,
-                                 cursor.getCurrent
-                                 (new StringDbt(), new StringDbt(),
-                                  LockMode.DEFAULT));
+                            cursor.getCurrent(new StringDbt(), new StringDbt(), LockMode.DEFAULT));
                     StringDbt newKey = new StringDbt(foundKey);
                     StringDbt newData = new StringDbt(foundData);
-                    assertEquals(OperationStatus.SUCCESS,
-                                 cursor2.putNoOverwrite(newKey, newData));
-                    assertEquals(OperationStatus.SUCCESS,
-                                 cursor2.delete());
+                    assertEquals(OperationStatus.SUCCESS, cursor2.putNoOverwrite(newKey, newData));
+                    assertEquals(OperationStatus.SUCCESS, cursor2.delete());
                 } catch (DatabaseException DBE) {
                     System.out.println("DBE " + DBE);
                 }
@@ -116,8 +110,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
         dw = new DataWalker(simpleDataMap) {
             @Override
             void perData(String foundKey, String foundData) {
-                assertEquals(foundData,
-                             (String) simpleDataMap.get(foundKey));
+                assertEquals(foundData, (String) simpleDataMap.get(foundKey));
                 simpleDataMap.remove(foundKey);
             }
         };
@@ -127,13 +120,12 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
 
     /**
      * Put a small number of data items into the database in a specific order.
-     * For each one: delete, getCurrent (make sure failure), reinsert
-     * (success), delete (success).  Once iterated through all of them,
-     * reinsert and make sure successful.
+     * For each one: delete, getCurrent (make sure failure), reinsert (success),
+     * delete (success). Once iterated through all of them, reinsert and make
+     * sure successful.
      */
     @Test
-    public void testSimpleDeletePutCurrent()
-        throws DatabaseException {
+    public void testSimpleDeletePutCurrent() throws DatabaseException {
 
         initEnv(false);
         doSimpleCursorPuts();
@@ -144,12 +136,9 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
                     cursor.delete();
                     deletedEntries++;
                     assertEquals(OperationStatus.KEYEMPTY,
-                                 cursor.getCurrent
-                                 (new StringDbt(), new StringDbt(),
-                                  LockMode.DEFAULT));
+                            cursor.getCurrent(new StringDbt(), new StringDbt(), LockMode.DEFAULT));
                     StringDbt newData = new StringDbt(foundData);
-                    assertEquals(OperationStatus.KEYEMPTY,
-                                 cursor.putCurrent(newData));
+                    assertEquals(OperationStatus.KEYEMPTY, cursor.putCurrent(newData));
                 } catch (DatabaseException DBE) {
                     System.out.println("DBE " + DBE);
                 }
@@ -162,8 +151,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
         dw = new DataWalker(simpleDataMap) {
             @Override
             void perData(String foundKey, String foundData) {
-                assertEquals(foundData,
-                             (String) simpleDataMap.get(foundKey));
+                assertEquals(foundData, (String) simpleDataMap.get(foundKey));
                 simpleDataMap.remove(foundKey);
             }
         };
@@ -173,27 +161,22 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
 
     /**
      * Similar to above test, but there was some question about whether this
-     * tests new functionality or not.  Insert k1/d1 and d1/k1.  Iterate
-     * through the data and delete k1/d1.  Reinsert k1/d1 and make sure it
-     * inserts ok.
+     * tests new functionality or not. Insert k1/d1 and d1/k1. Iterate through
+     * the data and delete k1/d1. Reinsert k1/d1 and make sure it inserts ok.
      */
     @Test
-    public void testSimpleInsertDeleteInsert()
-        throws DatabaseException {
+    public void testSimpleInsertDeleteInsert() throws DatabaseException {
 
         initEnv(true);
         StringDbt key = new StringDbt("k1");
         StringDbt data1 = new StringDbt("d1");
 
-        assertEquals(OperationStatus.SUCCESS,
-                     putAndVerifyCursor(cursor, key, data1, true));
-        assertEquals(OperationStatus.SUCCESS,
-                     putAndVerifyCursor(cursor, data1, key, true));
+        assertEquals(OperationStatus.SUCCESS, putAndVerifyCursor(cursor, key, data1, true));
+        assertEquals(OperationStatus.SUCCESS, putAndVerifyCursor(cursor, data1, key, true));
 
         DataWalker dw = new DataWalker(null) {
             @Override
-            void perData(String foundKey, String foundData)
-                throws DatabaseException {
+            void perData(String foundKey, String foundData) throws DatabaseException {
 
                 if (foundKey.equals("k1")) {
                     if (cursor.delete() == OperationStatus.SUCCESS) {
@@ -205,8 +188,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
         dw.setIgnoreDataMap(true);
         dw.walkData();
 
-        assertEquals(OperationStatus.SUCCESS,
-                     putAndVerifyCursor(cursor, key, data1, true));
+        assertEquals(OperationStatus.SUCCESS, putAndVerifyCursor(cursor, key, data1, true));
     }
 
     /**
@@ -214,8 +196,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
      * delete all of them and then make sure they were really deleted.
      */
     @Test
-    public void testSimpleDeleteAll()
-        throws DatabaseException {
+    public void testSimpleDeleteAll() throws DatabaseException {
 
         initEnv(false);
         doSimpleCursorPuts();
@@ -228,9 +209,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
                     cursor.delete();
                     deletedEntries++;
                     assertEquals(OperationStatus.KEYEMPTY,
-                                 cursor.getCurrent
-                                 (new StringDbt(), new StringDbt(),
-                                  LockMode.DEFAULT));
+                            cursor.getCurrent(new StringDbt(), new StringDbt(), LockMode.DEFAULT));
                 } catch (DatabaseException DBE) {
                     System.out.println("DBE " + DBE);
                 }
@@ -250,15 +229,15 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
     }
 
     /**
-     * Insert N_KEYS data items into a tree.  Iterate through the tree in
+     * Insert N_KEYS data items into a tree. Iterate through the tree in
      * ascending order deleting anything that has 'F' as the second character.
      * Iterate through the tree again and make sure they are all correctly
      * deleted.
-     * @throws Exception 
+     * 
+     * @throws Exception
      */
     @Test
-    public void testLargeDelete()
-        throws Exception {
+    public void testLargeDelete() throws Exception {
 
         tearDown();
         for (int i = 0; i < N_ITERS; i++) {
@@ -272,8 +251,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
     /**
      * Helper routine for above.
      */
-    private void doLargeDeleteAll()
-        throws DatabaseException {
+    private void doLargeDeleteAll() throws DatabaseException {
 
         Hashtable dataMap = new Hashtable();
         int n_keys = 2000;
@@ -282,14 +260,11 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
         int deletedEntries = 0;
         DataWalker dw = new DataWalker(dataMap) {
             @Override
-            void perData(String foundKey, String foundData)
-                throws DatabaseException {
+            void perData(String foundKey, String foundData) throws DatabaseException {
                 cursor.delete();
                 deletedEntries++;
                 assertEquals(OperationStatus.KEYEMPTY,
-                             cursor.getCurrent
-                             (new StringDbt(), new StringDbt(),
-                              LockMode.DEFAULT));
+                        cursor.getCurrent(new StringDbt(), new StringDbt(), LockMode.DEFAULT));
             }
         };
         dw.walkData();
@@ -306,14 +281,14 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
     }
 
     /**
-     * Insert N_KEYS data items into a tree.  Iterate through the tree in
-     * ascending order deleting all entries.  Iterate through the tree again
-     * and make sure they are all correctly deleted.
-     * @throws Exception 
+     * Insert N_KEYS data items into a tree. Iterate through the tree in
+     * ascending order deleting all entries. Iterate through the tree again and
+     * make sure they are all correctly deleted.
+     * 
+     * @throws Exception
      */
     @Test
-    public void testLargeDeleteAll()
-        throws Exception {
+    public void testLargeDeleteAll() throws Exception {
 
         tearDown();
         for (int i = 0; i < N_ITERS; i++) {
@@ -327,8 +302,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
     /**
      * Helper routine for above.
      */
-    private void doLargeDelete()
-        throws DatabaseException {
+    private void doLargeDelete() throws DatabaseException {
 
         Hashtable dataMap = new Hashtable();
         doLargePut(dataMap, N_KEYS);
@@ -336,8 +310,7 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
         int deletedEntries = 0;
         DataWalker dw = new DataWalker(dataMap) {
             @Override
-            void perData(String foundKey, String foundData)
-                throws DatabaseException {
+            void perData(String foundKey, String foundData) throws DatabaseException {
                 if (foundKey.charAt(1) == 'F') {
                     cursor.delete();
                     deletedEntries++;
@@ -359,14 +332,14 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
     }
 
     /**
-     * Insert N_KEYS data items into a tree.  Iterate through the tree in
-     * ascending order deleting the first entry.  Iterate through the tree
-     * again and make sure only the first entry is deleted.
-     * @throws Exception 
+     * Insert N_KEYS data items into a tree. Iterate through the tree in
+     * ascending order deleting the first entry. Iterate through the tree again
+     * and make sure only the first entry is deleted.
+     * 
+     * @throws Exception
      */
     @Test
-    public void testLargeDeleteFirst()
-        throws Exception {
+    public void testLargeDeleteFirst() throws Exception {
 
         tearDown();
         for (int i = 0; i < N_ITERS; i++) {
@@ -380,16 +353,14 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
     /**
      * Helper routine for above.
      */
-    private void doLargeDeleteFirst()
-        throws DatabaseException {
+    private void doLargeDeleteFirst() throws DatabaseException {
 
         Hashtable dataMap = new Hashtable();
         doLargePut(dataMap, N_KEYS);
 
         DataWalker dw = new DataWalker(dataMap) {
             @Override
-            void perData(String foundKey, String foundData)
-                throws DatabaseException {
+            void perData(String foundKey, String foundData) throws DatabaseException {
                 if (deletedEntry == null) {
                     deletedEntry = foundKey;
                     cursor.delete();
@@ -412,14 +383,14 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
     }
 
     /**
-     * Insert N_KEYS data items into a tree.  Iterate through the tree in
-     * ascending order deleting the last entry.  Iterate through the tree again
+     * Insert N_KEYS data items into a tree. Iterate through the tree in
+     * ascending order deleting the last entry. Iterate through the tree again
      * and make sure only the last entry is deleted.
-     * @throws Exception 
+     * 
+     * @throws Exception
      */
     @Test
-    public void testLargeDeleteLast()
-        throws Exception {
+    public void testLargeDeleteLast() throws Exception {
 
         tearDown();
         for (int i = 0; i < N_ITERS; i++) {
@@ -433,16 +404,14 @@ public class DbCursorDeleteTest extends DbCursorTestBase {
     /**
      * Helper routine for above.
      */
-    private void doLargeDeleteLast()
-        throws DatabaseException {
+    private void doLargeDeleteLast() throws DatabaseException {
 
         Hashtable dataMap = new Hashtable();
         doLargePut(dataMap, N_KEYS);
 
         DataWalker dw = new BackwardsDataWalker(dataMap) {
             @Override
-            void perData(String foundKey, String foundData)
-                throws DatabaseException {
+            void perData(String foundKey, String foundData) throws DatabaseException {
                 if (deletedEntry == null) {
                     deletedEntry = foundKey;
                     cursor.delete();

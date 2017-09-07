@@ -38,13 +38,12 @@ import com.sleepycat.util.test.TestBase;
 import com.sleepycat.utilint.StringUtils;
 
 public class KeyTest extends TestBase {
-    private File envHome;
+    private File        envHome;
     private Environment env;
 
     @Override
     @Before
-    public void setUp() 
-        throws Exception {
+    public void setUp() throws Exception {
 
         envHome = SharedTestUtils.getTestDir();
         super.setUp();
@@ -71,8 +70,7 @@ public class KeyTest extends TestBase {
     }
 
     private String makePrefix(String k1, String k2) {
-        byte[] ret = Key.createKeyPrefix(StringUtils.toUTF8(k1),
-                                         StringUtils.toUTF8(k2));
+        byte[] ret = Key.createKeyPrefix(StringUtils.toUTF8(k1), StringUtils.toUTF8(k2));
         if (ret == null) {
             return null;
         }
@@ -89,22 +87,17 @@ public class KeyTest extends TestBase {
         keyPrefixSubsetTest("baa", "aa", false);
     }
 
-    private void keyPrefixSubsetTest(String keyPrefix,
-                                     String newKey,
-                                     boolean expect) {
+    private void keyPrefixSubsetTest(String keyPrefix, String newKey, boolean expect) {
         try {
             EnvironmentConfig envConfig = TestUtils.initEnvConfig();
             envConfig.setAllowCreate(true);
             env = new Environment(envHome, envConfig);
-            byte[] keyPrefixBytes =
-                (keyPrefix == null ? null : StringUtils.toUTF8(keyPrefix));
+            byte[] keyPrefixBytes = (keyPrefix == null ? null : StringUtils.toUTF8(keyPrefix));
             byte[] newKeyBytes = StringUtils.toUTF8(newKey);
             DatabaseConfig dbConf = new DatabaseConfig();
             dbConf.setKeyPrefixing(true);
             EnvironmentImpl envImpl = DbInternal.getNonNullEnvImpl(env);
-            DatabaseImpl databaseImpl =
-                new DatabaseImpl(null,
-                                 "dummy", new DatabaseId(10), envImpl, dbConf);
+            DatabaseImpl databaseImpl = new DatabaseImpl(null, "dummy", new DatabaseId(10), envImpl, dbConf);
             IN in = new IN(databaseImpl, null, 10, 10);
             in.setKeyPrefix(keyPrefixBytes);
             boolean result = compareToKeyPrefix(in, newKeyBytes);
@@ -119,10 +112,8 @@ public class KeyTest extends TestBase {
     }
 
     /*
-     * Returns whether the current prefix (if any) is also a prefix of a
-     * given newKey.
-     *
-     * This has default protection for the unit tests.
+     * Returns whether the current prefix (if any) is also a prefix of a given
+     * newKey. This has default protection for the unit tests.
      */
     private boolean compareToKeyPrefix(IN in, byte[] newKey) {
 
