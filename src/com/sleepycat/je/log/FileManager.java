@@ -1214,8 +1214,8 @@ public class FileManager {
      * @return the latched FileHandle.
      */
     private FileHandle addFileHandle(Long fileNum) throws IOException, DatabaseException {
-
-        FileHandle fileHandle = new FileHandle(envImpl, fileNum, getFileNumberString(fileNum));
+        String fnStr = getFileNumberString(fileNum);
+        FileHandle fileHandle = new FileHandle(envImpl, fileNum, fnStr);
         fileCache.add(fileNum, fileHandle);
         fileHandle.latch();
         return fileHandle;

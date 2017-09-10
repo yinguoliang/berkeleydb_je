@@ -37,6 +37,10 @@ public class Hello {
         DatabaseEntry value = new DatabaseEntry();
         DatabaseEntry searchKey = new DatabaseEntry(("mykey"+500000).getBytes());
         db.get(null, searchKey, value, LockMode.DEFAULT);
+        db.get(null, searchKey, value, LockMode.DEFAULT);
+        db.get(null, searchKey, value, LockMode.DEFAULT);
+        db.get(null, searchKey, value, LockMode.DEFAULT);
+        db.get(null, searchKey, value, LockMode.DEFAULT);
         db.close();
         env.close();
     }

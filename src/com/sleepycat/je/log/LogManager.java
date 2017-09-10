@@ -765,7 +765,11 @@ public class LogManager {
             logSource = getLogSource(lsn);
 
             try {
-                return getLogEntryFromLogSource(lsn, lastLoggedSize, logSource, invisibleReadAllowed);
+                /*
+                 * 从logSource中读取LogEntry
+                 */
+                WholeEntry we =  getLogEntryFromLogSource(lsn, lastLoggedSize, logSource, invisibleReadAllowed);
+                return we;
 
             } catch (ChecksumException ce) {
 
@@ -1047,7 +1051,11 @@ public class LogManager {
             try {
                 /* Not in the in-memory log -- read it off disk. */
                 long fileNum = DbLsn.getFileNumber(lsn);
-                return new FileHandleSource(fileManager.getFileHandle(fileNum), readBufferSize, fileManager);
+                /*
+                 * 根据fileNum，打开文件
+                 */
+                FileHandle fh = fileManager.getFileHandle(fileNum);
+                return new FileHandleSource(fh, readBufferSize, fileManager);
             } catch (DatabaseException e) {
                 /* Add LSN to exception message. */
                 e.addErrorMessage("lsn= " + DbLsn.getNoFormatString(lsn));

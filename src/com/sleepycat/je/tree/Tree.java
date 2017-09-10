@@ -2020,7 +2020,12 @@ public final class Tree implements Loggable {
                         binBoundary.isFirstBin = false;
                     }
                 }
-
+                /*
+                 * 读取子节点（子节点可能不在内存中，需要找到对应的文件，然后从文件中读取）
+                 * 
+                 * 这里的业务含义是：parent是一个IN节点，只有子节点可能是BIN，
+                 * 所以，前面通过二分查找，找到子节点的index，在这里读取子节点中的entry
+                 */
                 child = parent.fetchINWithNoLatch(index, key, cacheMode);
 
                 if (child == null) {

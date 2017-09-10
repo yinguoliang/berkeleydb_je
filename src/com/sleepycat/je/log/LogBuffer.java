@@ -192,7 +192,9 @@ public class LogBuffer implements LogSource {
         waitForZeroAndLatch();
         boolean found = false;
 
-        if ((firstLsn != DbLsn.NULL_LSN) && (DbLsn.getFileNumber(firstLsn) == DbLsn.getFileNumber(lsn))) {
+        long fn1 = DbLsn.getFileNumber(firstLsn);
+        long fn2 = DbLsn.getFileNumber(lsn);
+        if ((firstLsn != DbLsn.NULL_LSN) && (fn1 == fn2)) {
 
             final long fileOffset = DbLsn.getFileOffset(lsn);
             final int contentSize;

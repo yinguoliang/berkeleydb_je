@@ -3708,7 +3708,9 @@ public class Cursor implements ForwardCursor {
              * Search for a BIN slot whose key is == the search key. If such a
              * slot is found, lock it and check whether it is valid.
              */
-            if (dup.searchExact(key, lockType, dirtyReadAll, dataRequested) == null) {
+            LockStanding lockStanding = dup.searchExact(key, lockType, dirtyReadAll, dataRequested);
+
+            if (lockStanding == null) {
                 success = true;
                 return null;
             }
@@ -3720,7 +3722,8 @@ public class Cursor implements ForwardCursor {
              * slot if a partial key comparator is used, since then it may be
              * different than the given key.
              */
-            result = dup.getCurrent(dbImpl.allowsKeyUpdates() ? key : null, data);
+            DatabaseEntry keyUpdate = dbImpl.allowsKeyUpdates() ? key : null;
+            result = dup.getCurrent(keyUpdate, data);
 
             /* Check for data match, if asked so. */
             if (result != null && searchMode == SearchMode.BOTH && !checkDataMatch(origData, data)) {

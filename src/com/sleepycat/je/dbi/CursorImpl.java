@@ -1765,7 +1765,13 @@ public class CursorImpl implements Cloneable {
         try {
             byte[] key = Key.makeKey(searchKey);
             Utils.checkBytes(key);
+            /*
+             * 获取tree对象
+             */
             Tree tree = dbImpl.getTree();
+            /*
+             * 搜索tree，找到一个bin节点
+             */
             bin = tree.search(key, cacheMode);
 
             if (bin != null) {
