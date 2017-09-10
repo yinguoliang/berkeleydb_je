@@ -725,7 +725,8 @@ public class LogManager {
      */
     public WholeEntry getLogEntryAllowInvisibleAtRecovery(long lsn, int size) throws FileNotFoundException {
 
-        return getLogEntry(lsn, size, envImpl.isInInit() /* invisibleReadAllowed */);
+        boolean b = envImpl.isInInit();
+        return getLogEntry(lsn, size, b /* invisibleReadAllowed */);
     }
 
     /**

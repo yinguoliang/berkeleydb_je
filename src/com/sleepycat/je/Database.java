@@ -1247,7 +1247,8 @@ public class Database implements Closeable {
      */
     public OperationStatus get(final Transaction txn, final DatabaseEntry key, final DatabaseEntry data,
                                LockMode lockMode) {
-        final OperationResult result = get(txn, key, data, Get.SEARCH, DbInternal.getReadOptions(lockMode));
+        ReadOptions readOps = DbInternal.getReadOptions(lockMode);
+        final OperationResult result = get(txn, key, data, Get.SEARCH, readOps);
 
         return result == null ? OperationStatus.NOTFOUND : OperationStatus.SUCCESS;
     }

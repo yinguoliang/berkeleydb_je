@@ -60,6 +60,7 @@ import com.sleepycat.je.utilint.StatGroup;
 import com.sleepycat.je.utilint.TestHook;
 import com.sleepycat.je.utilint.TestHookExecute;
 import com.sleepycat.je.utilint.VLSN;
+import com.test.Utils;
 
 /**
  * A CursorImpl is the internal implementation of the cursor.
@@ -1156,8 +1157,10 @@ public class CursorImpl implements Cloneable {
              * lockStanding var is guaranteed to be non-null in this case. The
              * BIN must remain latched when calling this method.
              */
-            final OperationResult result = updateRecordInternal(keyCopy, data, expInfo, returnOldData, returnNewData,
-                    insertResult.first(), repContext);
+            
+            OperationResult result = null;
+            LockStanding first = insertResult.first();
+            result = updateRecordInternal(keyCopy, data, expInfo, returnOldData, returnNewData, first, repContext);
 
             success = true;
             return result;
@@ -1761,8 +1764,9 @@ public class CursorImpl implements Cloneable {
 
         try {
             byte[] key = Key.makeKey(searchKey);
-
-            bin = dbImpl.getTree().search(key, cacheMode);
+            Utils.checkBytes(key);
+            Tree tree = dbImpl.getTree();
+            bin = tree.search(key, cacheMode);
 
             if (bin != null) {
 

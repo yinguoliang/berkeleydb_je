@@ -2654,7 +2654,6 @@ public class Cursor implements ForwardCursor {
             /* Perform operation. */
             result = dup.insertOrUpdateRecord(key, data, ln, expInfo, putMode, returnOldData, returnNewData,
                     repContext);
-
             if (result == null) {
                 if (putMode == PutMode.NO_OVERWRITE) {
                     envImpl.incInsertFailOps(dbImpl);
@@ -3691,8 +3690,10 @@ public class Cursor implements ForwardCursor {
 
         boolean success = false;
         OperationResult result = null;
-
-        DatabaseEntry origData = new DatabaseEntry(data.getData(), data.getOffset(), data.getSize());
+        byte[] dataBytes = data.getData();
+        int dataOffset = data.getOffset();
+        int dataSize = data.getSize();
+        DatabaseEntry origData = new DatabaseEntry(dataBytes, dataOffset, dataSize);
 
         final boolean dataRequested = !data.getPartial() || data.getPartialLength() != 0;
 

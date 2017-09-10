@@ -214,12 +214,15 @@ public abstract class INKeyRep extends INArrayRep<INKeyRep, INKeyRep.Type, byte[
             int cmp = 0;
 
             if (prefix == null || prefix.length == 0) {
-
+                /*
+                 * 将searchKey和数组中第idx位置的key进行比较，看看是不是相等、大于还是小于 这个就是二分搜索的典型算法
+                 * 如果相等，就表示searchKey是存在的，并且在数组中的位置为idx,否则返回再根据返回值查找另一半
+                 */
                 return compareSuffixes(searchKey, 0, searchKey.length, idx, embeddedData);
             }
 
-            cmp = Key.compareUnsignedBytes(searchKey, 0, Math.min(searchKey.length, prefix.length), prefix, 0,
-                    prefix.length);
+            int len = Math.min(searchKey.length, prefix.length);
+            cmp = Key.compareUnsignedBytes(searchKey, 0, len, prefix, 0, prefix.length);
 
             if (cmp == 0) {
 
@@ -236,6 +239,11 @@ public abstract class INKeyRep extends INArrayRep<INKeyRep, INKeyRep.Type, byte[
                                     boolean embeddedData) {
 
             byte[] myKey = keys[idx];
+            int keysLen = keys.length;
+            if (keysLen > 1) {
+                Utils.checkBytes(keys[0]);
+                Utils.checkBytes(keys[keysLen - 1]);
+            }
             Utils.checkBytes(searchKey);
             Utils.checkBytes(myKey);
             int myKeyLen;

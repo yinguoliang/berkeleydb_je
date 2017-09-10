@@ -21,19 +21,22 @@ public class Hello {
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
         db = env.openDatabase(null, "my", dbConfig);
-        for (int i = 0; i < 100000; i++) {
-            String key = "mykey" + i;
-            String value = "VALUE_" + i;
-            DatabaseEntry k = new DatabaseEntry(key.getBytes());
-            DatabaseEntry v = new DatabaseEntry(value.getBytes());
-            db.put(null, k, v);
-        }
-        for (int i = 0; i < 100; i++) {
-            DatabaseEntry value = new DatabaseEntry();
-            String key = "mykey" + i;
-            db.get(null, new DatabaseEntry(key.getBytes()), value, LockMode.DEFAULT);
-            System.out.println(new String(value.getData()));
-        }
+//        for (int i = 0; i < 1000000; i++) {
+//            String key = "mykey" + i;
+//            String value = "VALUE_" + i;
+//            DatabaseEntry k = new DatabaseEntry(key.getBytes());
+//            DatabaseEntry v = new DatabaseEntry(value.getBytes());
+//            db.put(null, k, v);
+//        }
+//        for (int i = 0; i < 100; i++) {
+//            DatabaseEntry value = new DatabaseEntry();
+//            String key = "mykey" + i;
+//            db.get(null, new DatabaseEntry(key.getBytes()), value, LockMode.DEFAULT);
+//            System.out.println(new String(value.getData()));
+//        }
+        DatabaseEntry value = new DatabaseEntry();
+        DatabaseEntry searchKey = new DatabaseEntry(("mykey"+500000).getBytes());
+        db.get(null, searchKey, value, LockMode.DEFAULT);
         db.close();
         env.close();
     }

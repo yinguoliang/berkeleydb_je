@@ -50,6 +50,10 @@ public class DbLsn {
      * bits, as is done in the VLSNBucket.
      */
     public static long makeLsn(long fileNumber, int fileOffset) {
+        /*
+         * long是64位
+         * lsn低32位是文件偏移， 高32位是文件号编码
+         */
         return fileOffset & INT_MASK | ((fileNumber & INT_MASK) << 32);
     }
 

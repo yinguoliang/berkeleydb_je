@@ -43,6 +43,7 @@ import com.sleepycat.je.latch.LatchTable;
 import com.sleepycat.je.latch.SharedLatch;
 import com.sleepycat.je.log.LogEntryType;
 import com.sleepycat.je.log.LogItem;
+import com.sleepycat.je.log.LogManager;
 import com.sleepycat.je.log.LogParams;
 import com.sleepycat.je.log.LogUtils;
 import com.sleepycat.je.log.Loggable;
@@ -1643,7 +1644,9 @@ public class IN extends Node implements Comparable<IN>, LatchContext {
             if (fileOffset == -1) {
                 return DbLsn.NULL_LSN;
             } else {
-                return DbLsn.makeLsn((baseFileNumber + getFileNumberOffset(offset)), fileOffset);
+                int fileNumOffset = getFileNumberOffset(offset);
+                long fileNum = baseFileNumber;
+                return DbLsn.makeLsn((fileNum + fileNumOffset), fileOffset);
             }
         } else {
             return entryLsnLongArray[idx];
@@ -2145,8 +2148,9 @@ public class IN extends Node implements Comparable<IN>, LatchContext {
                 if (ohBytes != null) {
                     child = ohCache.materializeBIN(envImpl, ohBytes);
                 } else {
-                    final WholeEntry wholeEntry = envImpl.getLogManager().getLogEntryAllowInvisibleAtRecovery(lsn,
-                            getLastLoggedSize(idx));
+                    LogManager logManager = envImpl.getLogManager();
+                    int size = getLastLoggedSize(idx);
+                    WholeEntry wholeEntry = logManager.getLogEntryAllowInvisibleAtRecovery(lsn, size);
 
                     final LogEntry logEntry = wholeEntry.getEntry();
 
@@ -2890,11 +2894,11 @@ public class IN extends Node implements Comparable<IN>, LatchContext {
                 s = entryKeys.compareKeys(key, keyPrefix, middle, b, comparator);
             }
 
-            if (s < 0) {
+            if (s < 0) {//key在上半部分
                 high = middle - 1;
-            } else if (s > 0) {
+            } else if (s > 0) { //key在下半部分
                 low = middle + 1;
-            } else {
+            } else { //key == middle
                 int ret;
                 if (indicateIfDuplicate) {
                     ret = middle | EXACT_MATCH;
@@ -2917,6 +2921,11 @@ public class IN extends Node implements Comparable<IN>, LatchContext {
         if (exact) {
             return -1;
         } else {
+            /*
+             * 如果代码执行到这里了，表示entry中没有找到元素
+             * 按照折半查找的算法，此时low>high
+             * 按照树的节点的存储规则，key应该介于(high,low)之间
+             */
             return high;
         }
     }
@@ -3688,8 +3697,8 @@ public class IN extends Node implements Comparable<IN>, LatchContext {
                 return ((fullBinMaxEntries - fullBinNEntries) < 1);
             }
         }
-
-        return ((getMaxEntries() - nEntries) < 1);
+        int maxEntries = getMaxEntries();
+        return ((maxEntries - nEntries) < 1);
     }
 
     /**

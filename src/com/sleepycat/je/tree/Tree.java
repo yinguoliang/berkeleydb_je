@@ -47,6 +47,7 @@ import com.sleepycat.je.utilint.StatGroup;
 import com.sleepycat.je.utilint.TestHook;
 import com.sleepycat.je.utilint.TestHookExecute;
 import com.sleepycat.je.utilint.VLSN;
+import com.test.Utils;
 
 /**
  * Tree implements the JE B+Tree. A note on tree search patterns: There's a set
@@ -1343,7 +1344,7 @@ public final class Tree implements Loggable {
      * the BIN that is found or created, and the BIN is latched.
      */
     public BIN findBinForInsert(final byte[] key, final CacheMode cacheMode) {
-
+        Utils.checkBytes(key);
         boolean rootLatchIsHeld = false;
         BIN bin = null;
 
@@ -1399,6 +1400,7 @@ public final class Tree implements Loggable {
                      * logged checkpoint end BIN is dirtied, but is not part of
                      * checkpoint
                      */
+                    Utils.checkBytes(key);
                     boolean insertOk = rootIN.insertEntry(bin, key, logLsn);
                     assert insertOk;
 
@@ -1935,9 +1937,11 @@ public final class Tree implements Loggable {
 
     /**
      * Search the tree, starting at the root. Depending on search type either
-     * (a) search for the BIN that *should* contain a given key, or (b) return
-     * the right-most or left-most BIN in the tree. Preemptive splitting is not
-     * done during the search.
+     * <ul>
+     * <li>(a) search for the BIN that *should* contain a given key, or </li>
+     * <li>(b) return the right-most or left-most BIN in the tree. </li>
+     * </ul>
+     * Preemptive splitting is not done during the search.
      *
      * @param key - the key to search for, or null if searchType is LEFT or
      *            RIGHT.
@@ -1979,13 +1983,21 @@ public final class Tree implements Loggable {
             if (treeStatsAccumulator != null) {
                 parent.accumulateStats(treeStatsAccumulator);
             }
-
+            /*
+             * 循环搜索树，直到找到BIN为止
+             * NOTE：B+树的数据都是存储在LN中的，IN只包含key信息，所以我们获取信息时，一定是要找到一个BIN的
+             * 
+             * 这里的循环的意思就是，从树根开始，一直搜到Leaf Node为止（循环停止条件就是Node为BIN）
+             */
             do {
                 if (parent.getNEntries() == 0) {
                     throw EnvironmentFailureException.unexpectedState("Upper IN with 0 entries");
                 }
 
                 if (searchType == SearchType.NORMAL) {
+                    /*
+                     * index是key在子节点的位置
+                     */
                     index = parent.findEntry(key, false, false, comparator);
 
                 } else if (searchType == SearchType.LEFT) {
@@ -1998,7 +2010,7 @@ public final class Tree implements Loggable {
                     throw EnvironmentFailureException.unexpectedState("Invalid value of searchType: " + searchType);
                 }
 
-                assert (index >= 0);
+                assert (index >= 0); //index是子节点的下标，一定要大于等于0的
 
                 if (binBoundary != null) {
                     if (index != parent.getNEntries() - 1) {

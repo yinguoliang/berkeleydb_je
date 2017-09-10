@@ -616,8 +616,11 @@ public class RecoveryManager {
              * possibility of splits, find largest txn Id before any need for a
              * root update (which would use an AutoTxn)
              */
-            buildINs(true /* mappingTree */, Phase.READ_MAP_INS, Phase.REDO_MAP_INS, RecoveryProgress.READ_DBMAP_INFO,
-                    RecoveryProgress.REDO_DBMAP_INFO);
+            Phase readMapINS = Phase.READ_MAP_INS;
+            Phase redoMapINS = Phase.REDO_MAP_INS;
+            RecoveryProgress readDBMPINFO = RecoveryProgress.READ_DBMAP_INFO;
+            RecoveryProgress redoDBMPINFO = RecoveryProgress.REDO_DBMAP_INFO;
+            buildINs(true, readMapINS, redoMapINS, readDBMPINFO, redoDBMPINFO);
 
             /*
              * Undo all aborted map LNs. Read and remember all committed,
