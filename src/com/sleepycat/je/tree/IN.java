@@ -2118,10 +2118,15 @@ public class IN extends Node implements Comparable<IN>, LatchContext {
         boolean isMiss = false;
         boolean success = false;
 
+        /*
+         * 先从缓存中找
+         */
         IN child = (IN) entryTargets.get(idx);
 
         if (child == null) {
-
+            /*
+             * 缓存不存在，从磁盘读取
+             */
             final long lsn = getLsn(idx);
 
             if (lsn == DbLsn.NULL_LSN) {
@@ -2150,6 +2155,9 @@ public class IN extends Node implements Comparable<IN>, LatchContext {
                 } else {
                     LogManager logManager = envImpl.getLogManager();
                     int size = getLastLoggedSize(idx);
+                    /*
+                     * 从lsn指定的位置，读取条目（缓存在后面设置）
+                     */
                     WholeEntry wholeEntry = logManager.getLogEntryAllowInvisibleAtRecovery(lsn, size);
 
                     final LogEntry logEntry = wholeEntry.getEntry();
@@ -2291,7 +2299,9 @@ public class IN extends Node implements Comparable<IN>, LatchContext {
                     } else {
                         child.postFetchInit(databaseImpl, lsn);
                     }
-
+                    /*
+                     * 设置缓存，更新内存使用大小
+                     */
                     attachNode(idx, child, null);
 
                     child.releaseLatch();

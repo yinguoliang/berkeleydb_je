@@ -3708,8 +3708,15 @@ public class Cursor implements ForwardCursor {
              * Search for a BIN slot whose key is == the search key. If such a
              * slot is found, lock it and check whether it is valid.
              */
+            /*
+             * 根据给定的key，搜索BIN节点
+             * 注意：
+             *   dup.searchExact()并没有返回任何信息
+             *   原因是：注意到这个方法是cursor中的方法，cursor本身就代表了traversal的位置
+             *   所以searchExcat方法之后，整个游标就已经定位到搜索到的位置了，不需要再额外的返回信息
+             */
             LockStanding lockStanding = dup.searchExact(key, lockType, dirtyReadAll, dataRequested);
-
+            //没找到，返回null
             if (lockStanding == null) {
                 success = true;
                 return null;

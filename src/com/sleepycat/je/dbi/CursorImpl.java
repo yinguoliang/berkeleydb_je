@@ -1775,7 +1775,9 @@ public class CursorImpl implements Cloneable {
             bin = tree.search(key, cacheMode);
 
             if (bin != null) {
-
+                /*
+                 * 找到BIN之后，再在BIN中定位key的位置
+                 */
                 index = bin.findEntry(key, false, true /* exact */);
 
                 if (index < 0 && bin.isBINDelta()) {

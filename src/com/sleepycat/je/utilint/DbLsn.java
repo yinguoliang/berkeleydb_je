@@ -90,6 +90,9 @@ public class DbLsn {
      * @return the number for this DbLsn.
      */
     public static long getFileNumber(long lsn) {
+        /*
+         * 高32位为文件号，所以先将lsn左移32位，然后和INT_MASK进行与运算
+         */
         return (lsn >> 32) & INT_MASK;
     }
 
@@ -99,6 +102,9 @@ public class DbLsn {
      * @return the offset for this DbLsn.
      */
     public static long getFileOffset(long lsn) {
+        /*
+         * 去掉lsn高32位，低32位就是文件的偏移
+         */
         return (lsn & INT_MASK);
     }
 

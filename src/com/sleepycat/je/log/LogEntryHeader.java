@@ -132,8 +132,13 @@ public class LogEntryHeader {
 
         assert logVersion == LogEntryType.UNKNOWN_FILE_HEADER_VERSION || (logVersion >= LogEntryType.FIRST_LOG_VERSION
                 && logVersion <= LogEntryType.LOG_VERSION) : logVersion;
-
+        /*
+         * 1. 校验和（4个byte,32位）
+         */
         checksumVal = LogUtils.readUnsignedInt(entryBuffer);
+        /*
+         * 2. record的类型（1个byte，8位）
+         */
         entryType = entryBuffer.get();
         if (!LogEntryType.isValidType(entryType)) {
             throw new ChecksumException("Invalid log entry type: " + entryType + " lsn=" + DbLsn.getNoFormatString(lsn)
@@ -168,7 +173,13 @@ public class LogEntryHeader {
                 initFlags(entryBuffer.get());
             }
         }
+        /*
+         * 3. 前一个record的偏移（4byte，32位）
+         */
         prevOffset = LogUtils.readUnsignedInt(entryBuffer);
+        /*
+         * 4. record大小（int类型）
+         */
         itemSize = LogUtils.readInt(entryBuffer);
         if (itemSize < 0) {
             throw new ChecksumException("Invalid log entry size: " + itemSize + " lsn=" + DbLsn.getNoFormatString(lsn)

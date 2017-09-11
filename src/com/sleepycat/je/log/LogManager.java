@@ -922,8 +922,12 @@ public class LogManager {
          */
         long fileOffset = DbLsn.getFileOffset(lsn);
 
-        ByteBuffer entryBuffer = (lastLoggedSize > 0) ? logSource.getBytes(fileOffset, lastLoggedSize)
-                : logSource.getBytes(fileOffset);
+        ByteBuffer entryBuffer = null;
+        if(lastLoggedSize > 0) {
+            entryBuffer = logSource.getBytes(fileOffset, lastLoggedSize);
+        }else{
+            entryBuffer = logSource.getBytes(fileOffset);
+        }
 
         if (entryBuffer.remaining() < LogEntryHeader.MIN_HEADER_SIZE) {
             throw new ChecksumException(
@@ -931,7 +935,9 @@ public class LogManager {
                             + " remaining=" + entryBuffer.remaining() + " lsn=" + DbLsn.getNoFormatString(lsn));
         }
 
-        /* Read the fixed length portion of the header. */
+        /* Read the fixed length portion of the header. 
+         * 从entryBuffer中读取头信息：每个record都是有结构的，record前面部分会有record校验和、record类型、record大小的信息
+         */
         LogEntryHeader header = new LogEntryHeader(entryBuffer, logSource.getLogVersion(), lsn);
 
         /* Read the variable length portion of the header. */
@@ -1003,7 +1009,11 @@ public class LogManager {
         assert LogEntryType.isValidType(header.getType()) : "Read non-valid log entry type: " + header.getType();
 
         /* Read the entry. */
-        LogEntry logEntry = LogEntryType.findType(header.getType()).getNewLogEntry();
+        //先根据header中的type，确定条目的类型
+        LogEntryType entryType = LogEntryType.findType(header.getType());
+        //再根据条目类型，构造一个LogEntry对象（不同的type，LogEntry不一样）
+        LogEntry logEntry = entryType.getNewLogEntry();
+        //从entryBuffer读取内容到logEntry里面
         logEntry.readEntry(envImpl, header, entryBuffer);
 
         /* For testing only; generate a read io exception. */

@@ -60,6 +60,10 @@ class FileSource implements LogSource {
     public ByteBuffer getBytes(long fileOffset, int numBytes) throws DatabaseException {
 
         /* Fill up buffer from file. */
+        /*
+         * 从logSource的指定位置读取指定的字节数
+         * 注：logSource包含了很多记录，这里只是要读取一个记录，记录的偏移量由fileOffset指定
+         */
         ByteBuffer destBuf = ByteBuffer.allocate(numBytes);
         fileManager.readFromFile(file, destBuf, fileOffset, fileNum);
 
