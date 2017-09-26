@@ -16,18 +16,19 @@ public class Hello {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
         envConfig.setCacheSize(100000000);
-        env = new Environment(new File("/Users/yinguoliang/Desktop/bdb/"), envConfig);
+        File home = new File("/Users/yinguoliang/Desktop/bdb/");
+        env = new Environment(home, envConfig);
 
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setAllowCreate(true);
         db = env.openDatabase(null, "my", dbConfig);
-//        for (int i = 0; i < 1000000; i++) {
-//            String key = "mykey" + i;
-//            String value = "VALUE_" + i;
-//            DatabaseEntry k = new DatabaseEntry(key.getBytes());
-//            DatabaseEntry v = new DatabaseEntry(value.getBytes());
-//            db.put(null, k, v);
-//        }
+        for (int i = 0; i < 1000000; i++) {
+            String key = "mykey" + i;
+            String value = "VALUE_" + i;
+            DatabaseEntry k = new DatabaseEntry(key.getBytes());
+            DatabaseEntry v = new DatabaseEntry(value.getBytes());
+            db.put(null, k, v);
+        }
 //        for (int i = 0; i < 100; i++) {
 //            DatabaseEntry value = new DatabaseEntry();
 //            String key = "mykey" + i;
